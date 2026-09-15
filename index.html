@@ -5,53 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="OTRI — Open Trail Running Index. An open-source, transparent and reproducible performance layer for trail running.">
   <title>OTRI — Open Trail Running Index</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="site-header">
-    <div class="nav wrap">
-      <a class="brand" href="#top" aria-label="OTRI home">
-        <svg class="logo" viewBox="0 0 54 42" aria-hidden="true">
-          <path d="M3 38 20 8l9 14 8-13 14 29H3Z" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/>
-          <path d="m15 38 14-22 13 22" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span class="brand-name">OTRI</span>
-        <span class="brand-sub">OPEN TRAIL RUNNING INDEX</span>
-      </a>
-      <nav>
-        <a href="#building">What we're building</a>
-        <a href="#organizers">Organizers</a>
-        <a href="#predictor">GPX predictor</a>
-        <a class="nav-github" href="https://github.com/OTRI-run/otri">GitHub ↗</a>
-      </nav>
-    </div>
+  <div class="noise"></div>
+  <header class="nav wrap">
+    <a class="brand" href="#top"><span class="mark">OTRI</span><span>Open Trail Running Index</span></a>
+    <a class="nav-link" href="https://github.com/OTRI-run/otri">GitHub ↗</a>
   </header>
-
   <main id="top">
-    <section class="hero">
-      <div class="hero-grid wrap">
-        <div class="hero-copy-wrap">
-          <div class="eyebrow"><span></span> EARLY DEVELOPMENT</div>
-          <h1>The open-source<br><em>performance layer</em><br>for trail running.</h1>
-          <p class="hero-copy">We’re building a transparent, reproducible way to compare trail performances across distance, elevation, terrain and course difficulty.</p>
-          <div class="actions">
-            <a class="button primary" href="https://github.com/OTRI-run/otri">Explore the project ↗</a>
-            <a class="button secondary" href="#organizers">For race organizers ↓</a>
-          </div>
-        </div>
-        <div class="hero-art" aria-hidden="true">
-          <div class="mountain mountain-back"></div>
-          <div class="mountain mountain-front"></div>
-          <div class="trail-line"></div>
-          <div class="score-badge"><small>OPEN / TRANSPARENT</small><strong>OTRI</strong><span>TRAIL PERFORMANCE</span></div>
-        </div>
+    <section class="hero wrap">
+      <div class="eyebrow">● EARLY DEVELOPMENT</div>
+      <h1>The open-source<br><em>performance layer</em><br>for trail running.</h1>
+      <p class="hero-copy">We’re building a transparent, reproducible way to compare trail performances across distance, elevation, terrain and course difficulty.</p>
+      <div class="actions">
+        <a class="button primary" href="https://github.com/OTRI-run/otri">Explore the project</a>
+        <a class="button secondary" href="#organizers">For race organizers ↓</a>
       </div>
+      <div class="hero-line"></div>
     </section>
-
-    <section id="building" class="section wrap">
+    <section class="section wrap">
       <div class="section-label">01 / WHAT WE’RE BUILDING</div>
       <div class="two-col">
         <h2>A shared, open foundation for trail performance.</h2>
@@ -61,7 +34,6 @@
         </div>
       </div>
     </section>
-
     <section class="section dark-section">
       <div class="wrap">
         <div class="section-label">02 / HOW IT WORKS</div>
@@ -74,7 +46,6 @@
         </div>
       </div>
     </section>
-
     <section id="organizers" class="section wrap">
       <div class="section-label">03 / FOR ORGANIZERS</div>
       <div class="two-col organizer">
@@ -82,18 +53,12 @@
         <div>
           <p>OTRI is being designed around an organizer workflow that feels familiar: create a race, provide the course metadata, upload the official results, validate, submit.</p>
           <ul class="checklist">
-            <li>One result file per race</li>
-            <li>One participant per row</li>
-            <li>Finish time and ranking for finishers</li>
-            <li>Race distance and elevation data</li>
-            <li>GPX/course information where available</li>
-            <li>OTRI calculates the score — organizers never enter it</li>
+            <li>One result file per race</li><li>One participant per row</li><li>Finish time and ranking for finishers</li><li>Race distance and elevation data</li><li>GPX/course information where available</li><li>OTRI calculates the score — organizers never enter it</li>
           </ul>
         </div>
       </div>
     </section>
-
-    <section id="predictor" class="section predictor-section">
+    <section class="section predictor-section">
       <div class="wrap">
         <div class="section-label">04 / THE GPX PREDICTOR</div>
         <div class="two-col predictor-head">
@@ -108,26 +73,19 @@
         </div>
       </div>
     </section>
-
     <section class="section wrap">
       <div class="section-label">05 / PRINCIPLES</div>
       <div class="principles">
-        <div><b>OPEN</b><span>Public methodology and open-source software.</span></div>
-        <div><b>TRANSPARENT</b><span>Clear inputs, assumptions and validation rules.</span></div>
-        <div><b>REPRODUCIBLE</b><span>The same data and rules should produce the same result.</span></div>
-        <div><b>TRACEABLE</b><span>Race data should have a documented provenance.</span></div>
-        <div><b>PRIVACY-CONSCIOUS</b><span>Collect what is needed; protect what is personal.</span></div>
-        <div><b>INDEPENDENT</b><span>A new methodology and data supply chain, built from the ground up.</span></div>
+        <div><b>OPEN</b><span>Public methodology and open-source software.</span></div><div><b>TRANSPARENT</b><span>Clear inputs, assumptions and validation rules.</span></div><div><b>REPRODUCIBLE</b><span>The same data and rules should produce the same result.</span></div><div><b>TRACEABLE</b><span>Race data should have a documented provenance.</span></div><div><b>PRIVACY-CONSCIOUS</b><span>Collect what is needed; protect what is personal.</span></div><div><b>INDEPENDENT</b><span>A new methodology and data supply chain, built from the ground up.</span></div>
       </div>
     </section>
-
     <section class="section independence">
       <div class="wrap narrow">
         <div class="section-label">INDEPENDENCE</div>
-        <div class="independence-layout"><div class="big-mark">OTRI</div><div><h2>Built independently.</h2><p>OTRI is an independent open-source project. It is not affiliated with ITRA, UTMB, or another commercial trail-running ranking organization. OTRI will build its own methodology and use legitimately obtained data.</p></div></div>
+        <h2>Built independently.</h2>
+        <p>OTRI is an independent open-source project. It is not affiliated with ITRA, UTMB, or another commercial trail-running ranking organization. OTRI will build its own methodology and use legitimately obtained data.</p>
       </div>
     </section>
-
     <section class="section wrap launch">
       <div class="section-label">CURRENT STATUS</div>
       <h2>The foundation is being built now.</h2>
@@ -135,12 +93,9 @@
       <a class="button primary" href="https://github.com/OTRI-run/otri">Follow OTRI on GitHub ↗</a>
     </section>
   </main>
-
-  <footer class="footer">
-    <div class="wrap footer-inner">
-      <a class="footer-brand" href="#top"><span class="footer-logo">△</span><span><strong>OTRI</strong><small>OPEN TRAIL RUNNING INDEX</small></span></a>
-      <div>Early development · <a href="https://github.com/OTRI-run/otri">GitHub ↗</a></div>
-    </div>
+  <footer class="footer wrap">
+    <span>OTRI · Open Trail Running Index</span>
+    <span>Early development · <a href="https://github.com/OTRI-run/otri">GitHub</a></span>
   </footer>
 </body>
 </html>
