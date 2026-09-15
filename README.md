@@ -31,19 +31,19 @@ Race results + course data
  Rankings / profiles / API / analytics
 ```
 
-A major planned capability is the **GPX Target Performance Predictor**:
-
-> Upload a GPX course and ask: “What finish time would I need to target an OTRI 650?”
-
-The system can also work in reverse: given a target finish time, estimate the expected OTRI score, with uncertainty shown rather than false precision.
+A major planned capability is the **GPX Target Performance Predictor**: upload a GPX course and estimate the finish time needed to target a chosen OTRI score, with uncertainty rather than false precision.
 
 ## Repository
 
-- [`HANDBOOK.md`](HANDBOOK.md) — project strategy, architecture, governance, scoring, data, and roadmap
-- [`METHODOLOGY.md`](METHODOLOGY.md) — scoring principles and research direction
-- [`DATA_POLICY.md`](DATA_POLICY.md) — data provenance, licensing, privacy, and sourcing principles
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — how to contribute
-- [`docs/gpx-predictor.md`](docs/gpx-predictor.md) — GPX prediction design
+- `HANDBOOK.md` — project strategy, architecture, governance, scoring, data, and roadmap
+- `METHODOLOGY.md` — scoring principles and research direction
+- `DATA_POLICY.md` — data provenance, licensing, privacy, and sourcing principles
+- `CONTRIBUTING.md` — how to contribute
+- `docs/gpx-predictor.md` — GPX prediction design
+
+## Frontend
+
+The website uses React, Vite, Tailwind CSS, Lucide icons, and responsive modern typography. GitHub Actions builds and deploys the site to GitHub Pages.
 
 ## Independence
 
@@ -56,7 +56,3 @@ OTRI must not copy proprietary scores, rankings, databases, or restricted datase
 **Early design / MVP development.**
 
 The scoring model is deliberately not treated as final. The first goal is to establish clean data provenance, a reliable result schema, validation, reproducible calculations, and a baseline model that can be tested against real race data.
-
-## License
-
-The software license and the license for contributed datasets are intentionally treated as separate questions. See the repository policies before contributing data.
