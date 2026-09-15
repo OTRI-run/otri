@@ -33,3 +33,5 @@ a[aria-label="OTRI home"]::after{
     letter-spacing:.07em;
   }
 }
+
+/* deployment refresh: preserve the OTRI lockup exactly */
