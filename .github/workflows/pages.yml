@@ -14,6 +14,9 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+env:
+  NODE_VERSION: 22
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,9 +24,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
       - run: npm install
       - run: npm run build
+      - name: Verify Pages artifact
+        run: |
+          test -s dist/index.html
+          test -d dist/assets
+          ! grep -Eq '(^|["'"'(=])/(assets|src)/' dist/index.html
+          echo "Pages artifact looks valid and uses relative asset paths."
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
