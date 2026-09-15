@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="OTRI — Open Trail Running Index. An open-source, transparent and reproducible performance layer for trail running.">
+  <title>OTRI — Open Trail Running Index</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="noise"></div>
+  <header class="nav wrap">
+    <a class="brand" href="#top"><span class="mark">OTRI</span><span>Open Trail Running Index</span></a>
+    <a class="nav-link" href="https://github.com/OTRI-run/otri">GitHub ↗</a>
+  </header>
+
+  <main id="top">
+    <section class="hero wrap">
+      <div class="eyebrow">● EARLY DEVELOPMENT</div>
+      <h1>The open-source<br><em>performance layer</em><br>for trail running.</h1>
+      <p class="hero-copy">We’re building a transparent, reproducible way to compare trail performances across distance, elevation, terrain and course difficulty.</p>
+      <div class="actions">
+        <a class="button primary" href="https://github.com/OTRI-run/otri">Explore the project</a>
+        <a class="button secondary" href="#organizers">For race organizers ↓</a>
+      </div>
+      <div class="hero-line"></div>
+    </section>
+
+    <section class="section wrap">
+      <div class="section-label">01 / WHAT WE’RE BUILDING</div>
+      <div class="two-col">
+        <h2>A shared, open foundation for trail performance.</h2>
+        <div>
+          <p>Trail races are wildly different. A 50 km course can mean a fast runnable route or a brutal mountain day. OTRI is designed to turn official race results and course data into a consistent performance signal.</p>
+          <p>The methodology, validation rules and software are designed to be inspectable and reproducible — not a black box.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section dark-section">
+      <div class="wrap">
+        <div class="section-label">02 / HOW IT WORKS</div>
+        <div class="flow">
+          <div class="flow-card"><span>01</span><h3>Official results</h3><p>Organizers upload race results in a familiar XLSX/CSV format.</p></div>
+          <div class="flow-card"><span>02</span><h3>Validation</h3><p>Results, race metadata and provenance are checked before scoring.</p></div>
+          <div class="flow-card"><span>03</span><h3>Course analysis</h3><p>Distance, elevation and course characteristics become part of the model.</p></div>
+          <div class="flow-card"><span>04</span><h3>OTRI model</h3><p>An independent scoring engine converts performance into an OTRI score.</p></div>
+          <div class="flow-card"><span>05</span><h3>Open outputs</h3><p>Scores can power profiles, rankings, analytics and eventually an API.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="organizers" class="section wrap">
+      <div class="section-label">03 / FOR ORGANIZERS</div>
+      <div class="two-col organizer">
+        <div><h2>Already have a results spreadsheet?<br><em>That’s the point.</em></h2></div>
+        <div>
+          <p>OTRI is being designed around an organizer workflow that feels familiar: create a race, provide the course metadata, upload the official results, validate, submit.</p>
+          <ul class="checklist">
+            <li>One result file per race</li>
+            <li>One participant per row</li>
+            <li>Finish time and ranking for finishers</li>
+            <li>Race distance and elevation data</li>
+            <li>GPX/course information where available</li>
+            <li>OTRI calculates the score — organizers never enter it</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section predictor-section">
+      <div class="wrap">
+        <div class="section-label">04 / THE GPX PREDICTOR</div>
+        <div class="two-col predictor-head">
+          <h2>Turn a course into a<br><em>performance target.</em></h2>
+          <p>One planned feature is a GPX-based predictor: upload a course and ask what finish time might correspond to a target OTRI — or reverse it and estimate the OTRI range for a target time.</p>
+        </div>
+        <div class="predictor-card">
+          <div class="route-meta"><span>GPX COURSE</span><strong>Mountain trail</strong></div>
+          <div class="stats"><div><small>DISTANCE</small><strong>54.2 km</strong></div><div><small>GAIN</small><strong>3,400 m D+</strong></div><div><small>TARGET</small><strong>OTRI 650</strong></div></div>
+          <div class="target"><div><small>ILLUSTRATIVE TARGET TIME</small><strong>6:05 — 6:20</strong></div><div class="confidence">CONFIDENCE<br><b>MODERATE</b></div></div>
+          <p>Example only — the model is not yet calibrated. Real race results are required before predictions are published.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section wrap">
+      <div class="section-label">05 / PRINCIPLES</div>
+      <div class="principles">
+        <div><b>OPEN</b><span>Public methodology and open-source software.</span></div>
+        <div><b>TRANSPARENT</b><span>Clear inputs, assumptions and validation rules.</span></div>
+        <div><b>REPRODUCIBLE</b><span>The same data and rules should produce the same result.</span></div>
+        <div><b>TRACEABLE</b><span>Race data should have a documented provenance.</span></div>
+        <div><b>PRIVACY-CONSCIOUS</b><span>Collect what is needed; protect what is personal.</span></div>
+        <div><b>INDEPENDENT</b><span>A new methodology and data supply chain, built from the ground up.</span></div>
+      </div>
+    </section>
+
+    <section class="section independence">
+      <div class="wrap narrow">
+        <div class="section-label">INDEPENDENCE</div>
+        <h2>Built independently.</h2>
+        <p>OTRI is an independent open-source project. It is not affiliated with ITRA, UTMB, or another commercial trail-running ranking organization. OTRI will build its own methodology and use legitimately obtained data.</p>
+      </div>
+    </section>
+
+    <section class="section wrap launch">
+      <div class="section-label">CURRENT STATUS</div>
+      <h2>The foundation is being built now.</h2>
+      <p>Organizer result ingestion · validation · race/course data model · baseline scoring · reproducibility tests · GPX analysis</p>
+      <a class="button primary" href="https://github.com/OTRI-run/otri">Follow OTRI on GitHub ↗</a>
+    </section>
+  </main>
+
+  <footer class="footer wrap">
+    <span>OTRI · Open Trail Running Index</span>
+    <span>Early development · <a href="https://github.com/OTRI-run/otri">GitHub</a></span>
+  </footer>
+</body>
+</html>
