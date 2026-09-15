@@ -1,0 +1,4 @@
+race_id,race_name,event_date,course_name,distance_km,elevation_gain_m
+OTRI-DEMO-001,Phuket Mountain Trail,2026-01-18,50K,51.4,2800
+OTRI-DEMO-002,Khao Sok Ridge Run,2026-02-22,30K,31.8,1650
+OTRI-DEMO-003,Doi Inthanon Ultra,2026-03-29,80K,79.6,4200
