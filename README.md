@@ -53,6 +53,6 @@ OTRI must not copy proprietary scores, rankings, databases, or restricted datase
 
 ## Status
 
-**Early design / MVP development.**
+**Early design / MVP development — deployment refresh.**
 
 The scoring model is deliberately not treated as final. The first goal is to establish clean data provenance, a reliable result schema, validation, reproducible calculations, and a baseline model that can be tested against real race data.
