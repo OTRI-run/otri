@@ -3,3 +3,7 @@
 html{scroll-behavior:smooth}
 body{margin:0;font-synthesis:none;text-rendering:optimizeLegibility}
 *{box-sizing:border-box}
+
+/* Keep the OTRI mark visually tight: the emblem and wordmark read as one logo. */
+a[aria-label="OTRI home"]{gap:0!important}
+a[aria-label="OTRI home"]>span:last-child{margin-left:-4px}
