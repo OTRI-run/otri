@@ -11,6 +11,7 @@ from pathlib import Path
 
 from .reader import read_rows
 from .schema import NON_FINISHER_CODES, RACE_FIELDS, RESULT_FIELDS, FieldSpec, _normalize_header
+from .time_utils import parse_hms_to_seconds
 
 
 @dataclass(frozen=True)
@@ -180,7 +181,7 @@ def _validate_result_cross_field(rows: list[dict[str, str]], mapping: dict[str, 
     if "finish_time" in mapping:
         previous_seconds: int | None = None
         for row_index, row in enumerate(rows, start=1):
-            seconds = _parse_time_seconds(row.get(mapping["finish_time"], ""))
+            seconds = parse_hms_to_seconds(row.get(mapping["finish_time"], ""))
             if seconds is None:
                 continue  # already reported by the field validator
             if previous_seconds is not None and seconds < previous_seconds:
@@ -195,14 +196,3 @@ def _validate_result_cross_field(rows: list[dict[str, str]], mapping: dict[str, 
             previous_seconds = seconds
 
     return issues
-
-
-def _parse_time_seconds(value: str) -> int | None:
-    parts = value.strip().split(":")
-    if len(parts) != 3:
-        return None
-    try:
-        hours, minutes, seconds = (int(part) for part in parts)
-    except ValueError:
-        return None
-    return hours * 3600 + minutes * 60 + seconds

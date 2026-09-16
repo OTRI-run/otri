@@ -1,5 +1,7 @@
 # Source structure
 
+🚧 In Development — Not Ready for Testing
+
 - `components/` — reusable UI components
 - `lib/` — shared utilities and non-UI logic
 - `data/` — frontend-safe static data and view models

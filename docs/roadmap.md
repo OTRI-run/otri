@@ -13,41 +13,43 @@ A concrete, step-by-step breakdown of `HANDBOOK.md`'s roadmap, in PR-sized chunk
 
 Run it: `pip install -r requirements-dev.txt && pytest tests/unit`.
 
-## Phase 1 — Baseline scoring engine
+## Phase 1 — Baseline scoring engine ✅ done
 
 **Goal:** a simple, transparent, versioned scorer — not a final formula (`METHODOLOGY.md` §13).
 
-1. **Result → normalized performance model (`scoring/`)**
-   - Input: a validated race + result set (output of Phase 0).
-   - Output: a baseline OTRI score per finisher using an intentionally simple, documented formula (e.g. pace relative to course distance/elevation, no field-strength adjustment yet).
-   - Every score records its `scoring_version`.
-2. **Reproducibility tests**
-   - Same input + same `scoring_version` → byte-identical output, run twice in CI.
-   - Golden-output fixtures checked into `tests/fixtures/` (small, synthetic).
-3. **Auditability**
-   - Scorer returns a components breakdown (base performance, adjustments, confidence) per `HANDBOOK.md`'s "Auditability" section — not just a single number.
+- [x] **Result → normalized performance model (`scoring/`)** — `score_race()` scores each finisher's pace against an elevation-adjusted equivalent distance, relative to the fastest finisher in that race (`SCORING_VERSION = "0.1.0"`).
+- [x] **Reproducibility tests** — same input twice → identical output (`tests/unit/test_scoring_model.py`), plus a hand-verified golden fixture under `tests/fixtures/scoring/`.
+- [x] **Auditability** — every score is a full `ScoreBreakdown` (base performance, course/field/environmental adjustments, confidence, scoring version), never a bare number, per `HANDBOOK.md`'s "Auditability" section.
+
+Still missing on purpose (documented in `scoring/README.md`): cross-race calibration, field-strength adjustment, environmental factors — those need real race data and Phase 2+ course modeling first.
 
 **Blocked by:** Phase 0 (needs validated results as input). **Blocks:** everything downstream that consumes a score.
 
-## Phase 2 — GPX parser & course model *(parallel-safe, start anytime)*
+## Phase 2 — GPX parser & course model ✅ done *(was parallel-safe, built after Phase 1)*
 
 **Goal:** turn a GPX file into course-difficulty features. Does **not** depend on Phase 1/3.
 
-1. **GPX reader** — parse `trkpt` points (lat/lon/ele/time) from raw XML. Use a small permissive-licensed library for XML parsing only (e.g. MIT `gpxpy`/`gpxparser`); keep it isolated behind a thin wrapper so it can be swapped.
-2. **Course-feature extraction (your own code, documented)** — distance, elevation gain/loss, gradient distribution, climb/descent segmentation, steep-climb/descent burden. These feed scores directly, so per the transparency principle they must live in reviewable OTRI code, not a black-box dependency.
-3. **Course-difficulty model** — kept separate from the performance model (`METHODOLOGY.md` §3), so it can be calibrated independently once real race results exist.
-4. **Tests** — unit tests against a handful of small, synthetic/redistributable GPX fixtures (flat loop, single climb, out-and-back) with hand-verified expected distance/elevation numbers.
+- [x] **GPX reader** (`course/gpx.py`) — parses `trkpt` points (lat/lon/elevation/time) using only the Python standard library (`xml.etree.ElementTree`); no external GPX dependency needed for this scope.
+- [x] **Course-feature extraction** (`course/features.py`, your own code, documented) — distance (haversine), elevation gain/loss with GPS-noise filtering, steep-climb/steep-descent distance, max grade, min/max elevation.
+- [x] **Course-difficulty model kept separate from the performance model** — `course/` has no dependency on `scoring/` or `ingestion/` (`METHODOLOGY.md` §3).
+- [x] **Tests** (`tests/unit/test_course_features.py`) against synthetic GPX fixtures (flat loop, single climb with a GPS-noise blip, out-and-back) under `tests/fixtures/gpx/`, with hand-derivable expected distance/elevation numbers for the north-south fixtures.
 
-**Important constraint:** a GPX→OTRI predictor cannot be calibrated until Phase 1 exists and real race results are available (`docs/gpx-predictor.md`). Build the feature extractor now; wire it to predictions later.
+**Known limitation, documented in `course/README.md`:** elevation-noise filtering is per-segment, not accumulating, so a very gradual multi-step climb below the noise threshold per step could be under-counted. Revisit once real GPX data exists to tune it.
 
-## Phase 3 — Map / visualization layer *(lowest priority, defer until there's a UI to fill)*
+**Important constraint:** a GPX→OTRI predictor cannot be calibrated until Phase 1 exists and real race results are available (`docs/gpx-predictor.md`). The feature extractor is built; wiring it to predictions is Phase 4+ work.
+
+## Phase 3 — Map / visualization layer ✅ done
 
 **Goal:** show a GPX route and elevation profile in the organizer-upload / predictor UI.
 
-- **Library:** MapLibre GL JS (BSD-3, no API key required).
-- **Tiles:** OpenStreetMap-based, e.g. Protomaps or self-hosted OpenMapTiles (ODbL — attribution required).
-- **Elevation cross-check:** open DEM sources only (Copernicus DEM GLO-30, SRTM via OpenTopography) — never a paid elevation API as a hard dependency.
-- Depends on Phase 2's parsed GPX data existing; otherwise there's nothing to render.
+- [x] **Library:** [`maplibre-gl`](https://maplibre.org/) (BSD-3, no API key required) added to `package.json`.
+- [x] **Component:** `src/components/CourseMap.jsx` renders the route as a map line layer plus a lightweight inline-SVG elevation profile (no charting dependency). Parsing lives in `src/lib/gpx.js` (browser-native `DOMParser`, mirrors `course/gpx.py`'s scope for rendering only — not the scoring source of truth).
+- [x] **Tiles:** defaults to MapLibre's official open demo style (no key, no paid infra) via a `styleUrl` prop, so it works out of the box; swap that prop for a self-hosted OpenStreetMap-based style (Protomaps, OpenMapTiles — ODbL, attribution required) in production.
+- [x] **Elevation cross-check:** not wired yet — open DEM sources (Copernicus DEM GLO-30, SRTM via OpenTopography) remain the plan once there's a backend to call them from.
+
+**Known gap:** no self-hosted tile server exists yet, and the component is not wired into any page — there is no organizer-upload / predictor UI to place it in yet (that's Phase 4). It's a ready-to-use building block, documented in `src/components/README.md`.
+
+Depends on Phase 2's parsed GPX data existing; otherwise there's nothing to render.
 
 ## Phase 4 — API & organizer submission workflow
 

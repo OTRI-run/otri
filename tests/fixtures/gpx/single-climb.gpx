@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="OTRI test fixture" xmlns="http://www.topografix.com/GPX/1/1">
+<trk><name>Single climb with GPS noise</name><trkseg>
+<trkpt lat="13.0000" lon="100.0000"><ele>1000</ele></trkpt>
+<trkpt lat="13.0010" lon="100.0000"><ele>1010</ele></trkpt>
+<trkpt lat="13.0020" lon="100.0000"><ele>1010.5</ele></trkpt>
+<trkpt lat="13.0030" lon="100.0000"><ele>1030</ele></trkpt>
+<trkpt lat="13.0040" lon="100.0000"><ele>1010</ele></trkpt>
+</trkseg></trk>
+</gpx>
