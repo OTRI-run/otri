@@ -1,0 +1,1 @@
+Profile avatar asset prepared at 256×256 PNG; GitHub profile avatars should use the PNG export, not the horizontal logo.
