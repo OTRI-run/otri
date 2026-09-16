@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 240" role="img" aria-labelledby="title desc">
+<title id="title">OTRI — Open Trail Running Index</title>
+<desc id="desc">Blue OTRI mountain mark with white wordmark for dark backgrounds.</desc>
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset=".55" stop-color="#2563eb"/><stop offset="1" stop-color="#1d4ed8"/></linearGradient></defs>
+<g fill="none" stroke="url(#g)" stroke-linecap="round" stroke-linejoin="round">
+<circle cx="105" cy="120" r="78" stroke-width="20"/>
+<path d="M44 147 82 116l18 13 31-32 36 30" stroke-width="14"/>
+<path d="M54 165c23-27 47-34 78-48" stroke="#38bdf8" stroke-width="14"/>
+</g>
+<text x="205" y="154" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="118" font-weight="800" letter-spacing="-8">TRI</text>
+<path d="M555 70v100" stroke="#22d3ee" stroke-width="5"/>
+<text x="590" y="108" fill="#22d3ee" font-family="Arial,Helvetica,sans-serif" font-size="31" font-weight="700" letter-spacing="5">OPEN TRAIL</text>
+<text x="590" y="148" fill="#fff" font-family="Arial,Helvetica,sans-serif" font-size="27" font-weight="400" letter-spacing="4">RUNNING INDEX</text>
+</svg>
