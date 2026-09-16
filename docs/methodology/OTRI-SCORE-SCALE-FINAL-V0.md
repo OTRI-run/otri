@@ -1,17 +1,17 @@
-# OTRI Score Scale — Final V0 Proposal
+# OTRI Score Scale — V0 Curved Proposal
 
 **Status:** Proposed OTRI V0 foundation  
-**Version:** 0.1  
+**Version:** 0.2  
 **Scope:** Universal time-to-score scale  
 **Principle:** Course-relative, deterministic, competitor-independent
 
-## 1. Final V0 decision
+## 1. V0 decision
 
 OTRI V0 uses:
 
 1. A GPX-derived **course demand** based on segment-by-segment gradient energy cost.
 2. A direct **performance rate** equal to course demand divided by finish time.
-3. A **logarithmic 0–1000 score** with explicit internal OTRI anchors.
+3. A **curved 0–1000 score** with explicit internal OTRI scale anchors.
 
 No runner physiology, fatigue model, Monte Carlo runner population, competitor results, placing, winner time, field strength or race-relative adjustment is part of the fundamental score.
 
@@ -21,7 +21,7 @@ The model is intentionally a course-to-time standard rather than a race-ranking 
 
 ## 2. Course demand
 
-The GPX is cleaned and divided into deterministic short segments. For each segment `i`, calculate:
+The GPX is cleaned and divided into deterministic **50 m target segments**. For each segment `i`, calculate:
 
 ```text
 d_i = horizontal segment distance
@@ -29,7 +29,7 @@ h_i = processed elevation change
 g_i = h_i / d_i
 ```
 
-The first physical candidate uses the published Minetti running-cost relationship:
+The physical candidate uses the published Minetti running-cost relationship:
 
 ```text
 C(g) = 155.4g^5 - 30.4g^4 - 43.3g^3 + 46.3g^2 + 19.5g + 3.6
@@ -49,7 +49,7 @@ Then:
 D = Σ [d_i × R(g_i)]
 ```
 
-`D` is the modeled course-demand distance in flat-equivalent distance units.
+`D` is the modeled course-demand distance used by the OTRI time-to-score model.
 
 The underlying research found strong asymmetric changes in running energy cost with gradient, supporting separate treatment of uphill and downhill terrain rather than a simple distance-plus-elevation equation.
 
@@ -65,163 +65,118 @@ For a finish time `T` in hours:
 Q = D / T
 ```
 
-`Q` is the athlete's modeled performance rate on that course.
-
-This is the only performance quantity required by the fundamental OTRI score.
+`Q` is the OTRI-defined performance coordinate, expressed as modeled demand-km/hour.
 
 No athlete identity or history is needed.
 
 ---
 
-## 4. OTRI 500 anchor
+## 4. Why V0 is now curved
 
-OTRI V0 defines:
+The earlier logarithmic scale treated every equal point increase as the same percentage increase in `Q`.
 
-```text
-Q_500 = 15.0 demand-units/hour
-```
+That made the upper half of the 0–1000 scale too easy to climb relative to the intended meaning of a very high score.
 
-Therefore:
-
-> **OTRI 500 = 15.0 modeled course-demand units per hour.**
-
-This is an explicit OTRI design convention, not an average, percentile, record or value fitted from race results.
-
-On a flat course, where `D` equals physical distance, this corresponds to exactly:
+V0.3 therefore uses a **curved performance standard**:
 
 ```text
-15.0 km/h
-4:00/km
-40:00 for 10 km
+lower/middle scores → moderate increases in required Q
+higher scores       → progressively larger increases in required Q
 ```
 
-The value is deliberately simple and dimensionally understandable.
+The purpose is practical as well as mathematical: ordinary trail performances should have useful room in the approximately 200–400 region, while 500+ represents clearly stronger performance and the upper tail becomes progressively harder to reach.
+
+This is a scale-design hypothesis and must be tested against independent real-world results. It is not a claim about population percentiles.
 
 ---
 
-## 5. OTRI 1000 anchor
+## 5. V0.3 scale anchors
 
-OTRI V0 defines:
-
-```text
-Q_1000 = 22.5 demand-units/hour
-```
-
-This is exactly 1.5 times the 500 reference:
+The current public scale uses three explicit anchors:
 
 ```text
-22.5 / 15.0 = 1.5
+OTRI 200  → Q = 11.0 demand-km/hour
+OTRI 500  → Q = 15.0 demand-km/hour
+OTRI 1000 → Q = 30.0 demand-km/hour
 ```
 
-On a flat course this corresponds to:
+These are OTRI design conventions, not averages, percentiles, records, ITRA values or UTMB values.
+
+The resulting performance-rate increases are deliberately asymmetric:
 
 ```text
-22.5 km/h
-26:40 for 10 km
+200 → 500:
+11.0 → 15.0  = +36.4%
+
+500 → 1000:
+15.0 → 30.0  = +100.0%
 ```
 
-This is a scale boundary chosen by OTRI. It is **not** a claim that 1000 equals a world record or a biological maximum.
-
-Historical athletics scoring demonstrates the usefulness of explicit reference points and progressive curves, but OTRI does not copy the numerical standards of existing systems.
+That means the top 500 points require almost twice the modeled performance rate again, rather than merely another 36–40% increase.
 
 ---
 
-## 6. Why the scale is logarithmic
+## 6. Curved score equation
 
-OTRI uses:
-
-```text
-OTRI_raw = 500 + K × ln(Q / 15.0)
-```
-
-We choose `K` so that `Q = 22.5` produces exactly 1000:
+Instead of a single logarithm, V0.3 defines the performance rate required for a continuous score `S` as:
 
 ```text
-1000 = 500 + K × ln(22.5 / 15.0)
+Q(S) = exp(A + B·S + C·S²)
 ```
 
-Therefore:
+with fixed constants:
 
 ```text
-K = 500 / ln(1.5)
-K ≈ 1233.151
+A = 2.2351808956091976
+B = 0.0007254607359190918
+C = 0.0000004405557501338660
 ```
 
-Final score equation:
+These constants are selected so that:
 
 ```text
-OTRI_raw = 500 + 1233.151 × ln(Q / 15.0)
+Q(200)  = 11.0
+Q(500)  = 15.0
+Q(1000) = 30.0
 ```
 
-The logarithm makes equal **relative changes** in modeled performance rate correspond to equal score changes.
+within floating-point tolerance.
 
-This is consistent with the broader literature showing useful logarithmic and power-law relationships in running performance, while avoiding use of those models as hidden database calibration.
-
-Relevant research:
-
-- Péronnet & Thibault, *Mathematical analysis of running performance and world running records*, Journal of Applied Physiology, 1989, DOI 10.1152/jappl.1989.67.1.453.
-- *Modelling of Running Performances: Comparisons of Power-Law, Hyperbolic, Logarithmic, and Exponential Models in Elite Endurance Runners*, 2018, DOI 10.1155/2018/8203062.
-- Blythe & Király, *Prediction and Quantification of Individual Athletic Performance of Runners*, PLOS ONE, 2016, DOI 10.1371/journal.pone.0157257.
+Because the quadratic term is positive, the required `Q` rises progressively faster toward the upper end of the scale.
 
 ---
 
-## 7. Score interpretation
+## 7. Reference scale table
 
-The score interval is defined by multiplicative performance rates:
+| OTRI | Required Q (demand-km/h) |
+|---:|---:|
+| 0 | 9.35 |
+| 100 | 10.10 |
+| **200** | **11.00** |
+| 300 | 12.09 |
+| 400 | 13.41 |
+| **500** | **15.00** |
+| 600 | 16.93 |
+| 700 | 19.28 |
+| 800 | 22.14 |
+| 900 | 25.66 |
+| **1000** | **30.00** |
 
-```text
-OTRI 0      = 10.0 units/hour
-OTRI 500    = 15.0 units/hour
-OTRI 1000   = 22.5 units/hour
-```
+For a flat course, `Q` is numerically the same as km/h.
 
-A 100-point increase corresponds to:
-
-```text
-1.5^(100/500) ≈ 1.08447
-```
-
-Therefore:
-
-> **Every 100 OTRI points represents approximately an 8.45% increase in modeled course-demand performance rate.**
-
-Examples:
+Therefore, on a perfectly flat 10 km course, the anchors correspond to approximately:
 
 ```text
-500 → 600     ×1.08447
-600 → 700     ×1.08447
-700 → 800     ×1.08447
-800 → 900     ×1.08447
-900 → 1000    ×1.08447
+OTRI 200   → 54:33
+OTRI 500   → 40:00
+OTRI 1000  → 20:00
 ```
 
-This gives the score a consistent mathematical meaning across the whole range.
+These flat-course times are mathematical consequences of the scale only. They are not claims about what an average runner, elite runner or world-record holder runs.
 
 ---
 
-## 8. Reference table
-
-For a flat course where `D = physical distance`:
-
-| OTRI | Performance rate | 10 km equivalent |
-|---:|---:|---:|
-| 0 | 10.00 km/h | 60:00 |
-| 100 | 10.84 km/h | 55:21 |
-| 200 | 11.75 km/h | 51:04 |
-| 300 | 12.73 km/h | 47:08 |
-| 400 | 13.80 km/h | 43:29 |
-| **500** | **15.00 km/h** | **40:00** |
-| 600 | 16.27 km/h | 36:50 |
-| 700 | 17.64 km/h | 34:01 |
-| 800 | 19.13 km/h | 31:22 |
-| 900 | 20.74 km/h | 28:56 |
-| **1000** | **22.50 km/h** | **26:40** |
-
-These are mathematical consequences of the OTRI V0 definition, not population rankings.
-
----
-
-## 9. Finish time → score
+## 8. Score from finish time
 
 Given:
 
@@ -230,36 +185,48 @@ D = course demand
 T = finish time in hours
 ```
 
-Calculate:
+calculate:
 
 ```text
 Q = D / T
 ```
 
-then:
+Then solve:
 
 ```text
-OTRI_raw = 500 + 1233.151 × ln(Q / 15.0)
+ln(Q) = A + B·S + C·S²
+```
+
+for the upper/positive root:
+
+```text
+S_raw = (-B + sqrt(B² - 4C(A - ln(Q)))) / (2C)
 ```
 
 Finally:
 
 ```text
-OTRI = round(clamp(OTRI_raw, 0, 1000))
+OTRI = round(clamp(S_raw, 0, 1000))
 ```
 
-Only the final displayed score is rounded.
+Only the displayed score is rounded. The implementation should retain:
 
-The underlying `D`, `Q` and `OTRI_raw` should remain available for audit/research.
+```text
+course_demand
+performance_rate
+otri_raw
+```
+
+for audit and research.
 
 ---
 
-## 10. Desired score → target time
+## 9. Desired score → target time
 
-For a desired OTRI score `S` between 0 and 1000:
+For a desired score `S` between 0 and 1000:
 
 ```text
-Q(S) = 15.0 × exp((S - 500) / 1233.151)
+Q(S) = exp(A + B·S + C·S²)
 ```
 
 Then:
@@ -274,7 +241,7 @@ and:
 T_seconds(S) = 3600 × D / Q(S)
 ```
 
-This makes the pre-race and post-race calculations exact inverses.
+This is the exact inverse of the forward score curve.
 
 Example:
 
@@ -285,36 +252,35 @@ Course demand D
     ↓
 Target OTRI 600
     ↓
-Required Q(600)
+Required Q(600) = 16.93
     ↓
 Target time
 ```
 
-If the runner actually finishes in that target time on the same course version, the post-race calculation returns the same OTRI score before final integer rounding.
-
 ---
 
-## 11. Why no duration exponent in V0
+## 10. Score interpretation
 
-Power-law running research is valuable, but OTRI V0 deliberately avoids adding a second universal exponent such as:
+The scale should be interpreted as a **modeled performance standard**, not as a percentile ranking.
+
+A rough conceptual reading is:
 
 ```text
-Q = D^b / T
+0–199     lower performance-rate region
+200–399   broad ordinary/recreational region
+400–599   stronger competitive region
+600–799   very strong region
+800–999   exceptional upper tail
+1000      scale ceiling
 ```
 
-A universal `b` would add another assumption and would require choosing a value from theory or an empirical performance population.
+These labels are descriptive design guidance, not validated population boundaries. They must not be presented as official percentiles until independent data supports them.
 
-OTRI V0 does not need that complexity to satisfy its primary purpose:
-
-> **Determine what time on this exact GPX corresponds to a given OTRI score.**
-
-The course demand already represents the physical cost of the route. The performance rate `D/T` keeps the core implementation transparent.
-
-This can be reconsidered only in a future version following explicit research and independent validation.
+The important mathematical property is that the exact same score always corresponds to the exact same `Q` requirement in a given model version.
 
 ---
 
-## 12. No competitor-relative inputs
+## 11. No competitor-relative inputs
 
 The following must never be inputs to the V0 fundamental score:
 
@@ -333,7 +299,7 @@ Observed results may be used to test the model, but an observed result does not 
 
 ---
 
-## 13. No athlete physiology in the score
+## 12. No athlete physiology in the score
 
 The fundamental V0 score does not require:
 
@@ -351,7 +317,7 @@ Those concepts may be useful for separate training or prediction tools, but they
 
 ---
 
-## 14. Course demand and score are separate
+## 13. Course demand and score are separate
 
 OTRI should expose both:
 
@@ -365,7 +331,7 @@ and:
 OTRI Performance Score
 ```
 
-This allows a runner to understand the course independently of the performance.
+This lets a runner inspect the course independently of the performance.
 
 The conceptual chain is:
 
@@ -373,6 +339,8 @@ The conceptual chain is:
 GPX
  ↓
 Course reconstruction
+ ↓
+50 m segmentation
  ↓
 Segment gradients
  ↓
@@ -384,54 +352,102 @@ Finish Time T
  ↓
 Performance Rate Q = D/T
  ↓
-OTRI Score
+Curved OTRI Score
 ```
 
 ---
 
-## 15. Clipping
+## 14. Clipping
 
 The official public score is bounded:
 
 ```text
-OTRI < 0       → 0
-0 ≤ OTRI ≤ 1000 → rounded OTRI
-OTRI > 1000    → 1000
+S_raw < 0        → 0
+0 ≤ S_raw ≤ 1000 → rounded S_raw
+S_raw > 1000     → 1000
 ```
 
 The raw score remains stored internally.
 
-This means an unusually high performance does not redefine the public scale.
+A result faster than the 1000 anchor does not redefine the scale; it simply clips at 1000 while retaining its raw value for research.
 
 ---
 
-## 16. Why 500 and 1000 are conventions
+## 15. Why 1000 should be hard to reach
 
-The numerical anchors are **design decisions**, not scientific constants.
+The V0.3 curve explicitly separates the meaning of the upper score band from the middle of the scale.
 
-The scientific foundation concerns the course-demand model and the usefulness of continuous/logarithmic performance coordinates.
-
-The choice:
+For example:
 
 ```text
-500 → 15.0 units/hour
-1000 → 22.5 units/hour
+OTRI 200 → Q 11.0
+OTRI 500 → Q 15.0
+OTRI 800 → Q 22.14
+OTRI 1000 → Q 30.0
 ```
 
-exists to create a simple, bounded, portable OTRI scale without importing a competitor database or another organization's calibration.
+The model therefore does not treat:
 
-This distinction must be stated clearly in OTRI documentation.
+```text
+200 → 300
+```
+
+and:
+
+```text
+900 → 1000
+```
+
+as equivalent amounts of required performance improvement.
+
+This is intentional. A 1000 should represent a rare, high-end performance standard rather than something reached routinely by a good recreational runner.
+
+Again, the **rarity statement is a design objective until validation confirms it**.
 
 ---
 
-## 17. Validation requirements
+## 16. Why not use a population percentile
+
+A percentile system would make the score depend on the distribution of runners in the reference population.
+
+That would create exactly the dependency OTRI is designed to avoid:
+
+```text
+same course + same time
+→ potentially different score
+```
+
+because the reference population could change.
+
+V0 instead fixes the score curve mathematically and uses race populations only for validation.
+
+---
+
+## 17. Why not keep the old pure logarithmic curve
+
+A pure log curve has the useful property:
+
+```text
+equal percentage increase in Q
+→ equal score increase
+```
+
+but it also means every equal point interval is equally demanding in percentage terms.
+
+For OTRI's intended interpretation, the upper tail should be more compressed so that moving from 900 toward 1000 requires substantially more performance than moving from 200 toward 300.
+
+V0.3 keeps the mathematical transparency of an analytic formula while introducing this controlled curvature.
+
+---
+
+## 18. Validation requirements
 
 Before OTRI V0 is released as an official scoring system, the complete model must be tested on an independent dataset of high-quality GPXs and official results.
 
 Validation must measure:
 
 - course-demand stability
-- GPX segmentation sensitivity
+- 50 m vs 20 m segmentation sensitivity
 - elevation-processing sensitivity
 - consistency across course shapes
 - systematic bias by gradient distribution
@@ -439,14 +455,20 @@ Validation must measure:
 - steep-downhill behavior
 - score/time monotonicity
 - pre-race/post-race inversion accuracy
+- score distribution in ordinary runners
+- upper-tail behavior near 800–1000
 
-Real results are a **laboratory for testing the model**, not a hidden source of race coefficients.
+The key scale question is:
+
+> Does the curved scale leave useful space around 200–400 for ordinary performances while making 800–1000 increasingly difficult to reach without introducing undesirable compression or distortion?
+
+That question must be answered empirically.
 
 ---
 
-## 18. Implementation requirements
+## 19. Implementation requirements
 
-A reference implementation should expose these functions:
+A reference implementation should expose:
 
 ```text
 parse_gpx()
@@ -460,116 +482,89 @@ score_from_time()
 time_from_score()
 ```
 
-The implementation should use one shared set of constants:
-
-```text
-Q_500 = 15.0
-Q_1000 = 22.5
-K = 500 / ln(1.5)
-```
-
-Do not hard-code duplicated score formulas in separate parts of the application.
+The score-curve constants must exist in one shared module. Do not duplicate the curve equation across the API, estimator and frontend.
 
 ---
 
-## 19. Reference implementation pseudocode
+## 20. Reference implementation
 
 ```python
-Q500 = 15.0
-Q1000 = 22.5
-K = 500.0 / math.log(Q1000 / Q500)
+import math
+
+CURVE_A = 2.2351808956091976
+CURVE_B = 0.0007254607359190918
+CURVE_C = 0.0000004405557501338660
 
 
-def score_from_time(course_demand, finish_seconds):
-    if course_demand <= 0 or finish_seconds <= 0:
+def q_for_score(score: float) -> float:
+    if not 0 <= score <= 1000:
+        raise ValueError("score must be between 0 and 1000")
+    return math.exp(CURVE_A + CURVE_B * score + CURVE_C * score * score)
+
+
+def score_for_q(q: float) -> float:
+    if q <= 0 or not math.isfinite(q):
+        raise ValueError("performance rate must be positive and finite")
+    discriminant = CURVE_B**2 - 4.0 * CURVE_C * (CURVE_A - math.log(q))
+    if discriminant < 0:
+        raise ValueError("performance rate outside model domain")
+    return (-CURVE_B + math.sqrt(discriminant)) / (2.0 * CURVE_C)
+
+
+def score_from_time(course_demand_km: float, finish_seconds: float) -> dict:
+    if course_demand_km <= 0 or finish_seconds <= 0:
         raise ValueError("course demand and finish time must be positive")
 
-    hours = finish_seconds / 3600.0
-    q = course_demand / hours
-    raw = 500.0 + K * math.log(q / Q500)
+    q = course_demand_km / (finish_seconds / 3600.0)
+    raw = score_for_q(q)
     score = round(max(0.0, min(1000.0, raw)))
 
     return {
-        "course_demand": course_demand,
+        "course_demand": course_demand_km,
         "performance_rate": q,
         "score_raw": raw,
         "score": score,
     }
 
 
-def time_from_score(course_demand, score):
-    if course_demand <= 0:
+def time_from_score(course_demand_km: float, score: float) -> float:
+    if course_demand_km <= 0:
         raise ValueError("course demand must be positive")
-    if not 0 <= score <= 1000:
-        raise ValueError("score must be between 0 and 1000")
-
-    q = Q500 * math.exp((score - 500.0) / K)
-    hours = course_demand / q
-    return hours * 3600.0
-```
-
-This pseudocode describes the score layer only. GPX processing and course-demand calculation remain separate modules.
-
----
-
-## 20. V0 formula summary
-
-### Segment cost
-
-```text
-C(g) = 155.4g^5 - 30.4g^4 - 43.3g^3 + 46.3g^2 + 19.5g + 3.6
-```
-
-### Relative gradient cost
-
-```text
-R(g) = C(g) / C(0)
-```
-
-### Course demand
-
-```text
-D = Σ[d_i × R(g_i)]
-```
-
-### Performance rate
-
-```text
-Q = D / T_hours
-```
-
-### Raw OTRI
-
-```text
-OTRI_raw = 500 + (500 / ln(1.5)) × ln(Q / 15.0)
-```
-
-### Public OTRI
-
-```text
-OTRI = round(clamp(OTRI_raw, 0, 1000))
-```
-
-### Target time
-
-```text
-Q(S) = 15.0 × exp((S - 500) / (500 / ln(1.5)))
-
-T_hours(S) = D / Q(S)
+    q = q_for_score(score)
+    return 3600.0 * course_demand_km / q
 ```
 
 ---
 
-## 21. Final OTRI V0 statement
+## 21. Versioning
 
-> **OTRI is a deterministic course-relative performance index. The course is modeled from its GPX using a transparent gradient-demand function. A finish time is converted into a course-normalized performance rate, and that rate is mapped to a fixed logarithmic 0–1000 scale. Competitor performances do not define the score.**
+Changing any of the following requires a new score-model version:
 
-The resulting system is designed to make the question possible before a race as well as after it:
+```text
+curve constants
+curve equation
+score anchors
+clipping rules
+course-demand formula
+segment resolution
+```
 
-> **What time on this exact course corresponds to OTRI 600?**
+Historical scores must not silently change.
 
-and:
+---
 
-> **I ran this exact time. What OTRI did I achieve?**
+## 22. Final V0 statement
 
-Both questions are answered by the same equation.
+> **OTRI is a deterministic course-relative performance index. The course is modeled from its GPX using a transparent gradient-demand function. A finish time is converted into a course-normalized performance rate, and that rate is mapped to a fixed curved 0–1000 scale. The curve is intentionally designed so the middle of the scale remains useful while the highest scores require progressively larger performance-rate increases. Competitor performances do not define the score.**
+
+The result remains fully deterministic:
+
+```text
+same course
++
+same finish time
++
+same model version
+=
+same OTRI
+```
