@@ -114,8 +114,8 @@ def test_target_time_inverse(curve):
         assert recovered == pytest.approx(score, abs=1)
 
 
-def test_target_time_zero_is_unbounded_for_v05():
-    assert target_time_seconds(10.0, 0, curve=V05_CURVE) == float("inf")
+def test_target_time_zero_is_finite_for_v05():
+    assert target_time_seconds(10.0, 0, curve=V05_CURVE) == pytest.approx(36000.0)
 
 
 def test_target_time_rejects_out_of_range_score():
