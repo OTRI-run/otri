@@ -1,33 +1,9 @@
 """Course Standard scoring models — course + finish time only, no competitors.
 
-Combines the spec's course-demand engine (``scoring.course_demand``, the
-Minetti gradient-cost integral) with a performance-rate-to-score
-transformation (spec sections 16-20). A runner's score depends only on the
-course and their own finish time — no other runner's result (the field's
-winner, its size, or its strength) is read anywhere in this module. That is
-the model's central principle (spec section 2's "explicit exclusions"), and
-it is what the older ``scoring.model.score_race_field_relative`` could not
-do.
-
-Curve versions (spec section 32: score-curve constants are versioned;
-historical scores must not silently change):
-
-- ``2.0.0-course-standard`` (default): the spec's current published v0.3.0
-  curve — a smooth exponential-quadratic ``Q(S) = exp(A + B*S + C*S^2)``
-  anchored at score 200 -> Q=11.0, 500 -> Q=15.0, 1000 -> Q=30.0
-  demand-km/h (spec sections 17-19, "OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md").
-- ``1.1.0-course-standard``: an internal, pre-v0.3.0 recalibration
-  (Q_500=3.5, Q_1000=10.5 demand-km/h) kept selectable only for continuity
-  with any scores already stamped with this version — no longer the
-  default now that the spec itself publishes anchors intended to spread
-  realistic paces across the scale.
-- ``1.0.0-course-standard``: the spec's original (v0.2.0) two-anchor
-  logarithmic curve (Q_500=15.0, Q_1000=22.5). Kept selectable for spec
-  fidelity/history only.
-
-All anchors are explicit OTRI scale conventions (spec section 17: "not
-population averages, records, ITRA values or UTMB values") and remain
-subject to real-world validation (spec section 35).
+Current candidate V0.5 keeps the 50 m GPX course-demand integral and uses a
+transparent piecewise power score curve calibrated from real trail-score
+anchors on the CM6 course. The score remains course + own finish time only.
+Legacy curves remain versioned and selectable for historical reproducibility.
 """
 
 from __future__ import annotations
@@ -48,139 +24,173 @@ SCALE_MAX = 1000.0
 
 @dataclass(frozen=True)
 class ScoreCurve:
-    """A versioned performance-rate <-> score transformation.
-
-    ``q_for_score`` and ``score_for_q`` must be exact inverses of each other
-    (spec section 21's required symmetry tests) — each curve constructor
-    below builds a matching pair.
-    """
+    """Immutable score-curve definition."""
 
     version: str
-    q_for_score: Callable[[float], float]
-    score_for_q: Callable[[float], float]
+    q_500: float
+    q_1000: float
+    a: float | None = None
+    b: float | None = None
+    c: float | None = None
+    curve_type: str = "logarithmic"
+    anchor_scores: tuple[float, ...] = ()
+    anchor_qs: tuple[float, ...] = ()
+
+    @property
+    def is_curved(self) -> bool:
+        return self.curve_type != "logarithmic"
+
+    @property
+    def k(self) -> float:
+        return 500.0 / math.log(self.q_1000 / self.q_500)
+
+    def _piecewise_power_q(self, score: float) -> float:
+        scores = self.anchor_scores
+        qs = self.anchor_qs
+        if not scores or not qs or len(scores) != len(qs) or len(scores) < 2:
+            raise ValueError("piecewise_power curve requires matching score/Q anchors")
+        if score == scores[0]:
+            return qs[0]
+
+        first_s, first_q = scores[1], qs[1]
+        if score < first_s:
+            exponent = math.log(first_q / qs[0]) / math.log(first_s)
+            return qs[0] * score ** exponent
+
+        for left_s, right_s, left_q, right_q in zip(scores[1:], scores[2:], qs[1:], qs[2:]):
+            if score <= right_s:
+                exponent = math.log(right_q / left_q) / math.log(right_s / left_s)
+                return left_q * (score / left_s) ** exponent
+
+        left_s, right_s = scores[-2:]
+        left_q, right_q = qs[-2:]
+        exponent = math.log(right_q / left_q) / math.log(right_s / left_s)
+        return left_q * (score / left_s) ** exponent
+
+    def _piecewise_power_score(self, q: float) -> float:
+        scores = self.anchor_scores
+        qs = self.anchor_qs
+        if not scores or not qs or len(scores) != len(qs) or len(scores) < 2:
+            raise ValueError("piecewise_power curve requires matching score/Q anchors")
+        if q <= qs[0]:
+            return SCALE_MIN
+
+        first_s, first_q = scores[1], qs[1]
+        if q < first_q:
+            exponent = math.log(first_q / qs[0]) / math.log(first_s)
+            return q ** (1.0 / exponent)
+
+        for left_s, right_s, left_q, right_q in zip(scores[1:], scores[2:], qs[1:], qs[2:]):
+            if q <= right_q:
+                exponent = math.log(right_q / left_q) / math.log(right_s / left_s)
+                return left_s * (q / left_q) ** (1.0 / exponent)
+
+        left_s, right_s = scores[-2:]
+        left_q, right_q = qs[-2:]
+        exponent = math.log(right_q / left_q) / math.log(right_s / left_s)
+        return left_s * (q / left_q) ** (1.0 / exponent)
 
     def required_q(self, score: float) -> float:
-        """Return the performance rate required for an exact continuous score."""
         if not math.isfinite(score) or not SCALE_MIN <= score <= SCALE_MAX:
             raise ValueError(f"score must be between {SCALE_MIN} and {SCALE_MAX}")
+        if self.curve_type == "piecewise_power":
+            return self._piecewise_power_q(score)
+        if self.curve_type == "quadratic_shifted_power":
+            q0 = self.a  # type: ignore[assignment]
+            amplitude = self.b  # type: ignore[assignment]
+            exponent = self.c  # type: ignore[assignment]
+            return q0 + amplitude * (score / 500.0) ** exponent
+        return self.q_500 * math.exp((score - 500.0) / self.k)
 
-def _validate_score(score: float) -> None:
-    if not math.isfinite(score) or not SCALE_MIN <= score <= SCALE_MAX:
-        raise ValueError(f"score must be between {SCALE_MIN} and {SCALE_MAX}")
-
-
-def _validate_q(q: float) -> None:
-    if not math.isfinite(q) or q <= 0:
-        raise ValueError("performance rate must be positive and finite")
-
-
-def _log_curve(version: str, q_500: float, q_1000: float) -> ScoreCurve:
-    """Two-anchor logarithmic curve — spec v0.2.0's original shape (sections 16-20 of that
-    revision): the required performance rate grows exponentially with score, so
-    doubling Q only adds a fixed amount to the score."""
-    k = 500.0 / math.log(q_1000 / q_500)
-
-    def q_for_score(score: float) -> float:
-        _validate_score(score)
-        return q_500 * math.exp((score - 500.0) / k)
-
-    def score_for_q(q: float) -> float:
-        _validate_q(q)
-        return 500.0 + k * math.log(q / q_500)
-
-    return ScoreCurve(version=version, q_for_score=q_for_score, score_for_q=score_for_q)
+    def raw_score(self, q: float) -> float:
+        if not math.isfinite(q) or q <= 0:
+            raise ValueError("performance rate must be positive and finite")
+        if self.curve_type == "piecewise_power":
+            return self._piecewise_power_score(q)
+        if self.curve_type == "quadratic_shifted_power":
+            q0 = self.a  # type: ignore[assignment]
+            amplitude = self.b  # type: ignore[assignment]
+            exponent = self.c  # type: ignore[assignment]
+            normalized = (q - q0) / amplitude
+            if normalized <= 0:
+                return SCALE_MIN - 1.0
+            return 500.0 * normalized ** (1.0 / exponent)
+        return 500.0 + self.k * math.log(q / self.q_500)
 
 
-def _quadratic_curve(version: str, a: float, b: float, c: float) -> ScoreCurve:
-    """Smooth exponential-quadratic curve — spec v0.3.0 section 18: ``Q(S) = exp(A + B*S +
-    C*S^2)``, inverted per section 19 via the quadratic formula's positive root.
+SPEC_CURVE = ScoreCurve(version="1.0.0-course-standard", q_500=15.0, q_1000=22.5)
+CALIBRATED_CURVE = ScoreCurve(version="1.1.0-course-standard", q_500=3.5, q_1000=10.5)
 
-    Because this parabola (in S) has a minimum, ``Q(S)`` is only invertible for
-    ``Q`` at or above that minimum (~6.9 demand-km/h for the published constants) —
-    below it, the quadratic has no real root at all. That floor sits below
-    ``Q(0)`` (~9.35), so any measured Q that low already represents a performance
-    slower than what legitimately scores 0. Per the monotonicity invariant (spec
-    section 22: slower time -> lower score) and the required clipping (section
-    19), such cases are treated as clipping to score 0 rather than as a hard
-    error — clamping the discriminant to 0 has exactly that effect, since the
-    result then evaluates to the parabola's vertex, which is always very
-    negative and clips to 0 below.
-    """
-
-    def q_for_score(score: float) -> float:
-        _validate_score(score)
-        return math.exp(a + b * score + c * score * score)
-
-    def score_for_q(q: float) -> float:
-        _validate_q(q)
-        discriminant = max(0.0, b * b - 4.0 * c * (a - math.log(q)))
-        return (-b + math.sqrt(discriminant)) / (2.0 * c)
-
-    return ScoreCurve(version=version, q_for_score=q_for_score, score_for_q=score_for_q)
-
-
-# Spec section 17's original (v0.2.0) literal reference points.
-SPEC_CURVE = _log_curve("1.0.0-course-standard", q_500=15.0, q_1000=22.5)
-
-# An internal, pre-v0.3.0 recalibration — retained only for continuity with any scores
-# already stamped with this version. See module docstring.
-CALIBRATED_CURVE = _log_curve("1.1.0-course-standard", q_500=3.5, q_1000=10.5)
-
-# The spec's current published v0.3.0 curve (section 18), anchored at
-# score 200 -> Q=11.0, 500 -> Q=15.0, 1000 -> Q=30.0 demand-km/h.
-OFFICIAL_CURVE = _quadratic_curve(
-    "2.0.0-course-standard",
+# V0.3 retained for historical reproducibility.
+CURVED_CURVE = ScoreCurve(
+    version="0.3.0-course-standard-curved",
+    q_500=15.0,
+    q_1000=30.0,
     a=2.2351808956091976,
     b=0.0007254607359190918,
     c=0.0000004405557501338660,
+    curve_type="exponential_quadratic",
 )
 
-DEFAULT_CURVE = OFFICIAL_CURVE
-SCORING_VERSION = DEFAULT_CURVE.version
+# V0.4 retained for historical reproducibility.
+V04_CURVE = ScoreCurve(
+    version="0.4.0-course-standard-curved",
+    q_500=8.2,
+    q_1000=18.2,
+    a=5.0,
+    b=3.2,
+    c=2.0,
+    curve_type="quadratic_shifted_power",
+)
 
+# V0.5 calibration uses real CM6 trail-score anchors supplied for the same
+# course-demand calculation (~27.560 demand-km):
+#   6:29:58 -> 349
+#   3:05:04 -> 544
+#   2:20:30 -> 692
+#
+# Each anchor is converted to the corresponding performance rate Q. Between
+# anchors OTRI uses log-log (power-law) interpolation. Above 692, the final
+# segment is extrapolated with the same power exponent; this gives Q~17.94 at
+# 1000. Below the first anchor, Q values from 1.0 to 4.24 map continuously
+# from score 0 to 349.
+V05_CURVE = ScoreCurve(
+    version="0.5.0-course-standard-calibrated",
+    q_500=7.904,
+    q_1000=17.940,
+    curve_type="piecewise_power",
+    anchor_scores=(0.0, 349.0, 544.0, 692.0, 1000.0),
+    anchor_qs=(1.0, 4.240362424138815, 8.935158501440922, 11.769395017793594, 17.93986234619293),
+)
 
-def _curve_for_version(version: str) -> ScoreCurve:
-    for curve in (OFFICIAL_CURVE, CALIBRATED_CURVE, SPEC_CURVE):
-        if version == curve.version:
-            return curve
-    raise ValueError(f"unknown course-standard curve version {version!r}")
+SCORING_VERSION = V05_CURVE.version
 
 
 def performance_rate(equivalent_km: float, finish_time_seconds: float) -> float:
-    """Q = course demand (km) / finish time (hours)."""
     if not math.isfinite(equivalent_km) or equivalent_km <= 0:
         raise ValueError("equivalent_km must be a positive, finite number")
     if not math.isfinite(finish_time_seconds) or finish_time_seconds <= 0:
         raise ValueError("finish_time_seconds must be a positive, finite number")
-    time_hours = finish_time_seconds / 3600.0
-    return equivalent_km / time_hours
+    return equivalent_km / (finish_time_seconds / 3600.0)
 
 
-def score_for_time(equivalent_km: float, finish_time_seconds: float, curve: ScoreCurve = DEFAULT_CURVE) -> dict:
-    """The public, clipped OTRI score plus its unclipped raw value and performance rate
-    (spec sections 18-19). Shared by ``score_race_course_standard`` (real results) and
-    ``scoring.estimator`` (pre-race GPX predictions) so both use the exact same formula.
-    """
+def score_for_time(equivalent_km: float, finish_time_seconds: float, curve: ScoreCurve = V05_CURVE) -> dict:
     q = performance_rate(equivalent_km, finish_time_seconds)
     raw = curve.score_for_q(q)
     public = round(max(SCALE_MIN, min(SCALE_MAX, raw)))
     return {"performance_rate": q, "otri_raw": raw, "otri_score": public}
 
 
-def target_time_seconds(equivalent_km: float, score: float, curve: ScoreCurve = DEFAULT_CURVE) -> float:
-    """Inverse of ``score_for_time`` (spec section 20): the finish time that scores exactly
-    `score` on a course with this equivalent distance. Symmetric with the forward direction,
-    per spec section 21's required pre/post inverse tests."""
+def target_time_seconds(equivalent_km: float, score: float, curve: ScoreCurve = V05_CURVE) -> float:
     if equivalent_km <= 0:
         raise ValueError("equivalent_km must be greater than 0")
-    _validate_score(score)
-    q_target = curve.q_for_score(score)
-    time_hours = equivalent_km / q_target
-    return time_hours * 3600.0
+    q = curve.required_q(score)
+    if q <= 0:
+        return math.inf
+    return equivalent_km / q * 3600.0
 
 
 def _confidence_for_course(has_gpx: bool) -> str:
-    """Course-demand confidence is higher when a real GPX is available."""
     return "Medium" if has_gpx else "Low"
 
 
@@ -188,15 +198,10 @@ def score_race_course_standard(
     race: RaceRecord,
     results: list[ResultRecord],
     gpx_points: list[TrackPoint] | None = None,
-    curve: ScoreCurve = DEFAULT_CURVE,
+    curve: ScoreCurve = V05_CURVE,
 ) -> list[RunnerScore]:
-    """Score every finisher using only the course and that finisher's own time.
-
-    Adding or removing other finishers cannot change a runner's score.
-    """
     finishers = [
-        result
-        for result in results
+        result for result in results
         if result.is_finisher and result.finish_time_seconds is not None
     ]
     if not finishers:
@@ -205,10 +210,7 @@ def score_race_course_standard(
     if gpx_points is not None:
         equivalent_km = equivalent_flat_distance_km(gpx_points)
     else:
-        equivalent_km = equivalent_flat_distance_from_totals(
-            race.distance_km,
-            race.elevation_gain_m,
-        )
+        equivalent_km = equivalent_flat_distance_from_totals(race.distance_km, race.elevation_gain_m)
 
     confidence = _confidence_for_course(gpx_points is not None)
     ordered = sorted(
@@ -223,11 +225,7 @@ def score_race_course_standard(
 
     scores = []
     for result in ordered:
-        computed = score_for_time(
-            equivalent_km,
-            result.finish_time_seconds,
-            curve=curve,
-        )
+        computed = score_for_time(equivalent_km, result.finish_time_seconds, curve=curve)
         breakdown = ScoreBreakdown(
             otri_score=computed["otri_score"],
             base_performance=round(computed["otri_raw"], 2),
@@ -256,6 +254,5 @@ def score_race_course_standard_spec(
     gpx_points: list[TrackPoint] | None = None,
 ) -> list[RunnerScore]:
     """The spec's original (v0.2.0) literal Q_500=15.0/Q_1000=22.5 anchors — see module
-    docstring."""
+docstring."""
     return score_race_course_standard(race, results, gpx_points=gpx_points, curve=SPEC_CURVE)
-
