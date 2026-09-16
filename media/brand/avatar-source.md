@@ -1,0 +1,1 @@
+Canonical GitHub organization avatar source: the OTRI standalone mark on a deep-navy square. Final PNG export is 256×256.
