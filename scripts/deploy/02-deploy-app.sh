@@ -110,6 +110,7 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ReadWritePaths=${APP_DIR}/data
 ProtectHome=true
+PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target
