@@ -62,18 +62,18 @@ def test_root_reports_app_status():
     assert response.json()["name"] == "OTRI API"
 
 
-def test_list_scoring_models_includes_both_options():
+def test_list_scoring_models_includes_all_options():
     response = client.get("/scoring/models")
     assert response.status_code == 200
     versions = {model["version"] for model in response.json()}
-    assert versions == {"1.0.0-course-standard", "0.1.0-field-relative"}
+    assert versions == {"1.1.0-course-standard", "1.0.0-course-standard", "0.1.0-field-relative"}
 
 
 def test_new_race_defaults_to_course_standard_scoring():
     headers = _organizer_auth_headers()
     _, race_id = _create_event_and_race(headers)
     response = client.get(f"/races/{race_id}")
-    assert response.json()["scoring_version"] == "1.0.0-course-standard"
+    assert response.json()["scoring_version"] == "1.1.0-course-standard"
 
 
 def test_race_can_be_created_with_explicit_scoring_version():
@@ -126,14 +126,15 @@ def test_get_unknown_race_returns_404():
 
 def test_get_race_results_returns_scores_not_automatically_1000():
     """Default scoring model (course-standard) has no competitor dependency, so unlike the old
-    field-relative model, the fastest finisher does not automatically score exactly 1000 —
-    1000 is only reached at or above the model's Q_1000 = 22.5 demand-km/h reference point."""
+    field-relative model, the last-place finisher does not get bumped up merely for finishing —
+    scores are spread out based on each individual's own pace against the fixed anchors, not
+    forced onto a 0-1000 range by whoever happens to be in the field."""
     response = client.get("/races/OTRI-DEMO-001/results")
     assert response.status_code == 200
     scores = response.json()
     assert len(scores) == 12
-    assert scores[0]["otri_score"] < 1000
     assert scores[0]["otri_score"] == max(score["otri_score"] for score in scores)
+    assert scores[-1]["otri_score"] < scores[0]["otri_score"]
 
 
 def test_get_results_for_race_with_no_result_file_returns_404():
@@ -157,7 +158,8 @@ def test_submit_valid_results_returns_computed_scores():
     assert body["is_valid"] is True
     assert body["errors"] == []
     assert len(body["scores"]) == 12
-    assert body["scores"][0]["otri_score"] < 1000  # default model has no competitor dependency
+    # default model has no competitor dependency: scores spread by individual pace, not rank
+    assert body["scores"][-1]["otri_score"] < body["scores"][0]["otri_score"]
 
 
 def test_submit_results_using_field_relative_model_scores_winner_at_1000():
@@ -475,7 +477,7 @@ def test_analyze_gpx_with_finish_time_returns_predicted_score():
     assert estimate is not None
     assert "predicted_score" in estimate
     assert estimate["predicted_score"] < 1000
-    assert estimate["scoring_version"] == "1.0.0-course-standard"
+    assert estimate["scoring_version"] == "1.1.0-course-standard"
 
 
 def test_analyze_gpx_prediction_matches_real_score_for_same_course_and_time():

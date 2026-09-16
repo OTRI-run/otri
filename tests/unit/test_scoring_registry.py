@@ -8,7 +8,7 @@ from datetime import date
 import pytest
 
 from ingestion.records import RaceRecord, ResultRecord
-from scoring import COURSE_STANDARD_VERSION, FIELD_RELATIVE_VERSION
+from scoring import COURSE_STANDARD_SPEC_VERSION, COURSE_STANDARD_VERSION, FIELD_RELATIVE_VERSION
 from scoring.registry import available_scoring_models, get_scoring_model_info, score_race
 
 
@@ -29,9 +29,9 @@ def _finisher(bib: str, finish_time_seconds: int) -> ResultRecord:
     )
 
 
-def test_available_scoring_models_includes_both_models():
+def test_available_scoring_models_includes_all_models():
     versions = {model.version for model in available_scoring_models()}
-    assert versions == {COURSE_STANDARD_VERSION, FIELD_RELATIVE_VERSION}
+    assert versions == {COURSE_STANDARD_VERSION, COURSE_STANDARD_SPEC_VERSION, FIELD_RELATIVE_VERSION}
 
 
 def test_course_standard_is_flagged_as_not_using_competitors():
@@ -52,6 +52,11 @@ def test_get_scoring_model_info_rejects_unknown_version():
 def test_score_race_dispatches_to_course_standard():
     scores = score_race(_race(), [_finisher("1", 3600)], model_version=COURSE_STANDARD_VERSION)
     assert scores[0].score.scoring_version == COURSE_STANDARD_VERSION
+
+
+def test_score_race_dispatches_to_course_standard_spec_curve():
+    scores = score_race(_race(), [_finisher("1", 3600)], model_version=COURSE_STANDARD_SPEC_VERSION)
+    assert scores[0].score.scoring_version == COURSE_STANDARD_SPEC_VERSION
 
 
 def test_score_race_dispatches_to_field_relative():

@@ -17,11 +17,14 @@ from typing import Callable
 from course.gpx import TrackPoint
 from ingestion.records import RaceRecord, ResultRecord
 
-from .course_standard import SCORING_VERSION as COURSE_STANDARD_VERSION
+from .course_standard import CALIBRATED_CURVE, SPEC_CURVE
 from .course_standard import score_race_course_standard
 from .model import RunnerScore
 from .model import SCORING_VERSION as FIELD_RELATIVE_VERSION
 from .model import score_race_field_relative
+
+COURSE_STANDARD_VERSION = CALIBRATED_CURVE.version
+COURSE_STANDARD_SPEC_VERSION = SPEC_CURVE.version
 
 DEFAULT_SCORING_VERSION = COURSE_STANDARD_VERSION
 
@@ -41,8 +44,19 @@ _MODEL_INFO: dict[str, ScoringModelInfo] = {
         description=(
             "Score depends only on the course (Minetti gradient-cost course demand) and your own "
             "finish time — never on who else ran the race. A logarithmic scale anchored at two "
-            "published reference points (500 at 15.0 demand-km/h, 1000 at 22.5 demand-km/h), "
-            "clipped to 0-1000."
+            "reference points (500 at 3.5 demand-km/h, 1000 at 10.5 demand-km/h) chosen to spread "
+            "realistic recreational-to-elite trail paces across 0-1000, clipped to that range."
+        ),
+        uses_competitors=False,
+    ),
+    COURSE_STANDARD_SPEC_VERSION: ScoringModelInfo(
+        version=COURSE_STANDARD_SPEC_VERSION,
+        name="Course Standard (spec-literal anchors)",
+        description=(
+            "Identical model to Course Standard, but using OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md's "
+            "own literal reference points (500 at 15.0 demand-km/h, 1000 at 22.5 demand-km/h) — a "
+            "punishingly fast absolute standard on real courses of any length. Kept selectable for "
+            "spec fidelity and comparison, not recommended as a default."
         ),
         uses_competitors=False,
     ),
@@ -83,7 +97,9 @@ def score_race(
     calculation (currently ``course_standard``) and is ignored otherwise.
     """
     if model_version == COURSE_STANDARD_VERSION:
-        return score_race_course_standard(race, results, gpx_points=gpx_points)
+        return score_race_course_standard(race, results, gpx_points=gpx_points, curve=CALIBRATED_CURVE)
+    if model_version == COURSE_STANDARD_SPEC_VERSION:
+        return score_race_course_standard(race, results, gpx_points=gpx_points, curve=SPEC_CURVE)
     if model_version == FIELD_RELATIVE_VERSION:
         return score_race_field_relative(race, results)
     raise ValueError(f"unknown scoring model version {model_version!r}")

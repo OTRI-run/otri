@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from course.gpx import TrackPoint
 
 from .course_demand import equivalent_flat_distance_from_totals, equivalent_flat_distance_km
-from .course_standard import SCORING_VERSION, score_for_time
+from .course_standard import CALIBRATED_CURVE, ScoreCurve, score_for_time
 
 DISCLAIMER = (
     "Uses the exact same Course Standard formula as the real post-race scorer — no competitor "
@@ -52,6 +52,7 @@ def estimate_score(
     gpx_points: list[TrackPoint] | None = None,
     distance_km: float | None = None,
     elevation_gain_m: float | None = None,
+    curve: ScoreCurve = CALIBRATED_CURVE,
 ) -> ScoreEstimate:
     """Predict the Course Standard score for `finish_time_seconds` on this course.
 
@@ -69,13 +70,13 @@ def estimate_score(
     else:
         raise ValueError("either gpx_points or both distance_km and elevation_gain_m must be provided")
 
-    computed = score_for_time(equivalent_km, finish_time_seconds)
+    computed = score_for_time(equivalent_km, finish_time_seconds, curve=curve)
 
     return ScoreEstimate(
         equivalent_distance_km=round(equivalent_km, 3),
         performance_rate=round(computed["performance_rate"], 3),
         otri_raw=round(computed["otri_raw"], 2),
         predicted_score=computed["otri_score"],
-        scoring_version=SCORING_VERSION,
+        scoring_version=curve.version,
         disclaimer=DISCLAIMER,
     )
