@@ -86,6 +86,7 @@ class SubmissionResult(BaseModel):
 class IllustrativeEstimateOut(BaseModel):
     equivalent_distance_km: float
     pace_seconds_per_km: float
+    winner_finish_time_seconds: int
     illustrative_score: int
     disclaimer: str
 

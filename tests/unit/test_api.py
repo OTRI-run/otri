@@ -386,7 +386,21 @@ def test_analyze_gpx_with_finish_time_returns_illustrative_estimate():
     estimate = response.json()["estimate"]
     assert estimate is not None
     assert "illustrative_score" in estimate
-    assert "Illustrative only" in estimate["disclaimer"]
+    assert "winner_finish_time_seconds" in estimate
+
+
+def test_analyze_gpx_with_custom_winner_time_matches_own_time_scores_1000():
+    with FLAT_LOOP_GPX.open("rb") as handle:
+        response = client.post(
+            "/gpx/analyze",
+            files={"file": ("flat-loop.gpx", handle, "application/gpx+xml")},
+            data={"finish_time_seconds": "3600", "winner_finish_time_seconds": "3600"},
+        )
+
+    assert response.status_code == 200
+    estimate = response.json()["estimate"]
+    assert estimate["illustrative_score"] == 1000
+    assert estimate["winner_finish_time_seconds"] == 3600
 
 
 def test_analyze_invalid_gpx_returns_422():

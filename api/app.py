@@ -473,11 +473,17 @@ async def submit_race_results(
 
 
 @app.post("/gpx/analyze", response_model=GpxAnalysis)
-async def analyze_gpx(file: UploadFile, finish_time_seconds: int | None = Form(default=None)) -> GpxAnalysis:
+async def analyze_gpx(
+    file: UploadFile,
+    finish_time_seconds: int | None = Form(default=None),
+    winner_finish_time_seconds: int | None = Form(default=None),
+) -> GpxAnalysis:
     """Parse an uploaded GPX file and, optionally, estimate an illustrative score for a given time.
 
-    The estimate is explicitly NOT a calibrated prediction — see
-    ``scoring.estimator``'s module docstring and ``docs/gpx-predictor.md``.
+    ``winner_finish_time_seconds`` lets the caller supply their own assumption for the
+    race's winning time instead of the built-in cross-race average — using the same
+    assumption the real race ends up matching makes this estimate exact, not just close.
+    See ``scoring.estimator``'s module docstring and ``docs/gpx-predictor.md``.
     """
     suffix = Path(file.filename or "").suffix or ".gpx"
     contents = await file.read()
@@ -496,7 +502,9 @@ async def analyze_gpx(file: UploadFile, finish_time_seconds: int | None = Form(d
     estimate = None
     if finish_time_seconds is not None:
         estimate = IllustrativeEstimateOut(
-            **estimate_illustrative_score(features.distance_km, features.elevation_gain_m, finish_time_seconds).to_dict()
+            **estimate_illustrative_score(
+                features.distance_km, features.elevation_gain_m, finish_time_seconds, winner_finish_time_seconds
+            ).to_dict()
         )
 
     return GpxAnalysis(features=features.to_dict(), estimate=estimate)

@@ -35,7 +35,7 @@ Every event/race mutation (create/edit/delete, GPX attach, result submission) re
 | GET | `/races/{race_id}/gpx` | Raw GPX content for a race distance (`application/gpx+xml`), 404 if none attached. |
 | GET | `/races/{race_id}/results` | Scored results for a race already on file, 404 if unknown race or no results submitted yet. |
 | POST | `/races/{race_id}/results` | **Requires ownership of the race's event.** Upload a CSV/XLSX result file. Always validates first, then re-scores from the raw file — **the organizer can never supply a score directly** (`HANDBOOK.md` "Validation and anti-gaming"). A successful submission replaces any previously stored results for that race. Returns `is_valid`, `errors`, `warnings`, and `scores` (empty if invalid). |
-| POST | `/gpx/analyze` | Standalone tool (unrelated to stored races): upload a `.gpx` file, optionally with `finish_time_seconds`. Returns parsed course features and, if a time was given, an **illustrative** score estimate (`scoring.estimator`) — not a calibrated prediction. See `docs/gpx-predictor.md`. |
+| POST | `/gpx/analyze` | Standalone tool (unrelated to stored races): upload a `.gpx` file, optionally with `finish_time_seconds` and `winner_finish_time_seconds`. Returns parsed course features and, if a time was given, a predicted score using the same formula as the real post-race scorer (`scoring.estimator`) — exact if the assumed winning time turns out correct, illustrative (cross-race average) otherwise. See `docs/gpx-predictor.md`. |
 
 ## Environment variables
 
@@ -93,7 +93,7 @@ Then open `http://127.0.0.1:8000/docs` for interactive Swagger docs (generated a
 - Rate limiting is in-process/in-memory (`api/rate_limit.py`) — correct for a single worker, but not shared across multiple gunicorn/uvicorn worker processes. A real deployment with multiple workers needs a shared store (Redis, per `HANDBOOK.md`'s recommended stack).
 - No database migration tool — the schema is created with `CREATE TABLE IF NOT EXISTS` (`api/db.py`), fine while the schema is small and stable, but will need a real migration tool (e.g. Alembic) once it needs to evolve without downtime.
 - `GET /events`/`GET /races` compute `race_count`/joins with one query per event (N+1) — acceptable at prototype scale, would need optimizing for a large number of events.
-- GPX score estimates (`/gpx/analyze`) are illustrative only (average pace across synthetic demo races), not calibrated.
+- GPX score estimates (`/gpx/analyze`) use the real scoring formula but default to an illustrative cross-race average winning pace unless the caller supplies `winner_finish_time_seconds` themselves — course difficulty (the equivalent-distance formula) is not yet calibrated beyond the ITRA-style rule of thumb.
 
 These are necessary before any real public deployment and are tracked as future roadmap work, not silently assumed solved.
 

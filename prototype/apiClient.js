@@ -156,11 +156,14 @@ export function submitRaceResults(raceId, file, token) {
   })
 }
 
-export function analyzeGpx(file, finishTimeSeconds) {
+export function analyzeGpx(file, finishTimeSeconds, winnerFinishTimeSeconds) {
   const formData = new FormData()
   formData.append('file', file)
   if (finishTimeSeconds != null) {
     formData.append('finish_time_seconds', String(finishTimeSeconds))
+  }
+  if (winnerFinishTimeSeconds != null) {
+    formData.append('winner_finish_time_seconds', String(winnerFinishTimeSeconds))
   }
   return request('/gpx/analyze', { method: 'POST', body: formData })
 }
