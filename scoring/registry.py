@@ -1,8 +1,9 @@
 """Pluggable scoring-model registry.
 
 OTRI supports multiple versioned scoring models so historical scores remain
-reproducible. The current default is the deterministic Course Standard V0.4
-candidate: 50 m GPX course demand plus a shifted quadratic score curve.
+reproducible. The current default is the deterministic Course Standard V0.5
+candidate: 50 m GPX course demand plus a transparent piecewise-power score
+curve calibrated against real CM6 trail-score anchors.
 """
 
 from __future__ import annotations
@@ -12,13 +13,14 @@ from dataclasses import dataclass
 from course.gpx import TrackPoint
 from ingestion.records import RaceRecord, ResultRecord
 
-from .course_standard import CALIBRATED_CURVE, CURVED_CURVE, SPEC_CURVE, V04_CURVE
+from .course_standard import CALIBRATED_CURVE, CURVED_CURVE, SPEC_CURVE, V04_CURVE, V05_CURVE
 from .course_standard import score_race_course_standard
 from .model import RunnerScore
 from .model import SCORING_VERSION as FIELD_RELATIVE_VERSION
 from .model import score_race_field_relative
 
-COURSE_STANDARD_VERSION = V04_CURVE.version
+COURSE_STANDARD_VERSION = V05_CURVE.version
+COURSE_STANDARD_V04_VERSION = V04_CURVE.version
 COURSE_STANDARD_V03_VERSION = CURVED_CURVE.version
 COURSE_STANDARD_SPEC_VERSION = SPEC_CURVE.version
 COURSE_STANDARD_LEGACY_CALIBRATED_VERSION = CALIBRATED_CURVE.version
@@ -36,13 +38,19 @@ class ScoringModelInfo:
 _MODEL_INFO: dict[str, ScoringModelInfo] = {
     COURSE_STANDARD_VERSION: ScoringModelInfo(
         version=COURSE_STANDARD_VERSION,
-        name="Course Standard V0.4 Curved",
+        name="Course Standard V0.5 Calibrated",
         description=(
             "Score depends only on the course (50 m Minetti gradient-cost course demand) and "
-            "the runner's own finish time. The V0.4 candidate uses Q(S)=5.0+3.2*(S/500)^2: "
-            "200≈5.51, 500=8.20, 1000=18.20 demand-km/h. The upper scale becomes progressively "
-            "harder to reach while realistic multi-hour trail performances remain within the scale."
+            "the runner's own finish time. V0.5 uses piecewise power interpolation through real "
+            "CM6 reference anchors: 6:29:58=349, 3:05:04=544, 2:20:30=692. The upper segment "
+            "extends to approximately Q=17.94 at score 1000. No competitors are used."
         ),
+        uses_competitors=False,
+    ),
+    COURSE_STANDARD_V04_VERSION: ScoringModelInfo(
+        version=COURSE_STANDARD_V04_VERSION,
+        name="Course Standard V0.4 Curved (legacy)",
+        description="Historical V0.4 shifted-quadratic curve retained for reproducibility.",
         uses_competitors=False,
     ),
     COURSE_STANDARD_V03_VERSION: ScoringModelInfo(
@@ -95,6 +103,8 @@ def score_race(
 ) -> list[RunnerScore]:
     """Score a race with the selected model version."""
     if model_version == COURSE_STANDARD_VERSION:
+        return score_race_course_standard(race, results, gpx_points=gpx_points, curve=V05_CURVE)
+    if model_version == COURSE_STANDARD_V04_VERSION:
         return score_race_course_standard(race, results, gpx_points=gpx_points, curve=V04_CURVE)
     if model_version == COURSE_STANDARD_V03_VERSION:
         return score_race_course_standard(race, results, gpx_points=gpx_points, curve=CURVED_CURVE)
