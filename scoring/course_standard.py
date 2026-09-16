@@ -49,10 +49,17 @@ class ScoreCurve:
             raise ValueError("piecewise_power curve requires matching score/Q anchors")
         if score == scores[0]:
             return qs[0]
-        for left_s, right_s, left_q, right_q in zip(scores, scores[1:], qs, qs[1:]):
+
+        first_s, first_q = scores[1], qs[1]
+        if score < first_s:
+            exponent = math.log(first_q / qs[0]) / math.log(first_s)
+            return qs[0] * score ** exponent
+
+        for left_s, right_s, left_q, right_q in zip(scores[1:], scores[2:], qs[1:], qs[2:]):
             if score <= right_s:
                 exponent = math.log(right_q / left_q) / math.log(right_s / left_s)
                 return left_q * (score / left_s) ** exponent
+
         left_s, right_s = scores[-2:]
         left_q, right_q = qs[-2:]
         exponent = math.log(right_q / left_q) / math.log(right_s / left_s)
@@ -65,10 +72,17 @@ class ScoreCurve:
             raise ValueError("piecewise_power curve requires matching score/Q anchors")
         if q <= qs[0]:
             return SCALE_MIN
-        for left_s, right_s, left_q, right_q in zip(scores, scores[1:], qs, qs[1:]):
+
+        first_s, first_q = scores[1], qs[1]
+        if q < first_q:
+            exponent = math.log(first_q / qs[0]) / math.log(first_s)
+            return q ** (1.0 / exponent)
+
+        for left_s, right_s, left_q, right_q in zip(scores[1:], scores[2:], qs[1:], qs[2:]):
             if q <= right_q:
                 exponent = math.log(right_q / left_q) / math.log(right_s / left_s)
                 return left_s * (q / left_q) ** (1.0 / exponent)
+
         left_s, right_s = scores[-2:]
         left_q, right_q = qs[-2:]
         exponent = math.log(right_q / left_q) / math.log(right_s / left_s)
@@ -134,10 +148,10 @@ V04_CURVE = ScoreCurve(
 #   2:20:30 -> 692
 #
 # Each anchor is converted to the corresponding performance rate Q. Between
-# anchors OTRI uses a log-log (power-law) interpolation. Above 692, the final
+# anchors OTRI uses log-log (power-law) interpolation. Above 692, the final
 # segment is extrapolated with the same power exponent; this gives Q~17.94 at
-# 1000. Below the first anchor, Q values down to 1.0 map to score 0, then the
-# first segment rises continuously toward the 349 anchor.
+# 1000. Below the first anchor, Q values from 1.0 to 4.24 map continuously
+# from score 0 to 349.
 V05_CURVE = ScoreCurve(
     version="0.5.0-course-standard-calibrated",
     q_500=7.904,
