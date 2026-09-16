@@ -33,12 +33,43 @@ Race results + course data
 
 A major planned capability is the **GPX Target Performance Predictor**: upload a GPX course and estimate the finish time needed to target a chosen OTRI score, with uncertainty rather than false precision.
 
-## Repository
+## Repository structure
+
+```text
+.
+├── .github/                 # CI/CD and GitHub project configuration
+├── data/                    # Data workspace and versioned schemas
+│   ├── raw/                 # Legitimately obtained source data
+│   ├── processed/           # Reproducible derived datasets
+│   └── schemas/             # Machine-readable data schemas
+├── docs/                    # Technical and project documentation
+│   ├── architecture/       # System architecture
+│   ├── methodology/        # Research and scoring work
+│   ├── data/                # Data documentation
+│   ├── governance/          # Governance and decision records
+│   ├── api/                 # Future public API documentation
+│   └── operations/          # Deployment and maintenance runbooks
+├── media/brand/             # Canonical OTRI brand assets
+├── public/                  # Static web assets
+├── scripts/                 # Reproducible utilities and maintenance tools
+├── src/                     # Website/application source
+│   ├── components/          # Reusable UI components
+│   ├── data/                # Frontend-safe data
+│   └── lib/                 # Shared utilities and domain helpers
+└── tests/                   # Automated tests and fixtures
+    ├── unit/
+    ├── integration/
+    └── fixtures/
+```
+
+## Key project documents
 
 - `HANDBOOK.md` — project strategy, architecture, governance, scoring, data, and roadmap
 - `METHODOLOGY.md` — scoring principles and research direction
 - `DATA_POLICY.md` — data provenance, licensing, privacy, and sourcing principles
+- `ARCHITECTURE.md` — repository and system architecture
 - `CONTRIBUTING.md` — how to contribute
+- `SECURITY.md` — security reporting and data-security principles
 - `docs/gpx-predictor.md` — GPX prediction design
 
 ## Frontend
@@ -53,6 +84,12 @@ OTRI must not copy proprietary scores, rankings, databases, or restricted datase
 
 ## Status
 
-**Early design / MVP development — deployment refresh.**
+**Early design / MVP development.**
 
 The scoring model is deliberately not treated as final. The first goal is to establish clean data provenance, a reliable result schema, validation, reproducible calculations, and a baseline model that can be tested against real race data.
+
+## License
+
+OTRI software is released under the **MIT License**. See [`LICENSE`](LICENSE).
+
+Brand assets, documentation, datasets, and other non-code material may have different terms where explicitly stated. Check the applicable file or directory documentation before reusing non-code assets.
