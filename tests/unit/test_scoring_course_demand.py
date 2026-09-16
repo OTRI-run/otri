@@ -102,9 +102,12 @@ def test_flat_course_identity():
     assert demand.elevation_loss_m == 0.0
 
 
-def test_steep_course_raises_unsupported_gradient_error():
-    with pytest.raises(UnsupportedGradientError):
-        compute_course_demand(_steep_track())
+def test_steep_course_clamps_and_flags_instead_of_raising():
+    """Out-of-domain segments no longer abort the whole course: they're clamped to +/-45%
+    for the demand calculation and recorded in quality_flags, so a score is still produced."""
+    demand = compute_course_demand(_steep_track())
+    assert demand.quality_flags
+    assert "gradient_out_of_supported_domain" in demand.quality_flags[0]
 
 
 def test_compute_course_demand_requires_at_least_two_points():

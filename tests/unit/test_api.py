@@ -235,8 +235,9 @@ def test_submit_results_for_race_you_do_not_own_returns_403():
     assert response.status_code == 403
 
 
-def test_submit_results_for_race_with_out_of_domain_gradient_gpx_returns_422():
-    """Spec section 13/23: an unscoreable course (grade beyond +/-45%) must fail explicitly."""
+def test_submit_results_for_race_with_out_of_domain_gradient_gpx_still_scores_with_a_notice():
+    """Spec section 9.1's "quality_flag" concept: an out-of-domain segment is clamped and
+    flagged rather than aborting the whole course's scoring."""
     headers = _organizer_auth_headers()
     _, race_id = _create_event_and_race(headers)
     with STEEP_GPX.open("rb") as handle:
@@ -252,7 +253,10 @@ def test_submit_results_for_race_with_out_of_domain_gradient_gpx_returns_422():
             files={"file": ("OTRI-DEMO-001.csv", handle, "text/csv")},
             headers=headers,
         )
-    assert response.status_code == 422
+    assert response.status_code == 200
+    scores = response.json()["scores"]
+    assert scores
+    assert any("gradient_out_of_supported_domain" in flag for flag in scores[0]["quality_flags"])
 
 
 # --- Events ------------------------------------------------------------------
@@ -517,15 +521,18 @@ def test_analyze_invalid_gpx_returns_422():
     assert response.status_code == 422
 
 
-def test_analyze_gpx_with_out_of_domain_gradient_returns_422():
-    """Spec section 13: grades beyond +/-45% must fail explicitly, not be silently clamped."""
+def test_analyze_gpx_with_out_of_domain_gradient_still_estimates_with_a_notice():
+    """Spec section 9.1: grades beyond +/-45% are clamped for that segment and flagged,
+    rather than blocking the whole estimate."""
     with STEEP_GPX.open("rb") as handle:
         response = client.post(
             "/gpx/analyze",
             files={"file": ("steep.gpx", handle, "application/gpx+xml")},
             data={"finish_time_seconds": "3600"},
         )
-    assert response.status_code == 422
+    assert response.status_code == 200
+    estimate = response.json()["estimate"]
+    assert any("gradient_out_of_supported_domain" in flag for flag in estimate["quality_flags"])
 
 
 # --- Auth ------------------------------------------------------------------

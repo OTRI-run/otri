@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from course.gpx import TrackPoint
 from ingestion.records import RaceRecord, ResultRecord
 
-from .course_demand import equivalent_flat_distance_from_totals, equivalent_flat_distance_km
+from .course_demand import compute_course_demand, equivalent_flat_distance_from_totals
 from .model import RunnerScore, ScoreBreakdown
 
 SCALE_MIN = 0.0
@@ -155,9 +155,12 @@ def score_race_course_standard(
         return []
 
     if gpx_points is not None:
-        equivalent_km = equivalent_flat_distance_km(gpx_points)
+        demand = compute_course_demand(gpx_points)
+        equivalent_km = demand.course_demand_km
+        quality_flags = demand.quality_flags
     else:
         equivalent_km = equivalent_flat_distance_from_totals(race.distance_km, race.elevation_gain_m)
+        quality_flags = ()
 
     confidence = _confidence_for_course(gpx_points is not None)
     ordered = sorted(
@@ -182,6 +185,7 @@ def score_race_course_standard(
             confidence=confidence,
             scoring_version=curve.version,
             performance_rate=round(computed["performance_rate"], 3),
+            quality_flags=quality_flags,
         )
         scores.append(
             RunnerScore(

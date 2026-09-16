@@ -50,6 +50,9 @@ class ScoreBreakdown:
     # Q (demand-km/hour) — only meaningful for scoring.course_standard; the
     # legacy field-relative model below leaves this at its default.
     performance_rate: float = 0.0
+    # Notices about the course (e.g. a segment steeper than the model's supported domain
+    # that had to be clamped) — empty when the course demand had no issues to flag.
+    quality_flags: tuple[str, ...] = ()
 
     def to_dict(self) -> dict:
         return {
@@ -61,6 +64,7 @@ class ScoreBreakdown:
             "confidence": self.confidence,
             "scoring_version": self.scoring_version,
             "performance_rate": self.performance_rate,
+            "quality_flags": list(self.quality_flags),
         }
 
 

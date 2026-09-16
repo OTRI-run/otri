@@ -71,6 +71,7 @@ class RunnerScoreOut(BaseModel):
     confidence: str
     scoring_version: str
     performance_rate: float = 0.0
+    quality_flags: list[str] = []
 
 
 class ValidationIssueOut(BaseModel):
@@ -94,6 +95,7 @@ class IllustrativeEstimateOut(BaseModel):
     predicted_score: int
     scoring_version: str
     disclaimer: str
+    quality_flags: list[str] = []
 
 
 class GpxAnalysis(BaseModel):

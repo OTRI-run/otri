@@ -60,8 +60,11 @@ ELEVATION_SMOOTHING_RADIUS_M = 10.0
 class UnsupportedGradientError(ValueError):
     """A segment's grade falls outside the Minetti polynomial's evidenced domain.
 
-    Per spec section 13, V0 does not silently clamp or extrapolate beyond
-    +/-45% — it fails explicitly so the course can be reviewed.
+    Raised by `gradient_cost`/`gradient_ratio` themselves so direct callers still fail
+    explicitly. `compute_course_demand` catches this per-segment, clamps that segment's
+    grade to +/-45% to keep producing a course demand and score, and records a
+    `quality_flags` entry rather than aborting the whole course (spec section 9.1's
+    "quality_flag" concept) — never silently, always surfaced for review.
     """
 
 
@@ -92,6 +95,11 @@ class CourseDemand:
     segment_count: int
     minimum_grade: float
     maximum_grade: float
+    # Segments whose grade fell outside the Minetti polynomial's evidenced +/-45% domain and
+    # had to be clamped to compute a demand contribution (spec section 9.1's "quality_flag").
+    # Non-empty means this course's demand/score is a best-effort approximation for those
+    # segments, not a hard rejection — surfaced so organizers/runners can review the course.
+    quality_flags: tuple[str, ...] = ()
 
     def to_dict(self) -> dict:
         return {
@@ -102,6 +110,7 @@ class CourseDemand:
             "segment_count": self.segment_count,
             "minimum_grade": self.minimum_grade,
             "maximum_grade": self.maximum_grade,
+            "quality_flags": list(self.quality_flags),
         }
 
 
@@ -258,6 +267,7 @@ def compute_course_demand(points: list[TrackPoint]) -> CourseDemand:
     minimum_grade = math.inf
     maximum_grade = -math.inf
     segment_count = 0
+    quality_flags: list[str] = []
 
     for start_m, end_m in zip(boundaries, boundaries[1:]):
         segment_distance_m = end_m - start_m
@@ -268,7 +278,17 @@ def compute_course_demand(points: list[TrackPoint]) -> CourseDemand:
         elevation_change_m = elevation_end - elevation_start
         grade = elevation_change_m / segment_distance_m
 
-        demand_km += (segment_distance_m / 1000.0) * gradient_ratio(grade)
+        try:
+            ratio = gradient_ratio(grade)
+        except UnsupportedGradientError:
+            clamped_grade = max(MIN_GRADE, min(MAX_GRADE, grade))
+            ratio = gradient_ratio(clamped_grade)
+            quality_flags.append(
+                f"gradient_out_of_supported_domain: segment {start_m / 1000:.2f}-{end_m / 1000:.2f} km "
+                f"(grade {grade:+.0%}, clamped to {clamped_grade:+.0%} for scoring)"
+            )
+
+        demand_km += (segment_distance_m / 1000.0) * ratio
         if elevation_change_m > 0:
             elevation_gain_m += elevation_change_m
         else:
@@ -288,6 +308,7 @@ def compute_course_demand(points: list[TrackPoint]) -> CourseDemand:
         segment_count=segment_count,
         minimum_grade=round(minimum_grade, 4),
         maximum_grade=round(maximum_grade, 4),
+        quality_flags=tuple(quality_flags),
     )
 
 

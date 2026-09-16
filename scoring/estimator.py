@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 from course.gpx import TrackPoint
 
-from .course_demand import equivalent_flat_distance_from_totals, equivalent_flat_distance_km
+from .course_demand import compute_course_demand, equivalent_flat_distance_from_totals
 from .course_standard import OFFICIAL_CURVE, ScoreCurve, score_for_time
 
 DISCLAIMER = (
@@ -28,6 +28,7 @@ class ScoreEstimate:
     predicted_score: int
     scoring_version: str
     disclaimer: str
+    quality_flags: tuple[str, ...] = ()
 
     def to_dict(self) -> dict:
         return {
@@ -37,6 +38,7 @@ class ScoreEstimate:
             "predicted_score": self.predicted_score,
             "scoring_version": self.scoring_version,
             "disclaimer": self.disclaimer,
+            "quality_flags": list(self.quality_flags),
         }
 
 
@@ -58,9 +60,12 @@ def estimate_score(
         raise ValueError("finish_time_seconds must be greater than 0")
 
     if gpx_points is not None:
-        equivalent_km = equivalent_flat_distance_km(gpx_points)
+        demand = compute_course_demand(gpx_points)
+        equivalent_km = demand.course_demand_km
+        quality_flags = demand.quality_flags
     elif distance_km is not None and elevation_gain_m is not None:
         equivalent_km = equivalent_flat_distance_from_totals(distance_km, elevation_gain_m)
+        quality_flags = ()
     else:
         raise ValueError("either gpx_points or both distance_km and elevation_gain_m must be provided")
 
@@ -73,4 +78,5 @@ def estimate_score(
         predicted_score=computed["otri_score"],
         scoring_version=curve.version,
         disclaimer=DISCLAIMER,
+        quality_flags=quality_flags,
     )
