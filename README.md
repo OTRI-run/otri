@@ -82,6 +82,12 @@ OTRI is an independent open-source project. It is **not affiliated with ITRA, UT
 
 OTRI must not copy proprietary scores, rankings, databases, or restricted datasets. The project should build its own data supply chain through organizers, licensed providers, explicitly reusable public datasets, and appropriate athlete submissions.
 
+## Community
+
+OTRI is a community-driven, volunteer project. It started from a simple idea: local trail races and small organizers shouldn't need a closed, expensive ranking system just to give runners a fair way to compare performances — so OTRI is being built as free, open-source software for runners and organizers alike, especially local races running on a small budget.
+
+We're always looking for contributors and testers: developers, methodology/data reviewers, race organizers willing to share results, and runners willing to test the model against real races. See [`CONTRIBUTING.md`](CONTRIBUTING.md) to get involved.
+
 ## Status
 
 **Early design / MVP development.**
