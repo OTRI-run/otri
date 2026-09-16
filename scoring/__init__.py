@@ -1,17 +1,17 @@
 """OTRI scoring engine — pluggable, versioned scoring models.
 
-More than one scoring algorithm is available at once (see ``scoring.registry``
-and ``docs/methodology/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md``). ``score_race()``
-here is the selectable entry point, defaulting to the Course Standard model
-(no competitor dependency) — see ``scoring/README.md``.
+The current default is the deterministic Course Standard V0.3 curved model
+(no competitor dependency). Older scoring curves remain selectable for
+historical reproducibility.
 """
 
-from .course_standard import CALIBRATED_CURVE, SPEC_CURVE, ScoreCurve
+from .course_standard import CALIBRATED_CURVE, CURVED_CURVE, SPEC_CURVE, ScoreCurve
 from .course_standard import score_race_course_standard, score_for_time, target_time_seconds
 from .estimator import DISCLAIMER, ScoreEstimate, estimate_score
 from .model import SCORING_VERSION as FIELD_RELATIVE_VERSION
 from .model import RunnerScore, ScoreBreakdown, equivalent_distance_km, score_race_field_relative
 from .registry import (
+    COURSE_STANDARD_LEGACY_CALIBRATED_VERSION,
     COURSE_STANDARD_SPEC_VERSION,
     COURSE_STANDARD_VERSION,
     DEFAULT_SCORING_VERSION,
@@ -21,9 +21,6 @@ from .registry import (
     score_race,
 )
 
-# The currently-recommended default model's version — kept as a top-level
-# alias since most callers only care about "the current default," not the
-# full registry.
 SCORING_VERSION = DEFAULT_SCORING_VERSION
 
 __all__ = [
@@ -38,9 +35,11 @@ __all__ = [
     "target_time_seconds",
     "ScoreCurve",
     "CALIBRATED_CURVE",
+    "CURVED_CURVE",
     "SPEC_CURVE",
     "COURSE_STANDARD_VERSION",
     "COURSE_STANDARD_SPEC_VERSION",
+    "COURSE_STANDARD_LEGACY_CALIBRATED_VERSION",
     "FIELD_RELATIVE_VERSION",
     "DEFAULT_SCORING_VERSION",
     "ScoringModelInfo",
