@@ -1,4 +1,4 @@
-"""Unit tests for the Course Standard scoring model(s) (OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md).
+"""Unit tests for the Course Standard scoring models.
 
 Run with: pytest tests/unit
 """
@@ -82,7 +82,7 @@ def test_clipping_above_top_still_scores_exactly_1000(curve):
     Unlike the retired asymptotic design, 1000 IS a reachable, legitimate score."""
     result = score_for_time(10.0, 10, curve=curve)  # extremely fast, far beyond any anchor
     assert result["otri_score"] == 1000
-    assert result["otri_raw"] > 1000  # unclipped value retained for audit, per spec section 19
+    assert result["otri_raw"] > 1000
 
 
 @pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE, OFFICIAL_CURVE])
@@ -107,8 +107,6 @@ def test_score_is_monotonic_in_finish_time(curve):
 
 
 def test_score_race_does_not_depend_on_other_finishers():
-    """The whole point of this model: a runner's score must not change depending on who
-    else is in the results list — unlike the legacy field-relative model."""
     race = _race(distance_km=10.0)
     solo = score_race_course_standard(race, [_finisher("1", 3600)])[0].score.otri_score
 
@@ -116,11 +114,13 @@ def test_score_race_does_not_depend_on_other_finishers():
         race,
         [
             _finisher("1", 3600),
-            _finisher("2", 1800),  # much faster
-            _finisher("3", 7200),  # much slower
+            _finisher("2", 1800),
+            _finisher("3", 7200),
         ],
     )
-    runner_one_score = next(score for score in with_field if score.bib_number == "1").score.otri_score
+    runner_one_score = next(
+        score for score in with_field if score.bib_number == "1"
+    ).score.otri_score
 
     assert solo == runner_one_score
 
@@ -152,7 +152,14 @@ def test_score_for_time_rejects_non_positive_inputs():
 
 def test_no_finishers_returns_empty_list():
     race = _race()
-    dnf = ResultRecord(rank="DNF", bib_number="1", family_name="A", first_name="B", gender="M", finish_time_seconds=None)
+    dnf = ResultRecord(
+        rank="DNF",
+        bib_number="1",
+        family_name="A",
+        first_name="B",
+        gender="M",
+        finish_time_seconds=None,
+    )
     assert score_race_course_standard(race, [dnf]) == []
 
 
@@ -167,7 +174,11 @@ def test_confidence_is_low_without_gpx_and_medium_with_gpx():
         TrackPoint(lat=0.0, lon=0.0, elevation_m=0.0, time=None),
         TrackPoint(lat=0.01, lon=0.0, elevation_m=0.0, time=None),
     ]
-    with_gpx = score_race_course_standard(race, [_finisher("1", 3600)], gpx_points=points)
+    with_gpx = score_race_course_standard(
+        race,
+        [_finisher("1", 3600)],
+        gpx_points=points,
+    )
     assert with_gpx[0].score.confidence == "Medium"
 
 
@@ -179,7 +190,11 @@ def test_scoring_version_is_stamped_on_every_score():
 
 def test_scoring_version_reflects_chosen_curve():
     race = _race()
-    scores = score_race_course_standard(race, [_finisher("1", 3600)], curve=SPEC_CURVE)
+    scores = score_race_course_standard(
+        race,
+        [_finisher("1", 3600)],
+        curve=SPEC_CURVE,
+    )
     assert scores[0].score.scoring_version == SPEC_CURVE.version
 
 

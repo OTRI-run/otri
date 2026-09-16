@@ -1,12 +1,9 @@
 """Pluggable scoring-model registry.
 
-OTRI intentionally supports more than one scoring algorithm at once instead
-of forcing a single hard-coded formula — see ``docs/methodology/research-
-candidates/`` for the research behind each one. Each race distance picks
-which model scores its results (``Race.scoring_version`` in ``api/db.py``);
-historical scores stay reproducible under whichever version was in effect
-when they were computed (``METHODOLOGY.md`` §11 — a methodology change must
-not silently rewrite history).
+OTRI supports more than one scoring algorithm at once so historical scores
+remain reproducible. The current default is the deterministic Course Standard
+V0.3 curved model; the older logarithmic curves remain selectable for
+backwards compatibility.
 """
 
 from __future__ import annotations
@@ -26,6 +23,7 @@ from .model import score_race_field_relative
 COURSE_STANDARD_VERSION = OFFICIAL_CURVE.version
 COURSE_STANDARD_CALIBRATED_VERSION = CALIBRATED_CURVE.version
 COURSE_STANDARD_SPEC_VERSION = SPEC_CURVE.version
+COURSE_STANDARD_LEGACY_CALIBRATED_VERSION = CALIBRATED_CURVE.version
 
 DEFAULT_SCORING_VERSION = COURSE_STANDARD_VERSION
 
@@ -41,7 +39,7 @@ class ScoringModelInfo:
 _MODEL_INFO: dict[str, ScoringModelInfo] = {
     COURSE_STANDARD_VERSION: ScoringModelInfo(
         version=COURSE_STANDARD_VERSION,
-        name="Course Standard",
+        name="Course Standard V0.3 Curved",
         description=(
             "Score depends only on the course (Minetti gradient-cost course demand) and your own "
             "finish time — never on who else ran the race. OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md's "
@@ -104,17 +102,18 @@ def score_race(
     model_version: str = DEFAULT_SCORING_VERSION,
     gpx_points: list[TrackPoint] | None = None,
 ) -> list[RunnerScore]:
-    """Score a race with whichever algorithm `model_version` selects.
-
-    `gpx_points` is only used by models that support a real course-demand
-    calculation (currently ``course_standard``) and is ignored otherwise.
-    """
+    """Score a race with the selected model version."""
     if model_version == COURSE_STANDARD_VERSION:
         return score_race_course_standard(race, results, gpx_points=gpx_points, curve=OFFICIAL_CURVE)
     if model_version == COURSE_STANDARD_CALIBRATED_VERSION:
         return score_race_course_standard(race, results, gpx_points=gpx_points, curve=CALIBRATED_CURVE)
     if model_version == COURSE_STANDARD_SPEC_VERSION:
-        return score_race_course_standard(race, results, gpx_points=gpx_points, curve=SPEC_CURVE)
+        return score_race_course_standard(
+            race,
+            results,
+            gpx_points=gpx_points,
+            curve=SPEC_CURVE,
+        )
     if model_version == FIELD_RELATIVE_VERSION:
         return score_race_field_relative(race, results)
     raise ValueError(f"unknown scoring model version {model_version!r}")

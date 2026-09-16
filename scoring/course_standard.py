@@ -1,4 +1,4 @@
-"""Course Standard scoring model(s) — course + finish time only, no competitors.
+"""Course Standard scoring models — course + finish time only, no competitors.
 
 Combines the spec's course-demand engine (``scoring.course_demand``, the
 Minetti gradient-cost integral) with a performance-rate-to-score
@@ -59,6 +59,10 @@ class ScoreCurve:
     q_for_score: Callable[[float], float]
     score_for_q: Callable[[float], float]
 
+    def required_q(self, score: float) -> float:
+        """Return the performance rate required for an exact continuous score."""
+        if not math.isfinite(score) or not SCALE_MIN <= score <= SCALE_MAX:
+            raise ValueError(f"score must be between {SCALE_MIN} and {SCALE_MAX}")
 
 def _validate_score(score: float) -> None:
     if not math.isfinite(score) or not SCALE_MIN <= score <= SCALE_MAX:
@@ -143,7 +147,7 @@ def _curve_for_version(version: str) -> ScoreCurve:
 
 
 def performance_rate(equivalent_km: float, finish_time_seconds: float) -> float:
-    """Q = course demand (km) / finish time (hours) — spec section 16."""
+    """Q = course demand (km) / finish time (hours)."""
     if not math.isfinite(equivalent_km) or equivalent_km <= 0:
         raise ValueError("equivalent_km must be a positive, finite number")
     if not math.isfinite(finish_time_seconds) or finish_time_seconds <= 0:
@@ -176,9 +180,7 @@ def target_time_seconds(equivalent_km: float, score: float, curve: ScoreCurve = 
 
 
 def _confidence_for_course(has_gpx: bool) -> str:
-    """This model's course-demand engine is far more reliable with a real GPX (a full
-    segment-by-segment gradient integral) than the distance+elevation-only fallback
-    approximation used when no GPX has been attached yet."""
+    """Course-demand confidence is higher when a real GPX is available."""
     return "Medium" if has_gpx else "Low"
 
 
@@ -188,32 +190,44 @@ def score_race_course_standard(
     gpx_points: list[TrackPoint] | None = None,
     curve: ScoreCurve = DEFAULT_CURVE,
 ) -> list[RunnerScore]:
-    """Score every finisher in ``results`` purely from the course and their own finish time.
+    """Score every finisher using only the course and that finisher's own time.
 
-    Non-finishers (DNF/DNS/DSQ) are excluded — there is no time to score.
-    Sorting uses (finish_time_seconds, bib_number, family_name, first_name),
-    so ties never depend on input row order, keeping the output deterministic.
-    Crucially, each runner's score does not depend on who else is in
-    ``results`` — removing or adding other finishers never changes it.
+    Adding or removing other finishers cannot change a runner's score.
     """
-    finishers = [result for result in results if result.is_finisher and result.finish_time_seconds is not None]
+    finishers = [
+        result
+        for result in results
+        if result.is_finisher and result.finish_time_seconds is not None
+    ]
     if not finishers:
         return []
 
     if gpx_points is not None:
         equivalent_km = equivalent_flat_distance_km(gpx_points)
     else:
-        equivalent_km = equivalent_flat_distance_from_totals(race.distance_km, race.elevation_gain_m)
+        equivalent_km = equivalent_flat_distance_from_totals(
+            race.distance_km,
+            race.elevation_gain_m,
+        )
 
     confidence = _confidence_for_course(gpx_points is not None)
     ordered = sorted(
         finishers,
-        key=lambda result: (result.finish_time_seconds, result.bib_number or "", result.family_name, result.first_name),
+        key=lambda result: (
+            result.finish_time_seconds,
+            result.bib_number or "",
+            result.family_name,
+            result.first_name,
+        ),
     )
 
     scores = []
     for result in ordered:
-        computed = score_for_time(equivalent_km, result.finish_time_seconds, curve=curve)
+        computed = score_for_time(
+            equivalent_km,
+            result.finish_time_seconds,
+            curve=curve,
+        )
         breakdown = ScoreBreakdown(
             otri_score=computed["otri_score"],
             base_performance=round(computed["otri_raw"], 2),
@@ -237,7 +251,9 @@ def score_race_course_standard(
 
 
 def score_race_course_standard_spec(
-    race: RaceRecord, results: list[ResultRecord], gpx_points: list[TrackPoint] | None = None
+    race: RaceRecord,
+    results: list[ResultRecord],
+    gpx_points: list[TrackPoint] | None = None,
 ) -> list[RunnerScore]:
     """The spec's original (v0.2.0) literal Q_500=15.0/Q_1000=22.5 anchors — see module
     docstring."""

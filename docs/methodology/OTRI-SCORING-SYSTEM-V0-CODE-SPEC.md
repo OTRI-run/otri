@@ -1,7 +1,7 @@
 # OTRI Scoring System V0 — Code Specification
 
 **Status:** Development / research implementation candidate  
-**Version:** 0.2.0  
+**Version:** 0.3.0  
 **Audience:** Developers and coding agents  
 **Principle:** Course-relative, deterministic, competitor-independent
 
@@ -21,6 +21,8 @@ same course + same finish time = same OTRI
 ```
 
 The result must not depend on who else raced.
+
+The V0 scale is intentionally **curved**: the ordinary-to-good range occupies useful space in the middle of the scale, while increasingly stronger performance requires disproportionately higher modeled performance rate. In particular, moving from 500 toward 1000 is deliberately much harder than moving from 200 toward 500.
 
 ---
 
@@ -59,7 +61,7 @@ Official GPX
     ↓
 Deterministic processing
     ↓
-20 m segments
+50 m segments
     ↓
 Signed segment gradient
     ↓
@@ -71,7 +73,7 @@ Finish time T
     ↓
 Performance Rate Q = D / T
     ↓
-Logarithmic score transformation
+Curved score transformation
     ↓
 OTRI 0–1000
 ```
@@ -81,7 +83,7 @@ Reverse direction:
 ```text
 Desired OTRI
     ↓
-Performance Rate Q(S)
+Curved target performance rate Q(S)
     ↓
 Course Demand D
     ↓
@@ -148,7 +150,7 @@ Calculate horizontal distance
  ↓
 Process elevation
  ↓
-Resample to target 20 m segments
+Resample to 50 m segments
  ↓
 Calculate signed gradient
  ↓
@@ -205,15 +207,17 @@ Raw elevation must remain available for audit.
 
 # 9. Segment resolution
 
-V0 target:
+V0 production resolution:
 
 ```text
-20 metres
+50 metres
 ```
 
-Resample along cumulative horizontal distance so segments are approximately 20 m long. Retain the final remainder rather than dropping it.
+Resample along cumulative horizontal distance so segments are approximately 50 m long. Retain the final remainder rather than dropping it.
 
-During research, compare 10 m, 20 m and 50 m for stability, but production V0 uses exactly one fixed resolution.
+A 50 m production segment was selected after practical testing because 20 m segments were too sensitive to short-lived GPX/elevation noise and local micro-pitches. The 50 m segment is the current deterministic compromise between local gradient representation and stability.
+
+During research, 20 m may remain as a comparison resolution, but it is **not** the V0 production resolution.
 
 ---
 
@@ -260,8 +264,8 @@ Use decimal slope:
 Example:
 
 ```text
-2 m rise over 20 m
-2 / 20 = 0.10
+5 m rise over 50 m
+5 / 50 = 0.10
 ```
 
 Do not pass `10` to the gradient polynomial when the intended grade is +10%.
@@ -393,7 +397,7 @@ It is deliberately not described as VO2, metabolic rate, running power or physio
 
 ---
 
-# 17. OTRI score scale
+# 17. OTRI score scale — curved V0.3
 
 V0 uses a public integer scale:
 
@@ -401,82 +405,105 @@ V0 uses a public integer scale:
 0–1000
 ```
 
-The central reference is:
+The score curve is intentionally **nonlinear**.
+
+The design anchors are:
 
 ```text
-Q_500 = 15.0 demand-km/hour
-```
-
-The upper reference is:
-
-```text
-Q_1000 = 22.5 demand-km/hour
-```
-
-Therefore:
-
-```text
-Q_1000 / Q_500 = 1.5
+score 200 → Q = 11.0 demand-km/hour
+score 500 → Q = 15.0 demand-km/hour
+score 1000 → Q = 30.0 demand-km/hour
 ```
 
 These are explicit OTRI scale conventions. They are not population averages, records, ITRA values or UTMB values.
 
----
-
-# 18. Logarithmic scoring formula
-
-Define:
+The anchors create an important scale property:
 
 ```text
-K = 500 / ln(1.5)
+200 → 500:
+Q increases from 11.0 to 15.0  (+36.4%)
+
+500 → 1000:
+Q increases from 15.0 to 30.0 (+100.0%)
 ```
 
-which is approximately:
+Thus the top half of the score scale requires progressively greater modeled performance. The middle of the scale remains usable without making 500 an arbitrary elite-only threshold, while 1000 represents a genuinely exceptional modeled performance level.
 
-```text
-K = 1233.151...
-```
-
-Then:
-
-```text
-OTRI_raw = 500 + K × ln(Q / 15.0)
-```
-
-Equivalent Python:
-
-```python
-K = 500.0 / math.log(1.5)
-otri_raw = 500.0 + K * math.log(q / 15.0)
-```
-
-By construction:
-
-```text
-Q = 10.0  → OTRI_raw = 0
-Q = 15.0  → OTRI_raw = 500
-Q = 22.5  → OTRI_raw = 1000
-```
-
-Because the scale is logarithmic, equal percentage changes in `Q` create equal score changes.
-
-A 100-point change corresponds to:
-
-```text
-exp(100 / K)
-≈ 1.08447
-```
-
-or approximately 8.45% in modeled performance rate.
+The intention is that many ordinary/recreational performances can occupy roughly the 200–400 region, stronger runners move into the 400–600+ region, and the highest scores become progressively difficult to reach. This is a **scale-design hypothesis**, not an empirical claim about the runner population; validation must test it.
 
 ---
 
-# 19. Public score and clipping
+# 18. Curved score function
 
-Official V0 public score:
+V0.3 defines the required performance rate for score `S` using a smooth exponential-quadratic curve:
+
+```text
+Q(S) = exp(A + B·S + C·S²)
+```
+
+with fixed published constants:
+
+```text
+A = 2.2351808956091976
+B = 0.0007254607359190918
+C = 0.0000004405557501338660
+```
+
+These constants are chosen so that, within floating-point tolerance:
+
+```text
+Q(200)  = 11.0
+Q(500)  = 15.0
+Q(1000) = 30.0
+```
+
+The curve is smooth and monotonic over the public scale. The rate of increase of required `Q` grows with score, which is the intended difficulty curve.
+
+Representative values are:
+
+```text
+Score   Required Q (demand-km/h)
+0       9.35
+100     10.10
+200     11.00
+300     12.09
+400     13.41
+500     15.00
+600     16.93
+700     19.28
+800     22.14
+900     25.66
+1000    30.00
+```
+
+The published constants and anchor table are part of the model version. Do not tune them per course, runner or race.
+
+---
+
+# 19. Score from finish time
+
+Given a positive performance rate `Q`, recover the continuous score by solving:
+
+```text
+ln(Q) = A + B·S + C·S²
+```
+
+or:
+
+```text
+C·S² + B·S + (A - ln(Q)) = 0
+```
+
+Use the positive/upper root:
+
+```text
+S_raw = (-B + sqrt(B² - 4C(A - ln(Q)))) / (2C)
+```
+
+Then the public score is:
 
 ```python
-score = round(max(0.0, min(1000.0, otri_raw)))
+score = round(max(0.0, min(1000.0, s_raw)))
 ```
 
 The unclipped value MUST be retained as:
@@ -487,7 +514,7 @@ otri_raw
 
 for audit/research.
 
-The public score is always an integer from 0 through 1000.
+Perform numerical domain checks before evaluating the square root. Invalid/non-positive `Q` must be rejected.
 
 ---
 
@@ -496,24 +523,24 @@ The public score is always an integer from 0 through 1000.
 For desired score `S`:
 
 ```text
-Q(S) = 15.0 × exp((S - 500) / K)
+Q_target = exp(A + B·S + C·S²)
 ```
 
 Then:
 
 ```text
-T_hours(S) = D_km / Q(S)
+T_hours = D_km / Q_target
 ```
 
 Python:
 
 ```python
-q_target = 15.0 * math.exp((score - 500.0) / K)
+q_target = math.exp(A + B * score + C * score * score)
 target_hours = course_demand_km / q_target
 target_seconds = target_hours * 3600.0
 ```
 
-This is the exact inverse of the post-race equation.
+This is the exact inverse direction of the forward score curve.
 
 ---
 
@@ -532,6 +559,24 @@ time → score → target time
 ```
 
 The same mathematical definitions must be used in both directions.
+
+Test at minimum:
+
+```text
+0
+100
+200
+300
+400
+500
+600
+700
+800
+900
+1000
+```
+
+The recovered continuous score should match the requested score within floating-point tolerance before public integer rounding.
 
 ---
 
@@ -559,6 +604,16 @@ faster time → higher score
 slower time → lower score
 ```
 
+### Curve monotonicity
+
+For the public score range:
+
+```text
+higher score → higher required Q
+```
+
+and the increase in required Q must become progressively larger toward the top of the scale.
+
 ### Flat-course identity
 
 ```text
@@ -569,6 +624,14 @@ flat GPX → D_km = physical_distance_km
 
 ```text
 positive and negative gradients must not be collapsed to |g|
+```
+
+### Anchor identity
+
+```text
+score 200 ↔ Q 11.0
+score 500 ↔ Q 15.0
+score 1000 ↔ Q 30.0
 ```
 
 ---
@@ -587,6 +650,7 @@ missing finish time
 finish time ≤ 0
 non-finite values
 unsupported gradient domain
+non-positive performance rate
 ```
 
 Return structured machine-readable errors.
@@ -601,11 +665,11 @@ Score output should contain at least:
 {
   "course_id": "COURSE-123",
   "course_version": "1",
-  "model_version": "otri-v0.2.0",
+  "model_version": "otri-v0.3.0",
   "physical_distance_km": 24.81,
   "elevation_gain_m": 1182.0,
   "elevation_loss_m": 1170.0,
-  "segment_count": 1241,
+  "segment_count": 497,
   "course_demand_km": 31.47,
   "finish_time_seconds": 10240.0,
   "performance_rate": 11.044,
@@ -654,7 +718,7 @@ The website should be able to show:
 ```text
 OTRI: 612
 
-Course demand: 31.8 km-equivalent
+Course demand: 31.8 demand-km
 Finish time: 2:35:14
 Performance rate: 12.28 demand-km/h
 
@@ -665,6 +729,19 @@ Course:
 ```
 
 A gradient profile should be available so users can inspect where course demand comes from.
+
+The UI should also be able to explain the score curve:
+
+```text
+Your performance rate: 12.28
+Score: 321
+
+Score 200 requires: 11.00
+Score 500 requires: 15.00
+Score 1000 requires: 30.00
+```
+
+This makes the increasing difficulty of higher scores directly inspectable.
 
 ---
 
@@ -701,9 +778,11 @@ These variables describe an athlete, while V0 is deliberately a **course + time*
 
 Observed race results are used only to test the model.
 
-Validation may measure:
+Validation MUST test at least:
 
 ```text
+score distribution across recreational runners
+score distribution across competitive runners
 MAE
 median absolute error
 RMSE
@@ -711,7 +790,10 @@ bias
 error by distance
 error by elevation
 error by gradient distribution
+stability under GPX resampling
 ```
+
+Special attention should be paid to whether the intended middle range (roughly 200–400) is useful for ordinary runners and whether the upper tail remains sparse and increasingly difficult to reach.
 
 Validation results must not silently change the score of an individual race.
 
@@ -769,9 +851,13 @@ import math
 
 MIN_GRADE = -0.45
 MAX_GRADE = 0.45
-Q_500 = 15.0
-Q_1000 = 22.5
-K = 500.0 / math.log(Q_1000 / Q_500)
+
+# V0.3 curved score scale.
+SCORE_MIN = 0.0
+SCORE_MAX = 1000.0
+CURVE_A = 2.2351808956091976
+CURVE_B = 0.0007254607359190918
+CURVE_C = 0.0000004405557501338660
 
 
 def gradient_cost(g: float) -> float:
@@ -796,25 +882,44 @@ def gradient_ratio(g: float) -> float:
 def calculate_course_demand(segments) -> float:
     demand_km = 0.0
     for segment in segments:
-        demand_km += (
-            segment.distance_km
-            * gradient_ratio(segment.grade_decimal)
-        )
+        if segment.distance_km <= 0:
+            raise ValueError("segment distance must be positive")
+        demand_km += segment.distance_km * gradient_ratio(segment.grade_decimal)
+    if not math.isfinite(demand_km) or demand_km <= 0:
+        raise ValueError("course demand must be positive and finite")
     return demand_km
 
 
-def calculate_score(course_demand_km: float,
-                    finish_time_seconds: float) -> dict:
+def performance_rate(course_demand_km: float, finish_time_seconds: float) -> float:
     if not math.isfinite(course_demand_km) or course_demand_km <= 0:
-        raise ValueError("invalid course demand")
+        raise ValueError("course_demand_km must be positive and finite")
     if not math.isfinite(finish_time_seconds) or finish_time_seconds <= 0:
-        raise ValueError("invalid finish time")
+        raise ValueError("finish_time_seconds must be positive and finite")
+    return course_demand_km / (finish_time_seconds / 3600.0)
 
-    time_hours = finish_time_seconds / 3600.0
-    q = course_demand_km / time_hours
-    raw = 500.0 + K * math.log(q / Q_500)
-    public = round(max(0.0, min(1000.0, raw)))
 
+def q_for_score(score: float) -> float:
+    if not math.isfinite(score) or not SCORE_MIN <= score <= SCORE_MAX:
+        raise ValueError("score must be between 0 and 1000")
+    return math.exp(CURVE_A + CURVE_B * score + CURVE_C * score * score)
+
+
+def score_for_q(q: float) -> float:
+    if not math.isfinite(q) or q <= 0:
+        raise ValueError("performance rate must be positive and finite")
+
+    discriminant = CURVE_B**2 - 4.0 * CURVE_C * (CURVE_A - math.log(q))
+    if discriminant < 0:
+        raise ValueError("performance rate is outside the score-model domain")
+
+    raw = (-CURVE_B + math.sqrt(discriminant)) / (2.0 * CURVE_C)
+    return raw
+
+
+def calculate_score(course_demand_km: float, finish_time_seconds: float) -> dict:
+    q = performance_rate(course_demand_km, finish_time_seconds)
+    raw = score_for_q(q)
+    public = round(max(SCORE_MIN, min(SCORE_MAX, raw)))
     return {
         "performance_rate": q,
         "otri_raw": raw,
@@ -822,91 +927,101 @@ def calculate_score(course_demand_km: float,
     }
 
 
-def target_time_seconds(course_demand_km: float,
-                        target_score: float) -> float:
-    if not math.isfinite(course_demand_km) or course_demand_km <= 0:
-        raise ValueError("invalid course demand")
-    if not math.isfinite(target_score) or not 0 <= target_score <= 1000:
-        raise ValueError("target score must be 0..1000")
-
-    q = Q_500 * math.exp((target_score - 500.0) / K)
-    return (course_demand_km / q) * 3600.0
+def calculate_target_time(course_demand_km: float, score: float) -> float:
+    q_target = q_for_score(score)
+    time_hours = course_demand_km / q_target
+    return time_hours * 3600.0
 ```
 
 ---
 
-# 32. Engineering warning
+# 32. Versioning and reproducibility
 
-Do not change this expression:
+The following MUST be stored with every official result:
 
 ```text
-D = Σ[d_i × R(g_i)]
+model_version
+processing_version
+course_version
+original_file_sha256
 ```
 
-to a different formula merely because the result looks surprising on a course.
-
-If V0 produces a systematic problem, record it as a model limitation, validate it against independent data, and change the methodology through a new model version.
-
-Do not introduce hidden corrections.
-
----
-
-# 33. V0 boundaries
-
-The following are intentionally NOT solved by V0:
+Changing any of the following requires a new model/processing version as appropriate:
 
 ```text
-technical trail surface
-weather
-altitude adjustment
-walking/running transitions
-athlete physiology
-fatigue
-field strength
-race calibration
-ML correction
+segment length
+ elevation smoothing
+spike removal
+gradient model
+course-demand formula
+score-curve constants
+score inversion
+clipping rules
 ```
 
-The purpose of V0 is to establish a clean, deterministic course-demand foundation.
+Historical scores must not silently change.
 
 ---
 
-# 34. Scientific status
+# 33. V0 design summary
 
-This implementation combines:
-
-1. A published slope-dependent running-cost function as the physical basis for the course-demand coordinate. citeturn492103search1turn492103search3
-2. A deterministic GPX segmentation and integration procedure.
-3. A transparent logarithmic transformation for the public OTRI scale.
-4. An explicitly declared, competitor-independent reference scale.
-
-The gradient-cost model is scientifically sourced; the transformation from gradient cost to OTRI course demand and the numerical score anchors are OTRI design choices and must be validated.
-
-Running-performance research supports power-law/logarithmic mathematical descriptions but does not dictate a unique universal OTRI scale. citeturn492103search0
-
----
-
-# 35. Acceptance criteria for coding agents
-
-A coding agent may consider V0 implemented only when:
+The complete V0 scoring model is:
 
 ```text
-[ ] GPX parser works
-[ ] deterministic elevation processing works
-[ ] 20 m segmentation works
-[ ] signed gradient calculation works
-[ ] Minetti polynomial implemented exactly
-[ ] unsupported gradients fail explicitly
-[ ] course demand is deterministic
-[ ] score is deterministic
-[ ] score is monotonic with time
-[ ] 0/500/1000 anchors pass
-[ ] clipping passes
-[ ] pre/post inverse tests pass
-[ ] raw score is retained
-[ ] model and course versions are recorded
-[ ] competitor/race-relative variables are absent
-[ ] audit diagnostics are exposed
+GPX
+ ↓
+WGS84 distance
+ ↓
+fixed elevation processing
+ ↓
+50 m segments
+ ↓
+signed gradient
+ ↓
+Minetti gradient-cost ratio
+ ↓
+course demand D
+ ↓
+Q = D / time
+ ↓
+curved Q(S) model
+ ↓
+OTRI 0–1000
 ```
 
-**This document is the source of truth for the OTRI V0 scoring implementation until superseded by a newer versioned methodology.**
+The core design properties are:
+
+```text
+course-relative
+competitor-independent
+deterministic
+inspectable
+invertible
+```
+
+The score curve is deliberately designed so that the scale is useful in the middle and progressively harder toward the top, rather than treating 500→1000 as the same type of step as 200→500.
+
+---
+
+# 34. References
+
+1. Minetti AE, Moia C, Roi GS, Susta D, Ferretti G. *Energy cost of walking and running at extreme uphill and downhill slopes.* Journal of Applied Physiology. 2002;93(3):1039–1046. DOI: 10.1152/japplphysiol.01177.2001. citeturn492103search1turn492103search3
+2. Vandewalle H. *Modelling of Running Performances: Comparisons of Power-Law, Hyperbolic, Logarithmic, and Exponential Models in Elite Endurance Runners.* BioMed Research International. 2018:8203062. citeturn492103search0
+
+---
+
+# 35. Important status note
+
+This specification is an **OTRI V0 implementation candidate**, not a scientifically validated final scoring standard.
+
+The following are explicitly OTRI design decisions requiring empirical validation:
+
+```text
+50 m segment resolution
+course-demand construction
+score anchors
+curved score constants
+public 0–1000 interpretation
+```
+
+The model must be validated against independent real-world race results before being described as authoritative.

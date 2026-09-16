@@ -30,7 +30,12 @@ def _race() -> RaceRecord:
 
 def _finisher(bib: str, finish_time_seconds: int) -> ResultRecord:
     return ResultRecord(
-        rank=1, bib_number=bib, family_name="Runner", first_name=bib, gender="M", finish_time_seconds=finish_time_seconds
+        rank=1,
+        bib_number=bib,
+        family_name="Runner",
+        first_name=bib,
+        gender="M",
+        finish_time_seconds=finish_time_seconds,
     )
 
 
@@ -59,13 +64,21 @@ def test_get_scoring_model_info_rejects_unknown_version():
         get_scoring_model_info("not-a-real-version")
 
 
-def test_score_race_dispatches_to_course_standard():
-    scores = score_race(_race(), [_finisher("1", 3600)], model_version=COURSE_STANDARD_VERSION)
+def test_score_race_dispatches_to_current_curved_course_standard():
+    scores = score_race(
+        _race(),
+        [_finisher("1", 3600)],
+        model_version=COURSE_STANDARD_VERSION,
+    )
     assert scores[0].score.scoring_version == COURSE_STANDARD_VERSION
 
 
 def test_score_race_dispatches_to_course_standard_spec_curve():
-    scores = score_race(_race(), [_finisher("1", 3600)], model_version=COURSE_STANDARD_SPEC_VERSION)
+    scores = score_race(
+        _race(),
+        [_finisher("1", 3600)],
+        model_version=COURSE_STANDARD_SPEC_VERSION,
+    )
     assert scores[0].score.scoring_version == COURSE_STANDARD_SPEC_VERSION
 
 
@@ -75,12 +88,16 @@ def test_score_race_dispatches_to_course_standard_calibrated_curve():
 
 
 def test_score_race_dispatches_to_field_relative():
-    scores = score_race(_race(), [_finisher("1", 3600)], model_version=FIELD_RELATIVE_VERSION)
+    scores = score_race(
+        _race(),
+        [_finisher("1", 3600)],
+        model_version=FIELD_RELATIVE_VERSION,
+    )
     assert scores[0].score.scoring_version == FIELD_RELATIVE_VERSION
     assert scores[0].score.otri_score == 1000  # only finisher = the field's winner
 
 
-def test_score_race_defaults_to_course_standard():
+def test_score_race_defaults_to_current_curved_course_standard():
     scores = score_race(_race(), [_finisher("1", 3600)])
     assert scores[0].score.scoring_version == COURSE_STANDARD_VERSION
 
