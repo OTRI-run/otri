@@ -1,11 +1,11 @@
 """Course Standard scoring models — course + finish time only, no competitors.
 
-The official model (`OFFICIAL_CURVE`, `2.0.0-course-standard`) implements
-`docs/methodology/OTRI-SCORE-SCALE-FINAL-V0.md` exactly: the 50 m GPX
-course-demand integral plus its curved `exp(A + B*S + C*S^2)` score-to-Q
-curve. The score remains course + own finish time only. Legacy logarithmic
-curves (`SPEC_CURVE`, `CALIBRATED_CURVE`) remain selectable for historical
-reproducibility.
+The official model (`OFFICIAL_CURVE`, `0.5.0-course-standard-calibrated`)
+implements `docs/methodology/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md` exactly:
+the 50 m GPX course-demand integral plus its piecewise power-law score-to-Q
+curve, calibrated from real CM6 trail-score anchors. The score remains
+course + own finish time only. Legacy logarithmic curves (`SPEC_CURVE`,
+`CALIBRATED_CURVE`) remain selectable for historical reproducibility.
 """
 
 from __future__ import annotations
@@ -30,10 +30,9 @@ class ScoreCurve:
     version: str
     q_500: float
     q_1000: float
-    a: float | None = None
-    b: float | None = None
-    c: float | None = None
     curve_type: str = "logarithmic"
+    anchor_scores: tuple[float, ...] = ()
+    anchor_qs: tuple[float, ...] = ()
 
     @property
     def is_curved(self) -> bool:
@@ -43,39 +42,72 @@ class ScoreCurve:
     def k(self) -> float:
         return 500.0 / math.log(self.q_1000 / self.q_500)
 
+    def _piecewise_required_q(self, score: float) -> float:
+        scores = self.anchor_scores
+        qs = self.anchor_qs
+        if score == 0.0:
+            return qs[0]
+        if score <= scores[1]:
+            p = math.log(qs[1] / qs[0]) / math.log(scores[1])
+            return qs[0] * score**p
+        for i in range(1, len(scores) - 1):
+            s1, s2 = scores[i], scores[i + 1]
+            q1, q2 = qs[i], qs[i + 1]
+            if score <= s2:
+                p = math.log(q2 / q1) / math.log(s2 / s1)
+                return q1 * (score / s1) ** p
+        raise AssertionError("unreachable")
+
+    def _piecewise_raw_score(self, q: float) -> float:
+        scores = self.anchor_scores
+        qs = self.anchor_qs
+        if q <= qs[0]:
+            return SCALE_MIN
+        if q < qs[1]:
+            p = math.log(qs[1] / qs[0]) / math.log(scores[1])
+            return q ** (1.0 / p)
+        for i in range(1, len(qs) - 1):
+            q1, q2 = qs[i], qs[i + 1]
+            s1, s2 = scores[i], scores[i + 1]
+            if q <= q2:
+                p = math.log(q2 / q1) / math.log(s2 / s1)
+                return s1 * (q / q1) ** (1.0 / p)
+        s1, s2 = scores[-2:]
+        q1, q2 = qs[-2:]
+        p = math.log(q2 / q1) / math.log(s2 / s1)
+        return s1 * (q / q1) ** (1.0 / p)
+
     def required_q(self, score: float) -> float:
-        """`Q(S)` — the performance rate required to reach `score` (doc section 6/8)."""
+        """`Q(S)` — the performance rate required to reach `score` (spec section 13)."""
         if not math.isfinite(score) or not SCALE_MIN <= score <= SCALE_MAX:
             raise ValueError(f"score must be between {SCALE_MIN} and {SCALE_MAX}")
-        if self.curve_type == "exponential_quadratic":
-            return math.exp(self.a + self.b * score + self.c * score * score)  # type: ignore[operator]
+        if self.curve_type == "piecewise_power":
+            return self._piecewise_required_q(score)
         return self.q_500 * math.exp((score - 500.0) / self.k)
 
     def raw_score(self, q: float) -> float:
-        """Inverse of `required_q` — the (unclipped) score for performance rate `q`."""
+        """Inverse of `required_q` — the (unclipped) score for performance rate `q` (spec section 14)."""
         if not math.isfinite(q) or q <= 0:
             raise ValueError("performance rate must be positive and finite")
-        if self.curve_type == "exponential_quadratic":
-            discriminant = self.b**2 - 4.0 * self.c * (self.a - math.log(q))  # type: ignore[operator]
-            if discriminant < 0:
-                raise ValueError("performance rate outside model domain")
-            return (-self.b + math.sqrt(discriminant)) / (2.0 * self.c)  # type: ignore[operator]
+        if self.curve_type == "piecewise_power":
+            return self._piecewise_raw_score(q)
         return 500.0 + self.k * math.log(q / self.q_500)
 
 
 SPEC_CURVE = ScoreCurve(version="1.0.0-course-standard", q_500=15.0, q_1000=22.5)
 CALIBRATED_CURVE = ScoreCurve(version="1.1.0-course-standard", q_500=3.5, q_1000=10.5)
 
-# Official model — docs/methodology/OTRI-SCORE-SCALE-FINAL-V0.md section 6/20.
-# Anchored at OTRI 200/500/1000 -> Q 11.0/15.0/30.0 demand-km/h.
+# Official V0.5 model — docs/methodology/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md section 13.
+# Piecewise power law through real CM6 reference anchors:
+#   6:29:58 -> 349, 3:05:04 -> 544, 2:20:30 -> 692 (course demand ~27.560 demand-km).
+# The final segment continues the same exponent up to Q~17.94 at score 1000.
 OFFICIAL_CURVE = ScoreCurve(
-    version="2.0.0-course-standard",
-    q_500=15.0,
-    q_1000=30.0,
-    a=2.2351808956091976,
-    b=0.0007254607359190918,
-    c=0.0000004405557501338660,
-    curve_type="exponential_quadratic",
+    version="0.5.0-course-standard-calibrated",
+    q_500=7.755256,
+    q_1000=17.93986234619293,
+    curve_type="piecewise_power",
+    anchor_scores=(0.0, 349.0, 544.0, 692.0, 1000.0),
+    anchor_qs=(1.0, 4.240362424138815, 8.935158501440922, 11.769395017793594, 17.93986234619293),
 )
 
 SCORING_VERSION = OFFICIAL_CURVE.version

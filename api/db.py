@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS races (
     elevation_gain_m DOUBLE PRECISION NOT NULL,
     gpx_filename TEXT,
     gpx_content TEXT,
-    scoring_version TEXT NOT NULL DEFAULT '2.0.0-course-standard',
+    scoring_version TEXT NOT NULL DEFAULT '0.5.0-course-standard-calibrated',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -236,20 +236,18 @@ def create_race(
     race_id: str | None = None,
     scoring_version: str | None = None,
 ) -> Race:
+    # Pass the version explicitly rather than relying on the column's SQL DEFAULT — `CREATE
+    # TABLE IF NOT EXISTS` never updates an already-existing column's default, so an older
+    # deployed schema could otherwise keep minting races on a stale/removed model version.
+    from scoring import DEFAULT_SCORING_VERSION
+
     race_id = race_id or _new_id("race")
     with get_connection() as connection:
-        if scoring_version is None:
-            connection.execute(
-                "INSERT INTO races (race_id, event_id, course_name, distance_km, elevation_gain_m) "
-                "VALUES (%s, %s, %s, %s, %s)",
-                (race_id, event_id, course_name, distance_km, elevation_gain_m),
-            )
-        else:
-            connection.execute(
-                "INSERT INTO races (race_id, event_id, course_name, distance_km, elevation_gain_m, scoring_version) "
-                "VALUES (%s, %s, %s, %s, %s, %s)",
-                (race_id, event_id, course_name, distance_km, elevation_gain_m, scoring_version),
-            )
+        connection.execute(
+            "INSERT INTO races (race_id, event_id, course_name, distance_km, elevation_gain_m, scoring_version) "
+            "VALUES (%s, %s, %s, %s, %s, %s)",
+            (race_id, event_id, course_name, distance_km, elevation_gain_m, scoring_version or DEFAULT_SCORING_VERSION),
+        )
     race = find_race(race_id)
     assert race is not None
     return race

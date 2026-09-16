@@ -50,20 +50,33 @@ def test_performance_rate_is_demand_km_per_hour():
 @pytest.mark.parametrize(
     "score, expected_q",
     [
-        (0, 9.35),
-        (200, 11.00),
-        (500, 15.00),
-        (1000, 30.00),
+        (0, 1.0),
+        (349, 4.240362424138815),
+        (544, 8.935158501440922),
+        (692, 11.769395017793594),
+        (1000, 17.93986234619293),
     ],
 )
 def test_official_curve_scale_anchors(score, expected_q):
-    assert OFFICIAL_CURVE.required_q(score) == pytest.approx(expected_q, abs=0.01)
+    assert OFFICIAL_CURVE.required_q(score) == pytest.approx(expected_q, rel=1e-12, abs=1e-12)
 
 
 def test_official_curve_is_monotonic():
     scores = list(range(0, 1001, 25))
     qs = [OFFICIAL_CURVE.required_q(s) for s in scores]
     assert qs == sorted(qs)
+
+
+def test_official_curve_cm6_reference_anchors():
+    demand_km = 27.560
+    references = [
+        (6 * 3600 + 29 * 60 + 58, 349),
+        (3 * 3600 + 5 * 60 + 4, 544),
+        (2 * 3600 + 20 * 60 + 30, 692),
+    ]
+    for finish_time, expected_score in references:
+        result = score_for_time(demand_km, finish_time, curve=OFFICIAL_CURVE)
+        assert result["otri_score"] == expected_score
 
 
 @pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE, OFFICIAL_CURVE])
@@ -93,7 +106,7 @@ def test_score_race_does_not_depend_on_other_finishers():
 
 @pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE, OFFICIAL_CURVE])
 def test_target_time_inverse(curve):
-    for score in [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]:
+    for score in [100, 200, 300, 349, 400, 500, 544, 600, 692, 700, 800, 900, 1000]:
         target = target_time_seconds(10.0, score, curve=curve)
         recovered = score_for_time(10.0, target, curve=curve)["otri_score"]
         assert recovered == pytest.approx(score, abs=1)
