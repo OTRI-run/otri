@@ -10,6 +10,7 @@ import pytest
 from ingestion.records import RaceRecord, ResultRecord
 from scoring.course_standard import (
     CALIBRATED_CURVE,
+    OFFICIAL_CURVE,
     SCALE_MAX,
     SPEC_CURVE,
     performance_rate,
@@ -41,15 +42,8 @@ def _finisher(bib: str, finish_time_seconds: int) -> ResultRecord:
     )
 
 
-def test_k_constant_matches_spec_for_both_curves():
-    import math
-
-    for curve in [SPEC_CURVE, CALIBRATED_CURVE]:
-        assert curve.k == pytest.approx(500.0 / math.log(curve.q_1000 / curve.q_500))
-
-
-def test_calibrated_curve_is_the_default():
-    assert score_for_time(10.0, 3600)["otri_score"] == score_for_time(10.0, 3600, curve=CALIBRATED_CURVE)["otri_score"]
+def test_official_curve_is_the_default():
+    assert score_for_time(10.0, 3600)["otri_score"] == score_for_time(10.0, 3600, curve=OFFICIAL_CURVE)["otri_score"]
 
 
 def test_performance_rate_is_demand_km_per_hour():
@@ -57,53 +51,59 @@ def test_performance_rate_is_demand_km_per_hour():
     assert performance_rate(10.0, 7200) == pytest.approx(5.0)
 
 
+@pytest.mark.parametrize(
+    ("q", "expected_score"),
+    [(11.0, 200), (15.0, 500), (30.0, 1000)],
+)
+def test_official_curve_matches_published_anchor_table(q, expected_score):
+    """Spec section 18's representative-values table: Q(200)=11.0, Q(500)=15.0, Q(1000)=30.0."""
+    seconds = 10.0 / q * 3600
+    result = score_for_time(10.0, seconds, curve=OFFICIAL_CURVE)
+    assert result["otri_score"] == expected_score
+
+
 @pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE])
-def test_anchor_q_500_scores_500(curve):
-    seconds = 10.0 / curve.q_500 * 3600
+def test_legacy_log_curves_anchor_q_500_scores_500(curve):
+    seconds = 10.0 / curve.q_for_score(500) * 3600
     result = score_for_time(10.0, seconds, curve=curve)
     assert result["otri_score"] == 500
 
 
 @pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE])
-def test_anchor_q_1000_scores_1000(curve):
-    seconds = 10.0 / curve.q_1000 * 3600
+def test_legacy_log_curves_anchor_q_1000_scores_1000(curve):
+    seconds = 10.0 / curve.q_for_score(1000) * 3600
     result = score_for_time(10.0, seconds, curve=curve)
     assert result["otri_score"] == 1000
 
 
-@pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE])
-def test_clipping_above_q_1000_still_scores_exactly_1000(curve):
+@pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE, OFFICIAL_CURVE])
+def test_clipping_above_top_still_scores_exactly_1000(curve):
     """Spec section 19: score = round(max(0, min(1000, otri_raw))) — clipped, not sealed.
     Unlike the retired asymptotic design, 1000 IS a reachable, legitimate score."""
-    result = score_for_time(10.0, 10, curve=curve)  # extremely fast, far beyond q_1000
+    result = score_for_time(10.0, 10, curve=curve)  # extremely fast, far beyond any anchor
     assert result["otri_score"] == 1000
     assert result["otri_raw"] > 1000  # unclipped value retained for audit, per spec section 19
 
 
-@pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE])
+@pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE, OFFICIAL_CURVE])
 def test_clipping_below_zero_still_scores_exactly_0(curve):
     result = score_for_time(10.0, 1_000_000, curve=curve)
     assert result["otri_score"] == 0
     assert result["otri_raw"] < 0
 
 
-@pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE])
+def test_official_curve_handles_extremely_slow_finishes_without_crashing():
+    """Below the exponential-quadratic curve's mathematical floor (no real root exists),
+    the model must clip to score 0 rather than raise — see _quadratic_curve's docstring."""
+    result = score_for_time(17.481, 20 * 3600, curve=OFFICIAL_CURVE)  # ~0.87 demand-km/h
+    assert result["otri_score"] == 0
+
+
+@pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE, OFFICIAL_CURVE])
 def test_score_is_monotonic_in_finish_time(curve):
-    times = [1000, 1600, 2000, 2400, 3000, 3600, 5000, 10000, 20000]
+    times = [1000, 1600, 2000, 2400, 3000, 3600, 5000, 10000, 20000, 50000]
     scores = [score_for_time(10.0, t, curve=curve)["otri_score"] for t in times]
     assert scores == sorted(scores, reverse=True)
-
-
-def test_calibrated_curve_gives_realistic_multi_hour_finishes_nonzero_scores():
-    """The whole point of the recalibration: a normal several-hour trail finish should not
-    automatically clip to 0, unlike the spec's own literal (much faster) anchors."""
-    demand_km = 17.481  # a real course used to discover this problem
-    five_hour_score = score_for_time(demand_km, 5 * 3600, curve=CALIBRATED_CURVE)["otri_score"]
-    assert five_hour_score > 0
-    assert five_hour_score == pytest.approx(500, abs=5)
-
-    # The spec's own literal anchors score this same, realistic finish at 0.
-    assert score_for_time(demand_km, 5 * 3600, curve=SPEC_CURVE)["otri_score"] == 0
 
 
 def test_score_race_does_not_depend_on_other_finishers():
@@ -125,10 +125,10 @@ def test_score_race_does_not_depend_on_other_finishers():
     assert solo == runner_one_score
 
 
-@pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE])
+@pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE, OFFICIAL_CURVE])
 def test_target_time_seconds_is_inverse_of_score_for_time(curve):
     """Spec section 21's required pre/post inverse tests."""
-    for score in [0, 250, 500, 750, 1000]:
+    for score in [0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]:
         target = target_time_seconds(10.0, score, curve=curve)
         recovered = score_for_time(10.0, target, curve=curve)["otri_score"]
         assert recovered == pytest.approx(score, abs=1)
@@ -174,11 +174,12 @@ def test_confidence_is_low_without_gpx_and_medium_with_gpx():
 def test_scoring_version_is_stamped_on_every_score():
     race = _race()
     scores = score_race_course_standard(race, [_finisher("1", 3600)])
-    assert scores[0].score.scoring_version == CALIBRATED_CURVE.version
+    assert scores[0].score.scoring_version == OFFICIAL_CURVE.version
 
 
 def test_scoring_version_reflects_chosen_curve():
     race = _race()
     scores = score_race_course_standard(race, [_finisher("1", 3600)], curve=SPEC_CURVE)
     assert scores[0].score.scoring_version == SPEC_CURVE.version
+
 

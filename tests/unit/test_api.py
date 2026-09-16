@@ -66,14 +66,19 @@ def test_list_scoring_models_includes_all_options():
     response = client.get("/scoring/models")
     assert response.status_code == 200
     versions = {model["version"] for model in response.json()}
-    assert versions == {"1.1.0-course-standard", "1.0.0-course-standard", "0.1.0-field-relative"}
+    assert versions == {
+        "2.0.0-course-standard",
+        "1.1.0-course-standard",
+        "1.0.0-course-standard",
+        "0.1.0-field-relative",
+    }
 
 
 def test_new_race_defaults_to_course_standard_scoring():
     headers = _organizer_auth_headers()
     _, race_id = _create_event_and_race(headers)
     response = client.get(f"/races/{race_id}")
-    assert response.json()["scoring_version"] == "1.1.0-course-standard"
+    assert response.json()["scoring_version"] == "2.0.0-course-standard"
 
 
 def test_race_can_be_created_with_explicit_scoring_version():
@@ -477,7 +482,7 @@ def test_analyze_gpx_with_finish_time_returns_predicted_score():
     assert estimate is not None
     assert "predicted_score" in estimate
     assert estimate["predicted_score"] < 1000
-    assert estimate["scoring_version"] == "1.1.0-course-standard"
+    assert estimate["scoring_version"] == "2.0.0-course-standard"
 
 
 def test_analyze_gpx_prediction_matches_real_score_for_same_course_and_time():

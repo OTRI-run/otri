@@ -17,13 +17,14 @@ from typing import Callable
 from course.gpx import TrackPoint
 from ingestion.records import RaceRecord, ResultRecord
 
-from .course_standard import CALIBRATED_CURVE, SPEC_CURVE
+from .course_standard import CALIBRATED_CURVE, OFFICIAL_CURVE, SPEC_CURVE
 from .course_standard import score_race_course_standard
 from .model import RunnerScore
 from .model import SCORING_VERSION as FIELD_RELATIVE_VERSION
 from .model import score_race_field_relative
 
-COURSE_STANDARD_VERSION = CALIBRATED_CURVE.version
+COURSE_STANDARD_VERSION = OFFICIAL_CURVE.version
+COURSE_STANDARD_CALIBRATED_VERSION = CALIBRATED_CURVE.version
 COURSE_STANDARD_SPEC_VERSION = SPEC_CURVE.version
 
 DEFAULT_SCORING_VERSION = COURSE_STANDARD_VERSION
@@ -43,20 +44,32 @@ _MODEL_INFO: dict[str, ScoringModelInfo] = {
         name="Course Standard",
         description=(
             "Score depends only on the course (Minetti gradient-cost course demand) and your own "
-            "finish time — never on who else ran the race. A logarithmic scale anchored at two "
-            "reference points (500 at 3.5 demand-km/h, 1000 at 10.5 demand-km/h) chosen to spread "
-            "realistic recreational-to-elite trail paces across 0-1000, clipped to that range."
+            "finish time — never on who else ran the race. OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md's "
+            "published v0.3.0 curve: a smooth exponential-quadratic scale anchored at score 200 = "
+            "11.0 demand-km/h, 500 = 15.0 demand-km/h, 1000 = 30.0 demand-km/h, so the top half of "
+            "the scale is deliberately much harder to climb than the bottom half."
+        ),
+        uses_competitors=False,
+    ),
+    COURSE_STANDARD_CALIBRATED_VERSION: ScoringModelInfo(
+        version=COURSE_STANDARD_CALIBRATED_VERSION,
+        name="Course Standard (internal pre-v0.3.0 calibration)",
+        description=(
+            "Identical model to Course Standard, but using an internal, pre-v0.3.0 two-anchor "
+            "logarithmic curve (500 at 3.5 demand-km/h, 1000 at 10.5 demand-km/h). Superseded by "
+            "the spec's own v0.3.0 curve; kept selectable only for continuity with any scores "
+            "already stamped with this version."
         ),
         uses_competitors=False,
     ),
     COURSE_STANDARD_SPEC_VERSION: ScoringModelInfo(
         version=COURSE_STANDARD_SPEC_VERSION,
-        name="Course Standard (spec-literal anchors)",
+        name="Course Standard (spec v0.2.0 anchors)",
         description=(
             "Identical model to Course Standard, but using OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md's "
-            "own literal reference points (500 at 15.0 demand-km/h, 1000 at 22.5 demand-km/h) — a "
-            "punishingly fast absolute standard on real courses of any length. Kept selectable for "
-            "spec fidelity and comparison, not recommended as a default."
+            "original (v0.2.0) two-anchor logarithmic curve (500 at 15.0 demand-km/h, 1000 at 22.5 "
+            "demand-km/h) — a punishingly fast absolute standard on real courses of any length. "
+            "Kept selectable for spec fidelity and comparison, not recommended as a default."
         ),
         uses_competitors=False,
     ),
@@ -97,6 +110,8 @@ def score_race(
     calculation (currently ``course_standard``) and is ignored otherwise.
     """
     if model_version == COURSE_STANDARD_VERSION:
+        return score_race_course_standard(race, results, gpx_points=gpx_points, curve=OFFICIAL_CURVE)
+    if model_version == COURSE_STANDARD_CALIBRATED_VERSION:
         return score_race_course_standard(race, results, gpx_points=gpx_points, curve=CALIBRATED_CURVE)
     if model_version == COURSE_STANDARD_SPEC_VERSION:
         return score_race_course_standard(race, results, gpx_points=gpx_points, curve=SPEC_CURVE)
