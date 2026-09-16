@@ -2,6 +2,8 @@ import React, { useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ArrowLeft, Mountain, TrendingUp } from 'lucide-react'
 import CourseMap from '../src/components/CourseMap'
+import GpxTester from './GpxTester'
+import OrganizerUpload from './OrganizerUpload'
 import racesData from './data/races.json'
 import '../src/styles.css'
 
@@ -115,13 +117,41 @@ function SampleCourseSection({ sampleCourse }) {
         <span>{sampleCourse.features.distance_km} km</span>
         <span>+{sampleCourse.features.elevation_gain_m} m</span>
         <span>-{sampleCourse.features.elevation_loss_m} m</span>
-        <span>max grade {(sampleCourse.features.max_grade * 100).toFixed(1)}%</span>
+        <span>
+          steep grade +{(sampleCourse.features.max_climb_grade * 100).toFixed(1)}% / -
+          {(sampleCourse.features.max_descent_grade * 100).toFixed(1)}%
+        </span>
       </div>
     </section>
   )
 }
 
+const TABS = [
+  { id: 'races', label: 'Races' },
+  { id: 'gpx', label: 'GPX tester' },
+  { id: 'organizer', label: 'Organizer upload' },
+]
+
+function TabNav({ active, onChange }) {
+  return (
+    <nav className="mt-6 flex flex-wrap gap-2 border-b border-slate-200">
+      {TABS.map((tab) => (
+        <button
+          key={tab.id}
+          onClick={() => onChange(tab.id)}
+          className={`border-b-2 px-3 py-2 text-sm font-semibold ${
+            active === tab.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-[#0b1220]'
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </nav>
+  )
+}
+
 function App() {
+  const [activeTab, setActiveTab] = useState('races')
   const [selectedRaceId, setSelectedRaceId] = useState(null)
   const selectedRace = useMemo(
     () => racesData.races.find((race) => race.race_id === selectedRaceId) ?? null,
@@ -139,22 +169,31 @@ function App() {
         <p className="mt-4 max-w-[620px] text-sm leading-7 text-slate-500">
           Every score below was computed by the real Python pipeline (<code>ingestion</code> → <code>scoring</code> →{' '}
           <code>course</code>) against synthetic demo data, then exported to static JSON for this page — see{' '}
-          <code>scripts/build_prototype_data.py</code>.
+          <code>scripts/build_prototype_data.py</code>. The GPX tester and organizer upload tabs call the live API.
         </p>
 
-        {selectedRace ? (
-          <div className="mt-10">
-            <Leaderboard race={selectedRace} onBack={() => setSelectedRaceId(null)} />
-          </div>
-        ) : (
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {racesData.races.map((race) => (
-              <RaceCard key={race.race_id} race={race} onSelect={setSelectedRaceId} />
-            ))}
-          </div>
+        <TabNav active={activeTab} onChange={setActiveTab} />
+
+        {activeTab === 'races' && (
+          <>
+            {selectedRace ? (
+              <div className="mt-10">
+                <Leaderboard race={selectedRace} onBack={() => setSelectedRaceId(null)} />
+              </div>
+            ) : (
+              <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {racesData.races.map((race) => (
+                  <RaceCard key={race.race_id} race={race} onSelect={setSelectedRaceId} />
+                ))}
+              </div>
+            )}
+
+            {!selectedRace && <SampleCourseSection sampleCourse={racesData.sample_course} />}
+          </>
         )}
 
-        {!selectedRace && <SampleCourseSection sampleCourse={racesData.sample_course} />}
+        {activeTab === 'gpx' && <GpxTester />}
+        {activeTab === 'organizer' && <OrganizerUpload />}
       </main>
     </div>
   )

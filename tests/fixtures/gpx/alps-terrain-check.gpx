@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="OTRI verification test" xmlns="http://www.topografix.com/GPX/1/1">
+<trk><name>Alps terrain verification</name><trkseg>
+<trkpt lat="46.5000" lon="8.0000"><ele>1200</ele></trkpt>
+<trkpt lat="46.5100" lon="8.0100"><ele>1800</ele></trkpt>
+<trkpt lat="46.5200" lon="8.0200"><ele>2400</ele></trkpt>
+<trkpt lat="46.5300" lon="8.0300"><ele>2000</ele></trkpt>
+<trkpt lat="46.5400" lon="8.0400"><ele>1600</ele></trkpt>
+</trkseg></trk>
+</gpx>

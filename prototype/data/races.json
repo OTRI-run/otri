@@ -915,10 +915,11 @@
     "features": {
       "distance_km": 7.676,
       "elevation_gain_m": 245.1,
-      "elevation_loss_m": 159.6,
+      "elevation_loss_m": 161.1,
       "steep_climb_distance_km": 0.0,
       "steep_descent_distance_km": 0.0,
-      "max_grade": 0.1222,
+      "max_climb_grade": 0.0785,
+      "max_descent_grade": 0.0439,
       "min_elevation_m": 67.5,
       "max_elevation_m": 234.0
     }

@@ -70,14 +70,14 @@ class RunnerScore:
         }
 
 
-def equivalent_distance_km(race: RaceRecord) -> float:
+def equivalent_distance_km(distance_km: float, elevation_gain_m: float) -> float:
     """Course distance adjusted for climbing, so pace is comparable across courses.
 
     Intentionally does not yet use elevation loss, gradient distribution, or
     terrain — see ``docs/roadmap.md`` Phase 2 for the future course-difficulty
     model that will eventually replace this constant-factor approximation.
     """
-    return race.distance_km + (race.elevation_gain_m / 100.0) * ELEVATION_KM_PER_100M
+    return distance_km + (elevation_gain_m / 100.0) * ELEVATION_KM_PER_100M
 
 
 def _confidence_for_field_size(field_size: int) -> str:
@@ -105,7 +105,7 @@ def score_race(race: RaceRecord, results: list[ResultRecord]) -> list[RunnerScor
     if not finishers:
         return []
 
-    equivalent_km = equivalent_distance_km(race)
+    equivalent_km = equivalent_distance_km(race.distance_km, race.elevation_gain_m)
     ordered = sorted(
         finishers,
         key=lambda result: (result.finish_time_seconds, result.bib_number or "", result.family_name, result.first_name),

@@ -20,6 +20,15 @@ class RaceSummary(BaseModel):
     elevation_gain_m: float
 
 
+class RaceCreate(BaseModel):
+    race_id: str
+    race_name: str
+    event_date: date
+    course_name: str
+    distance_km: float
+    elevation_gain_m: float
+
+
 class RunnerScoreOut(BaseModel):
     rank: int
     bib_number: str | None
@@ -46,3 +55,26 @@ class SubmissionResult(BaseModel):
     errors: list[ValidationIssueOut]
     warnings: list[ValidationIssueOut]
     scores: list[RunnerScoreOut] = []
+
+
+class IllustrativeEstimateOut(BaseModel):
+    equivalent_distance_km: float
+    pace_seconds_per_km: float
+    illustrative_score: int
+    disclaimer: str
+
+
+class GpxAnalysis(BaseModel):
+    features: dict
+    estimate: IllustrativeEstimateOut | None = None
+
+
+class OrganizerCredentials(BaseModel):
+    email: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    email: str

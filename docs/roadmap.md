@@ -4,7 +4,7 @@ A concrete, step-by-step breakdown of `HANDBOOK.md`'s roadmap, in PR-sized chunk
 
 ## Prototype ✅ done
 
-Everything from Phases 0–3 wired together and actually demonstrated in one place: [`prototype/`](../prototype) is a separate page (same design system, kept apart from the production homepage) showing real `ingestion` → `scoring` → `course` output over an expanded synthetic dataset (6 races, 10K to 100-mile ultra), plus the `CourseMap` component rendering a sample GPX. See [`prototype/README.md`](../prototype/README.md).
+Everything from Phases 0–4 wired together and actually demonstrated in one place: [`prototype/`](../prototype) is a separate page (same design system, kept apart from the production homepage) with three tabs — a static Races view (real `ingestion` → `scoring` → `course` output over 6 synthetic races, 10K to 100-mile ultra), a **GPX tester** that calls the live API (`POST /gpx/analyze`) for an illustrative score estimate, and an **Organizer upload** flow that registers a race and submits results against the live API end to end. Verified working in an actual production build, not just unit tests. See [`prototype/README.md`](../prototype/README.md) and [`docs/operations/digitalocean-deployment.md`](operations/digitalocean-deployment.md) for deploying the API behind it.
 
 ## Phase 0 — Ingestion foundation ✅ done
 
@@ -34,7 +34,7 @@ Still missing on purpose (documented in `scoring/README.md`): cross-race calibra
 **Goal:** turn a GPX file into course-difficulty features. Does **not** depend on Phase 1/3.
 
 - [x] **GPX reader** (`course/gpx.py`) — parses `trkpt` points (lat/lon/elevation/time) using only the Python standard library (`xml.etree.ElementTree`); no external GPX dependency needed for this scope.
-- [x] **Course-feature extraction** (`course/features.py`, your own code, documented) — distance (haversine), elevation gain/loss with GPS-noise filtering, steep-climb/steep-descent distance, max grade, min/max elevation.
+- [x] **Course-feature extraction** (`course/features.py`, your own code, documented) — distance (haversine), elevation gain/loss with GPS-noise filtering, steep-climb/steep-descent distance, run-averaged max climb/descent grade, min/max elevation.
 - [x] **Course-difficulty model kept separate from the performance model** — `course/` has no dependency on `scoring/` or `ingestion/` (`METHODOLOGY.md` §3).
 - [x] **Tests** (`tests/unit/test_course_features.py`) against synthetic GPX fixtures (flat loop, single climb with a GPS-noise blip, out-and-back) under `tests/fixtures/gpx/`, with hand-derivable expected distance/elevation numbers for the north-south fixtures.
 

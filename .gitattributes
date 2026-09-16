@@ -1,0 +1,5 @@
+# Shell scripts must always use LF line endings, even when checked out on
+# Windows — a CRLF shell script fails on Linux with cryptic "$'\r': command
+# not found" errors. This matters for scripts/deploy/*.sh, which run on
+# Ubuntu Droplets.
+*.sh text eol=lf

@@ -40,8 +40,9 @@ def test_single_climb_filters_gps_noise_and_flags_steep_segments():
     points = read_track_points(FIXTURES / "single-climb.gpx")
     features = extract_features(points)
 
-    # Deltas per segment: +10, +0.5 (noise, ignored), +19.5, -20.
-    assert features.elevation_gain_m == 29.5  # 10 + 19.5; the 0.5 noise blip is excluded
+    # Deltas per segment: +10, +0.5, +19.5, -20. The +0.5 blip doesn't reverse
+    # direction, so hysteresis folds it into the climbing run: 10 + 0.5 + 19.5 = 30.
+    assert features.elevation_gain_m == 30.0
     assert features.elevation_loss_m == 20.0
     assert features.min_elevation_m == 1000.0
     assert features.max_elevation_m == 1030.0
@@ -50,7 +51,13 @@ def test_single_climb_filters_gps_noise_and_flags_steep_segments():
     # +19.5 m and -20 m over one ~111.19 m segment are both >= the 15% steep threshold.
     assert features.steep_climb_distance_km == round(_SEGMENT_M / 1000, 3)
     assert features.steep_descent_distance_km == round(_SEGMENT_M / 1000, 3)
-    assert features.max_grade == round(20.0 / _SEGMENT_M, 4)
+
+    # Grades are now per-run averages, not a single noisy segment: the climb run
+    # spans all 3 segments (10 + 0.5 + 19.5 = 30 m over 3 * _SEGMENT_M), while the
+    # descent is exactly one final segment (20 m over _SEGMENT_M) so it matches
+    # what a single-segment calculation would have given.
+    assert features.max_climb_grade == round(30.0 / (3 * _SEGMENT_M), 4)
+    assert features.max_descent_grade == round(20.0 / _SEGMENT_M, 4)
 
 
 def test_out_and_back_gain_equals_loss():
@@ -70,3 +77,22 @@ def test_feature_extraction_is_deterministic_across_runs():
     first = extract_features(points).to_dict()
     second = extract_features(points).to_dict()
     assert first == second
+
+
+def test_real_loop_course_has_balanced_gain_and_loss():
+    # Real device/DEM-derived elevation from an actual course (ultraPacer
+    # export), not a synthetic fixture — kept as a regression check because it
+    # caught a real bug: a naive per-run noise filter silently discarded small
+    # reversals and let gain/loss drift apart by ~10 m even though this is a
+    # loop course (start and finish at the same point), where they should match.
+    points = read_track_points(FIXTURES / "phuket-trail-2026-pkt15.gpx")
+    features = extract_features(points)
+
+    assert features.elevation_gain_m == features.elevation_loss_m == 628.4
+    assert features.distance_km == 14.611
+
+    # Also a regression check for run-averaged (not single noisy segment)
+    # steepest climb/descent grade: a per-segment calculation on this file
+    # spikes to an implausible 40%.
+    assert features.max_climb_grade == 0.1737
+    assert features.max_descent_grade == 0.2032

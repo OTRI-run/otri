@@ -6,11 +6,14 @@ import { resolve } from 'node:path'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: './',
+  optimizeDeps: {
+    exclude: ['maplibre-gl'],
+  },
   build: {
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index.html'),
-        prototype: resolve(__dirname, 'prototype/index.html'),
+        main: resolve(import.meta.dirname, 'index.html'),
+        prototype: resolve(import.meta.dirname, 'prototype/index.html'),
       },
     },
   },
