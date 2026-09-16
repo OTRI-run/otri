@@ -1,1 +1,0 @@
-Prepared profile avatar: 256×256 PNG using canonical OTRI standalone mark.
