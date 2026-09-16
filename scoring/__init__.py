@@ -1,8 +1,8 @@
 """OTRI scoring engine — pluggable, versioned scoring models.
 
-The current default is the deterministic Course Standard V0.3 curved model
-(no competitor dependency). Older scoring curves remain selectable for
-historical reproducibility.
+The current default is the official Course Standard curved model
+(`2.0.0-course-standard`, no competitor dependency). Older scoring curves
+remain selectable for historical reproducibility.
 """
 
 from .course_standard import CALIBRATED_CURVE, OFFICIAL_CURVE, SPEC_CURVE, ScoreCurve
@@ -35,13 +35,11 @@ __all__ = [
     "target_time_seconds",
     "ScoreCurve",
     "CALIBRATED_CURVE",
-    "CURVED_CURVE",
     "SPEC_CURVE",
     "OFFICIAL_CURVE",
     "COURSE_STANDARD_VERSION",
     "COURSE_STANDARD_CALIBRATED_VERSION",
     "COURSE_STANDARD_SPEC_VERSION",
-    "COURSE_STANDARD_LEGACY_CALIBRATED_VERSION",
     "FIELD_RELATIVE_VERSION",
     "DEFAULT_SCORING_VERSION",
     "ScoringModelInfo",

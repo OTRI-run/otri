@@ -1,9 +1,9 @@
 """Pluggable scoring-model registry.
 
 OTRI supports multiple versioned scoring models so historical scores remain
-reproducible. The current default is the deterministic Course Standard V0.5
-candidate: 50 m GPX course demand plus a transparent piecewise-power score
-curve calibrated against real CM6 trail-score anchors.
+reproducible. The current default is the official Course Standard model
+(`2.0.0-course-standard`): 50 m GPX course demand plus the curved score
+scale from `docs/methodology/OTRI-SCORE-SCALE-FINAL-V0.md`.
 """
 
 from __future__ import annotations
@@ -13,17 +13,15 @@ from dataclasses import dataclass
 from course.gpx import TrackPoint
 from ingestion.records import RaceRecord, ResultRecord
 
-from .course_standard import CALIBRATED_CURVE, CURVED_CURVE, SPEC_CURVE, V04_CURVE, V05_CURVE
+from .course_standard import CALIBRATED_CURVE, OFFICIAL_CURVE, SPEC_CURVE
 from .course_standard import score_race_course_standard
 from .model import RunnerScore
 from .model import SCORING_VERSION as FIELD_RELATIVE_VERSION
 from .model import score_race_field_relative
 
-COURSE_STANDARD_VERSION = V05_CURVE.version
-COURSE_STANDARD_V04_VERSION = V04_CURVE.version
-COURSE_STANDARD_V03_VERSION = CURVED_CURVE.version
+COURSE_STANDARD_VERSION = OFFICIAL_CURVE.version
+COURSE_STANDARD_CALIBRATED_VERSION = CALIBRATED_CURVE.version
 COURSE_STANDARD_SPEC_VERSION = SPEC_CURVE.version
-COURSE_STANDARD_LEGACY_CALIBRATED_VERSION = CALIBRATED_CURVE.version
 DEFAULT_SCORING_VERSION = COURSE_STANDARD_VERSION
 
 
@@ -38,29 +36,17 @@ class ScoringModelInfo:
 _MODEL_INFO: dict[str, ScoringModelInfo] = {
     COURSE_STANDARD_VERSION: ScoringModelInfo(
         version=COURSE_STANDARD_VERSION,
-        name="Course Standard V0.5 Calibrated",
+        name="Course Standard (official)",
         description=(
             "Score depends only on the course (50 m Minetti gradient-cost course demand) and "
-            "the runner's own finish time. V0.5 uses piecewise power interpolation through real "
-            "CM6 reference anchors: 6:29:58=349, 3:05:04=544, 2:20:30=692. The upper segment "
-            "extends to approximately Q=17.94 at score 1000. No competitors are used."
+            "the runner's own finish time. Uses the curved exp(A + B*S + C*S^2) score scale "
+            "anchored at OTRI 200/500/1000 -> Q 11.0/15.0/30.0 demand-km/h "
+            "(docs/methodology/OTRI-SCORE-SCALE-FINAL-V0.md). No competitors are used."
         ),
         uses_competitors=False,
     ),
-    COURSE_STANDARD_V04_VERSION: ScoringModelInfo(
-        version=COURSE_STANDARD_V04_VERSION,
-        name="Course Standard V0.4 Curved (legacy)",
-        description="Historical V0.4 shifted-quadratic curve retained for reproducibility.",
-        uses_competitors=False,
-    ),
-    COURSE_STANDARD_V03_VERSION: ScoringModelInfo(
-        version=COURSE_STANDARD_V03_VERSION,
-        name="Course Standard V0.3 Curved (legacy)",
-        description="Historical V0.3 exponential-quadratic curve retained for reproducibility.",
-        uses_competitors=False,
-    ),
-    COURSE_STANDARD_LEGACY_CALIBRATED_VERSION: ScoringModelInfo(
-        version=COURSE_STANDARD_LEGACY_CALIBRATED_VERSION,
+    COURSE_STANDARD_CALIBRATED_VERSION: ScoringModelInfo(
+        version=COURSE_STANDARD_CALIBRATED_VERSION,
         name="Course Standard (legacy logarithmic calibrated)",
         description="Historical logarithmic calibration retained for reproducibility.",
         uses_competitors=False,
@@ -103,15 +89,12 @@ def score_race(
 ) -> list[RunnerScore]:
     """Score a race with the selected model version."""
     if model_version == COURSE_STANDARD_VERSION:
-        return score_race_course_standard(race, results, gpx_points=gpx_points, curve=V05_CURVE)
-    if model_version == COURSE_STANDARD_V04_VERSION:
-        return score_race_course_standard(race, results, gpx_points=gpx_points, curve=V04_CURVE)
-    if model_version == COURSE_STANDARD_V03_VERSION:
-        return score_race_course_standard(race, results, gpx_points=gpx_points, curve=CURVED_CURVE)
-    if model_version == COURSE_STANDARD_LEGACY_CALIBRATED_VERSION:
+        return score_race_course_standard(race, results, gpx_points=gpx_points, curve=OFFICIAL_CURVE)
+    if model_version == COURSE_STANDARD_CALIBRATED_VERSION:
         return score_race_course_standard(race, results, gpx_points=gpx_points, curve=CALIBRATED_CURVE)
     if model_version == COURSE_STANDARD_SPEC_VERSION:
         return score_race_course_standard(race, results, gpx_points=gpx_points, curve=SPEC_CURVE)
     if model_version == FIELD_RELATIVE_VERSION:
         return score_race_field_relative(race, results)
     raise ValueError(f"unknown scoring model version {model_version!r}")
+

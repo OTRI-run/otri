@@ -1,16 +1,17 @@
 """Course Standard scoring models — course + finish time only, no competitors.
 
-Current candidate V0.5 keeps the 50 m GPX course-demand integral and uses a
-transparent piecewise power score curve calibrated from real trail-score
-anchors on the CM6 course. The score remains course + own finish time only.
-Legacy curves remain versioned and selectable for historical reproducibility.
+The official model (`OFFICIAL_CURVE`, `2.0.0-course-standard`) implements
+`docs/methodology/OTRI-SCORE-SCALE-FINAL-V0.md` exactly: the 50 m GPX
+course-demand integral plus its curved `exp(A + B*S + C*S^2)` score-to-Q
+curve. The score remains course + own finish time only. Legacy logarithmic
+curves (`SPEC_CURVE`, `CALIBRATED_CURVE`) remain selectable for historical
+reproducibility.
 """
 
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Callable
 
 from course.gpx import TrackPoint
 from ingestion.records import RaceRecord, ResultRecord
@@ -33,8 +34,6 @@ class ScoreCurve:
     b: float | None = None
     c: float | None = None
     curve_type: str = "logarithmic"
-    anchor_scores: tuple[float, ...] = ()
-    anchor_qs: tuple[float, ...] = ()
 
     @property
     def is_curved(self) -> bool:
@@ -44,86 +43,33 @@ class ScoreCurve:
     def k(self) -> float:
         return 500.0 / math.log(self.q_1000 / self.q_500)
 
-    def _piecewise_power_q(self, score: float) -> float:
-        scores = self.anchor_scores
-        qs = self.anchor_qs
-        if not scores or not qs or len(scores) != len(qs) or len(scores) < 2:
-            raise ValueError("piecewise_power curve requires matching score/Q anchors")
-        if score == scores[0]:
-            return qs[0]
-
-        first_s, first_q = scores[1], qs[1]
-        if score < first_s:
-            exponent = math.log(first_q / qs[0]) / math.log(first_s)
-            return qs[0] * score ** exponent
-
-        for left_s, right_s, left_q, right_q in zip(scores[1:], scores[2:], qs[1:], qs[2:]):
-            if score <= right_s:
-                exponent = math.log(right_q / left_q) / math.log(right_s / left_s)
-                return left_q * (score / left_s) ** exponent
-
-        left_s, right_s = scores[-2:]
-        left_q, right_q = qs[-2:]
-        exponent = math.log(right_q / left_q) / math.log(right_s / left_s)
-        return left_q * (score / left_s) ** exponent
-
-    def _piecewise_power_score(self, q: float) -> float:
-        scores = self.anchor_scores
-        qs = self.anchor_qs
-        if not scores or not qs or len(scores) != len(qs) or len(scores) < 2:
-            raise ValueError("piecewise_power curve requires matching score/Q anchors")
-        if q <= qs[0]:
-            return SCALE_MIN
-
-        first_s, first_q = scores[1], qs[1]
-        if q < first_q:
-            exponent = math.log(first_q / qs[0]) / math.log(first_s)
-            return q ** (1.0 / exponent)
-
-        for left_s, right_s, left_q, right_q in zip(scores[1:], scores[2:], qs[1:], qs[2:]):
-            if q <= right_q:
-                exponent = math.log(right_q / left_q) / math.log(right_s / left_s)
-                return left_s * (q / left_q) ** (1.0 / exponent)
-
-        left_s, right_s = scores[-2:]
-        left_q, right_q = qs[-2:]
-        exponent = math.log(right_q / left_q) / math.log(right_s / left_s)
-        return left_s * (q / left_q) ** (1.0 / exponent)
-
     def required_q(self, score: float) -> float:
+        """`Q(S)` — the performance rate required to reach `score` (doc section 6/8)."""
         if not math.isfinite(score) or not SCALE_MIN <= score <= SCALE_MAX:
             raise ValueError(f"score must be between {SCALE_MIN} and {SCALE_MAX}")
-        if self.curve_type == "piecewise_power":
-            return self._piecewise_power_q(score)
-        if self.curve_type == "quadratic_shifted_power":
-            q0 = self.a  # type: ignore[assignment]
-            amplitude = self.b  # type: ignore[assignment]
-            exponent = self.c  # type: ignore[assignment]
-            return q0 + amplitude * (score / 500.0) ** exponent
+        if self.curve_type == "exponential_quadratic":
+            return math.exp(self.a + self.b * score + self.c * score * score)  # type: ignore[operator]
         return self.q_500 * math.exp((score - 500.0) / self.k)
 
     def raw_score(self, q: float) -> float:
+        """Inverse of `required_q` — the (unclipped) score for performance rate `q`."""
         if not math.isfinite(q) or q <= 0:
             raise ValueError("performance rate must be positive and finite")
-        if self.curve_type == "piecewise_power":
-            return self._piecewise_power_score(q)
-        if self.curve_type == "quadratic_shifted_power":
-            q0 = self.a  # type: ignore[assignment]
-            amplitude = self.b  # type: ignore[assignment]
-            exponent = self.c  # type: ignore[assignment]
-            normalized = (q - q0) / amplitude
-            if normalized <= 0:
-                return SCALE_MIN - 1.0
-            return 500.0 * normalized ** (1.0 / exponent)
+        if self.curve_type == "exponential_quadratic":
+            discriminant = self.b**2 - 4.0 * self.c * (self.a - math.log(q))  # type: ignore[operator]
+            if discriminant < 0:
+                raise ValueError("performance rate outside model domain")
+            return (-self.b + math.sqrt(discriminant)) / (2.0 * self.c)  # type: ignore[operator]
         return 500.0 + self.k * math.log(q / self.q_500)
 
 
 SPEC_CURVE = ScoreCurve(version="1.0.0-course-standard", q_500=15.0, q_1000=22.5)
 CALIBRATED_CURVE = ScoreCurve(version="1.1.0-course-standard", q_500=3.5, q_1000=10.5)
 
-# V0.3 retained for historical reproducibility.
-CURVED_CURVE = ScoreCurve(
-    version="0.3.0-course-standard-curved",
+# Official model — docs/methodology/OTRI-SCORE-SCALE-FINAL-V0.md section 6/20.
+# Anchored at OTRI 200/500/1000 -> Q 11.0/15.0/30.0 demand-km/h.
+OFFICIAL_CURVE = ScoreCurve(
+    version="2.0.0-course-standard",
     q_500=15.0,
     q_1000=30.0,
     a=2.2351808956091976,
@@ -132,38 +78,7 @@ CURVED_CURVE = ScoreCurve(
     curve_type="exponential_quadratic",
 )
 
-# V0.4 retained for historical reproducibility.
-V04_CURVE = ScoreCurve(
-    version="0.4.0-course-standard-curved",
-    q_500=8.2,
-    q_1000=18.2,
-    a=5.0,
-    b=3.2,
-    c=2.0,
-    curve_type="quadratic_shifted_power",
-)
-
-# V0.5 calibration uses real CM6 trail-score anchors supplied for the same
-# course-demand calculation (~27.560 demand-km):
-#   6:29:58 -> 349
-#   3:05:04 -> 544
-#   2:20:30 -> 692
-#
-# Each anchor is converted to the corresponding performance rate Q. Between
-# anchors OTRI uses log-log (power-law) interpolation. Above 692, the final
-# segment is extrapolated with the same power exponent; this gives Q~17.94 at
-# 1000. Below the first anchor, Q values from 1.0 to 4.24 map continuously
-# from score 0 to 349.
-V05_CURVE = ScoreCurve(
-    version="0.5.0-course-standard-calibrated",
-    q_500=7.904,
-    q_1000=17.940,
-    curve_type="piecewise_power",
-    anchor_scores=(0.0, 349.0, 544.0, 692.0, 1000.0),
-    anchor_qs=(1.0, 4.240362424138815, 8.935158501440922, 11.769395017793594, 17.93986234619293),
-)
-
-SCORING_VERSION = V05_CURVE.version
+SCORING_VERSION = OFFICIAL_CURVE.version
 
 
 def performance_rate(equivalent_km: float, finish_time_seconds: float) -> float:
@@ -174,14 +89,14 @@ def performance_rate(equivalent_km: float, finish_time_seconds: float) -> float:
     return equivalent_km / (finish_time_seconds / 3600.0)
 
 
-def score_for_time(equivalent_km: float, finish_time_seconds: float, curve: ScoreCurve = V05_CURVE) -> dict:
+def score_for_time(equivalent_km: float, finish_time_seconds: float, curve: ScoreCurve = OFFICIAL_CURVE) -> dict:
     q = performance_rate(equivalent_km, finish_time_seconds)
-    raw = curve.score_for_q(q)
+    raw = curve.raw_score(q)
     public = round(max(SCALE_MIN, min(SCALE_MAX, raw)))
     return {"performance_rate": q, "otri_raw": raw, "otri_score": public}
 
 
-def target_time_seconds(equivalent_km: float, score: float, curve: ScoreCurve = V05_CURVE) -> float:
+def target_time_seconds(equivalent_km: float, score: float, curve: ScoreCurve = OFFICIAL_CURVE) -> float:
     if equivalent_km <= 0:
         raise ValueError("equivalent_km must be greater than 0")
     q = curve.required_q(score)
@@ -198,7 +113,7 @@ def score_race_course_standard(
     race: RaceRecord,
     results: list[ResultRecord],
     gpx_points: list[TrackPoint] | None = None,
-    curve: ScoreCurve = V05_CURVE,
+    curve: ScoreCurve = OFFICIAL_CURVE,
 ) -> list[RunnerScore]:
     finishers = [
         result for result in results

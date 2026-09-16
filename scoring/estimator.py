@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from course.gpx import TrackPoint
 
 from .course_demand import equivalent_flat_distance_from_totals, equivalent_flat_distance_km
-from .course_standard import ScoreCurve, V05_CURVE, score_for_time
+from .course_standard import OFFICIAL_CURVE, ScoreCurve, score_for_time
 
 DISCLAIMER = (
     "Uses the exact same Course Standard formula as the real post-race scorer — no competitor "
@@ -46,7 +46,7 @@ def estimate_score(
     gpx_points: list[TrackPoint] | None = None,
     distance_km: float | None = None,
     elevation_gain_m: float | None = None,
-    curve: ScoreCurve = V05_CURVE,
+    curve: ScoreCurve = OFFICIAL_CURVE,
 ) -> ScoreEstimate:
     """Predict the Course Standard score for `finish_time_seconds` on this course.
 

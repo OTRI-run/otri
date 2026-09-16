@@ -1,5 +1,6 @@
 """Unit tests for the Course Standard scoring models."""
 
+import math
 from datetime import date
 
 import pytest
@@ -10,8 +11,6 @@ from scoring.course_standard import (
     OFFICIAL_CURVE,
     SCALE_MAX,
     SPEC_CURVE,
-    V04_CURVE,
-    V05_CURVE,
     performance_rate,
     score_for_time,
     score_race_course_standard,
@@ -34,14 +33,13 @@ def _finisher(bib: str, finish_time_seconds: int) -> ResultRecord:
 
 
 def test_k_constant_matches_spec_for_legacy_log_curves():
-    import math
     for curve in [SPEC_CURVE, CALIBRATED_CURVE]:
         assert curve.k == pytest.approx(500.0 / math.log(curve.q_1000 / curve.q_500))
 
 
-def test_v05_curve_is_the_default():
+def test_official_curve_is_the_default():
     assert score_for_time(10.0, 3600)["otri_score"] == score_for_time(
-        10.0, 3600, curve=V05_CURVE
+        10.0, 3600, curve=OFFICIAL_CURVE
     )["otri_score"]
 
 
@@ -52,43 +50,30 @@ def test_performance_rate_is_demand_km_per_hour():
 @pytest.mark.parametrize(
     "score, expected_q",
     [
-        (0, 1.0),
-        (349, 4.240362424138815),
-        (544, 8.935158501440922),
-        (692, 11.769395017793594),
-        (1000, 17.93986234619293),
+        (0, 9.35),
+        (200, 11.00),
+        (500, 15.00),
+        (1000, 30.00),
     ],
 )
-def test_v05_required_q_anchors(score, expected_q):
-    assert V05_CURVE.required_q(score) == pytest.approx(expected_q, rel=1e-12, abs=1e-12)
+def test_official_curve_scale_anchors(score, expected_q):
+    assert OFFICIAL_CURVE.required_q(score) == pytest.approx(expected_q, abs=0.01)
 
 
-def test_v05_curve_is_monotonic():
+def test_official_curve_is_monotonic():
     scores = list(range(0, 1001, 25))
-    qs = [V05_CURVE.required_q(s) for s in scores]
+    qs = [OFFICIAL_CURVE.required_q(s) for s in scores]
     assert qs == sorted(qs)
 
 
-def test_v05_cm6_reference_anchors():
-    demand_km = 27.560
-    references = [
-        (6 * 3600 + 29 * 60 + 58, 349),
-        (3 * 3600 + 5 * 60 + 4, 544),
-        (2 * 3600 + 20 * 60 + 30, 692),
-    ]
-    for finish_time, expected_score in references:
-        result = score_for_time(demand_km, finish_time, curve=V05_CURVE)
-        assert result["otri_score"] == expected_score
-
-
-@pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE, CURVED_CURVE, V04_CURVE, V05_CURVE])
+@pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE, OFFICIAL_CURVE])
 def test_clipping_above_1000(curve):
     result = score_for_time(10.0, 10, curve=curve)
     assert result["otri_score"] == 1000
     assert result["otri_raw"] > 1000
 
 
-@pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE, CURVED_CURVE, V04_CURVE, V05_CURVE])
+@pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE, OFFICIAL_CURVE])
 def test_score_is_monotonic_in_finish_time(curve):
     times = [1000, 1600, 2000, 2400, 3000, 3600, 5000, 10000, 20000, 50000]
     scores = [score_for_time(10.0, t, curve=curve)["otri_score"] for t in times]
@@ -106,16 +91,12 @@ def test_score_race_does_not_depend_on_other_finishers():
     assert solo == runner_one_score
 
 
-@pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE, CURVED_CURVE, V04_CURVE, V05_CURVE])
+@pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE, OFFICIAL_CURVE])
 def test_target_time_inverse(curve):
-    for score in [100, 200, 300, 349, 400, 500, 544, 600, 692, 800, 900, 1000]:
+    for score in [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]:
         target = target_time_seconds(10.0, score, curve=curve)
         recovered = score_for_time(10.0, target, curve=curve)["otri_score"]
         assert recovered == pytest.approx(score, abs=1)
-
-
-def test_target_time_zero_is_finite_for_v05():
-    assert target_time_seconds(10.0, 0, curve=V05_CURVE) == pytest.approx(36000.0)
 
 
 def test_target_time_rejects_out_of_range_score():
@@ -142,13 +123,12 @@ def test_confidence_is_low_without_gpx_and_medium_with_gpx():
     assert score_race_course_standard(race, [_finisher("1", 3600)], gpx_points=points)[0].score.confidence == "Medium"
 
 
-def test_scoring_version_is_v05():
+def test_scoring_version_is_official():
     scores = score_race_course_standard(_race(), [_finisher("1", 3600)])
-    assert scores[0].score.scoring_version == V05_CURVE.version
+    assert scores[0].score.scoring_version == OFFICIAL_CURVE.version
 
 
 def test_scoring_version_reflects_chosen_curve():
     scores = score_race_course_standard(_race(), [_finisher("1", 3600)], curve=SPEC_CURVE)
     assert scores[0].score.scoring_version == SPEC_CURVE.version
-
 
