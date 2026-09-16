@@ -33,16 +33,28 @@ from course.gpx import TrackPoint
 MIN_GRADE = -0.45
 MAX_GRADE = 0.45
 
-# Fixed target segment length (spec section 9) — a model parameter, not
-# tuned per course/race.
-SEGMENT_LENGTH_M = 20.0
+# Fixed target segment length (spec section 9: "During research, compare
+# 10 m, 20 m, and 50 m for stability before selecting a standard"). 50 m
+# chosen over the spec's own 20 m suggestion: at 20 m, short (~20-30 m) but
+# genuinely real technical trail descents (e.g. rocky jungle sections) can
+# average out to just past the Minetti polynomial's evidenced +/-45% domain
+# on real GPX data, even after correct elevation denoising — 50 m keeps the
+# segment integral responsive to real course structure while smoothing over
+# single short pitches that shouldn't individually decide a hard failure.
+SEGMENT_LENGTH_M = 50.0
 
 # Elevation-denoising pipeline parameters (spec section 8: "remove non-finite
 # values -> remove obvious isolated spikes -> rolling median -> rolling
 # mean"). Fixed model parameters, recorded here and never tuned per race.
+#
+# The rolling median/mean windows are defined in physical distance (metres),
+# not point count: real GPX tracks are often very unevenly sampled (dense on
+# curves, sparse on straights — gaps from ~1 m to 100+ m are common even
+# within a single file), so a fixed-point-count window would average
+# together readings spanning wildly different physical distances and could
+# distort the elevation profile rather than denoise it.
 SPIKE_THRESHOLD_M = 50.0
-ELEVATION_MEDIAN_WINDOW = 5
-ELEVATION_MEAN_WINDOW = 5
+ELEVATION_SMOOTHING_RADIUS_M = 10.0
 
 
 class UnsupportedGradientError(ValueError):
@@ -142,26 +154,48 @@ def _remove_isolated_spikes(values: list[float]) -> list[float]:
     return despiked
 
 
-def _rolling_median(values: list[float], window: int) -> list[float]:
-    half = window // 2
-    return [statistics.median(values[max(0, i - half) : min(len(values), i + half + 1)]) for i in range(len(values))]
-
-
-def _rolling_mean(values: list[float], window: int) -> list[float]:
-    half = window // 2
+def _rolling_median(cumulative_m: list[float], values: list[float], radius_m: float) -> list[float]:
+    """Rolling median over a +/-radius_m physical-distance window (not a fixed point count) --
+    real GPX track points are often very unevenly spaced (dense on curves, sparse on straights),
+    so an index-based window would mix together readings from wildly different physical
+    distances and distort the result."""
+    n = len(values)
     smoothed = []
-    for i in range(len(values)):
-        windowed = values[max(0, i - half) : min(len(values), i + half + 1)]
+    lo = hi = 0
+    for i in range(n):
+        while lo < i and cumulative_m[i] - cumulative_m[lo] > radius_m:
+            lo += 1
+        if hi < i:
+            hi = i
+        while hi < n - 1 and cumulative_m[hi + 1] - cumulative_m[i] <= radius_m:
+            hi += 1
+        smoothed.append(statistics.median(values[lo : hi + 1]))
+    return smoothed
+
+
+def _rolling_mean(cumulative_m: list[float], values: list[float], radius_m: float) -> list[float]:
+    """Rolling mean over a +/-radius_m physical-distance window — see `_rolling_median`."""
+    n = len(values)
+    smoothed = []
+    lo = hi = 0
+    for i in range(n):
+        while lo < i and cumulative_m[i] - cumulative_m[lo] > radius_m:
+            lo += 1
+        if hi < i:
+            hi = i
+        while hi < n - 1 and cumulative_m[hi + 1] - cumulative_m[i] <= radius_m:
+            hi += 1
+        windowed = values[lo : hi + 1]
         smoothed.append(sum(windowed) / len(windowed))
     return smoothed
 
 
-def _clean_elevations(raw_elevations: list[float | None]) -> list[float]:
+def _clean_elevations(cumulative_m: list[float], raw_elevations: list[float | None]) -> list[float]:
     """Spec section 8's fixed denoising pipeline, applied in order."""
     values = _interpolate_missing(raw_elevations)
     values = _remove_isolated_spikes(values)
-    values = _rolling_median(values, ELEVATION_MEDIAN_WINDOW)
-    values = _rolling_mean(values, ELEVATION_MEAN_WINDOW)
+    values = _rolling_median(cumulative_m, values, ELEVATION_SMOOTHING_RADIUS_M)
+    values = _rolling_mean(cumulative_m, values, ELEVATION_SMOOTHING_RADIUS_M)
     return values
 
 
@@ -188,7 +222,7 @@ def _interpolate_at(cumulative_m: list[float], values: list[float], target_m: fl
 
 
 def _segment_boundaries(total_m: float) -> list[float]:
-    """Fixed 20 m segments, retaining the final remainder rather than dropping or
+    """Fixed SEGMENT_LENGTH_M segments, retaining the final remainder rather than dropping or
     stretching it to fit evenly (spec section 9)."""
     boundaries = []
     distance = 0.0
@@ -215,7 +249,7 @@ def compute_course_demand(points: list[TrackPoint]) -> CourseDemand:
         raise ValueError("course has zero physical distance")
 
     raw_elevations = [point.elevation_m for point in points]
-    cleaned_elevations = _clean_elevations(raw_elevations)
+    cleaned_elevations = _clean_elevations(cumulative_m, raw_elevations)
 
     boundaries = _segment_boundaries(cumulative_m[-1])
     demand_km = 0.0

@@ -10,6 +10,7 @@ from scoring.course_demand import (
     MAX_GRADE,
     MIN_GRADE,
     UnsupportedGradientError,
+    _rolling_mean,
     compute_course_demand,
     equivalent_flat_distance_from_totals,
     equivalent_flat_distance_km,
@@ -37,6 +38,23 @@ def _steep_track() -> list[TrackPoint]:
 
 def test_gradient_cost_at_flat_matches_published_constant():
     assert gradient_cost(0.0) == pytest.approx(3.6)
+
+
+def test_rolling_smoothing_window_is_distance_based_not_index_based():
+    """Regression test: real-world GPX tracks are often very unevenly sampled (dense on
+    curves, sparse on straights — gaps from ~1 m to 100+ m in a single file are common). A
+    point-count-based rolling window would mix elevation readings across wildly different
+    physical distances and could distort the profile; a distance-based window must not."""
+    # A tight cluster of points 1 m apart, then one point 200 m further away.
+    cumulative_m = [0.0, 1.0, 2.0, 3.0, 4.0, 204.0]
+    values = [100.0, 100.0, 100.0, 100.0, 100.0, 50.0]
+
+    smoothed = _rolling_mean(cumulative_m, values, radius_m=10.0)
+
+    # The far-away point must not be pulled into the cluster's smoothed value just
+    # because it's within a fixed *point count* of it.
+    assert smoothed[0] == pytest.approx(100.0)
+    assert smoothed[4] == pytest.approx(100.0)
 
 
 def test_gradient_ratio_is_one_on_flat_ground():
