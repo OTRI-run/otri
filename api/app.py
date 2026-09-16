@@ -25,9 +25,9 @@ from fastapi import FastAPI, Form, HTTPException, Request, Response, UploadFile,
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from course import GpxParseError, extract_features, read_track_points
+from course import GpxParseError, extract_features, parse_track_points, read_track_points
 from ingestion import result_records, validate_result_file
-from scoring import estimate_illustrative_score, score_race
+from scoring import available_scoring_models, estimate_score, get_scoring_model_info, score_race
 
 from . import db
 from .auth import (
@@ -63,6 +63,7 @@ from .schemas import (
     RaceUpdate,
     ResendVerificationRequest,
     RunnerScoreOut,
+    ScoringModelOut,
     SubmissionResult,
     TokenResponse,
     ValidationIssueOut,
@@ -222,7 +223,23 @@ def _race_summary(race: db.Race) -> RaceSummary:
         distance_km=race.distance_km,
         elevation_gain_m=race.elevation_gain_m,
         has_gpx=race.has_gpx,
+        scoring_version=race.scoring_version,
     )
+
+
+def _validate_scoring_version(scoring_version: str | None) -> None:
+    if scoring_version is None:
+        return
+    try:
+        get_scoring_model_info(scoring_version)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@app.get("/scoring/models", response_model=list[ScoringModelOut])
+def list_scoring_models() -> list[ScoringModelOut]:
+    """Every scoring algorithm a race distance can be configured to use — see scoring/registry.py."""
+    return [ScoringModelOut(**vars(model)) for model in available_scoring_models()]
 
 
 @app.get("/events", response_model=list[EventSummary])
@@ -324,8 +341,15 @@ def add_race(event_id: str, payload: RaceCreate, organizer: Organizer = Depends(
         raise HTTPException(status_code=422, detail="course_name is required")
     if payload.distance_km <= 0 or payload.elevation_gain_m < 0:
         raise HTTPException(status_code=422, detail="distance_km must be > 0 and elevation_gain_m must be >= 0")
+    _validate_scoring_version(payload.scoring_version)
 
-    race = db.create_race(event_id, payload.course_name.strip(), payload.distance_km, payload.elevation_gain_m)
+    race = db.create_race(
+        event_id,
+        payload.course_name.strip(),
+        payload.distance_km,
+        payload.elevation_gain_m,
+        scoring_version=payload.scoring_version,
+    )
     return _race_summary(race)
 
 
@@ -340,12 +364,14 @@ def edit_race(race_id: str, payload: RaceUpdate, organizer: Organizer = Depends(
         raise HTTPException(status_code=422, detail="distance_km must be > 0")
     if payload.elevation_gain_m is not None and payload.elevation_gain_m < 0:
         raise HTTPException(status_code=422, detail="elevation_gain_m must be >= 0")
+    _validate_scoring_version(payload.scoring_version)
 
     updated = db.update_race(
         race_id,
         course_name=payload.course_name.strip() if payload.course_name else None,
         distance_km=payload.distance_km,
         elevation_gain_m=payload.elevation_gain_m,
+        scoring_version=payload.scoring_version,
     )
     return _race_summary(updated)
 
@@ -412,7 +438,13 @@ def get_race_gpx(race_id: str) -> Response:
 
 
 def _score_results(race: db.Race, results: list) -> list[RunnerScoreOut]:
-    return [RunnerScoreOut(**score.to_dict()) for score in score_race(race.to_race_record(), results)]
+    gpx_points = None
+    stored_gpx = db.get_gpx_content(race.race_id)
+    if stored_gpx is not None:
+        _filename, content = stored_gpx
+        gpx_points = parse_track_points(content)
+    scores = score_race(race.to_race_record(), results, model_version=race.scoring_version, gpx_points=gpx_points)
+    return [RunnerScoreOut(**score.to_dict()) for score in scores]
 
 
 @app.get("/races/{race_id}/results", response_model=list[RunnerScoreOut])
@@ -473,17 +505,12 @@ async def submit_race_results(
 
 
 @app.post("/gpx/analyze", response_model=GpxAnalysis)
-async def analyze_gpx(
-    file: UploadFile,
-    finish_time_seconds: int | None = Form(default=None),
-    winner_finish_time_seconds: int | None = Form(default=None),
-) -> GpxAnalysis:
-    """Parse an uploaded GPX file and, optionally, estimate an illustrative score for a given time.
+async def analyze_gpx(file: UploadFile, finish_time_seconds: int | None = Form(default=None)) -> GpxAnalysis:
+    """Parse an uploaded GPX file and, optionally, predict its Course Standard score for a given time.
 
-    ``winner_finish_time_seconds`` lets the caller supply their own assumption for the
-    race's winning time instead of the built-in cross-race average — using the same
-    assumption the real race ends up matching makes this estimate exact, not just close.
-    See ``scoring.estimator``'s module docstring and ``docs/gpx-predictor.md``.
+    Uses the exact same formula as the real post-race scorer (no competitor
+    assumption needed) — see ``scoring.estimator``'s module docstring and
+    ``docs/gpx-predictor.md``.
     """
     suffix = Path(file.filename or "").suffix or ".gpx"
     contents = await file.read()
@@ -501,10 +528,6 @@ async def analyze_gpx(
 
     estimate = None
     if finish_time_seconds is not None:
-        estimate = IllustrativeEstimateOut(
-            **estimate_illustrative_score(
-                features.distance_km, features.elevation_gain_m, finish_time_seconds, winner_finish_time_seconds
-            ).to_dict()
-        )
+        estimate = IllustrativeEstimateOut(**estimate_score(finish_time_seconds, gpx_points=points).to_dict())
 
     return GpxAnalysis(features=features.to_dict(), estimate=estimate)

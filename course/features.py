@@ -61,7 +61,7 @@ class CourseFeatures:
         }
 
 
-def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+def haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Great-circle distance between two lat/lon points, in meters."""
     phi1, phi2 = math.radians(lat1), math.radians(lat2)
     d_phi = math.radians(lat2 - lat1)
@@ -107,7 +107,7 @@ def extract_features(points: list[TrackPoint]) -> CourseFeatures:
     distance_at_extreme = 0.0  # path distance from last_committed's point to the extreme's point
 
     for previous, current in zip(points, points[1:]):
-        segment_m = _haversine_m(previous.lat, previous.lon, current.lat, current.lon)
+        segment_m = haversine_m(previous.lat, previous.lon, current.lat, current.lon)
         distance_m += segment_m
 
         if previous.elevation_m is None or current.elevation_m is None or segment_m == 0:

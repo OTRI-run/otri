@@ -37,6 +37,7 @@ class RaceSummary(BaseModel):
     distance_km: float
     elevation_gain_m: float
     has_gpx: bool = False
+    scoring_version: str
 
 
 class EventDetail(EventSummary):
@@ -47,12 +48,14 @@ class RaceCreate(BaseModel):
     course_name: str
     distance_km: float
     elevation_gain_m: float
+    scoring_version: str | None = None
 
 
 class RaceUpdate(BaseModel):
     course_name: str | None = None
     distance_km: float | None = None
     elevation_gain_m: float | None = None
+    scoring_version: str | None = None
 
 
 class RunnerScoreOut(BaseModel):
@@ -86,14 +89,21 @@ class SubmissionResult(BaseModel):
 class IllustrativeEstimateOut(BaseModel):
     equivalent_distance_km: float
     pace_seconds_per_km: float
-    winner_finish_time_seconds: int
-    illustrative_score: int
+    predicted_score: int
+    scoring_version: str
     disclaimer: str
 
 
 class GpxAnalysis(BaseModel):
     features: dict
     estimate: IllustrativeEstimateOut | None = None
+
+
+class ScoringModelOut(BaseModel):
+    version: str
+    name: str
+    description: str
+    uses_competitors: bool
 
 
 class OrganizerCredentials(BaseModel):

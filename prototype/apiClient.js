@@ -86,6 +86,10 @@ export function listMyEvents(token) {
   return request('/events?mine=true', { headers: authHeaders(token) })
 }
 
+export function listScoringModels() {
+  return request('/scoring/models')
+}
+
 export function getEvent(eventId) {
   return request(`/events/${encodeURIComponent(eventId)}`)
 }
@@ -156,14 +160,11 @@ export function submitRaceResults(raceId, file, token) {
   })
 }
 
-export function analyzeGpx(file, finishTimeSeconds, winnerFinishTimeSeconds) {
+export function analyzeGpx(file, finishTimeSeconds) {
   const formData = new FormData()
   formData.append('file', file)
   if (finishTimeSeconds != null) {
     formData.append('finish_time_seconds', String(finishTimeSeconds))
-  }
-  if (winnerFinishTimeSeconds != null) {
-    formData.append('winner_finish_time_seconds', String(winnerFinishTimeSeconds))
   }
   return request('/gpx/analyze', { method: 'POST', body: formData })
 }

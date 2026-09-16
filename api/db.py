@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS races (
     elevation_gain_m DOUBLE PRECISION NOT NULL,
     gpx_filename TEXT,
     gpx_content TEXT,
+    scoring_version TEXT NOT NULL DEFAULT '1.0.0-course-standard',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -107,6 +108,7 @@ class Race:
     distance_km: float
     elevation_gain_m: float
     has_gpx: bool
+    scoring_version: str
     event_name: str | None = None
     event_date: date | None = None
     organizer_id: int | None = None
@@ -200,7 +202,7 @@ def delete_event(event_id: str) -> None:
 
 _RACE_JOIN_SELECT = """
     SELECT r.race_id, r.event_id, r.course_name, r.distance_km, r.elevation_gain_m,
-           (r.gpx_content IS NOT NULL) AS has_gpx,
+           (r.gpx_content IS NOT NULL) AS has_gpx, r.scoring_version,
            e.event_name, e.event_date, e.organizer_id
     FROM races r JOIN events e ON e.event_id = r.event_id
 """
@@ -227,15 +229,27 @@ def find_race(race_id: str) -> Race | None:
 
 
 def create_race(
-    event_id: str, course_name: str, distance_km: float, elevation_gain_m: float, race_id: str | None = None
+    event_id: str,
+    course_name: str,
+    distance_km: float,
+    elevation_gain_m: float,
+    race_id: str | None = None,
+    scoring_version: str | None = None,
 ) -> Race:
     race_id = race_id or _new_id("race")
     with get_connection() as connection:
-        connection.execute(
-            "INSERT INTO races (race_id, event_id, course_name, distance_km, elevation_gain_m) "
-            "VALUES (%s, %s, %s, %s, %s)",
-            (race_id, event_id, course_name, distance_km, elevation_gain_m),
-        )
+        if scoring_version is None:
+            connection.execute(
+                "INSERT INTO races (race_id, event_id, course_name, distance_km, elevation_gain_m) "
+                "VALUES (%s, %s, %s, %s, %s)",
+                (race_id, event_id, course_name, distance_km, elevation_gain_m),
+            )
+        else:
+            connection.execute(
+                "INSERT INTO races (race_id, event_id, course_name, distance_km, elevation_gain_m, scoring_version) "
+                "VALUES (%s, %s, %s, %s, %s, %s)",
+                (race_id, event_id, course_name, distance_km, elevation_gain_m, scoring_version),
+            )
     race = find_race(race_id)
     assert race is not None
     return race
@@ -247,14 +261,16 @@ def update_race(
     course_name: str | None = None,
     distance_km: float | None = None,
     elevation_gain_m: float | None = None,
+    scoring_version: str | None = None,
 ) -> Race:
     with get_connection() as connection:
         cursor = connection.execute(
             "UPDATE races SET course_name = COALESCE(%s, course_name), "
             "distance_km = COALESCE(%s, distance_km), "
             "elevation_gain_m = COALESCE(%s, elevation_gain_m), "
+            "scoring_version = COALESCE(%s, scoring_version), "
             "updated_at = now() WHERE race_id = %s",
-            (course_name, distance_km, elevation_gain_m, race_id),
+            (course_name, distance_km, elevation_gain_m, scoring_version, race_id),
         )
         if cursor.rowcount == 0:
             raise NotFoundError(f"race {race_id!r} not found")

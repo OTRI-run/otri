@@ -7,6 +7,7 @@ import {
   deleteRace,
   getEvent,
   listMyEvents,
+  listScoringModels,
   loginOrganizer,
   registerOrganizer,
   requestPasswordReset,
@@ -25,7 +26,7 @@ const inputClass = 'rounded-lg border border-slate-300 px-3 py-2 text-sm'
 const primaryButtonClass = 'rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50'
 const dangerLinkClass = 'text-xs font-semibold text-red-600 underline disabled:opacity-50'
 const subtleLinkClass = 'text-xs font-semibold text-blue-600 underline disabled:opacity-50'
-const emptyRaceForm = { course_name: '', distance_km: '', elevation_gain_m: '' }
+const emptyRaceForm = { course_name: '', distance_km: '', elevation_gain_m: '', scoring_version: '' }
 
 function EmailVerificationNotice() {
   const [status, setStatus] = useState(null) // null | 'checking' | 'ok' | 'error'
@@ -272,12 +273,32 @@ function OrganizerAuthGate({ onAuthenticated }) {
   )
 }
 
-function RaceRow({ race, token, onChanged }) {
+function ScoringModelSelect({ value, onChange, scoringModels }) {
+  return (
+    <div>
+      <select value={value} onChange={onChange} className={inputClass}>
+        {scoringModels.map((model) => (
+          <option key={model.version} value={model.version}>
+            {model.name}
+          </option>
+        ))}
+      </select>
+      {value && (
+        <p className="mt-1 max-w-[420px] text-[11px] text-slate-500">
+          {scoringModels.find((model) => model.version === value)?.description}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function RaceRow({ race, token, scoringModels, onChanged }) {
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({
     course_name: race.course_name,
     distance_km: String(race.distance_km),
     elevation_gain_m: String(race.elevation_gain_m),
+    scoring_version: race.scoring_version,
   })
   const [gpxBusy, setGpxBusy] = useState(false)
   const [resultsFile, setResultsFile] = useState(null)
@@ -296,6 +317,7 @@ function RaceRow({ race, token, onChanged }) {
           course_name: form.course_name,
           distance_km: Number(form.distance_km),
           elevation_gain_m: Number(form.elevation_gain_m),
+          scoring_version: form.scoring_version,
         },
         token,
       )
@@ -379,6 +401,11 @@ function RaceRow({ race, token, onChanged }) {
             className={inputClass}
             placeholder="Elevation gain (m)"
           />
+          <ScoringModelSelect
+            value={form.scoring_version}
+            onChange={(event) => setForm((prev) => ({ ...prev, scoring_version: event.target.value }))}
+            scoringModels={scoringModels}
+          />
           <div className="flex gap-3 sm:col-span-3">
             <button type="submit" disabled={busy} className={primaryButtonClass}>
               {busy ? 'Saving…' : 'Save'}
@@ -394,6 +421,9 @@ function RaceRow({ race, token, onChanged }) {
             <p className="text-sm font-semibold text-[#0b1220]">{race.course_name}</p>
             <p className="text-xs text-slate-500">
               {race.distance_km} km · {race.elevation_gain_m} m gain · {race.has_gpx ? 'GPX attached' : 'no GPX yet'}
+            </p>
+            <p className="text-xs text-slate-400">
+              Scoring: {scoringModels.find((model) => model.version === race.scoring_version)?.name ?? race.scoring_version}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -487,12 +517,15 @@ function RaceRow({ race, token, onChanged }) {
   )
 }
 
-function EventCard({ event, token, onChanged }) {
+function EventCard({ event, token, scoringModels, onChanged }) {
   const [expanded, setExpanded] = useState(false)
   const [detail, setDetail] = useState(null)
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState({ event_name: event.event_name, event_date: event.event_date })
-  const [raceForm, setRaceForm] = useState(emptyRaceForm)
+  const [raceForm, setRaceForm] = useState({
+    ...emptyRaceForm,
+    scoring_version: scoringModels[0]?.version ?? '',
+  })
   const [addingRace, setAddingRace] = useState(false)
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -552,10 +585,11 @@ function EventCard({ event, token, onChanged }) {
           course_name: raceForm.course_name,
           distance_km: Number(raceForm.distance_km),
           elevation_gain_m: Number(raceForm.elevation_gain_m),
+          scoring_version: raceForm.scoring_version || undefined,
         },
         token,
       )
-      setRaceForm(emptyRaceForm)
+      setRaceForm({ ...emptyRaceForm, scoring_version: scoringModels[0]?.version ?? '' })
       setAddingRace(false)
       await refreshDetail()
       onChanged()
@@ -614,6 +648,7 @@ function EventCard({ event, token, onChanged }) {
               key={race.race_id}
               race={race}
               token={token}
+              scoringModels={scoringModels}
               onChanged={async () => {
                 await refreshDetail()
                 onChanged()
@@ -648,6 +683,11 @@ function EventCard({ event, token, onChanged }) {
                 className={inputClass}
                 placeholder="Elevation gain (m)"
               />
+              <ScoringModelSelect
+                value={raceForm.scoring_version}
+                onChange={(fieldEvent) => setRaceForm((prev) => ({ ...prev, scoring_version: fieldEvent.target.value }))}
+                scoringModels={scoringModels}
+              />
               <div className="flex gap-3 sm:col-span-3">
                 <button type="submit" disabled={busy} className={primaryButtonClass}>
                   {busy ? 'Adding…' : 'Add distance'}
@@ -672,6 +712,7 @@ function EventCard({ event, token, onChanged }) {
 
 function EventsDashboard({ token, organizerEmail, onLogout }) {
   const [events, setEvents] = useState(null)
+  const [scoringModels, setScoringModels] = useState([])
   const [error, setError] = useState(null)
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState({ event_name: '', event_date: '' })
@@ -687,6 +728,7 @@ function EventsDashboard({ token, organizerEmail, onLogout }) {
 
   useEffect(() => {
     refresh()
+    listScoringModels().then(setScoringModels).catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -754,7 +796,7 @@ function EventsDashboard({ token, organizerEmail, onLogout }) {
         {events === null && <p className="text-sm text-slate-500">Loading your events…</p>}
         {events?.length === 0 && <p className="text-sm text-slate-500">No events yet — create one above.</p>}
         {events?.map((event) => (
-          <EventCard key={event.event_id} event={event} token={token} onChanged={refresh} />
+          <EventCard key={event.event_id} event={event} token={token} scoringModels={scoringModels} onChanged={refresh} />
         ))}
       </div>
     </div>

@@ -31,16 +31,34 @@ def read_track_points(path: str | Path) -> list[TrackPoint]:
     """Read every ``trkpt`` in file order from a GPX 1.0 or 1.1 track file."""
     path = Path(path)
     try:
-        root = ElementTree.parse(path).getroot()
+        gpx_text = path.read_text(encoding="utf-8")
+    except OSError as error:
+        raise GpxParseError(f"could not read {path}: {error}") from error
+    try:
+        return parse_track_points(gpx_text)
+    except GpxParseError as error:
+        raise GpxParseError(f"{path}: {error}") from error
+
+
+def parse_track_points(gpx_text: str) -> list[TrackPoint]:
+    """Read every ``trkpt`` in document order from raw GPX 1.0/1.1 XML text.
+
+    Used for GPX already held in memory (e.g. a race's stored ``gpx_content``)
+    without round-tripping through a temp file — see ``read_track_points`` for
+    the file-based equivalent.
+    """
+    try:
+        root = ElementTree.fromstring(gpx_text)
     except ElementTree.ParseError as error:
-        raise GpxParseError(f"{path} is not well-formed XML: {error}") from error
+        raise GpxParseError(f"not well-formed XML: {error}") from error
 
     ns = _tag_namespace(root.tag)
     points = [_parse_trkpt(trkpt, ns) for trkpt in root.iter(f"{ns}trkpt")]
 
     if not points:
-        raise GpxParseError(f"{path} contains no <trkpt> points")
+        raise GpxParseError("contains no <trkpt> points")
     return points
+
 
 
 def _tag_namespace(tag: str) -> str:

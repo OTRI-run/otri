@@ -100,7 +100,8 @@ function Leaderboard({ race, onBack }) {
         </table>
       </div>
       <p className="mt-3 font-mono text-[9px] tracking-[.05em] text-slate-400">
-        scoring_version {race.leaderboard[0]?.scoring_version ?? 'n/a'} · single-race relative baseline, not yet cross-race calibrated
+        scoring_version {race.leaderboard[0]?.scoring_version ?? 'n/a'} · Course Standard model — depends only on
+        the course and each runner's own finish time, sealed below 1000
       </p>
     </div>
   )

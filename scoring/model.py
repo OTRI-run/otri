@@ -1,11 +1,19 @@
-"""OTRI baseline scoring model — intentionally simple, versioned, and fully explainable.
+"""OTRI legacy field-relative scoring model — kept selectable, no longer the default.
 
-This is **not** a calibrated performance index. It has no field-strength or
-environmental adjustment yet (see ``docs/roadmap.md`` Phase 1/2). Its purpose
-is to establish the reproducibility contract described in ``HANDBOOK.md`` and
-``METHODOLOGY.md`` §11:
+This is the **field-relative** model: the fastest finisher in a given race
+always scores exactly ``SCALE_MAX``, and everyone else scores proportionally
+off that field's own winner. That means the same finish time means a
+different score in a different race, depending on who else showed up —
+which is exactly what ``docs/methodology/research-candidates/README.md``'s
+"common research constraints" warn against ("the fundamental score should be
+determined from the course model and finish time, not from... the identity,
+number, or historical performance of the competitors in that race").
 
-    same input + same scoring_version = same output
+It is kept here, selectable via ``scoring.registry``, only for backwards
+compatibility and reproducibility of historical scores computed under it
+(``METHODOLOGY.md`` §11 — a methodology change must not silently rewrite
+history). New races should use ``scoring.course_standard`` instead, which has
+no competitor dependency at all.
 
 Every score is a full breakdown (``ScoreBreakdown``), not a bare number, per
 ``HANDBOOK.md``'s "Auditability" section.
@@ -17,7 +25,7 @@ from dataclasses import dataclass
 
 from ingestion.records import RaceRecord, ResultRecord
 
-SCORING_VERSION = "0.1.0"
+SCORING_VERSION = "0.1.0-field-relative"
 
 # How many "equivalent flat kilometers" 100 m of climbing counts as — a
 # commonly used trail-running rule of thumb. Deliberately named and isolated
@@ -94,7 +102,7 @@ def _confidence_for_field_size(field_size: int) -> str:
     return "High"
 
 
-def score_race(race: RaceRecord, results: list[ResultRecord]) -> list[RunnerScore]:
+def score_race_field_relative(race: RaceRecord, results: list[ResultRecord]) -> list[RunnerScore]:
     """Score every finisher in ``results`` against this race's own field.
 
     Non-finishers (DNF/DNS/DSQ) are excluded — there is no time to score.

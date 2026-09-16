@@ -1,57 +1,60 @@
-"""Unit tests for the illustrative GPX -> score estimator.
+"""Unit tests for the Course Standard GPX -> score predictor.
 
 Run with: pytest tests/unit
 """
 
-from scoring import REFERENCE_PACE_S_PER_KM, estimate_illustrative_score
+from datetime import date
+from pathlib import Path
+
+import pytest
+
+from course import read_track_points
+from scoring import COURSE_STANDARD_VERSION, estimate_score
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+FIXTURES = REPO_ROOT / "tests" / "fixtures" / "gpx"
 
 
-def test_matching_reference_pace_scores_1000():
-    finish_time_seconds = round(REFERENCE_PACE_S_PER_KM * 10)  # 10 km flat course
-    estimate = estimate_illustrative_score(distance_km=10, elevation_gain_m=0, finish_time_seconds=finish_time_seconds)
-
+def test_estimate_from_totals_matches_totals_based_equivalent_distance():
+    estimate = estimate_score(3600, distance_km=10, elevation_gain_m=0)
     assert estimate.equivalent_distance_km == 10.0
-    assert estimate.illustrative_score == 1000
+    assert estimate.scoring_version == COURSE_STANDARD_VERSION
 
 
-def test_double_reference_time_scores_half():
-    finish_time_seconds = round(REFERENCE_PACE_S_PER_KM * 10 * 2)
-    estimate = estimate_illustrative_score(distance_km=10, elevation_gain_m=0, finish_time_seconds=finish_time_seconds)
-
-    assert estimate.illustrative_score == 500
-
-
-def test_rejects_non_positive_time():
-    try:
-        estimate_illustrative_score(distance_km=10, elevation_gain_m=0, finish_time_seconds=0)
-        assert False, "expected ValueError"
-    except ValueError:
-        pass
+def test_estimate_score_is_sealed_below_1000():
+    # An absurdly fast time must still never reach 1000.
+    estimate = estimate_score(1, distance_km=10, elevation_gain_m=0)
+    assert estimate.predicted_score < 1000
 
 
-def test_custom_winner_time_matches_your_own_time_scores_1000():
-    estimate = estimate_illustrative_score(
-        distance_km=10, elevation_gain_m=0, finish_time_seconds=3600, winner_finish_time_seconds=3600
-    )
-    assert estimate.illustrative_score == 1000
-    assert estimate.winner_finish_time_seconds == 3600
+def test_estimate_score_is_monotonic_in_finish_time():
+    faster = estimate_score(3000, distance_km=10, elevation_gain_m=0)
+    slower = estimate_score(4000, distance_km=10, elevation_gain_m=0)
+    assert faster.predicted_score > slower.predicted_score
 
 
-def test_custom_winner_time_overrides_reference_pace():
-    default_estimate = estimate_illustrative_score(distance_km=10, elevation_gain_m=0, finish_time_seconds=3600)
-    custom_estimate = estimate_illustrative_score(
-        distance_km=10, elevation_gain_m=0, finish_time_seconds=3600, winner_finish_time_seconds=3000
-    )
-    assert custom_estimate.winner_finish_time_seconds == 3000
-    assert custom_estimate.illustrative_score != default_estimate.illustrative_score
+def test_estimate_rejects_non_positive_time():
+    with pytest.raises(ValueError):
+        estimate_score(0, distance_km=10, elevation_gain_m=0)
 
 
-def test_estimate_matches_real_score_race_formula_when_winner_assumption_holds():
-    """The whole point of the adjustable winner time: if it matches the real eventual
-    winner, the illustrative estimate equals what score_race() computes for real."""
+def test_estimate_requires_course_input():
+    with pytest.raises(ValueError):
+        estimate_score(3600)
+
+
+def test_estimate_from_gpx_points_uses_the_real_segment_integral():
+    points = read_track_points(FIXTURES / "single-climb.gpx")
+    estimate = estimate_score(3600, gpx_points=points)
+    assert estimate.equivalent_distance_km > 0
+
+
+def test_estimate_matches_real_score_race_formula():
+    """The whole point of the Course Standard model: the pre-race predictor and the real
+    post-race scorer share one formula, so they always agree exactly for the same input —
+    no 'assumed winner' guess required, unlike the retired field-relative approach."""
     from ingestion.records import RaceRecord, ResultRecord
     from scoring import score_race
-    from datetime import date
 
     race = RaceRecord(
         race_id="R1",
@@ -61,23 +64,9 @@ def test_estimate_matches_real_score_race_formula_when_winner_assumption_holds()
         distance_km=10,
         elevation_gain_m=0,
     )
-    winner_time = 3000
-    your_time = 3600
-    results = [
-        ResultRecord(rank=1, bib_number="1", family_name="Winner", first_name="A", gender="M", finish_time_seconds=winner_time),
-        ResultRecord(rank=2, bib_number="2", family_name="You", first_name="B", gender="M", finish_time_seconds=your_time),
-    ]
-    real_scores = {score.bib_number: score.score.otri_score for score in score_race(race, results)}
+    finish_time = 3600
+    results = [ResultRecord(rank=1, bib_number="1", family_name="You", first_name="A", gender="M", finish_time_seconds=finish_time)]
+    real_score = score_race(race, results)[0].score.otri_score
 
-    estimate = estimate_illustrative_score(
-        distance_km=10, elevation_gain_m=0, finish_time_seconds=your_time, winner_finish_time_seconds=winner_time
-    )
-    assert estimate.illustrative_score == real_scores["2"]
-
-
-def test_rejects_non_positive_winner_time():
-    try:
-        estimate_illustrative_score(distance_km=10, elevation_gain_m=0, finish_time_seconds=3600, winner_finish_time_seconds=0)
-        assert False, "expected ValueError"
-    except ValueError:
-        pass
+    estimate = estimate_score(finish_time, distance_km=10, elevation_gain_m=0)
+    assert estimate.predicted_score == real_score

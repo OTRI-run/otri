@@ -1,4 +1,7 @@
-"""Unit tests proving the baseline scoring model is deterministic and auditable.
+"""Unit tests proving the legacy field-relative scoring model is deterministic and auditable.
+
+This model is no longer the default (see scoring.registry / scoring.course_standard)
+but stays selectable and must keep behaving exactly as before.
 
 Run with: pytest tests/unit
 """
@@ -6,7 +9,7 @@ Run with: pytest tests/unit
 from pathlib import Path
 
 from ingestion import race_records, result_records
-from scoring import SCORING_VERSION, score_race
+from scoring.model import SCORING_VERSION, score_race_field_relative as score_race
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEMO_RACES = REPO_ROOT / "data" / "demo" / "races.csv"

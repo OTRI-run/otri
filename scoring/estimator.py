@@ -1,84 +1,79 @@
-"""Illustrative GPX -> score estimator.
+"""GPX -> score predictor, powered by the Course Standard scoring model.
 
-This is **not** the calibrated GPX Target Performance Predictor described in
-``HANDBOOK.md`` / ``docs/gpx-predictor.md``: "GPX alone is not enough to
-calibrate performance. Real race results are required to learn the
-relationship between course characteristics, finish times, and OTRI
-outcomes." It exists so the prototype can demonstrate something interactive
-while being explicit that it is not a calibrated prediction.
-
-It uses the exact same formula as the real post-race scorer
-(``scoring.model.score_race``): ``score = SCALE_MAX * (winner_pace / your_pace)``
-over the ITRA-style equivalent distance (``equivalent_distance_km``). The only
-unknown before a race is who the actual winner will be and how fast — so this
-estimator takes that as an explicit, adjustable assumption
-(``winner_finish_time_seconds``) rather than hiding it in a constant. If that
-assumption turns out correct, the estimate here and the real score computed
-once results are uploaded are identical, not just close.
+``scoring.course_standard`` has no competitor dependency — a runner's score
+is a pure function of the course and their own finish time. That means a
+pre-race prediction and the real post-race score use the exact same formula
+(``course_standard.score_for_time``): given the same GPX (or the same
+distance/elevation, if no GPX is available yet) and the same finish time,
+this predictor and the real scorer agree exactly, not approximately. No
+"assumed winner" guess is needed the way the retired field-relative model
+would have required.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .model import SCALE_MAX, equivalent_distance_km
+from course.gpx import TrackPoint
 
-# Default assumed winning pace (seconds per equivalent km) when the caller
-# doesn't supply their own `winner_finish_time_seconds` — averaged across
-# OTRI's current synthetic demo races (see scripts/build_prototype_data.py).
-# NOT a calibrated real-world benchmark; callers who know (or can guess) the
-# likely winning time for their specific race should pass it in instead.
-REFERENCE_PACE_S_PER_KM = 232.3
+from .course_demand import equivalent_flat_distance_from_totals, equivalent_flat_distance_km
+from .course_standard import SCORING_VERSION, score_for_time, sealed_integer_score
 
 DISCLAIMER = (
-    "Assumes a winning pace (edit it if you have a better guess for this race) and applies "
-    "the same formula as the real post-race scorer. If your assumed winning time turns out "
-    "correct, this matches your real OTRI score exactly. See docs/gpx-predictor.md."
+    "Uses the exact same Course Standard formula as the real post-race scorer — no competitor "
+    "or 'assumed winner' guess involved. If this GPX matches the race's real course, this is "
+    "the exact score this finish time will earn, not just an estimate. See docs/gpx-predictor.md."
 )
 
 
 @dataclass(frozen=True)
-class IllustrativeEstimate:
+class ScoreEstimate:
     equivalent_distance_km: float
     pace_seconds_per_km: float
-    winner_finish_time_seconds: int
-    illustrative_score: int
+    predicted_score: int
+    scoring_version: str
     disclaimer: str
 
     def to_dict(self) -> dict:
         return {
             "equivalent_distance_km": self.equivalent_distance_km,
             "pace_seconds_per_km": self.pace_seconds_per_km,
-            "winner_finish_time_seconds": self.winner_finish_time_seconds,
-            "illustrative_score": self.illustrative_score,
+            "predicted_score": self.predicted_score,
+            "scoring_version": self.scoring_version,
             "disclaimer": self.disclaimer,
         }
 
 
-def estimate_illustrative_score(
-    distance_km: float,
-    elevation_gain_m: float,
+def estimate_score(
     finish_time_seconds: int,
-    winner_finish_time_seconds: int | None = None,
-) -> IllustrativeEstimate:
+    *,
+    gpx_points: list[TrackPoint] | None = None,
+    distance_km: float | None = None,
+    elevation_gain_m: float | None = None,
+) -> ScoreEstimate:
+    """Predict the Course Standard score for `finish_time_seconds` on this course.
+
+    Prefer passing `gpx_points` (the real segment-by-segment Minetti course-demand
+    integral) over `distance_km`/`elevation_gain_m` (a coarser constant-average-grade
+    approximation) when a GPX is available — see ``scoring.course_demand``.
+    """
     if finish_time_seconds <= 0:
         raise ValueError("finish_time_seconds must be greater than 0")
-    if winner_finish_time_seconds is not None and winner_finish_time_seconds <= 0:
-        raise ValueError("winner_finish_time_seconds must be greater than 0")
 
-    equivalent_km = equivalent_distance_km(distance_km, elevation_gain_m)
+    if gpx_points is not None:
+        equivalent_km = equivalent_flat_distance_km(gpx_points)
+    elif distance_km is not None and elevation_gain_m is not None:
+        equivalent_km = equivalent_flat_distance_from_totals(distance_km, elevation_gain_m)
+    else:
+        raise ValueError("either gpx_points or both distance_km and elevation_gain_m must be provided")
+
     pace = finish_time_seconds / equivalent_km
+    score = score_for_time(equivalent_km, finish_time_seconds)
 
-    if winner_finish_time_seconds is None:
-        winner_finish_time_seconds = round(REFERENCE_PACE_S_PER_KM * equivalent_km)
-    winner_pace = winner_finish_time_seconds / equivalent_km
-
-    score = round(SCALE_MAX * (winner_pace / pace))
-
-    return IllustrativeEstimate(
+    return ScoreEstimate(
         equivalent_distance_km=round(equivalent_km, 3),
         pace_seconds_per_km=round(pace, 1),
-        winner_finish_time_seconds=winner_finish_time_seconds,
-        illustrative_score=score,
+        predicted_score=sealed_integer_score(score),
+        scoring_version=SCORING_VERSION,
         disclaimer=DISCLAIMER,
     )

@@ -35,7 +35,7 @@ def _organizer_auth_headers(email: str = "organizer@example.com", password: str 
     return {"Authorization": f"Bearer {token}"}
 
 
-def _create_event_and_race(headers: dict) -> tuple[str, str]:
+def _create_event_and_race(headers: dict, scoring_version: str | None = None) -> tuple[str, str]:
     """Creates a fresh event + one race distance owned by whoever `headers` authenticates as."""
     event_response = client.post(
         "/events", json={"event_name": "Test Event", "event_date": "2026-07-01"}, headers=headers
@@ -43,9 +43,12 @@ def _create_event_and_race(headers: dict) -> tuple[str, str]:
     assert event_response.status_code == 201, event_response.text
     event_id = event_response.json()["event_id"]
 
+    payload = {"course_name": "50K", "distance_km": 50.0, "elevation_gain_m": 2000.0}
+    if scoring_version is not None:
+        payload["scoring_version"] = scoring_version
     race_response = client.post(
         f"/events/{event_id}/races",
-        json={"course_name": "50K", "distance_km": 50.0, "elevation_gain_m": 2000.0},
+        json=payload,
         headers=headers,
     )
     assert race_response.status_code == 201, race_response.text
@@ -56,6 +59,49 @@ def test_root_reports_app_status():
     response = client.get("/")
     assert response.status_code == 200
     assert response.json()["name"] == "OTRI API"
+
+
+def test_list_scoring_models_includes_both_options():
+    response = client.get("/scoring/models")
+    assert response.status_code == 200
+    versions = {model["version"] for model in response.json()}
+    assert versions == {"1.0.0-course-standard", "0.1.0-field-relative"}
+
+
+def test_new_race_defaults_to_course_standard_scoring():
+    headers = _organizer_auth_headers()
+    _, race_id = _create_event_and_race(headers)
+    response = client.get(f"/races/{race_id}")
+    assert response.json()["scoring_version"] == "1.0.0-course-standard"
+
+
+def test_race_can_be_created_with_explicit_scoring_version():
+    headers = _organizer_auth_headers()
+    _, race_id = _create_event_and_race(headers, scoring_version="0.1.0-field-relative")
+    response = client.get(f"/races/{race_id}")
+    assert response.json()["scoring_version"] == "0.1.0-field-relative"
+
+
+def test_race_creation_rejects_unknown_scoring_version():
+    headers = _organizer_auth_headers()
+    event_response = client.post("/events", json={"event_name": "Test Event", "event_date": "2026-07-01"}, headers=headers)
+    event_id = event_response.json()["event_id"]
+
+    response = client.post(
+        f"/events/{event_id}/races",
+        json={"course_name": "50K", "distance_km": 50.0, "elevation_gain_m": 2000.0, "scoring_version": "not-a-real-version"},
+        headers=headers,
+    )
+    assert response.status_code == 422
+
+
+def test_edit_race_can_change_scoring_version():
+    headers = _organizer_auth_headers()
+    _, race_id = _create_event_and_race(headers)
+
+    response = client.patch(f"/races/{race_id}", json={"scoring_version": "0.1.0-field-relative"}, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["scoring_version"] == "0.1.0-field-relative"
 
 
 def test_list_races_returns_demo_races():
@@ -77,12 +123,15 @@ def test_get_unknown_race_returns_404():
     assert response.status_code == 404
 
 
-def test_get_race_results_returns_scores_with_winner_at_scale_max():
+def test_get_race_results_returns_scores_sealed_below_1000():
+    """Default scoring model (course-standard) has no competitor dependency, so unlike the old
+    field-relative model, the fastest finisher does not automatically score exactly 1000."""
     response = client.get("/races/OTRI-DEMO-001/results")
     assert response.status_code == 200
     scores = response.json()
     assert len(scores) == 12
-    assert scores[0]["otri_score"] == 1000
+    assert scores[0]["otri_score"] < 1000
+    assert scores[0]["otri_score"] == max(score["otri_score"] for score in scores)
 
 
 def test_get_results_for_race_with_no_result_file_returns_404():
@@ -106,7 +155,24 @@ def test_submit_valid_results_returns_computed_scores():
     assert body["is_valid"] is True
     assert body["errors"] == []
     assert len(body["scores"]) == 12
+    assert body["scores"][0]["otri_score"] < 1000  # sealed: default model has no competitor dependency
+
+
+def test_submit_results_using_field_relative_model_scores_winner_at_1000():
+    headers = _organizer_auth_headers()
+    _, race_id = _create_event_and_race(headers, scoring_version="0.1.0-field-relative")
+
+    with DEMO_RESULT_001.open("rb") as handle:
+        response = client.post(
+            f"/races/{race_id}/results",
+            files={"file": ("OTRI-DEMO-001.csv", handle, "text/csv")},
+            headers=headers,
+        )
+
+    assert response.status_code == 200
+    body = response.json()
     assert body["scores"][0]["otri_score"] == 1000
+    assert body["scores"][0]["scoring_version"] == "0.1.0-field-relative"
 
 
 def test_submit_invalid_results_returns_errors_and_no_scores():
@@ -374,7 +440,7 @@ def test_analyze_gpx_returns_features():
     assert body["estimate"] is None
 
 
-def test_analyze_gpx_with_finish_time_returns_illustrative_estimate():
+def test_analyze_gpx_with_finish_time_returns_predicted_score():
     with FLAT_LOOP_GPX.open("rb") as handle:
         response = client.post(
             "/gpx/analyze",
@@ -385,22 +451,33 @@ def test_analyze_gpx_with_finish_time_returns_illustrative_estimate():
     assert response.status_code == 200
     estimate = response.json()["estimate"]
     assert estimate is not None
-    assert "illustrative_score" in estimate
-    assert "winner_finish_time_seconds" in estimate
+    assert "predicted_score" in estimate
+    assert estimate["predicted_score"] < 1000
+    assert estimate["scoring_version"] == "1.0.0-course-standard"
 
 
-def test_analyze_gpx_with_custom_winner_time_matches_own_time_scores_1000():
+def test_analyze_gpx_prediction_matches_real_score_for_same_course_and_time():
+    """The predictor and the real scorer must agree exactly for the same GPX and time."""
     with FLAT_LOOP_GPX.open("rb") as handle:
         response = client.post(
             "/gpx/analyze",
             files={"file": ("flat-loop.gpx", handle, "application/gpx+xml")},
-            data={"finish_time_seconds": "3600", "winner_finish_time_seconds": "3600"},
+            data={"finish_time_seconds": "3600"},
         )
+    predicted = response.json()["estimate"]["predicted_score"]
 
-    assert response.status_code == 200
-    estimate = response.json()["estimate"]
-    assert estimate["illustrative_score"] == 1000
-    assert estimate["winner_finish_time_seconds"] == 3600
+    headers = _organizer_auth_headers()
+    _, race_id = _create_event_and_race(headers)
+    with FLAT_LOOP_GPX.open("rb") as handle:
+        client.post(f"/races/{race_id}/gpx", files={"file": ("flat-loop.gpx", handle, "application/gpx+xml")}, headers=headers)
+
+    import io
+
+    csv_content = "Ranking,Time,Family name,First Name,Gender\n1,01:00:00,Runner,Test,M\n"
+    files = {"file": ("results.csv", io.BytesIO(csv_content.encode()), "text/csv")}
+    submit_response = client.post(f"/races/{race_id}/results", files=files, headers=headers)
+
+    assert submit_response.json()["scores"][0]["otri_score"] == predicted
 
 
 def test_analyze_invalid_gpx_returns_422():

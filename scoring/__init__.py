@@ -1,10 +1,28 @@
-"""OTRI baseline scoring engine (v0.1) — intentionally simple, versioned, and explainable.
+"""OTRI scoring engine — pluggable, versioned scoring models.
 
-See ``scoring/README.md`` for what this model does and does not do yet.
+More than one scoring algorithm is available at once (see ``scoring.registry``
+and ``docs/methodology/research-candidates/``). ``score_race()`` here is the
+selectable entry point, defaulting to the course-standard model (no
+competitor dependency, sealed below 1000) — see ``scoring/README.md``.
 """
 
-from .estimator import DISCLAIMER, REFERENCE_PACE_S_PER_KM, IllustrativeEstimate, estimate_illustrative_score
-from .model import SCORING_VERSION, RunnerScore, ScoreBreakdown, equivalent_distance_km, score_race
+from .course_standard import SCORING_VERSION as COURSE_STANDARD_VERSION
+from .course_standard import score_race_course_standard, score_for_time, target_time_seconds
+from .estimator import DISCLAIMER, ScoreEstimate, estimate_score
+from .model import SCORING_VERSION as FIELD_RELATIVE_VERSION
+from .model import RunnerScore, ScoreBreakdown, equivalent_distance_km, score_race_field_relative
+from .registry import (
+    DEFAULT_SCORING_VERSION,
+    ScoringModelInfo,
+    available_scoring_models,
+    get_scoring_model_info,
+    score_race,
+)
+
+# The currently-recommended default model's version — kept as a top-level
+# alias since most callers only care about "the current default," not the
+# full registry.
+SCORING_VERSION = DEFAULT_SCORING_VERSION
 
 __all__ = [
     "SCORING_VERSION",
@@ -12,8 +30,17 @@ __all__ = [
     "ScoreBreakdown",
     "equivalent_distance_km",
     "score_race",
-    "IllustrativeEstimate",
-    "estimate_illustrative_score",
-    "REFERENCE_PACE_S_PER_KM",
+    "score_race_course_standard",
+    "score_race_field_relative",
+    "score_for_time",
+    "target_time_seconds",
+    "COURSE_STANDARD_VERSION",
+    "FIELD_RELATIVE_VERSION",
+    "DEFAULT_SCORING_VERSION",
+    "ScoringModelInfo",
+    "available_scoring_models",
+    "get_scoring_model_info",
+    "ScoreEstimate",
+    "estimate_score",
     "DISCLAIMER",
 ]

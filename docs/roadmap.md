@@ -4,7 +4,7 @@ A concrete, step-by-step breakdown of `HANDBOOK.md`'s roadmap, in PR-sized chunk
 
 ## Prototype ✅ done
 
-Everything from Phases 0–4 wired together and actually demonstrated in one place: [`prototype/`](../prototype) is a separate page (same design system, kept apart from the production homepage) with three tabs — a static Races view (real `ingestion` → `scoring` → `course` output over 6 synthetic races, 10K to 100-mile ultra), a **GPX tester** that calls the live API (`POST /gpx/analyze`) for an illustrative score estimate, and an **Organizer upload** flow that registers a race and submits results against the live API end to end. Verified working in an actual production build, not just unit tests. See [`prototype/README.md`](../prototype/README.md) and [`docs/operations/digitalocean-deployment.md`](operations/digitalocean-deployment.md) for deploying the API behind it.
+Everything from Phases 0–4 wired together and actually demonstrated in one place: [`prototype/`](../prototype) is a separate page (same design system, kept apart from the production homepage) with three tabs — a static Races view (real `ingestion` → `scoring` → `course` output over 6 synthetic races, 10K to 100-mile ultra), a **GPX score predictor** that calls the live API (`POST /gpx/analyze`) using the exact same no-competitor formula as the real post-race scorer, and an **Organizer upload** flow with full event/distance CRUD, a selectable scoring algorithm per race distance, GPX attach, and results submission against the live API end to end. Verified working in an actual production build, not just unit tests. See [`prototype/README.md`](../prototype/README.md) and [`docs/operations/digitalocean-deployment.md`](operations/digitalocean-deployment.md) for deploying the API behind it.
 
 ## Phase 0 — Ingestion foundation ✅ done
 
@@ -17,15 +17,18 @@ Everything from Phases 0–4 wired together and actually demonstrated in one pla
 
 Run it: `pip install -r requirements-dev.txt && pytest tests/unit`.
 
-## Phase 1 — Baseline scoring engine ✅ done
+## Phase 1 — Baseline scoring engine ✅ done, superseded as default by the pluggable Course Standard model
 
 **Goal:** a simple, transparent, versioned scorer — not a final formula (`METHODOLOGY.md` §13).
 
-- [x] **Result → normalized performance model (`scoring/`)** — `score_race()` scores each finisher's pace against an elevation-adjusted equivalent distance, relative to the fastest finisher in that race (`SCORING_VERSION = "0.1.0"`).
-- [x] **Reproducibility tests** — same input twice → identical output (`tests/unit/test_scoring_model.py`), plus a hand-verified golden fixture under `tests/fixtures/scoring/`.
+- [x] **Result → normalized performance model (`scoring/`)** — the original `score_race_field_relative()` scored each finisher's pace against an elevation-adjusted equivalent distance, relative to the fastest finisher in that race (`SCORING_VERSION = "0.1.0-field-relative"`). Kept selectable (see below) but no longer the default.
+- [x] **Pluggable scoring architecture (`scoring/registry.py`)** — more than one scoring algorithm can be selected per race distance (`Race.scoring_version`), implementing research candidates from `docs/methodology/research-candidates/`:
+  - **Course Standard (`1.0.0-course-standard`, default)** — combines the Time Standard Curve architecture (candidate 05, TSCI) with a Minetti gradient-cost course-demand engine (candidates 01/02, GECI/EFDI, `scoring/course_demand.py`). Has **no competitor dependency at all**: a runner's score depends only on the course and their own finish time, never the field's winner/size/strength. **Sealed below 1000** — the scale's ceiling is a theoretical limit no finite speed ever reaches, not "whoever won this race." Pre-race GPX predictions (`POST /gpx/analyze`) and post-race scores share the exact same formula (`scoring.estimator` / `scoring.course_standard.score_for_time`).
+  - **Field Relative (`0.1.0-field-relative`, legacy)** — the original model above, kept selectable for backwards compatibility and reproducibility of historical scores (`METHODOLOGY.md` §11).
+- [x] **Reproducibility tests** — same input twice → identical output (`tests/unit/test_scoring_model.py`, `tests/unit/test_scoring_course_standard.py`, `tests/unit/test_scoring_course_demand.py`, `tests/unit/test_scoring_registry.py`), plus a hand-verified golden fixture under `tests/fixtures/scoring/`.
 - [x] **Auditability** — every score is a full `ScoreBreakdown` (base performance, course/field/environmental adjustments, confidence, scoring version), never a bare number, per `HANDBOOK.md`'s "Auditability" section.
 
-Still missing on purpose (documented in `scoring/README.md`): cross-race calibration, field-strength adjustment, environmental factors — those need real race data and Phase 2+ course modeling first.
+Still missing on purpose (documented in `scoring/README.md`): cross-race calibration data (Course Standard's scale-calibration constant is an explicitly provisional placeholder), field-strength adjustment, environmental factors, and the course-structure-difficulty corrections described in research candidates 04/06 (deferred until real race data exists to validate them without overfitting, per `METHODOLOGY.md` §10).
 
 **Blocked by:** Phase 0 (needs validated results as input). **Blocks:** everything downstream that consumes a score.
 
@@ -64,7 +67,7 @@ Depends on Phase 2's parsed GPX data existing; otherwise there's nothing to rend
 - [x] **Organizer auth with mandatory email verification** (`api/auth.py`) — register/login/email verification/resend-verification/password reset, JWT sessions, passwords hashed with bcrypt. Registering does **not** log you in — `/auth/login` returns 403 until the account is verified. Verification and reset emails sent via Resend (`api/email.py`).
 - [x] **Basic abuse protection** (`api/rate_limit.py`) — in-process rate limiting on auth endpoints. Known limitation: not shared across multiple worker processes yet (needs Redis for that).
 - [x] Tests (`tests/unit/test_api.py`, `tests/unit/test_auth.py`) covering events, races, scoring, auth (including the verification gate and ownership checks), and email verification/reset, run against a real Postgres test database (`tests/conftest.py`).
-- [x] **Organizer dashboard UI** (`prototype/OrganizerUpload.jsx`) — full event/distance CRUD, GPX attach, and results submission wired to the live API, gated behind email-verified sign-in.
+- [x] **Organizer dashboard UI** (`prototype/OrganizerUpload.jsx`) — full event/distance CRUD, a scoring-algorithm picker per race distance (`GET /scoring/models`), GPX attach, and results submission wired to the live API, gated behind email-verified sign-in.
 
 **Known gaps, documented in `api/README.md`:** no database migration tool yet (schema created via `CREATE TABLE IF NOT EXISTS`), rate limiting isn't multi-worker-safe, JWT sessions have no refresh token, and `GET /events`/`GET /races` compute counts/joins with one query per event (N+1, fine at prototype scale).
 

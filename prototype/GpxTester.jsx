@@ -9,13 +9,6 @@ function parseHmsToSeconds(value) {
   return hours * 3600 + minutes * 60 + seconds
 }
 
-function formatSecondsToHms(totalSeconds) {
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = Math.round(totalSeconds % 60)
-  return [hours, minutes, seconds].map((part) => String(part).padStart(2, '0')).join(':')
-}
-
 const timeInputClass = 'w-28 rounded-lg border border-slate-300 px-3 py-2 text-center font-mono text-sm'
 
 export default function GpxTester() {
@@ -23,8 +16,6 @@ export default function GpxTester() {
   const [fileName, setFileName] = useState('')
   const [gpxText, setGpxText] = useState('')
   const [timeInput, setTimeInput] = useState('01:00:00')
-  const [winnerTimeInput, setWinnerTimeInput] = useState('')
-  const [winnerTimeTouched, setWinnerTimeTouched] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -35,35 +26,21 @@ export default function GpxTester() {
     setFileName(selected?.name ?? '')
     setResult(null)
     setError(null)
-    setWinnerTimeInput('')
-    setWinnerTimeTouched(false)
     setGpxText(selected ? await selected.text() : '')
   }
 
-  async function runAnalysis({ winnerOverrideSeconds } = {}) {
+  async function runAnalysis() {
     if (!file) return
     const seconds = parseHmsToSeconds(timeInput)
     if (seconds === null) {
       setError('Enter your target finish time as HH:MM:SS')
       return
     }
-    let winnerSeconds = winnerOverrideSeconds
-    if (winnerSeconds === undefined && winnerTimeTouched) {
-      winnerSeconds = parseHmsToSeconds(winnerTimeInput)
-      if (winnerSeconds === null) {
-        setError('Enter the assumed winning time as HH:MM:SS')
-        return
-      }
-    }
 
     setLoading(true)
     setError(null)
     try {
-      const analysis = await analyzeGpx(file, seconds, winnerSeconds ?? undefined)
-      setResult(analysis)
-      if (analysis.estimate && !winnerTimeTouched) {
-        setWinnerTimeInput(formatSecondsToHms(analysis.estimate.winner_finish_time_seconds))
-      }
+      setResult(await analyzeGpx(file, seconds))
     } catch (err) {
       setError(err.message)
     } finally {
@@ -71,13 +48,7 @@ export default function GpxTester() {
     }
   }
 
-  function handleWinnerTimeChange(event) {
-    setWinnerTimeInput(event.target.value)
-    setWinnerTimeTouched(true)
-  }
-
   const estimate = result?.estimate
-  const exactMatchGuaranteed = winnerTimeTouched && winnerTimeInput.trim() !== ''
 
   return (
     <section className="mt-10">
@@ -86,10 +57,10 @@ export default function GpxTester() {
         Get your predicted OTRI score before you even race.
       </h2>
       <p className="mt-2 max-w-[680px] text-sm text-slate-500">
-        Uses the same distance-plus-elevation formula as the real post-race scorer (100 m of climb ≈ 1 extra km,
-        the standard trail-running rule of thumb). The only unknown before a race is how fast the winner will go —
-        set your own assumption below and this becomes an <em>exact</em> preview of your real OTRI score, not just a
-        rough guess.
+        Uses the Course Standard model: a Minetti gradient-cost course-demand engine plus your own finish time — never
+        another runner's result. The scale is sealed below 1000: no finish time, however fast, ever reaches it. Because
+        nothing here depends on competitors, this predictor and the real post-race scorer share one formula and always
+        agree exactly for the same course and time.
       </p>
 
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -147,21 +118,8 @@ export default function GpxTester() {
               className={`${timeInputClass} mt-1`}
             />
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-500">
-              Assumed winning time <span className="font-normal text-slate-400">(edit if you know better)</span>
-            </label>
-            <input
-              type="text"
-              value={winnerTimeInput}
-              onChange={handleWinnerTimeChange}
-              placeholder={result ? 'auto-filled after calculating' : 'HH:MM:SS'}
-              disabled={!file}
-              className={`${timeInputClass} mt-1`}
-            />
-          </div>
           <button
-            onClick={() => runAnalysis()}
+            onClick={runAnalysis}
             disabled={!file || loading}
             className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
           >
@@ -176,7 +134,7 @@ export default function GpxTester() {
         <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,260px)_1fr]">
           <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-5 text-center">
             <p className="font-mono text-[9px] tracking-[.08em] text-blue-600">PREDICTED OTRI SCORE</p>
-            <p className="mt-2 text-5xl font-bold tracking-[-.03em] text-blue-600">{estimate.illustrative_score}</p>
+            <p className="mt-2 text-5xl font-bold tracking-[-.03em] text-blue-600">{estimate.predicted_score}</p>
             <p className="mt-2 text-xs text-slate-500">
               {estimate.pace_seconds_per_km}s/km over {estimate.equivalent_distance_km} equivalent km
             </p>
@@ -184,22 +142,14 @@ export default function GpxTester() {
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
             <p className="font-mono text-[9px] tracking-[.08em] text-slate-400">HOW THIS WAS CALCULATED</p>
             <p className="mt-2 text-sm text-slate-600">
-              Assumes the winner finishes in <strong>{formatSecondsToHms(estimate.winner_finish_time_seconds)}</strong>{' '}
-              — <code>score = 1000 × (winner's pace ÷ your pace)</code>, the exact formula used once real results are
-              submitted.
+              Course Standard model (<code>{estimate.scoring_version}</code>): your equivalent-flat speed is mapped
+              through a curve that approaches 1000 but never reaches it — nobody's score, however fast, is ever
+              exactly 1000.
             </p>
-            {exactMatchGuaranteed ? (
-              <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
-                If the real winner finishes in {formatSecondsToHms(estimate.winner_finish_time_seconds)} and you run{' '}
-                {formatSecondsToHms(parseHmsToSeconds(timeInput) ?? 0)}, your real OTRI score will be exactly{' '}
-                {estimate.illustrative_score}.
-              </p>
-            ) : (
-              <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                This uses a generic cross-race average winning pace as a placeholder. Set your own "assumed winning
-                time" above for a much more accurate — potentially exact — preview.
-              </p>
-            )}
+            <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
+              This is not just an estimate: since this model never reads other runners' results, this is the exact
+              score this finish time will earn once results are submitted for this course.
+            </p>
           </div>
         </div>
       )}
