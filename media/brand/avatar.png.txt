@@ -1,1 +1,0 @@
-This placeholder is intentionally textual because GitHub Contents API text-file writes cannot carry raw PNG bytes. The actual PNG is available in the conversation artifact.
