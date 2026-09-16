@@ -11,6 +11,7 @@ from scoring.course_standard import (
     SCALE_MAX,
     SPEC_CURVE,
     V04_CURVE,
+    V05_CURVE,
     performance_rate,
     score_for_time,
     score_race_course_standard,
@@ -38,9 +39,9 @@ def test_k_constant_matches_spec_for_legacy_log_curves():
         assert curve.k == pytest.approx(500.0 / math.log(curve.q_1000 / curve.q_500))
 
 
-def test_v04_curve_is_the_default():
+def test_v05_curve_is_the_default():
     assert score_for_time(10.0, 3600)["otri_score"] == score_for_time(
-        10.0, 3600, curve=V04_CURVE
+        10.0, 3600, curve=V05_CURVE
     )["otri_score"]
 
 
@@ -48,36 +49,46 @@ def test_performance_rate_is_demand_km_per_hour():
     assert performance_rate(10.0, 7200) == pytest.approx(5.0)
 
 
-@pytest.mark.parametrize("score, expected_q", [
-    (0, 5.0), (200, 5.512), (500, 8.2), (1000, 18.2)
-])
-def test_v04_required_q_anchors(score, expected_q):
-    assert V04_CURVE.required_q(score) == pytest.approx(expected_q, rel=1e-12, abs=1e-12)
+@pytest.mark.parametrize(
+    "score, expected_q",
+    [
+        (0, 1.0),
+        (349, 4.240362424138815),
+        (544, 8.935158501440922),
+        (692, 11.769395017793594),
+        (1000, 17.93986234619293),
+    ],
+)
+def test_v05_required_q_anchors(score, expected_q):
+    assert V05_CURVE.required_q(score) == pytest.approx(expected_q, rel=1e-12, abs=1e-12)
 
 
-def test_v04_curve_has_progressively_larger_q_increments():
-    scores = [0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
-    qs = [V04_CURVE.required_q(s) for s in scores]
-    increments = [b-a for a,b in zip(qs, qs[1:])]
+def test_v05_curve_is_monotonic():
+    scores = list(range(0, 1001, 25))
+    qs = [V05_CURVE.required_q(s) for s in scores]
     assert qs == sorted(qs)
-    assert increments == sorted(increments)
 
 
-def test_v04_actual_cm6_reference_is_near_544():
-    # Current CM6 GPX processing produced ~27.56 demand-km.
-    # 03:05:04 gives Q ~8.935, which should land close to the reference score 544.
-    result = score_for_time(27.560, 3*3600 + 5*60 + 4, curve=V04_CURVE)
-    assert result["otri_score"] == pytest.approx(554, abs=15)
+def test_v05_cm6_reference_anchors():
+    demand_km = 27.560
+    references = [
+        (6 * 3600 + 29 * 60 + 58, 349),
+        (3 * 3600 + 5 * 60 + 4, 544),
+        (2 * 3600 + 20 * 60 + 30, 692),
+    ]
+    for finish_time, expected_score in references:
+        result = score_for_time(demand_km, finish_time, curve=V05_CURVE)
+        assert result["otri_score"] == expected_score
 
 
-@pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE, CURVED_CURVE, V04_CURVE])
+@pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE, CURVED_CURVE, V04_CURVE, V05_CURVE])
 def test_clipping_above_1000(curve):
     result = score_for_time(10.0, 10, curve=curve)
     assert result["otri_score"] == 1000
     assert result["otri_raw"] > 1000
 
 
-@pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE, CURVED_CURVE, V04_CURVE])
+@pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE, CURVED_CURVE, V04_CURVE, V05_CURVE])
 def test_score_is_monotonic_in_finish_time(curve):
     times = [1000, 1600, 2000, 2400, 3000, 3600, 5000, 10000, 20000]
     scores = [score_for_time(10.0, t, curve=curve)["otri_score"] for t in times]
@@ -95,12 +106,16 @@ def test_score_race_does_not_depend_on_other_finishers():
     assert solo == runner_one_score
 
 
-@pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE, CURVED_CURVE, V04_CURVE])
+@pytest.mark.parametrize("curve", [SPEC_CURVE, CALIBRATED_CURVE, CURVED_CURVE, V04_CURVE, V05_CURVE])
 def test_target_time_inverse(curve):
-    for score in [0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]:
+    for score in [100, 200, 300, 349, 400, 500, 544, 600, 692, 800, 900, 1000]:
         target = target_time_seconds(10.0, score, curve=curve)
         recovered = score_for_time(10.0, target, curve=curve)["otri_score"]
         assert recovered == pytest.approx(score, abs=1)
+
+
+def test_target_time_zero_is_unbounded_for_v05():
+    assert target_time_seconds(10.0, 0, curve=V05_CURVE) == float("inf")
 
 
 def test_target_time_rejects_out_of_range_score():
@@ -127,9 +142,9 @@ def test_confidence_is_low_without_gpx_and_medium_with_gpx():
     assert score_race_course_standard(race, [_finisher("1", 3600)], gpx_points=points)[0].score.confidence == "Medium"
 
 
-def test_scoring_version_is_v04():
+def test_scoring_version_is_v05():
     scores = score_race_course_standard(_race(), [_finisher("1", 3600)])
-    assert scores[0].score.scoring_version == V04_CURVE.version
+    assert scores[0].score.scoring_version == V05_CURVE.version
 
 
 def test_scoring_version_reflects_chosen_curve():
