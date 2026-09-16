@@ -1,29 +1,27 @@
 """Pluggable scoring-model registry.
 
-OTRI supports more than one scoring algorithm at once so historical scores
-remain reproducible. The current default is the deterministic Course Standard
-V0.3 curved model; the older logarithmic curves remain selectable for
-backwards compatibility.
+OTRI supports multiple versioned scoring models so historical scores remain
+reproducible. The current default is the deterministic Course Standard V0.4
+candidate: 50 m GPX course demand plus a shifted quadratic score curve.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable
 
 from course.gpx import TrackPoint
 from ingestion.records import RaceRecord, ResultRecord
 
-from .course_standard import CALIBRATED_CURVE, CURVED_CURVE, SPEC_CURVE
+from .course_standard import CALIBRATED_CURVE, CURVED_CURVE, SPEC_CURVE, V04_CURVE
 from .course_standard import score_race_course_standard
 from .model import RunnerScore
 from .model import SCORING_VERSION as FIELD_RELATIVE_VERSION
 from .model import score_race_field_relative
 
-COURSE_STANDARD_VERSION = CURVED_CURVE.version
+COURSE_STANDARD_VERSION = V04_CURVE.version
+COURSE_STANDARD_V03_VERSION = CURVED_CURVE.version
 COURSE_STANDARD_SPEC_VERSION = SPEC_CURVE.version
 COURSE_STANDARD_LEGACY_CALIBRATED_VERSION = CALIBRATED_CURVE.version
-
 DEFAULT_SCORING_VERSION = COURSE_STANDARD_VERSION
 
 
@@ -38,40 +36,39 @@ class ScoringModelInfo:
 _MODEL_INFO: dict[str, ScoringModelInfo] = {
     COURSE_STANDARD_VERSION: ScoringModelInfo(
         version=COURSE_STANDARD_VERSION,
-        name="Course Standard V0.3 Curved",
+        name="Course Standard V0.4 Curved",
         description=(
             "Score depends only on the course (50 m Minetti gradient-cost course demand) and "
-            "your own finish time — never on who else ran the race. The curved scale anchors "
-            "200 at 11.0 demand-km/h, 500 at 15.0, and 1000 at 30.0, making the upper score "
-            "range progressively harder to reach."
+            "the runner's own finish time. The V0.4 candidate uses Q(S)=5.0+3.2*(S/500)^2: "
+            "200≈5.51, 500=8.20, 1000=18.20 demand-km/h. The upper scale becomes progressively "
+            "harder to reach while realistic multi-hour trail performances remain within the scale."
         ),
+        uses_competitors=False,
+    ),
+    COURSE_STANDARD_V03_VERSION: ScoringModelInfo(
+        version=COURSE_STANDARD_V03_VERSION,
+        name="Course Standard V0.3 Curved (legacy)",
+        description="Historical V0.3 exponential-quadratic curve retained for reproducibility.",
         uses_competitors=False,
     ),
     COURSE_STANDARD_LEGACY_CALIBRATED_VERSION: ScoringModelInfo(
         version=COURSE_STANDARD_LEGACY_CALIBRATED_VERSION,
         name="Course Standard (legacy logarithmic calibrated)",
-        description=(
-            "Historical Course Standard logarithmic scale with anchors 500 at 3.5 demand-km/h "
-            "and 1000 at 10.5 demand-km/h. Kept selectable for reproducibility; not the current default."
-        ),
+        description="Historical logarithmic calibration retained for reproducibility.",
         uses_competitors=False,
     ),
     COURSE_STANDARD_SPEC_VERSION: ScoringModelInfo(
         version=COURSE_STANDARD_SPEC_VERSION,
         name="Course Standard (legacy spec-literal logarithmic)",
-        description=(
-            "Historical logarithmic model using the original literal reference points 500 at "
-            "15.0 demand-km/h and 1000 at 22.5 demand-km/h. Kept selectable for reproducibility."
-        ),
+        description="Historical logarithmic specification anchors retained for reproducibility.",
         uses_competitors=False,
     ),
     FIELD_RELATIVE_VERSION: ScoringModelInfo(
         version=FIELD_RELATIVE_VERSION,
         name="Field Relative (legacy)",
         description=(
-            "The fastest finisher in this specific race always scores exactly 1000; everyone else "
-            "is scaled off that field's own winner. Kept selectable for backwards compatibility; "
-            "the same finish time means a different score in a different race."
+            "Legacy field-relative model. The fastest finisher in a race scores 1000 and other "
+            "scores depend on that field. Retained only for backwards compatibility."
         ),
         uses_competitors=True,
     ),
@@ -98,26 +95,13 @@ def score_race(
 ) -> list[RunnerScore]:
     """Score a race with the selected model version."""
     if model_version == COURSE_STANDARD_VERSION:
-        return score_race_course_standard(
-            race,
-            results,
-            gpx_points=gpx_points,
-            curve=CURVED_CURVE,
-        )
+        return score_race_course_standard(race, results, gpx_points=gpx_points, curve=V04_CURVE)
+    if model_version == COURSE_STANDARD_V03_VERSION:
+        return score_race_course_standard(race, results, gpx_points=gpx_points, curve=CURVED_CURVE)
     if model_version == COURSE_STANDARD_LEGACY_CALIBRATED_VERSION:
-        return score_race_course_standard(
-            race,
-            results,
-            gpx_points=gpx_points,
-            curve=CALIBRATED_CURVE,
-        )
+        return score_race_course_standard(race, results, gpx_points=gpx_points, curve=CALIBRATED_CURVE)
     if model_version == COURSE_STANDARD_SPEC_VERSION:
-        return score_race_course_standard(
-            race,
-            results,
-            gpx_points=gpx_points,
-            curve=SPEC_CURVE,
-        )
+        return score_race_course_standard(race, results, gpx_points=gpx_points, curve=SPEC_CURVE)
     if model_version == FIELD_RELATIVE_VERSION:
         return score_race_field_relative(race, results)
     raise ValueError(f"unknown scoring model version {model_version!r}")
