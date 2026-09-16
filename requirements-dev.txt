@@ -1,2 +1,4 @@
 -r ingestion/requirements.txt
+-r api/requirements.txt
 pytest>=8.0
+httpx>=0.27

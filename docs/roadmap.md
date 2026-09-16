@@ -2,6 +2,10 @@
 
 A concrete, step-by-step breakdown of `HANDBOOK.md`'s roadmap, in PR-sized chunks. Each step lists its goal, concrete deliverables, and what "done" looks like. Steps within the same phase can usually be built in parallel; phases are ordered by hard dependencies only.
 
+## Prototype ✅ done
+
+Everything from Phases 0–3 wired together and actually demonstrated in one place: [`prototype/`](../prototype) is a separate page (same design system, kept apart from the production homepage) showing real `ingestion` → `scoring` → `course` output over an expanded synthetic dataset (6 races, 10K to 100-mile ultra), plus the `CourseMap` component rendering a sample GPX. See [`prototype/README.md`](../prototype/README.md).
+
 ## Phase 0 — Ingestion foundation ✅ done
 
 **Goal:** a deterministic way to know whether a race/result file is safe to score.
@@ -51,15 +55,20 @@ Still missing on purpose (documented in `scoring/README.md`): cross-race calibra
 
 Depends on Phase 2's parsed GPX data existing; otherwise there's nothing to render.
 
-## Phase 4 — API & organizer submission workflow
+## Phase 4 — API & organizer submission workflow ✅ done (stateless MVP)
 
-- Machine-readable API exposing scores, races, and course data (`docs/api/`).
-- Organizer upload workflow: an organizer submits results; the scoring engine — not the organizer — computes the final score (`HANDBOOK.md` "Validation and anti-gaming").
-- Depends on Phases 0–1 being stable enough to expose publicly.
+- [x] **Machine-readable API** (`api/`, FastAPI) exposing races, course data, and scored results (`GET /races`, `GET /races/{race_id}`, `GET /races/{race_id}/results`).
+- [x] **Organizer upload workflow** (`POST /races/{race_id}/results`) — an organizer submits a raw result file; the endpoint always validates it (`ingestion.validate_result_file`) and then re-scores it from scratch (`scoring.score_race`). The organizer can never supply a score directly (`HANDBOOK.md` "Validation and anti-gaming").
+- [x] Tests (`tests/unit/test_api.py`) covering races, scoring, 404s, and both a valid and an invalid organizer submission.
 
-## Phase 5 — Ecosystem
+**Known gaps, documented in `api/README.md`:** no database (every request re-reads `data/demo/` from disk), no authentication, no rate limiting, and submitted files are scored and discarded rather than persisted. These are necessary before any real public deployment.
 
-- More organizer partners, developer integrations, scientific advisors, formal governance (OEP process), international expansion. See `HANDBOOK.md` "Phase 4 — Ecosystem" for the full list.
+Depended on Phases 0–1 being stable enough to expose publicly — they were.
+
+## Phase 5 — Ecosystem *(partially in scope for code — mostly business/community work)*
+
+- [x] **Formal governance (OEP process)** — `docs/governance/oep-template.md` plus an OEP index at `docs/governance/oep/README.md`. Retroactively documented the Phase 1 baseline scoring model as [`OEP-001`](governance/oep/OEP-001-baseline-scoring-model.md), so the process has a real, non-hypothetical example.
+- [ ] More organizer partners, developer integrations, scientific advisors, international expansion — these are business-development and community activities, not something to build in code. See `HANDBOOK.md` "Phase 4 — Ecosystem" for the full list.
 
 ## Open-source constraints that apply to every phase
 

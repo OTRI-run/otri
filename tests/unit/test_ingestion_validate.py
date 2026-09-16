@@ -17,7 +17,7 @@ def test_demo_races_file_is_valid():
     report = validate_race_file(DEMO_RACES)
     assert report.is_valid
     assert report.errors == ()
-    assert report.row_count == 3
+    assert report.row_count == 6
 
 
 def test_demo_result_file_is_valid():

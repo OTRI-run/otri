@@ -2,3 +2,6 @@ race_id,race_name,event_date,course_name,distance_km,elevation_gain_m
 OTRI-DEMO-001,Phuket Mountain Trail,2026-01-18,50K,51.4,2800
 OTRI-DEMO-002,Khao Sok Ridge Run,2026-02-22,30K,31.8,1650
 OTRI-DEMO-003,Doi Inthanon Ultra,2026-03-29,80K,79.6,4200
+OTRI-DEMO-004,City Night 10K,2026-04-05,10K Night Loop,10.2,180
+OTRI-DEMO-005,Coastal Half Trail,2026-05-10,21K Coastal Path,21.5,950
+OTRI-DEMO-006,Himalayan 100,2026-06-20,100 Mile Himalaya Traverse,161.2,8500

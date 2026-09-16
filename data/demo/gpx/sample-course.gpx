@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="OTRI prototype fixture" xmlns="http://www.topografix.com/GPX/1/1">
+<trk><name>Sample illustrative course (synthetic, not an official race course)</name><trkseg>
+<trkpt lat="13.60000" lon="100.50000"><ele>150.0</ele></trkpt>
+<trkpt lat="13.60300" lon="100.50013"><ele>189.5</ele></trkpt>
+<trkpt lat="13.60600" lon="100.50025"><ele>217.2</ele></trkpt>
+<trkpt lat="13.60900" lon="100.50034"><ele>228.6</ele></trkpt>
+<trkpt lat="13.61200" lon="100.50039"><ele>228.3</ele></trkpt>
+<trkpt lat="13.61500" lon="100.50040"><ele>225.2</ele></trkpt>
+<trkpt lat="13.61800" lon="100.50036"><ele>224.8</ele></trkpt>
+<trkpt lat="13.62100" lon="100.50029"><ele>224.6</ele></trkpt>
+<trkpt lat="13.62400" lon="100.50018"><ele>216.4</ele></trkpt>
+<trkpt lat="13.62700" lon="100.50006"><ele>193.3</ele></trkpt>
+<trkpt lat="13.63000" lon="100.49992"><ele>156.4</ele></trkpt>
+<trkpt lat="13.63300" lon="100.49980"><ele>115.6</ele></trkpt>
+<trkpt lat="13.63600" lon="100.49970"><ele>83.6</ele></trkpt>
+<trkpt lat="13.63900" lon="100.49963"><ele>68.1</ele></trkpt>
+<trkpt lat="13.64200" lon="100.49960"><ele>67.5</ele></trkpt>
+<trkpt lat="13.64500" lon="100.49962"><ele>73.2</ele></trkpt>
+<trkpt lat="13.64800" lon="100.49967"><ele>77.5</ele></trkpt>
+<trkpt lat="13.65100" lon="100.49977"><ele>79.5</ele></trkpt>
+<trkpt lat="13.65400" lon="100.49989"><ele>85.8</ele></trkpt>
+<trkpt lat="13.65700" lon="100.50002"><ele>104.5</ele></trkpt>
+<trkpt lat="13.66000" lon="100.50015"><ele>137.7</ele></trkpt>
+<trkpt lat="13.66300" lon="100.50026"><ele>178.4</ele></trkpt>
+<trkpt lat="13.66600" lon="100.50035"><ele>213.9</ele></trkpt>
+<trkpt lat="13.66900" lon="100.50039"><ele>234.0</ele></trkpt>
+</trkseg></trk>
+</gpx>
