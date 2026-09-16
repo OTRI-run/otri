@@ -4,6 +4,7 @@ This directory contains technical, methodology, data, governance, API, and opera
 
 ## Sections
 
+- `roadmap.md` — step-by-step development roadmap, in PR-sized chunks
 - `architecture/` — system and repository architecture
 - `methodology/` — scoring and statistical research
 - `data/` — schemas, provenance, validation, and data lifecycle

@@ -1,0 +1,3 @@
+race_id,race_name,event_date,course_name,distance_km,elevation_gain_m
+OTRI-DEMO-001,Phuket Mountain Trail,2026-01-18,50K,51.4,2800
+OTRI-DEMO-001,Duplicate Race,18-01-2026,,-5,-100

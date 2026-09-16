@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://otri.run/schemas/race.schema.json",
+  "title": "OTRI race record",
+  "version": 1,
+  "type": "object",
+  "required": ["race_id", "race_name", "event_date", "course_name", "distance_km", "elevation_gain_m"],
+  "properties": {
+    "race_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable unique identifier for this race/course edition."
+    },
+    "race_name": { "type": "string", "minLength": 1 },
+    "event_date": { "type": "string", "format": "date" },
+    "course_name": { "type": "string", "minLength": 1 },
+    "distance_km": { "type": "number", "exclusiveMinimum": 0 },
+    "elevation_gain_m": { "type": "number", "minimum": 0 }
+  },
+  "additionalProperties": true
+}

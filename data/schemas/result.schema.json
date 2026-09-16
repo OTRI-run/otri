@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://otri.run/schemas/result.schema.json",
+  "title": "OTRI race result record",
+  "version": 1,
+  "type": "object",
+  "required": ["rank", "family_name", "first_name", "gender"],
+  "properties": {
+    "rank": {
+      "oneOf": [
+        { "type": "integer", "exclusiveMinimum": 0 },
+        { "type": "string", "enum": ["DNF", "DNS", "DSQ"] }
+      ],
+      "description": "Finishing position, or a non-finisher code (DNF, DNS, DSQ)."
+    },
+    "finish_time": {
+      "type": "string",
+      "pattern": "^\\d{1,3}:[0-5]\\d:[0-5]\\d$",
+      "description": "Finish time in HH:MM:SS format. Required when rank is a finishing position; omitted for DNF/DNS/DSQ rows."
+    },
+    "family_name": { "type": "string", "minLength": 1 },
+    "first_name": { "type": "string", "minLength": 1 },
+    "gender": {
+      "type": "string",
+      "enum": ["M", "F", "X"],
+      "description": "The ingestion validator accepts other values but flags them as warnings, since organizer data is not always pre-cleaned."
+    },
+    "birthdate": { "type": "string", "format": "date" },
+    "nationality": {
+      "type": "string",
+      "pattern": "^[A-Za-z]{3}$",
+      "description": "ISO 3166-1 alpha-3 country code."
+    },
+    "bib_number": { "type": "integer", "exclusiveMinimum": 0 },
+    "city": { "type": "string" },
+    "team": { "type": "string" }
+  },
+  "if": { "properties": { "rank": { "type": "integer" } } },
+  "then": { "required": ["finish_time"] },
+  "additionalProperties": true
+}
