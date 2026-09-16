@@ -1,1 +1,0 @@
-The GitHub organization avatar is `otri-github-avatar-final.png`. It is a 256×256 PNG derived from the canonical OTRI mark for GitHub's square/circular avatar crop.
