@@ -1,1 +1,0 @@
-GitHub avatar: 256×256 PNG, square, deep-navy background, canonical OTRI mark centered. Use `otri-github-avatar-final.png` from the generated asset for the organization profile.
