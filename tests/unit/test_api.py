@@ -15,6 +15,7 @@ DEMO_RESULT_001 = REPO_ROOT / "data" / "demo" / "results" / "OTRI-DEMO-001.csv"
 INVALID_RESULT = REPO_ROOT / "tests" / "fixtures" / "results" / "invalid-result.csv"
 FLAT_LOOP_GPX = REPO_ROOT / "tests" / "fixtures" / "gpx" / "flat-loop.gpx"
 SINGLE_CLIMB_GPX = REPO_ROOT / "tests" / "fixtures" / "gpx" / "single-climb.gpx"
+STEEP_GPX = REPO_ROOT / "tests" / "fixtures" / "gpx" / "impossibly-steep.gpx"
 
 client = TestClient(app)
 
@@ -123,9 +124,10 @@ def test_get_unknown_race_returns_404():
     assert response.status_code == 404
 
 
-def test_get_race_results_returns_scores_sealed_below_1000():
+def test_get_race_results_returns_scores_not_automatically_1000():
     """Default scoring model (course-standard) has no competitor dependency, so unlike the old
-    field-relative model, the fastest finisher does not automatically score exactly 1000."""
+    field-relative model, the fastest finisher does not automatically score exactly 1000 —
+    1000 is only reached at or above the model's Q_1000 = 22.5 demand-km/h reference point."""
     response = client.get("/races/OTRI-DEMO-001/results")
     assert response.status_code == 200
     scores = response.json()
@@ -155,7 +157,7 @@ def test_submit_valid_results_returns_computed_scores():
     assert body["is_valid"] is True
     assert body["errors"] == []
     assert len(body["scores"]) == 12
-    assert body["scores"][0]["otri_score"] < 1000  # sealed: default model has no competitor dependency
+    assert body["scores"][0]["otri_score"] < 1000  # default model has no competitor dependency
 
 
 def test_submit_results_using_field_relative_model_scores_winner_at_1000():
@@ -224,6 +226,26 @@ def test_submit_results_for_race_you_do_not_own_returns_403():
             headers=headers,
         )
     assert response.status_code == 403
+
+
+def test_submit_results_for_race_with_out_of_domain_gradient_gpx_returns_422():
+    """Spec section 13/23: an unscoreable course (grade beyond +/-45%) must fail explicitly."""
+    headers = _organizer_auth_headers()
+    _, race_id = _create_event_and_race(headers)
+    with STEEP_GPX.open("rb") as handle:
+        client.post(
+            f"/races/{race_id}/gpx",
+            files={"file": ("steep.gpx", handle, "application/gpx+xml")},
+            headers=headers,
+        )
+
+    with DEMO_RESULT_001.open("rb") as handle:
+        response = client.post(
+            f"/races/{race_id}/results",
+            files={"file": ("OTRI-DEMO-001.csv", handle, "text/csv")},
+            headers=headers,
+        )
+    assert response.status_code == 422
 
 
 # --- Events ------------------------------------------------------------------
@@ -485,6 +507,17 @@ def test_analyze_invalid_gpx_returns_422():
         "/gpx/analyze",
         files={"file": ("not-gpx.txt", b"this is not xml", "text/plain")},
     )
+    assert response.status_code == 422
+
+
+def test_analyze_gpx_with_out_of_domain_gradient_returns_422():
+    """Spec section 13: grades beyond +/-45% must fail explicitly, not be silently clamped."""
+    with STEEP_GPX.open("rb") as handle:
+        response = client.post(
+            "/gpx/analyze",
+            files={"file": ("steep.gpx", handle, "application/gpx+xml")},
+            data={"finish_time_seconds": "3600"},
+        )
     assert response.status_code == 422
 
 

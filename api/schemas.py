@@ -70,6 +70,7 @@ class RunnerScoreOut(BaseModel):
     environmental_factor: float
     confidence: str
     scoring_version: str
+    performance_rate: float = 0.0
 
 
 class ValidationIssueOut(BaseModel):
@@ -88,7 +89,8 @@ class SubmissionResult(BaseModel):
 
 class IllustrativeEstimateOut(BaseModel):
     equivalent_distance_km: float
-    pace_seconds_per_km: float
+    performance_rate: float
+    otri_raw: float
     predicted_score: int
     scoring_version: str
     disclaimer: str

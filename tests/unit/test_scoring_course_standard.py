@@ -1,4 +1,4 @@
-"""Unit tests for the sealed, no-competitor Course Standard scoring model.
+"""Unit tests for the Course Standard scoring model (OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md).
 
 Run with: pytest tests/unit
 """
@@ -9,13 +9,16 @@ import pytest
 
 from ingestion.records import RaceRecord, ResultRecord
 from scoring.course_standard import (
+    K,
+    Q_500,
+    Q_1000,
+    SCALE_MAX,
     SCORING_VERSION,
-    _score_from_speed_kmh,
+    performance_rate,
+    score_for_time,
     score_race_course_standard,
-    speed_kmh_for_score,
     target_time_seconds,
 )
-from scoring.model import SCALE_MAX
 
 
 def _race(distance_km=10.0, elevation_gain_m=0.0) -> RaceRecord:
@@ -40,39 +43,57 @@ def _finisher(bib: str, finish_time_seconds: int) -> ResultRecord:
     )
 
 
-def test_score_never_reaches_scale_max_even_at_absurd_speed():
-    for speed_kmh in [10, 100, 1_000, 1_000_000, 10**12]:
-        assert _score_from_speed_kmh(speed_kmh) < SCALE_MAX
+def test_k_constant_matches_spec():
+    import math
+
+    assert K == pytest.approx(500.0 / math.log(Q_1000 / Q_500))
 
 
-def test_score_race_never_returns_scale_max_even_for_a_one_second_finish():
-    race = _race(distance_km=10.0)
-    # 10 km in 1 second: physically impossible, but must still be sealed below SCALE_MAX.
-    results = [_finisher("1", 1)]
-    scores = score_race_course_standard(race, results)
-    assert scores[0].score.otri_score < SCALE_MAX
-    assert scores[0].score.base_performance < SCALE_MAX
+def test_performance_rate_is_demand_km_per_hour():
+    # 10 equivalent km in 2 hours (7200s) = 5.0 demand-km/hour.
+    assert performance_rate(10.0, 7200) == pytest.approx(5.0)
 
 
-def test_score_is_zero_at_zero_speed():
-    assert _score_from_speed_kmh(0) == 0.0
-    assert _score_from_speed_kmh(-5) == 0.0
+def test_anchor_q_500_scores_500():
+    # T_hours = 10 / 15.0 = 0.6667h = 2400s.
+    result = score_for_time(10.0, 2400)
+    assert result["otri_score"] == 500
 
 
-def test_score_is_monotonic_in_speed():
-    speeds = [1, 5, 10, 15, 20, 30, 50]
-    scores = [_score_from_speed_kmh(speed) for speed in speeds]
-    assert scores == sorted(scores)
+def test_anchor_q_1000_scores_1000():
+    # T_hours = 10 / 22.5 = 0.4444h = 1600s.
+    result = score_for_time(10.0, 1600)
+    assert result["otri_score"] == 1000
 
 
-def test_faster_finish_time_never_scores_lower():
-    race = _race(distance_km=10.0)
-    fast = score_race_course_standard(race, [_finisher("1", 3000)])[0].score.otri_score
-    slow = score_race_course_standard(race, [_finisher("1", 4000)])[0].score.otri_score
-    assert fast > slow
+def test_anchor_q_10_scores_0():
+    # T_hours = 10 / 10.0 = 1h = 3600s.
+    result = score_for_time(10.0, 3600)
+    assert result["otri_score"] == 0
 
 
-def test_score_does_not_depend_on_other_finishers():
+def test_clipping_above_q_1000_still_scores_exactly_1000():
+    """Spec section 19: score = round(max(0, min(1000, otri_raw))) — clipped, not sealed.
+    Unlike the retired asymptotic design, 1000 IS a reachable, legitimate score."""
+    # An extremely fast time far beyond Q_1000.
+    result = score_for_time(10.0, 100)
+    assert result["otri_score"] == 1000
+    assert result["otri_raw"] > 1000  # unclipped value retained for audit, per spec section 19
+
+
+def test_clipping_below_zero_still_scores_exactly_0():
+    result = score_for_time(10.0, 1_000_000)
+    assert result["otri_score"] == 0
+    assert result["otri_raw"] < 0
+
+
+def test_score_is_monotonic_in_finish_time():
+    times = [1000, 1600, 2000, 2400, 3000, 3600, 5000]
+    scores = [score_for_time(10.0, t)["otri_score"] for t in times]
+    assert scores == sorted(scores, reverse=True)
+
+
+def test_score_race_does_not_depend_on_other_finishers():
     """The whole point of this model: a runner's score must not change depending on who
     else is in the results list — unlike the legacy field-relative model."""
     race = _race(distance_km=10.0)
@@ -91,27 +112,28 @@ def test_score_does_not_depend_on_other_finishers():
     assert solo == runner_one_score
 
 
-def test_speed_and_score_round_trip():
-    for score in [1, 100, 500, 900, 950, 999]:
-        speed = speed_kmh_for_score(score)
-        recovered = _score_from_speed_kmh(speed)
-        assert recovered == pytest.approx(score, abs=0.01)
+def test_target_time_seconds_is_inverse_of_score_for_time():
+    """Spec section 21's required pre/post inverse tests."""
+    for score in [0, 250, 500, 750, 1000]:
+        target = target_time_seconds(10.0, score)
+        recovered = score_for_time(10.0, target)["otri_score"]
+        assert recovered == pytest.approx(score, abs=1)
 
 
-def test_speed_for_score_rejects_scale_max_and_zero():
+def test_target_time_rejects_out_of_range_score():
     with pytest.raises(ValueError):
-        speed_kmh_for_score(SCALE_MAX)
+        target_time_seconds(10.0, -1)
     with pytest.raises(ValueError):
-        speed_kmh_for_score(0)
+        target_time_seconds(10.0, SCALE_MAX + 1)
 
 
-def test_target_time_seconds_is_consistent_with_score_race():
-    """Pre-race and post-race calculations use the same curve (research candidate 05, TSCI)."""
-    race = _race(distance_km=10.0)
-    target = target_time_seconds(equivalent_km=10.0, score=700)
-
-    scores = score_race_course_standard(race, [_finisher("1", round(target))])
-    assert scores[0].score.otri_score == pytest.approx(700, abs=1)
+def test_score_for_time_rejects_non_positive_inputs():
+    with pytest.raises(ValueError):
+        score_for_time(10.0, 0)
+    with pytest.raises(ValueError):
+        score_for_time(0.0, 3600)
+    with pytest.raises(ValueError):
+        score_for_time(-1.0, 3600)
 
 
 def test_no_finishers_returns_empty_list():

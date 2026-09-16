@@ -21,10 +21,12 @@ def test_estimate_from_totals_matches_totals_based_equivalent_distance():
     assert estimate.scoring_version == COURSE_STANDARD_VERSION
 
 
-def test_estimate_score_is_sealed_below_1000():
-    # An absurdly fast time must still never reach 1000.
+def test_estimate_score_clips_at_1000_for_extremely_fast_times():
+    # Per the spec, 1000 is a reachable, clipped ceiling (Q >= 22.5 demand-km/h) — not
+    # a theoretical, unreachable limit.
     estimate = estimate_score(1, distance_km=10, elevation_gain_m=0)
-    assert estimate.predicted_score < 1000
+    assert estimate.predicted_score == 1000
+    assert estimate.otri_raw > 1000
 
 
 def test_estimate_score_is_monotonic_in_finish_time():

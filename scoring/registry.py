@@ -40,8 +40,9 @@ _MODEL_INFO: dict[str, ScoringModelInfo] = {
         name="Course Standard",
         description=(
             "Score depends only on the course (Minetti gradient-cost course demand) and your own "
-            "finish time — never on who else ran the race. Sealed below 1000: no finite speed, "
-            "however fast, ever reaches it."
+            "finish time — never on who else ran the race. A logarithmic scale anchored at two "
+            "published reference points (500 at 15.0 demand-km/h, 1000 at 22.5 demand-km/h), "
+            "clipped to 0-1000."
         ),
         uses_competitors=False,
     ),

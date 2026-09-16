@@ -58,9 +58,9 @@ export default function GpxTester() {
       </h2>
       <p className="mt-2 max-w-[680px] text-sm text-slate-500">
         Uses the Course Standard model: a Minetti gradient-cost course-demand engine plus your own finish time — never
-        another runner's result. The scale is sealed below 1000: no finish time, however fast, ever reaches it. Because
-        nothing here depends on competitors, this predictor and the real post-race scorer share one formula and always
-        agree exactly for the same course and time.
+        another runner's result. The scale is anchored at two published reference points (500 at 15.0 demand-km/h,
+        1000 at 22.5 demand-km/h) and clipped to 0-1000. Because nothing here depends on competitors, this predictor
+        and the real post-race scorer share one formula and always agree exactly for the same course and time.
       </p>
 
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -136,15 +136,16 @@ export default function GpxTester() {
             <p className="font-mono text-[9px] tracking-[.08em] text-blue-600">PREDICTED OTRI SCORE</p>
             <p className="mt-2 text-5xl font-bold tracking-[-.03em] text-blue-600">{estimate.predicted_score}</p>
             <p className="mt-2 text-xs text-slate-500">
-              {estimate.pace_seconds_per_km}s/km over {estimate.equivalent_distance_km} equivalent km
+              {estimate.performance_rate} demand-km/h performance rate over {estimate.equivalent_distance_km}{' '}
+              equivalent km
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
             <p className="font-mono text-[9px] tracking-[.08em] text-slate-400">HOW THIS WAS CALCULATED</p>
             <p className="mt-2 text-sm text-slate-600">
-              Course Standard model (<code>{estimate.scoring_version}</code>): your equivalent-flat speed is mapped
-              through a curve that approaches 1000 but never reaches it — nobody's score, however fast, is ever
-              exactly 1000.
+              Course Standard model (<code>{estimate.scoring_version}</code>): your performance rate (course demand ÷
+              time) is mapped through a logarithmic curve anchored at 500 = 15.0 demand-km/h and 1000 = 22.5
+              demand-km/h, then clipped to 0-1000.
             </p>
             <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
               This is not just an estimate: since this model never reads other runners' results, this is the exact

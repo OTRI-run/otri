@@ -1,103 +1,176 @@
-"""Minetti gradient-cost course-demand engine.
+"""Course-demand engine — implements OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md exactly.
 
-Implements the core calculation shared by research candidates 01 (Gradient
-Energy Cost Index) and 02 (Equivalent Flat Distance Index) — see
-``docs/methodology/research-candidates/``. A course is reduced to a single
-number: the flat-ground distance a runner would need to cover to expend the
-same modeled metabolic cost as the real course. This is the "course-demand
-engine" half of ``scoring.course_standard``'s Time Standard Curve; it has no
-opinion about finish times, competitors, or scores — only about the course.
+Converts a GPX course into a single "course demand" coordinate (an OTRI
+modeled demand-equivalent distance, not a literal energy measurement — see
+the spec's section 4) by integrating a published gradient-dependent
+running-cost polynomial over fixed-length course segments. This module is
+pure course processing: it never reads a finish time, a result, or another
+runner's data (spec section 2's "explicit exclusions").
 
-Deliberately course-only: this module never reads a result, a finish time, or
-another runner's data.
+Deviation from the spec, clearly scoped: the spec treats "missing GPX" as a
+hard input-validation failure (section 23). This codebase additionally lets
+an organizer create a race distance *before* attaching a GPX (see
+`api/db.py`'s GPX-attach-after-creation workflow) — for that bridging case
+only, `equivalent_flat_distance_from_totals` provides a coarser,
+non-spec fallback so such a race can still be scored provisionally.
 """
 
 from __future__ import annotations
 
-from course.gpx import TrackPoint
-from course.features import haversine_m
+import math
+import statistics
+from dataclasses import dataclass
 
-# Minetti et al. 2002 fifth-order polynomial for the metabolic cost of
+from course.features import haversine_m
+from course.gpx import TrackPoint
+
+# Minetti et al. 2002's fifth-order polynomial for the metabolic cost of
 # running at a given gradient, in J/kg/m — measured over slopes from
 # approximately -45% to +45%. `g` is a decimal grade (0.10 == +10%).
-#
-#   C(g) = 155.4g^5 - 30.4g^4 - 43.3g^3 + 46.3g^2 + 19.5g + 3.6
-#
 # Source: Minetti AE, Moia C, Roi GS, Susta D, Ferretti G. "Energy cost of
 # walking and running at extreme uphill and downhill slopes." Journal of
 # Applied Physiology. 2002;93(3):1039-1046.
-_MINETTI_COEFFICIENTS_HIGH_TO_LOW = (155.4, -30.4, -43.3, 46.3, 19.5, 3.6)
+MIN_GRADE = -0.45
+MAX_GRADE = 0.45
 
-# The polynomial is only evidenced over roughly this gradient range; grades
-# beyond it are clamped rather than extrapolated (docs/methodology/
-# research-candidates/01-gradient-energy-cost-index.md "Major limitation").
-_MINETTI_SUPPORTED_GRADE = 0.45
-
-# Target resampled segment length for the gradient-cost integral. The GECI
-# paper recommends testing 10/20/50 m for stability before standardizing;
-# 20 m is its suggested starting point, smoothing raw GPS/elevation noise
-# that would otherwise dominate a per-point integral.
+# Fixed target segment length (spec section 9) — a model parameter, not
+# tuned per course/race.
 SEGMENT_LENGTH_M = 20.0
 
+# Elevation-denoising pipeline parameters (spec section 8: "remove non-finite
+# values -> remove obvious isolated spikes -> rolling median -> rolling
+# mean"). Fixed model parameters, recorded here and never tuned per race.
+SPIKE_THRESHOLD_M = 50.0
+ELEVATION_MEDIAN_WINDOW = 5
+ELEVATION_MEAN_WINDOW = 5
 
-def minetti_cost(grade: float) -> float:
-    """Metabolic cost of running at `grade` (decimal, e.g. 0.10 for +10%), in J/kg/m.
 
-    Clamped to the polynomial's evidenced range (+/-45%) rather than
-    extrapolated beyond it.
+class UnsupportedGradientError(ValueError):
+    """A segment's grade falls outside the Minetti polynomial's evidenced domain.
+
+    Per spec section 13, V0 does not silently clamp or extrapolate beyond
+    +/-45% — it fails explicitly so the course can be reviewed.
     """
-    g = max(-_MINETTI_SUPPORTED_GRADE, min(_MINETTI_SUPPORTED_GRADE, grade))
-    c5, c4, c3, c2, c1, c0 = _MINETTI_COEFFICIENTS_HIGH_TO_LOW
-    return c5 * g**5 + c4 * g**4 + c3 * g**3 + c2 * g**2 + c1 * g + c0
 
 
-_FLAT_COST = minetti_cost(0.0)
+def gradient_cost(g: float) -> float:
+    """Metabolic cost of running at grade `g` (decimal, e.g. 0.10 for +10%), in J/kg/m."""
+    if not math.isfinite(g):
+        raise ValueError("grade must be finite")
+    if g < MIN_GRADE or g > MAX_GRADE:
+        raise UnsupportedGradientError(f"grade {g!r} outside the supported domain [{MIN_GRADE}, {MAX_GRADE}]")
+    return 155.4 * g**5 - 30.4 * g**4 - 43.3 * g**3 + 46.3 * g**2 + 19.5 * g + 3.6
 
 
-def grade_cost_ratio(grade: float) -> float:
-    """Cost of running at `grade` relative to flat ground (1.0 == flat)."""
-    return minetti_cost(grade) / _FLAT_COST
+# gradient_cost(0.0) — spelled out per spec section 12 ("R(g) = C(g) / 3.6").
+_FLAT_COST = 3.6
 
 
-def equivalent_flat_distance_km(points: list[TrackPoint]) -> float:
-    """GECI/EFDI course demand: integrate the gradient-cost ratio over the whole course.
-
-    The raw point-to-point polyline is resampled to fixed-length segments
-    (``SEGMENT_LENGTH_M``) first, so a single noisy GPS/elevation reading
-    can't dominate the integral the way it could from a naive per-point
-    calculation — matching the GECI paper's recommended approach.
-    """
-    if len(points) < 2:
-        raise ValueError("at least 2 track points are required")
-
-    cumulative_m = [0.0]
-    for previous, current in zip(points, points[1:]):
-        cumulative_m.append(cumulative_m[-1] + haversine_m(previous.lat, previous.lon, current.lat, current.lon))
-    elevations = [point.elevation_m if point.elevation_m is not None else 0.0 for point in points]
-
-    total_m = cumulative_m[-1]
-    if total_m <= 0:
-        return 0.0
-
-    segment_count = max(1, round(total_m / SEGMENT_LENGTH_M))
-    step_m = total_m / segment_count
-
-    equivalent_m = 0.0
-    for i in range(segment_count):
-        start_elevation = _interpolate_elevation(cumulative_m, elevations, i * step_m)
-        end_elevation = _interpolate_elevation(cumulative_m, elevations, (i + 1) * step_m)
-        grade = (end_elevation - start_elevation) / step_m
-        equivalent_m += step_m * grade_cost_ratio(grade)
-
-    return round(equivalent_m / 1000.0, 3)
+def gradient_ratio(g: float) -> float:
+    """Cost of running at grade `g` relative to flat ground (1.0 == flat)."""
+    return gradient_cost(g) / _FLAT_COST
 
 
-def _interpolate_elevation(cumulative_m: list[float], elevations: list[float], target_m: float) -> float:
-    """Linearly interpolate elevation at `target_m` along the cumulative-distance polyline."""
+@dataclass(frozen=True)
+class CourseDemand:
+    physical_distance_km: float
+    course_demand_km: float
+    elevation_gain_m: float
+    elevation_loss_m: float
+    segment_count: int
+    minimum_grade: float
+    maximum_grade: float
+
+    def to_dict(self) -> dict:
+        return {
+            "physical_distance_km": self.physical_distance_km,
+            "course_demand_km": self.course_demand_km,
+            "elevation_gain_m": self.elevation_gain_m,
+            "elevation_loss_m": self.elevation_loss_m,
+            "segment_count": self.segment_count,
+            "minimum_grade": self.minimum_grade,
+            "maximum_grade": self.maximum_grade,
+        }
+
+
+def _remove_invalid_coordinates(points: list[TrackPoint]) -> list[TrackPoint]:
+    return [point for point in points if -90.0 <= point.lat <= 90.0 and -180.0 <= point.lon <= 180.0]
+
+
+def _remove_consecutive_duplicates(points: list[TrackPoint]) -> list[TrackPoint]:
+    if not points:
+        return points
+    cleaned = [points[0]]
+    for point in points[1:]:
+        previous = cleaned[-1]
+        if point.lat == previous.lat and point.lon == previous.lon:
+            continue
+        cleaned.append(point)
+    return cleaned
+
+
+def _interpolate_missing(values: list[float | None]) -> list[float]:
+    """Fill None/non-finite gaps by interpolating between the nearest known values."""
+    known_indices = [i for i, v in enumerate(values) if v is not None and math.isfinite(v)]
+    if not known_indices:
+        return [0.0] * len(values)
+
+    result: list[float] = list(values)  # type: ignore[assignment]
+    for i, value in enumerate(values):
+        if value is not None and math.isfinite(value):
+            continue
+        before = max((k for k in known_indices if k < i), default=None)
+        after = min((k for k in known_indices if k > i), default=None)
+        if before is None:
+            result[i] = values[after]
+        elif after is None:
+            result[i] = values[before]
+        else:
+            fraction = (i - before) / (after - before)
+            result[i] = values[before] + fraction * (values[after] - values[before])
+    return result
+
+
+def _remove_isolated_spikes(values: list[float]) -> list[float]:
+    """A point differing from BOTH immediate neighbours by more than SPIKE_THRESHOLD_M is
+    replaced with their average — a single obviously-bad elevation reading, not real terrain."""
+    despiked = list(values)
+    for i in range(1, len(values) - 1):
+        left, mid, right = values[i - 1], values[i], values[i + 1]
+        if abs(mid - left) > SPIKE_THRESHOLD_M and abs(mid - right) > SPIKE_THRESHOLD_M:
+            despiked[i] = (left + right) / 2.0
+    return despiked
+
+
+def _rolling_median(values: list[float], window: int) -> list[float]:
+    half = window // 2
+    return [statistics.median(values[max(0, i - half) : min(len(values), i + half + 1)]) for i in range(len(values))]
+
+
+def _rolling_mean(values: list[float], window: int) -> list[float]:
+    half = window // 2
+    smoothed = []
+    for i in range(len(values)):
+        windowed = values[max(0, i - half) : min(len(values), i + half + 1)]
+        smoothed.append(sum(windowed) / len(windowed))
+    return smoothed
+
+
+def _clean_elevations(raw_elevations: list[float | None]) -> list[float]:
+    """Spec section 8's fixed denoising pipeline, applied in order."""
+    values = _interpolate_missing(raw_elevations)
+    values = _remove_isolated_spikes(values)
+    values = _rolling_median(values, ELEVATION_MEDIAN_WINDOW)
+    values = _rolling_mean(values, ELEVATION_MEAN_WINDOW)
+    return values
+
+
+def _interpolate_at(cumulative_m: list[float], values: list[float], target_m: float) -> float:
+    """Linear interpolation of `values` at `target_m` along the cumulative-distance polyline."""
     if target_m <= cumulative_m[0]:
-        return elevations[0]
+        return values[0]
     if target_m >= cumulative_m[-1]:
-        return elevations[-1]
+        return values[-1]
 
     lo, hi = 0, len(cumulative_m) - 1
     while lo + 1 < hi:
@@ -109,20 +182,92 @@ def _interpolate_elevation(cumulative_m: list[float], elevations: list[float], t
 
     span = cumulative_m[hi] - cumulative_m[lo]
     if span <= 0:
-        return elevations[lo]
+        return values[lo]
     fraction = (target_m - cumulative_m[lo]) / span
-    return elevations[lo] + fraction * (elevations[hi] - elevations[lo])
+    return values[lo] + fraction * (values[hi] - values[lo])
+
+
+def _segment_boundaries(total_m: float) -> list[float]:
+    """Fixed 20 m segments, retaining the final remainder rather than dropping or
+    stretching it to fit evenly (spec section 9)."""
+    boundaries = []
+    distance = 0.0
+    while distance < total_m:
+        boundaries.append(distance)
+        distance += SEGMENT_LENGTH_M
+    boundaries.append(total_m)
+    return boundaries
+
+
+def compute_course_demand(points: list[TrackPoint]) -> CourseDemand:
+    """Deterministic GPX -> course-demand pipeline (spec section 6)."""
+    points = _remove_invalid_coordinates(points)
+    points = _remove_consecutive_duplicates(points)
+    if len(points) < 2:
+        raise ValueError("at least 2 valid track points are required")
+
+    cumulative_m = [0.0]
+    for previous, current in zip(points, points[1:]):
+        cumulative_m.append(cumulative_m[-1] + haversine_m(previous.lat, previous.lon, current.lat, current.lon))
+
+    physical_distance_km = cumulative_m[-1] / 1000.0
+    if physical_distance_km <= 0:
+        raise ValueError("course has zero physical distance")
+
+    raw_elevations = [point.elevation_m for point in points]
+    cleaned_elevations = _clean_elevations(raw_elevations)
+
+    boundaries = _segment_boundaries(cumulative_m[-1])
+    demand_km = 0.0
+    elevation_gain_m = 0.0
+    elevation_loss_m = 0.0
+    minimum_grade = math.inf
+    maximum_grade = -math.inf
+    segment_count = 0
+
+    for start_m, end_m in zip(boundaries, boundaries[1:]):
+        segment_distance_m = end_m - start_m
+        if segment_distance_m <= 0:
+            continue
+        elevation_start = _interpolate_at(cumulative_m, cleaned_elevations, start_m)
+        elevation_end = _interpolate_at(cumulative_m, cleaned_elevations, end_m)
+        elevation_change_m = elevation_end - elevation_start
+        grade = elevation_change_m / segment_distance_m
+
+        demand_km += (segment_distance_m / 1000.0) * gradient_ratio(grade)
+        if elevation_change_m > 0:
+            elevation_gain_m += elevation_change_m
+        else:
+            elevation_loss_m += -elevation_change_m
+        minimum_grade = min(minimum_grade, grade)
+        maximum_grade = max(maximum_grade, grade)
+        segment_count += 1
+
+    if segment_count == 0:
+        raise ValueError("course has zero course demand")
+
+    return CourseDemand(
+        physical_distance_km=round(physical_distance_km, 3),
+        course_demand_km=round(demand_km, 3),
+        elevation_gain_m=round(elevation_gain_m, 1),
+        elevation_loss_m=round(elevation_loss_m, 1),
+        segment_count=segment_count,
+        minimum_grade=round(minimum_grade, 4),
+        maximum_grade=round(maximum_grade, 4),
+    )
+
+
+def equivalent_flat_distance_km(points: list[TrackPoint]) -> float:
+    """The course-demand coordinate in kilometres — the primary entry point used by
+    ``scoring.course_standard``. See ``compute_course_demand`` for full diagnostics."""
+    return compute_course_demand(points).course_demand_km
 
 
 def equivalent_flat_distance_from_totals(distance_km: float, elevation_gain_m: float) -> float:
-    """Fallback course demand for races with no attached GPX.
-
-    Approximates the whole course as one constant average grade (the total
-    gain spread evenly over the total distance) — materially less accurate
-    than ``equivalent_flat_distance_km`` since it has no segment structure
-    and no descent data. Used only until a GPX is attached to the race.
-    """
+    """Non-spec fallback for a race with no GPX attached yet (see module docstring):
+    approximates the whole course as one constant average grade. Materially less accurate
+    than ``equivalent_flat_distance_km`` — no segment structure, no descent data."""
     if distance_km <= 0:
         raise ValueError("distance_km must be greater than 0")
     average_grade = (elevation_gain_m / 1000.0) / distance_km
-    return round(distance_km * grade_cost_ratio(average_grade), 3)
+    return round(distance_km * gradient_ratio(average_grade), 3)

@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from course.gpx import TrackPoint
 
 from .course_demand import equivalent_flat_distance_from_totals, equivalent_flat_distance_km
-from .course_standard import SCORING_VERSION, score_for_time, sealed_integer_score
+from .course_standard import SCORING_VERSION, score_for_time
 
 DISCLAIMER = (
     "Uses the exact same Course Standard formula as the real post-race scorer — no competitor "
@@ -29,7 +29,8 @@ DISCLAIMER = (
 @dataclass(frozen=True)
 class ScoreEstimate:
     equivalent_distance_km: float
-    pace_seconds_per_km: float
+    performance_rate: float
+    otri_raw: float
     predicted_score: int
     scoring_version: str
     disclaimer: str
@@ -37,7 +38,8 @@ class ScoreEstimate:
     def to_dict(self) -> dict:
         return {
             "equivalent_distance_km": self.equivalent_distance_km,
-            "pace_seconds_per_km": self.pace_seconds_per_km,
+            "performance_rate": self.performance_rate,
+            "otri_raw": self.otri_raw,
             "predicted_score": self.predicted_score,
             "scoring_version": self.scoring_version,
             "disclaimer": self.disclaimer,
@@ -67,13 +69,13 @@ def estimate_score(
     else:
         raise ValueError("either gpx_points or both distance_km and elevation_gain_m must be provided")
 
-    pace = finish_time_seconds / equivalent_km
-    score = score_for_time(equivalent_km, finish_time_seconds)
+    computed = score_for_time(equivalent_km, finish_time_seconds)
 
     return ScoreEstimate(
         equivalent_distance_km=round(equivalent_km, 3),
-        pace_seconds_per_km=round(pace, 1),
-        predicted_score=sealed_integer_score(score),
+        performance_rate=round(computed["performance_rate"], 3),
+        otri_raw=round(computed["otri_raw"], 2),
+        predicted_score=computed["otri_score"],
         scoring_version=SCORING_VERSION,
         disclaimer=DISCLAIMER,
     )

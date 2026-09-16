@@ -1,21 +1,19 @@
-"""Course Standard scoring model — no competitors, sealed below 1000.
+"""Course Standard scoring model — implements OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md exactly.
 
-Combines the Time Standard Curve architecture (research candidate 05, TSCI)
-with the Minetti gradient-cost course-demand engine (candidates 01/02, GECI/
-EFDI) — see ``docs/methodology/research-candidates/``. A runner's score
-depends only on the course and their own finish time. No other runner's
-result — the field's winner, its size, or its strength — is read anywhere in
-this module. That is the entire point of this research direction (README.md
-"the fundamental score should be determined from the course model and finish
-time, not from... the competitors in that race"), and it is what the older
+Combines the spec's course-demand engine (``scoring.course_demand``, the
+Minetti gradient-cost integral) with its logarithmic performance-rate
+transformation. A runner's score depends only on the course and their own
+finish time — no other runner's result (the field's winner, its size, or its
+strength) is read anywhere in this module. That is the model's central
+principle (spec section 2's "explicit exclusions"), and it is what the older
 ``scoring.model.score_race_field_relative`` could not do.
 
-Sealed scale: score is a strictly increasing, strictly bounded function of
-equivalent-flat speed that approaches ``SCALE_MAX`` (1000) as speed goes to
-infinity but never reaches it for any finite speed — see
-``_score_from_speed_kmh``. That models 1000 as a theoretical ceiling nobody
-can actually reach, rather than "whoever happened to win this specific
-race" (the field-relative model's definition of 1000).
+Score scale: two explicit, published reference points anchor the curve —
+``Q_500`` (500 points) and ``Q_1000`` (1000 points), both in demand-km/hour.
+The transformation is logarithmic and **clipped**, not asymptotic: a
+performance at or above ``Q_1000`` legitimately scores exactly 1000 (spec
+sections 17-19) — 1000 is a defined, reachable elite reference point, not an
+unreachable theoretical limit.
 """
 
 from __future__ import annotations
@@ -26,98 +24,52 @@ from course.gpx import TrackPoint
 from ingestion.records import RaceRecord, ResultRecord
 
 from .course_demand import equivalent_flat_distance_from_totals, equivalent_flat_distance_km
-from .model import SCALE_MAX, RunnerScore, ScoreBreakdown
+from .model import RunnerScore, ScoreBreakdown
 
 SCORING_VERSION = "1.0.0-course-standard"
 
-# Provisional calibration constant (km/h). Chosen so that a flat-equivalent
-# speed matching the men's marathon world-record pace (~20.5 km/h) scores
-# ~950 — a very high but explicitly not-maximal score, leaving deliberate
-# headroom below SCALE_MAX for "faster than any human has ever run."
-#
-# This is NOT derived from real OTRI race results (none exist yet) — it is a
-# documented placeholder pending real calibration data, exactly like
-# scoring.estimator's REFERENCE_PACE_S_PER_KM. Revisit per METHODOLOGY.md
-# §10/§11 once validated race data is available.
-REFERENCE_SPEED_SCALE_KMH = 6.84
+# Explicit OTRI scale conventions (spec section 17) — not population
+# averages, records, or another organization's values.
+Q_500 = 15.0
+Q_1000 = 22.5
+K = 500.0 / math.log(Q_1000 / Q_500)
+
+SCALE_MIN = 0.0
+SCALE_MAX = 1000.0
 
 
-def _score_from_speed_kmh(speed_kmh: float) -> float:
-    """Score for a given flat-equivalent speed: strictly in [0, SCALE_MAX) for any finite,
-    positive speed. No finite speed — however fast — ever reaches SCALE_MAX exactly.
+def performance_rate(equivalent_km: float, finish_time_seconds: float) -> float:
+    """Q = course demand (km) / finish time (hours) — spec section 16."""
+    if not math.isfinite(equivalent_km) or equivalent_km <= 0:
+        raise ValueError("equivalent_km must be a positive, finite number")
+    if not math.isfinite(finish_time_seconds) or finish_time_seconds <= 0:
+        raise ValueError("finish_time_seconds must be a positive, finite number")
+    time_hours = finish_time_seconds / 3600.0
+    return equivalent_km / time_hours
 
-    At extreme speeds, ``math.exp(-x)`` underflows to 0.0 in float64 and
-    ``1 - 0.0`` becomes exactly ``1.0``, which would otherwise make this
-    function return exactly SCALE_MAX for a large enough (if physically
-    absurd) input. The tiny ``_FLOAT_EPSILON`` clamp keeps the "never exactly
-    SCALE_MAX" guarantee true at the floating-point level too, not just after
-    later rounding.
+
+def score_for_time(equivalent_km: float, finish_time_seconds: float) -> dict:
+    """The public, clipped OTRI score plus its unclipped raw value and performance rate
+    (spec sections 18-19). Shared by ``score_race_course_standard`` (real results) and
+    ``scoring.estimator`` (pre-race GPX predictions) so both use the exact same formula.
     """
-    if speed_kmh <= 0:
-        return 0.0
-    raw = SCALE_MAX * (1 - math.exp(-speed_kmh / REFERENCE_SPEED_SCALE_KMH))
-    return min(raw, SCALE_MAX - _FLOAT_EPSILON)
-
-
-_FLOAT_EPSILON = 1e-9
-
-
-# Rounding a value already close to SCALE_MAX (e.g. 999.998) can round *to*
-# SCALE_MAX itself, which must never appear anywhere — as a display value or
-# as the stored integer otri_score — since SCALE_MAX is a theoretical ceiling
-# nobody can actually reach, not a value that just happens to be rare.
-_MAX_DISPLAYED_SCORE = SCALE_MAX - 0.01
-_MAX_DISPLAYED_OTRI_SCORE = SCALE_MAX - 1
-
-
-def _sealed_base_performance(speed_kmh: float) -> float:
-    return min(round(_score_from_speed_kmh(speed_kmh), 2), _MAX_DISPLAYED_SCORE)
-
-
-def sealed_integer_score(base_performance: float) -> int:
-    """Round `base_performance` to the nearest whole score without ever reaching SCALE_MAX —
-    plain ``round()`` on a value already this close to SCALE_MAX (e.g. 999.996) would round
-    *to* SCALE_MAX itself, which must never appear anywhere."""
-    return min(round(base_performance), _MAX_DISPLAYED_OTRI_SCORE)
-
-
-def speed_kmh_for_score(score: float) -> float:
-    """Inverse of ``_score_from_speed_kmh``: the flat-equivalent speed that produces `score`.
-
-    Raises ValueError for score <= 0 or score >= SCALE_MAX — SCALE_MAX is a
-    theoretical ceiling, not an achievable target, so no finite speed maps to it.
-    """
-    if not 0 < score < SCALE_MAX:
-        raise ValueError(f"score must be strictly between 0 and {SCALE_MAX} (exclusive)")
-    return -REFERENCE_SPEED_SCALE_KMH * math.log(1 - score / SCALE_MAX)
+    q = performance_rate(equivalent_km, finish_time_seconds)
+    raw = 500.0 + K * math.log(q / Q_500)
+    public = round(max(SCALE_MIN, min(SCALE_MAX, raw)))
+    return {"performance_rate": q, "otri_raw": raw, "otri_score": public}
 
 
 def target_time_seconds(equivalent_km: float, score: float) -> float:
-    """The finish time that would produce `score` on a course with this equivalent distance.
-
-    Together with ``score_race_course_standard``, this makes pre-race and
-    post-race calculations symmetric (METHODOLOGY.md §9) — the same curve
-    both directions, per research candidate 05 (TSCI).
-    """
+    """Inverse of ``score_for_time`` (spec section 20): the finish time that scores exactly
+    `score` on a course with this equivalent distance. Symmetric with the forward direction,
+    per spec section 21's required pre/post inverse tests."""
     if equivalent_km <= 0:
         raise ValueError("equivalent_km must be greater than 0")
-    speed_kmh = speed_kmh_for_score(score)
-    return equivalent_km / speed_kmh * 3600
-
-
-def score_for_time(equivalent_km: float, finish_time_seconds: int) -> float:
-    """The sealed base-performance score for covering `equivalent_km` in `finish_time_seconds`.
-
-    Shared by ``score_race_course_standard`` (real results) and
-    ``scoring.estimator`` (pre-race GPX predictions) so both use the exact
-    same formula — no separate "illustrative" math path.
-    """
-    if equivalent_km <= 0:
-        raise ValueError("equivalent_km must be greater than 0")
-    if finish_time_seconds <= 0:
-        raise ValueError("finish_time_seconds must be greater than 0")
-    speed_kmh = (equivalent_km / finish_time_seconds) * 3600
-    return _sealed_base_performance(speed_kmh)
+    if not math.isfinite(score) or not 0 <= score <= SCALE_MAX:
+        raise ValueError(f"score must be between {SCALE_MIN} and {SCALE_MAX}")
+    q = Q_500 * math.exp((score - 500.0) / K)
+    time_hours = equivalent_km / q
+    return time_hours * 3600.0
 
 
 def _confidence_for_course(has_gpx: bool) -> str:
@@ -155,15 +107,16 @@ def score_race_course_standard(
 
     scores = []
     for result in ordered:
-        base_performance = _sealed_base_performance((equivalent_km / result.finish_time_seconds) * 3600)
+        computed = score_for_time(equivalent_km, result.finish_time_seconds)
         breakdown = ScoreBreakdown(
-            otri_score=sealed_integer_score(base_performance),
-            base_performance=base_performance,
+            otri_score=computed["otri_score"],
+            base_performance=round(computed["otri_raw"], 2),
             course_adjustment=0.0,
             field_adjustment=0.0,
             environmental_factor=0.0,
             confidence=confidence,
             scoring_version=SCORING_VERSION,
+            performance_rate=round(computed["performance_rate"], 3),
         )
         scores.append(
             RunnerScore(

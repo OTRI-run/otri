@@ -47,6 +47,9 @@ class ScoreBreakdown:
     environmental_factor: float
     confidence: str
     scoring_version: str
+    # Q (demand-km/hour) — only meaningful for scoring.course_standard; the
+    # legacy field-relative model below leaves this at its default.
+    performance_rate: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -57,6 +60,7 @@ class ScoreBreakdown:
             "environmental_factor": self.environmental_factor,
             "confidence": self.confidence,
             "scoring_version": self.scoring_version,
+            "performance_rate": self.performance_rate,
         }
 
 

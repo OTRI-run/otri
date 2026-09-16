@@ -456,7 +456,10 @@ def get_race_results(race_id: str) -> list[RunnerScoreOut]:
     if not db.has_results(race_id):
         raise HTTPException(status_code=404, detail=f"no results on file for race {race_id!r}")
 
-    return _score_results(race, db.get_results(race_id))
+    try:
+        return _score_results(race, db.get_results(race_id))
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @app.post("/races/{race_id}/results", response_model=SubmissionResult)
@@ -494,11 +497,16 @@ async def submit_race_results(
         results = result_records(temp_path)
         db.replace_results(race_id, results)
 
+        try:
+            scores = _score_results(race, results)
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
         return SubmissionResult(
             is_valid=True,
             errors=[],
             warnings=[ValidationIssueOut(**issue.to_dict()) for issue in report.warnings],
-            scores=_score_results(race, results),
+            scores=scores,
         )
     finally:
         temp_path.unlink(missing_ok=True)
@@ -528,6 +536,9 @@ async def analyze_gpx(file: UploadFile, finish_time_seconds: int | None = Form(d
 
     estimate = None
     if finish_time_seconds is not None:
-        estimate = IllustrativeEstimateOut(**estimate_score(finish_time_seconds, gpx_points=points).to_dict())
+        try:
+            estimate = IllustrativeEstimateOut(**estimate_score(finish_time_seconds, gpx_points=points).to_dict())
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
 
     return GpxAnalysis(features=features.to_dict(), estimate=estimate)

@@ -1,9 +1,9 @@
 """OTRI scoring engine — pluggable, versioned scoring models.
 
 More than one scoring algorithm is available at once (see ``scoring.registry``
-and ``docs/methodology/research-candidates/``). ``score_race()`` here is the
-selectable entry point, defaulting to the course-standard model (no
-competitor dependency, sealed below 1000) — see ``scoring/README.md``.
+and ``docs/methodology/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md``). ``score_race()``
+here is the selectable entry point, defaulting to the Course Standard model
+(no competitor dependency) — see ``scoring/README.md``.
 """
 
 from .course_standard import SCORING_VERSION as COURSE_STANDARD_VERSION

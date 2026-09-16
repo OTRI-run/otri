@@ -6,7 +6,7 @@ The OTRI public API — events, race distances, scored results, and the organize
 
 ## Data model
 
-An **event** (e.g. "Phuket Mountain Trail Weekend") is owned by one organizer and has a name + date. Each event can have one or more **race distances** under it (e.g. "50K", "25K"), each with its own course stats, a selectable **scoring model** (`scoring_version`, see `scoring/README.md` — defaults to the no-competitor "Course Standard" model, sealed below 1000), and, optionally, an attached GPX file — attaching a GPX recomputes `distance_km`/`elevation_gain_m` from the real parsed course, making the GPX authoritative. Results are submitted per race distance.
+An **event** (e.g. "Phuket Mountain Trail Weekend") is owned by one organizer and has a name + date. Each event can have one or more **race distances** under it (e.g. "50K", "25K"), each with its own course stats, a selectable **scoring model** (`scoring_version`, see `scoring/README.md` — defaults to the no-competitor "Course Standard" model), and, optionally, an attached GPX file — attaching a GPX recomputes `distance_km`/`elevation_gain_m` from the real parsed course, making the GPX authoritative. Results are submitted per race distance.
 
 Every event/race mutation (create/edit/delete, GPX attach, result submission) requires the requesting organizer to own the event — enforced server-side, 403 otherwise. `GET` endpoints (list/detail races, events, results) stay fully public.
 
@@ -36,7 +36,7 @@ Every event/race mutation (create/edit/delete, GPX attach, result submission) re
 | GET | `/races/{race_id}/gpx` | Raw GPX content for a race distance (`application/gpx+xml`), 404 if none attached. |
 | GET | `/races/{race_id}/results` | Scored results for a race already on file (scored with whichever model the race is configured for), 404 if unknown race or no results submitted yet. |
 | POST | `/races/{race_id}/results` | **Requires ownership of the race's event.** Upload a CSV/XLSX result file. Always validates first, then re-scores from the raw file using the race's configured scoring model — **the organizer can never supply a score directly** (`HANDBOOK.md` "Validation and anti-gaming"). A successful submission replaces any previously stored results for that race. Returns `is_valid`, `errors`, `warnings`, and `scores` (empty if invalid). |
-| POST | `/gpx/analyze` | Standalone tool (unrelated to stored races): upload a `.gpx` file, optionally with `finish_time_seconds`. Returns parsed course features and, if a time was given, the Course Standard model's predicted score (`scoring.estimator`) — the exact score that finish time will earn once real results are submitted for the same course, since that model has no competitor dependency. See `docs/gpx-predictor.md`. |
+| POST | `/gpx/analyze` | Standalone tool (unrelated to stored races): upload a `.gpx` file, optionally with `finish_time_seconds`. Returns parsed course features and, if a time was given, the Course Standard model's predicted score (`scoring.estimator`) — the exact score that finish time will earn once real results are submitted for the same course, since that model has no competitor dependency. 422 if the course has a grade outside the model's supported ±45% domain. See `docs/gpx-predictor.md`. |
 
 ## Environment variables
 
@@ -94,7 +94,8 @@ Then open `http://127.0.0.1:8000/docs` for interactive Swagger docs (generated a
 - Rate limiting is in-process/in-memory (`api/rate_limit.py`) — correct for a single worker, but not shared across multiple gunicorn/uvicorn worker processes. A real deployment with multiple workers needs a shared store (Redis, per `HANDBOOK.md`'s recommended stack).
 - No database migration tool — the schema is created with `CREATE TABLE IF NOT EXISTS` (`api/db.py`), fine while the schema is small and stable, but will need a real migration tool (e.g. Alembic) once it needs to evolve without downtime.
 - `GET /events`/`GET /races` compute `race_count`/joins with one query per event (N+1) — acceptable at prototype scale, would need optimizing for a large number of events.
-- The Course Standard scoring model's course-demand engine is grounded in published gradient-cost research (Minetti et al.), but its scale-calibration constant (`scoring.course_standard.REFERENCE_SPEED_SCALE_KMH`) is an explicitly provisional placeholder — no real OTRI race results exist yet to calibrate it properly.
+- The Course Standard scoring model implements `docs/methodology/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md`; its course-demand engine is grounded in published gradient-cost research (Minetti et al.), but the `Q_500`/`Q_1000` scale anchors (`scoring.course_standard`) are explicit OTRI design choices, not yet validated against real race results.
+- Races whose GPX contains a segment grade outside the model's supported ±45% domain fail explicitly (422) rather than being silently approximated — by design (spec section 13), but it means genuinely extreme courses currently can't be scored under Course Standard until reviewed.
 
 These are necessary before any real public deployment and are tracked as future roadmap work, not silently assumed solved.
 

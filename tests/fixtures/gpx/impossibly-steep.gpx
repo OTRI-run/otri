@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="OTRI test fixture" xmlns="http://www.topografix.com/GPX/1/1">
+<trk><name>Impossibly steep</name><trkseg>
+<trkpt lat="0.000000" lon="0.0"><ele>0</ele></trkpt>
+<trkpt lat="0.000050" lon="0.0"><ele>0</ele></trkpt>
+<trkpt lat="0.000100" lon="0.0"><ele>0</ele></trkpt>
+<trkpt lat="0.000150" lon="0.0"><ele>0</ele></trkpt>
+<trkpt lat="0.000200" lon="0.0"><ele>0</ele></trkpt>
+<trkpt lat="0.000250" lon="0.0"><ele>0</ele></trkpt>
+<trkpt lat="0.000300" lon="0.0"><ele>0</ele></trkpt>
+<trkpt lat="0.000350" lon="0.0"><ele>0</ele></trkpt>
+<trkpt lat="0.000400" lon="0.0"><ele>0</ele></trkpt>
+<trkpt lat="0.000450" lon="0.0"><ele>0</ele></trkpt>
+<trkpt lat="0.000500" lon="0.0"><ele>0</ele></trkpt>
+<trkpt lat="0.000550" lon="0.0"><ele>0</ele></trkpt>
+<trkpt lat="0.000600" lon="0.0"><ele>0</ele></trkpt>
+<trkpt lat="0.000650" lon="0.0"><ele>0</ele></trkpt>
+<trkpt lat="0.000700" lon="0.0"><ele>0</ele></trkpt>
+<trkpt lat="0.000930" lon="0.0"><ele>500</ele></trkpt>
+<trkpt lat="0.000980" lon="0.0"><ele>500</ele></trkpt>
+<trkpt lat="0.001030" lon="0.0"><ele>500</ele></trkpt>
+<trkpt lat="0.001080" lon="0.0"><ele>500</ele></trkpt>
+<trkpt lat="0.001130" lon="0.0"><ele>500</ele></trkpt>
+<trkpt lat="0.001180" lon="0.0"><ele>500</ele></trkpt>
+<trkpt lat="0.001230" lon="0.0"><ele>500</ele></trkpt>
+<trkpt lat="0.001280" lon="0.0"><ele>500</ele></trkpt>
+<trkpt lat="0.001330" lon="0.0"><ele>500</ele></trkpt>
+<trkpt lat="0.001380" lon="0.0"><ele>500</ele></trkpt>
+<trkpt lat="0.001430" lon="0.0"><ele>500</ele></trkpt>
+<trkpt lat="0.001480" lon="0.0"><ele>500</ele></trkpt>
+<trkpt lat="0.001530" lon="0.0"><ele>500</ele></trkpt>
+<trkpt lat="0.001580" lon="0.0"><ele>500</ele></trkpt>
+<trkpt lat="0.001630" lon="0.0"><ele>500</ele></trkpt>
+<trkpt lat="0.001680" lon="0.0"><ele>500</ele></trkpt>
+</trkseg></trk>
+</gpx>

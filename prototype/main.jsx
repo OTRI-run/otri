@@ -101,7 +101,7 @@ function Leaderboard({ race, onBack }) {
       </div>
       <p className="mt-3 font-mono text-[9px] tracking-[.05em] text-slate-400">
         scoring_version {race.leaderboard[0]?.scoring_version ?? 'n/a'} · Course Standard model — depends only on
-        the course and each runner's own finish time, sealed below 1000
+        the course and each runner's own finish time, never the field
       </p>
     </div>
   )
