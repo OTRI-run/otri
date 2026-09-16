@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Map as MapLibreMap, LngLatBounds } from 'maplibre-gl'
+import { Map as MapLibreMap, LngLatBounds, setWorkerUrl } from 'maplibre-gl'
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { buildElevationProfile, parseGpxTrackPoints, toGeoJsonLine } from '../lib/gpx'
+
+// MapLibre's default worker-URL auto-detection breaks under Vite's
+// production build (the worker chunk gets content-hashed, but MapLibre's
+// internal guess doesn't account for that, causing a 404 for
+// maplibre-gl-worker.mjs — the style/attribution/raster tiles load fine
+// since those don't need the worker, but vector tiles never render,
+// silently). Vite's `?url` import gives us the correctly-hashed URL directly.
+setWorkerUrl(maplibreWorkerUrl)
 
 // Real OpenStreetMap-based vector style, free and keyless (OpenFreeMap is a
 // public service built for exactly this use case). Swap via the `styleUrl`
