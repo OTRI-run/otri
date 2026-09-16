@@ -1,13 +1,8 @@
-"""GPX -> score predictor, powered by the Course Standard scoring model.
+"""GPX -> score predictor, powered by the current Course Standard scoring model.
 
-``scoring.course_standard`` has no competitor dependency — a runner's score
-is a pure function of the course and their own finish time. That means a
-pre-race prediction and the real post-race score use the exact same formula
-(``course_standard.score_for_time``): given the same GPX (or the same
-distance/elevation, if no GPX is available yet) and the same finish time,
-this predictor and the real scorer agree exactly, not approximately. No
-"assumed winner" guess is needed the way the retired field-relative model
-would have required.
+The current default is the V0.3 curved score scale. Pre-race prediction and
+real post-race scoring use the exact same course-demand and score functions.
+No competitor or 'assumed winner' value is involved.
 """
 
 from __future__ import annotations
@@ -17,7 +12,7 @@ from dataclasses import dataclass
 from course.gpx import TrackPoint
 
 from .course_demand import equivalent_flat_distance_from_totals, equivalent_flat_distance_km
-from .course_standard import CALIBRATED_CURVE, ScoreCurve, score_for_time
+from .course_standard import CURVED_CURVE, ScoreCurve, score_for_time
 
 DISCLAIMER = (
     "Uses the exact same Course Standard formula as the real post-race scorer — no competitor "
@@ -52,13 +47,13 @@ def estimate_score(
     gpx_points: list[TrackPoint] | None = None,
     distance_km: float | None = None,
     elevation_gain_m: float | None = None,
-    curve: ScoreCurve = CALIBRATED_CURVE,
+    curve: ScoreCurve = CURVED_CURVE,
 ) -> ScoreEstimate:
     """Predict the Course Standard score for `finish_time_seconds` on this course.
 
-    Prefer passing `gpx_points` (the real segment-by-segment Minetti course-demand
+    Prefer passing `gpx_points` (the 50 m segment-by-segment Minetti course-demand
     integral) over `distance_km`/`elevation_gain_m` (a coarser constant-average-grade
-    approximation) when a GPX is available — see ``scoring.course_demand``.
+    approximation) when a GPX is available.
     """
     if finish_time_seconds <= 0:
         raise ValueError("finish_time_seconds must be greater than 0")
