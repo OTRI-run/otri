@@ -1,4 +1,4 @@
-"""API tests: races, scored results, and the organizer submission workflow.
+"""API tests: events, race distances, scored results, and the organizer workflow.
 
 Run with: pytest tests/unit
 """
@@ -14,15 +14,42 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEMO_RESULT_001 = REPO_ROOT / "data" / "demo" / "results" / "OTRI-DEMO-001.csv"
 INVALID_RESULT = REPO_ROOT / "tests" / "fixtures" / "results" / "invalid-result.csv"
 FLAT_LOOP_GPX = REPO_ROOT / "tests" / "fixtures" / "gpx" / "flat-loop.gpx"
+SINGLE_CLIMB_GPX = REPO_ROOT / "tests" / "fixtures" / "gpx" / "single-climb.gpx"
 
 client = TestClient(app)
 
 
-def _organizer_auth_headers(email: str = "organizer@example.com", password: str = "correct horse battery") -> dict:
+def _register_and_verify(email: str, password: str) -> None:
+    """Register an organizer and mark them verified directly via the DB (tests can't click email links)."""
     response = client.post("/auth/register", json={"email": email, "password": password})
     assert response.status_code == 201, response.text
+    with db.get_connection() as connection:
+        connection.execute("UPDATE organizers SET email_verified = TRUE WHERE email = %s", (email,))
+
+
+def _organizer_auth_headers(email: str = "organizer@example.com", password: str = "correct horse battery") -> dict:
+    _register_and_verify(email, password)
+    response = client.post("/auth/login", json={"email": email, "password": password})
+    assert response.status_code == 200, response.text
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+def _create_event_and_race(headers: dict) -> tuple[str, str]:
+    """Creates a fresh event + one race distance owned by whoever `headers` authenticates as."""
+    event_response = client.post(
+        "/events", json={"event_name": "Test Event", "event_date": "2026-07-01"}, headers=headers
+    )
+    assert event_response.status_code == 201, event_response.text
+    event_id = event_response.json()["event_id"]
+
+    race_response = client.post(
+        f"/events/{event_id}/races",
+        json={"course_name": "50K", "distance_km": 50.0, "elevation_gain_m": 2000.0},
+        headers=headers,
+    )
+    assert race_response.status_code == 201, race_response.text
+    return event_id, race_response.json()["race_id"]
 
 
 def test_root_reports_app_status():
@@ -64,11 +91,14 @@ def test_get_results_for_race_with_no_result_file_returns_404():
 
 
 def test_submit_valid_results_returns_computed_scores():
+    headers = _organizer_auth_headers()
+    _, race_id = _create_event_and_race(headers)
+
     with DEMO_RESULT_001.open("rb") as handle:
         response = client.post(
-            "/races/OTRI-DEMO-001/results",
+            f"/races/{race_id}/results",
             files={"file": ("OTRI-DEMO-001.csv", handle, "text/csv")},
-            headers=_organizer_auth_headers(),
+            headers=headers,
         )
 
     assert response.status_code == 200
@@ -80,11 +110,14 @@ def test_submit_valid_results_returns_computed_scores():
 
 
 def test_submit_invalid_results_returns_errors_and_no_scores():
+    headers = _organizer_auth_headers()
+    _, race_id = _create_event_and_race(headers)
+
     with INVALID_RESULT.open("rb") as handle:
         response = client.post(
-            "/races/OTRI-DEMO-001/results",
+            f"/races/{race_id}/results",
             files={"file": ("invalid-result.csv", handle, "text/csv")},
-            headers=_organizer_auth_headers(),
+            headers=headers,
         )
 
     assert response.status_code == 200
@@ -115,72 +148,220 @@ def test_submit_results_without_token_returns_401():
     assert response.status_code == 401
 
 
-def test_create_race_then_appears_in_list():
-    response = client.post(
-        "/races",
-        json={
-            "race_id": "OTRI-TEST-CREATE-001",
-            "race_name": "Test Created Race",
-            "event_date": "2026-07-01",
-            "course_name": "Test Course",
-            "distance_km": 15.0,
-            "elevation_gain_m": 500.0,
-        },
-        headers=_organizer_auth_headers(),
-    )
+def test_submit_results_for_race_you_do_not_own_returns_403():
+    """Demo races aren't owned by any organizer via the API — nobody can submit results for them."""
+    headers = _organizer_auth_headers()
+    with DEMO_RESULT_001.open("rb") as handle:
+        response = client.post(
+            "/races/OTRI-DEMO-001/results",
+            files={"file": ("OTRI-DEMO-001.csv", handle, "text/csv")},
+            headers=headers,
+        )
+    assert response.status_code == 403
+
+
+# --- Events ------------------------------------------------------------------
+
+
+def test_create_event_then_appears_in_list():
+    headers = _organizer_auth_headers()
+    response = client.post("/events", json={"event_name": "My Race Weekend", "event_date": "2026-08-01"}, headers=headers)
     assert response.status_code == 201
-    assert response.json()["race_id"] == "OTRI-TEST-CREATE-001"
+    event_id = response.json()["event_id"]
 
-    listed = client.get("/races").json()
-    assert "OTRI-TEST-CREATE-001" in {race["race_id"] for race in listed}
+    listed = client.get("/events").json()
+    assert event_id in {event["event_id"] for event in listed}
 
 
-def test_create_race_without_token_returns_401():
-    response = client.post(
-        "/races",
-        json={
-            "race_id": "OTRI-TEST-NOAUTH-001",
-            "race_name": "No Auth",
-            "event_date": "2026-07-01",
-            "course_name": "Test Course",
-            "distance_km": 15.0,
-            "elevation_gain_m": 500.0,
-        },
-    )
+def test_create_event_without_token_returns_401():
+    response = client.post("/events", json={"event_name": "No Auth", "event_date": "2026-07-01"})
     assert response.status_code == 401
 
 
-def test_create_race_with_duplicate_id_returns_409():
+def test_list_events_mine_filters_to_own_events():
+    headers_a = _organizer_auth_headers("mine-a@example.com")
+    headers_b = _organizer_auth_headers("mine-b@example.com")
+    event_a, _ = _create_event_and_race(headers_a)
+    event_b, _ = _create_event_and_race(headers_b)
+
+    mine_a = {event["event_id"] for event in client.get("/events?mine=true", headers=headers_a).json()}
+    assert event_a in mine_a
+    assert event_b not in mine_a
+
+
+def test_list_events_mine_without_token_returns_401():
+    assert client.get("/events?mine=true").status_code == 401
+
+
+def test_get_event_includes_its_races():
+    headers = _organizer_auth_headers()
+    event_id, race_id = _create_event_and_race(headers)
+
+    response = client.get(f"/events/{event_id}")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["race_count"] == 1
+    assert body["races"][0]["race_id"] == race_id
+
+
+def test_get_unknown_event_returns_404():
+    assert client.get("/events/NOT-A-REAL-EVENT").status_code == 404
+
+
+def test_edit_event_updates_name_and_date():
+    headers = _organizer_auth_headers()
+    event_id, _ = _create_event_and_race(headers)
+
+    response = client.patch(f"/events/{event_id}", json={"event_name": "Renamed Event"}, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["event_name"] == "Renamed Event"
+
+
+def test_edit_event_you_do_not_own_returns_403():
+    headers_a = _organizer_auth_headers("owner-a@example.com")
+    headers_b = _organizer_auth_headers("owner-b@example.com")
+    event_id, _ = _create_event_and_race(headers_a)
+
+    response = client.patch(f"/events/{event_id}", json={"event_name": "Hijacked"}, headers=headers_b)
+    assert response.status_code == 403
+
+
+def test_delete_event_cascades_to_races():
+    headers = _organizer_auth_headers()
+    event_id, race_id = _create_event_and_race(headers)
+
+    response = client.delete(f"/events/{event_id}", headers=headers)
+    assert response.status_code == 204
+    assert client.get(f"/events/{event_id}").status_code == 404
+    assert client.get(f"/races/{race_id}").status_code == 404
+
+
+def test_delete_event_you_do_not_own_returns_403():
+    headers_a = _organizer_auth_headers("delowner-a@example.com")
+    headers_b = _organizer_auth_headers("delowner-b@example.com")
+    event_id, _ = _create_event_and_race(headers_a)
+
+    assert client.delete(f"/events/{event_id}", headers=headers_b).status_code == 403
+
+
+# --- Races (distances) ---------------------------------------------------------
+
+
+def test_add_race_to_event_you_do_not_own_returns_403():
+    headers_a = _organizer_auth_headers("raceowner-a@example.com")
+    headers_b = _organizer_auth_headers("raceowner-b@example.com")
+    event_id, _ = _create_event_and_race(headers_a)
+
     response = client.post(
-        "/races",
-        json={
-            "race_id": "OTRI-DEMO-001",
-            "race_name": "Duplicate",
-            "event_date": "2026-07-01",
-            "course_name": "Test Course",
-            "distance_km": 15.0,
-            "elevation_gain_m": 500.0,
-        },
-        headers=_organizer_auth_headers(),
+        f"/events/{event_id}/races",
+        json={"course_name": "10K", "distance_km": 10.0, "elevation_gain_m": 100.0},
+        headers=headers_b,
     )
-    assert response.status_code == 409
+    assert response.status_code == 403
 
 
-def test_create_race_with_invalid_data_rolls_back():
+def test_add_second_distance_to_same_event():
+    headers = _organizer_auth_headers()
+    event_id, _ = _create_event_and_race(headers)
+
     response = client.post(
-        "/races",
-        json={
-            "race_id": "OTRI-TEST-INVALID-001",
-            "race_name": "Bad Race",
-            "event_date": "2026-07-01",
-            "course_name": "Test Course",
-            "distance_km": -5.0,
-            "elevation_gain_m": 500.0,
-        },
-        headers=_organizer_auth_headers(),
+        f"/events/{event_id}/races",
+        json={"course_name": "25K", "distance_km": 25.0, "elevation_gain_m": 800.0},
+        headers=headers,
+    )
+    assert response.status_code == 201
+
+    event = client.get(f"/events/{event_id}").json()
+    assert event["race_count"] == 2
+
+
+def test_add_race_with_invalid_distance_returns_422():
+    headers = _organizer_auth_headers()
+    event_id, _ = _create_event_and_race(headers)
+
+    response = client.post(
+        f"/events/{event_id}/races",
+        json={"course_name": "Bad", "distance_km": -5.0, "elevation_gain_m": 100.0},
+        headers=headers,
     )
     assert response.status_code == 422
-    assert db.find_race("OTRI-TEST-INVALID-001") is None
+
+
+def test_edit_race_updates_fields():
+    headers = _organizer_auth_headers()
+    _, race_id = _create_event_and_race(headers)
+
+    response = client.patch(f"/races/{race_id}", json={"distance_km": 55.0}, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["distance_km"] == 55.0
+
+
+def test_edit_race_you_do_not_own_returns_403():
+    headers_a = _organizer_auth_headers("editrace-a@example.com")
+    headers_b = _organizer_auth_headers("editrace-b@example.com")
+    _, race_id = _create_event_and_race(headers_a)
+
+    assert client.patch(f"/races/{race_id}", json={"distance_km": 1.0}, headers=headers_b).status_code == 403
+
+
+def test_delete_race():
+    headers = _organizer_auth_headers()
+    _, race_id = _create_event_and_race(headers)
+
+    response = client.delete(f"/races/{race_id}", headers=headers)
+    assert response.status_code == 204
+    assert client.get(f"/races/{race_id}").status_code == 404
+
+
+def test_delete_race_you_do_not_own_returns_403():
+    headers_a = _organizer_auth_headers("delrace-a@example.com")
+    headers_b = _organizer_auth_headers("delrace-b@example.com")
+    _, race_id = _create_event_and_race(headers_a)
+
+    assert client.delete(f"/races/{race_id}", headers=headers_b).status_code == 403
+
+
+# --- GPX attach ----------------------------------------------------------------
+
+
+def test_attach_gpx_updates_course_stats_and_flags_has_gpx():
+    headers = _organizer_auth_headers()
+    _, race_id = _create_event_and_race(headers)
+
+    with SINGLE_CLIMB_GPX.open("rb") as handle:
+        response = client.post(
+            f"/races/{race_id}/gpx",
+            files={"file": ("single-climb.gpx", handle, "application/gpx+xml")},
+            headers=headers,
+        )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["has_gpx"] is True
+    assert body["distance_km"] > 0
+
+    gpx_response = client.get(f"/races/{race_id}/gpx")
+    assert gpx_response.status_code == 200
+    assert b"<gpx" in gpx_response.content
+
+
+def test_get_gpx_for_race_without_one_returns_404():
+    headers = _organizer_auth_headers()
+    _, race_id = _create_event_and_race(headers)
+    assert client.get(f"/races/{race_id}/gpx").status_code == 404
+
+
+def test_attach_gpx_you_do_not_own_returns_403():
+    headers_a = _organizer_auth_headers("gpxowner-a@example.com")
+    headers_b = _organizer_auth_headers("gpxowner-b@example.com")
+    _, race_id = _create_event_and_race(headers_a)
+
+    with SINGLE_CLIMB_GPX.open("rb") as handle:
+        response = client.post(
+            f"/races/{race_id}/gpx",
+            files={"file": ("single-climb.gpx", handle, "application/gpx+xml")},
+            headers=headers_b,
+        )
+    assert response.status_code == 403
 
 
 def test_analyze_gpx_returns_features():
@@ -216,18 +397,39 @@ def test_analyze_invalid_gpx_returns_422():
     assert response.status_code == 422
 
 
-def test_register_and_login_round_trip():
-    register_response = client.post("/auth/register", json={"email": "roundtrip@example.com", "password": "correct horse battery"})
-    assert register_response.status_code == 201
-    assert register_response.json()["email"] == "roundtrip@example.com"
+# --- Auth ------------------------------------------------------------------
 
-    login_response = client.post("/auth/login", json={"email": "roundtrip@example.com", "password": "correct horse battery"})
-    assert login_response.status_code == 200
-    assert "access_token" in login_response.json()
+
+def test_register_returns_message_not_a_token():
+    response = client.post(
+        "/auth/register", json={"email": "roundtrip@example.com", "password": "correct horse battery"}
+    )
+    assert response.status_code == 201
+    assert "access_token" not in response.json()
+    assert "verify" in response.json()["message"].lower()
+
+
+def test_login_before_verification_returns_403():
+    client.post("/auth/register", json={"email": "unverified@example.com", "password": "correct horse battery"})
+    response = client.post("/auth/login", json={"email": "unverified@example.com", "password": "correct horse battery"})
+    assert response.status_code == 403
+
+
+def test_login_after_verification_succeeds():
+    headers = _organizer_auth_headers("verified@example.com", "correct horse battery")
+    assert "Authorization" in headers
+
+
+def test_resend_verification_returns_generic_message_either_way():
+    known = client.post("/auth/resend-verification", json={"email": "roundtrip2@example.com"})
+    unknown = client.post("/auth/resend-verification", json={"email": "nobody-at-all@example.com"})
+    assert known.status_code == 200
+    assert unknown.status_code == 200
+    assert known.json() == unknown.json()
 
 
 def test_login_with_wrong_password_returns_401():
-    client.post("/auth/register", json={"email": "wrongpw@example.com", "password": "correct horse battery"})
+    _register_and_verify("wrongpw@example.com", "correct horse battery")
     response = client.post("/auth/login", json={"email": "wrongpw@example.com", "password": "nope nope nope"})
     assert response.status_code == 401
 

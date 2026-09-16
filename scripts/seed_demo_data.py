@@ -1,8 +1,11 @@
-"""Seed the Postgres database with OTRI's synthetic demo races/results.
+"""Seed the Postgres database with OTRI's synthetic demo events/races/results.
 
-Idempotent: skips races that already exist (matched by race_id). Run after
-``api.db.init_db()`` has created the schema (the API does this on startup),
-or just run this script — it creates the schema itself too.
+Each demo race becomes its own event with a single race distance under it
+(matching the flat structure of the original demo CSV). Idempotent: skips
+events that already exist (matched by event_id, derived from the original
+race_id). Run after ``api.db.init_db()`` has created the schema (the API
+does this on startup), or just run this script — it creates the schema
+itself too.
 
     python scripts/seed_demo_data.py
 """
@@ -28,16 +31,21 @@ def main() -> None:
     races = race_records(RACES_FILE)
     inserted = 0
     for race in races:
-        if db.find_race(race.race_id) is not None:
-            continue
-        db.insert_race(race)
-        inserted += 1
+        event_id = f"evt-{race.race_id}"
+        if db.find_event(event_id) is None:
+            db.create_event(race.race_name, race.event_date, organizer_id=None, event_id=event_id)
+            inserted += 1
+
+        if db.find_race(race.race_id) is None:
+            db.create_race(
+                event_id, race.course_name, race.distance_km, race.elevation_gain_m, race_id=race.race_id
+            )
 
         result_path = RESULTS_DIR / f"{race.race_id}.csv"
         if result_path.exists():
             db.replace_results(race.race_id, result_records(result_path))
 
-    print(f"Seeded {inserted} new race(s) out of {len(races)} in the demo dataset.")
+    print(f"Seeded {inserted} new event(s) out of {len(races)} in the demo dataset.")
 
 
 if __name__ == "__main__":

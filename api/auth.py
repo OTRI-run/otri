@@ -40,6 +40,10 @@ class AuthError(Exception):
     """Raised for any authentication failure (bad credentials, invalid token, etc.)."""
 
 
+class EmailNotVerifiedError(AuthError):
+    """Raised on login when the account exists and the password is correct, but the email isn't verified yet."""
+
+
 @dataclass(frozen=True)
 class Organizer:
     id: int
@@ -67,10 +71,12 @@ def register_organizer(email: str, password: str) -> Organizer:
 
 
 def authenticate_organizer(email: str, password: str) -> Organizer:
+    """Requires a verified email — raises EmailNotVerifiedError (not a plain AuthError) if not, so
+    callers can tell "wrong password" apart from "right password, just not verified yet"."""
     email = email.strip().lower()
     with get_connection() as connection:
         row = connection.execute(
-            "SELECT id, email, password_hash FROM organizers WHERE email = %s", (email,)
+            "SELECT id, email, password_hash, email_verified FROM organizers WHERE email = %s", (email,)
         ).fetchone()
 
     if row is None:
@@ -78,6 +84,9 @@ def authenticate_organizer(email: str, password: str) -> Organizer:
 
     if not bcrypt.checkpw(password.encode("utf-8"), row["password_hash"].encode("utf-8")):
         raise AuthError("invalid email or password")
+
+    if not row["email_verified"]:
+        raise EmailNotVerifiedError("please verify your email before signing in")
 
     return Organizer(id=row["id"], email=row["email"])
 
@@ -100,6 +109,22 @@ def decode_access_token(token: str) -> Organizer:
 
 
 # --- Email verification -------------------------------------------------
+
+
+def request_email_verification(email: str) -> tuple[Organizer, str] | None:
+    """Returns (organizer, token) if the account exists and isn't verified yet, else None.
+
+    Callers should return the same response either way (don't leak account existence).
+    """
+    email = email.strip().lower()
+    with get_connection() as connection:
+        row = connection.execute(
+            "SELECT id, email FROM organizers WHERE email = %s AND email_verified = FALSE", (email,)
+        ).fetchone()
+    if row is None:
+        return None
+    organizer = Organizer(id=row["id"], email=row["email"])
+    return organizer, create_email_verification_token(organizer)
 
 
 def create_email_verification_token(organizer: Organizer) -> str:

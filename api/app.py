@@ -1,9 +1,15 @@
-"""OTRI public API — races, scored results, and the organizer submission workflow.
+"""OTRI public API — events, race distances, scored results, and the organizer workflow.
 
-Races, results, and organizer accounts are persisted in PostgreSQL (``api/db.py``).
-Organizer submissions are always re-validated and re-scored from the raw
-uploaded file before being stored — an organizer can never supply a score
-directly (``HANDBOOK.md`` "Validation and anti-gaming").
+Data model: an **event** (owned by an organizer) has one or more **race
+distances** under it, each with its own course data and, optionally, an
+attached GPX file. Races, results, and organizer accounts are persisted in
+PostgreSQL (``api/db.py``). Organizer result submissions are always
+re-validated and re-scored from the raw uploaded file — an organizer can
+never supply a score directly (``HANDBOOK.md`` "Validation and anti-gaming").
+
+Every event/race mutation requires the requesting organizer to own the
+event (``_require_event_owner`` / ``_require_race_owner``), and organizers
+must verify their email before they can log in at all.
 
 Run locally with: ``uvicorn api.app:app --reload``
 """
@@ -15,18 +21,18 @@ import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Form, HTTPException, Request, UploadFile, Depends
+from fastapi import FastAPI, Form, HTTPException, Request, Response, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from course import GpxParseError, extract_features, read_track_points
-from ingestion import InvalidFileError, result_records, validate_result_file
-from ingestion.records import RaceRecord
+from ingestion import result_records, validate_result_file
 from scoring import estimate_illustrative_score, score_race
 
 from . import db
 from .auth import (
     AuthError,
+    EmailNotVerifiedError,
     Organizer,
     authenticate_organizer,
     create_access_token,
@@ -34,6 +40,7 @@ from .auth import (
     create_password_reset_token,
     decode_access_token,
     register_organizer,
+    request_email_verification,
     reset_password,
     verify_email,
 )
@@ -41,6 +48,10 @@ from .email import send_password_reset_email, send_verification_email
 from .rate_limit import enforce_rate_limit
 from .schemas import (
     EmailVerificationRequest,
+    EventCreate,
+    EventDetail,
+    EventSummary,
+    EventUpdate,
     GpxAnalysis,
     IllustrativeEstimateOut,
     MessageResponse,
@@ -49,6 +60,8 @@ from .schemas import (
     PasswordResetRequest,
     RaceCreate,
     RaceSummary,
+    RaceUpdate,
+    ResendVerificationRequest,
     RunnerScoreOut,
     SubmissionResult,
     TokenResponse,
@@ -66,7 +79,7 @@ async def _lifespan(app: FastAPI):
 
 app = FastAPI(
     title="OTRI API",
-    description="Open Trail Running Index — races, scored results, and the organizer submission workflow.",
+    description="Open Trail Running Index — events, race distances, scored results, and the organizer workflow.",
     version="0.1.0",
     lifespan=_lifespan,
 )
@@ -80,7 +93,7 @@ _allowed_origins = os.environ.get("OTRI_API_ALLOWED_ORIGINS", "http://localhost:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin.strip() for origin in _allowed_origins.split(",") if origin.strip()],
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -103,8 +116,33 @@ def require_organizer(credentials: HTTPAuthorizationCredentials | None = Depends
         raise HTTPException(status_code=401, detail=str(error)) from error
 
 
-@app.post("/auth/register", response_model=TokenResponse, status_code=201)
-def register(payload: OrganizerCredentials, request: Request) -> TokenResponse:
+def _optional_organizer(credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme)) -> Organizer | None:
+    """Like require_organizer, but returns None instead of raising when no/invalid token is given."""
+    if credentials is None:
+        return None
+    try:
+        return decode_access_token(credentials.credentials)
+    except AuthError:
+        return None
+
+
+def _require_event_owner(event: db.Event, organizer: Organizer) -> None:
+    if event.organizer_id != organizer.id:
+        raise HTTPException(status_code=403, detail="you do not have permission to modify this event")
+
+
+def _require_race_owner(race: db.Race, organizer: Organizer) -> None:
+    if race.organizer_id != organizer.id:
+        raise HTTPException(status_code=403, detail="you do not have permission to modify this race")
+
+
+# --- Auth ------------------------------------------------------------------
+
+
+@app.post("/auth/register", response_model=MessageResponse, status_code=201)
+def register(payload: OrganizerCredentials, request: Request) -> MessageResponse:
+    """Creates an unverified account and emails a verification link. No access token yet —
+    organizers can't log in until they verify their email (see /auth/login)."""
     enforce_rate_limit(request, max_requests=5)
     try:
         organizer = register_organizer(payload.email, payload.password)
@@ -114,7 +152,7 @@ def register(payload: OrganizerCredentials, request: Request) -> TokenResponse:
     token = create_email_verification_token(organizer)
     send_verification_email(organizer.email, token)
 
-    return TokenResponse(access_token=create_access_token(organizer), email=organizer.email)
+    return MessageResponse(message="account created — check your email to verify it before signing in")
 
 
 @app.post("/auth/login", response_model=TokenResponse)
@@ -122,6 +160,8 @@ def login(payload: OrganizerCredentials, request: Request) -> TokenResponse:
     enforce_rate_limit(request, max_requests=10)
     try:
         organizer = authenticate_organizer(payload.email, payload.password)
+    except EmailNotVerifiedError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
     except AuthError as error:
         raise HTTPException(status_code=401, detail=str(error)) from error
     return TokenResponse(access_token=create_access_token(organizer), email=organizer.email)
@@ -133,7 +173,18 @@ def confirm_email(payload: EmailVerificationRequest) -> MessageResponse:
         verify_email(payload.token)
     except AuthError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    return MessageResponse(message="email verified")
+    return MessageResponse(message="email verified — you can sign in now")
+
+
+@app.post("/auth/resend-verification", response_model=MessageResponse)
+def resend_verification(payload: ResendVerificationRequest, request: Request) -> MessageResponse:
+    enforce_rate_limit(request, max_requests=5)
+    result = request_email_verification(payload.email)
+    if result is not None:
+        organizer, token = result
+        send_verification_email(organizer.email, token)
+    # Same response either way — don't leak which emails have accounts / are already verified.
+    return MessageResponse(message="if that email needs verifying, a new link has been sent")
 
 
 @app.post("/auth/request-password-reset", response_model=MessageResponse)
@@ -158,9 +209,99 @@ def confirm_password_reset(payload: PasswordResetConfirm, request: Request) -> T
     return TokenResponse(access_token=create_access_token(organizer), email=organizer.email)
 
 
+# --- Events ------------------------------------------------------------------
+
+
+def _race_summary(race: db.Race) -> RaceSummary:
+    return RaceSummary(
+        race_id=race.race_id,
+        event_id=race.event_id,
+        event_name=race.event_name or "",
+        event_date=race.event_date,
+        course_name=race.course_name,
+        distance_km=race.distance_km,
+        elevation_gain_m=race.elevation_gain_m,
+        has_gpx=race.has_gpx,
+    )
+
+
+@app.get("/events", response_model=list[EventSummary])
+def list_events(mine: bool = False, organizer: Organizer | None = Depends(_optional_organizer)) -> list[EventSummary]:
+    """By default lists every event (public). Pass ?mine=true with a bearer token to list only
+    events owned by the requesting organizer."""
+    events = db.list_events()
+    if mine:
+        if organizer is None:
+            raise HTTPException(status_code=401, detail="missing bearer token")
+        events = [event for event in events if event.organizer_id == organizer.id]
+    return [
+        EventSummary(
+            event_id=event.event_id,
+            event_name=event.event_name,
+            event_date=event.event_date,
+            race_count=len(db.list_races_for_event(event.event_id)),
+        )
+        for event in events
+    ]
+
+
+@app.get("/events/{event_id}", response_model=EventDetail)
+def get_event(event_id: str) -> EventDetail:
+    event = db.find_event(event_id)
+    if event is None:
+        raise HTTPException(status_code=404, detail=f"event {event_id!r} not found")
+    races = db.list_races_for_event(event_id)
+    return EventDetail(
+        event_id=event.event_id,
+        event_name=event.event_name,
+        event_date=event.event_date,
+        race_count=len(races),
+        races=[_race_summary(race) for race in races],
+    )
+
+
+@app.post("/events", response_model=EventSummary, status_code=201)
+def create_event(payload: EventCreate, organizer: Organizer = Depends(require_organizer)) -> EventSummary:
+    """Requires a valid, verified organizer bearer token."""
+    if not payload.event_name.strip():
+        raise HTTPException(status_code=422, detail="event_name is required")
+    event = db.create_event(payload.event_name.strip(), payload.event_date, organizer.id)
+    return EventSummary(event_id=event.event_id, event_name=event.event_name, event_date=event.event_date, race_count=0)
+
+
+@app.patch("/events/{event_id}", response_model=EventSummary)
+def edit_event(event_id: str, payload: EventUpdate, organizer: Organizer = Depends(require_organizer)) -> EventSummary:
+    event = db.find_event(event_id)
+    if event is None:
+        raise HTTPException(status_code=404, detail=f"event {event_id!r} not found")
+    _require_event_owner(event, organizer)
+
+    updated = db.update_event(event_id, event_name=payload.event_name, event_date_=payload.event_date)
+    return EventSummary(
+        event_id=updated.event_id,
+        event_name=updated.event_name,
+        event_date=updated.event_date,
+        race_count=len(db.list_races_for_event(event_id)),
+    )
+
+
+@app.delete("/events/{event_id}", status_code=204)
+def remove_event(event_id: str, organizer: Organizer = Depends(require_organizer)) -> Response:
+    """Deletes the event and cascades to its races and their results."""
+    event = db.find_event(event_id)
+    if event is None:
+        raise HTTPException(status_code=404, detail=f"event {event_id!r} not found")
+    _require_event_owner(event, organizer)
+    db.delete_event(event_id)
+    return Response(status_code=204)
+
+
+# --- Races (distances under an event) ---------------------------------------
+
+
 @app.get("/races", response_model=list[RaceSummary])
 def list_races() -> list[RaceSummary]:
-    return [RaceSummary(**vars(race)) for race in db.list_races()]
+    return [_race_summary(race) for race in db.list_races()]
 
 
 @app.get("/races/{race_id}", response_model=RaceSummary)
@@ -168,32 +309,110 @@ def get_race(race_id: str) -> RaceSummary:
     race = db.find_race(race_id)
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
-    return RaceSummary(**vars(race))
+    return _race_summary(race)
 
 
-@app.post("/races", response_model=RaceSummary, status_code=201)
-def create_race(payload: RaceCreate, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
-    """Organizer race registration. Requires a valid organizer bearer token."""
-    if db.find_race(payload.race_id) is not None:
-        raise HTTPException(status_code=409, detail=f"race {payload.race_id!r} already exists")
+@app.post("/events/{event_id}/races", response_model=RaceSummary, status_code=201)
+def add_race(event_id: str, payload: RaceCreate, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
+    """Add a race distance (e.g. "50K") to an event. Requires ownership of the event."""
+    event = db.find_event(event_id)
+    if event is None:
+        raise HTTPException(status_code=404, detail=f"event {event_id!r} not found")
+    _require_event_owner(event, organizer)
 
-    race = RaceRecord(
-        race_id=payload.race_id,
-        race_name=payload.race_name,
-        event_date=payload.event_date,
-        course_name=payload.course_name,
+    if not payload.course_name.strip():
+        raise HTTPException(status_code=422, detail="course_name is required")
+    if payload.distance_km <= 0 or payload.elevation_gain_m < 0:
+        raise HTTPException(status_code=422, detail="distance_km must be > 0 and elevation_gain_m must be >= 0")
+
+    race = db.create_race(event_id, payload.course_name.strip(), payload.distance_km, payload.elevation_gain_m)
+    return _race_summary(race)
+
+
+@app.patch("/races/{race_id}", response_model=RaceSummary)
+def edit_race(race_id: str, payload: RaceUpdate, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
+    race = db.find_race(race_id)
+    if race is None:
+        raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
+    _require_race_owner(race, organizer)
+
+    if payload.distance_km is not None and payload.distance_km <= 0:
+        raise HTTPException(status_code=422, detail="distance_km must be > 0")
+    if payload.elevation_gain_m is not None and payload.elevation_gain_m < 0:
+        raise HTTPException(status_code=422, detail="elevation_gain_m must be >= 0")
+
+    updated = db.update_race(
+        race_id,
+        course_name=payload.course_name.strip() if payload.course_name else None,
         distance_km=payload.distance_km,
         elevation_gain_m=payload.elevation_gain_m,
     )
-    if race.distance_km <= 0 or race.elevation_gain_m < 0:
-        raise HTTPException(status_code=422, detail="distance_km must be > 0 and elevation_gain_m must be >= 0")
-
-    db.insert_race(race, organizer_id=organizer.id)
-    return RaceSummary(**vars(race))
+    return _race_summary(updated)
 
 
-def _score_results(race: RaceRecord, results: list) -> list[RunnerScoreOut]:
-    return [RunnerScoreOut(**score.to_dict()) for score in score_race(race, results)]
+@app.delete("/races/{race_id}", status_code=204)
+def remove_race(race_id: str, organizer: Organizer = Depends(require_organizer)) -> Response:
+    """Deletes the race distance and cascades to its results."""
+    race = db.find_race(race_id)
+    if race is None:
+        raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
+    _require_race_owner(race, organizer)
+    db.delete_race(race_id)
+    return Response(status_code=204)
+
+
+# --- GPX attachment ----------------------------------------------------------
+
+
+@app.post("/races/{race_id}/gpx", response_model=RaceSummary)
+async def attach_race_gpx(
+    race_id: str, file: UploadFile, organizer: Organizer = Depends(require_organizer)
+) -> RaceSummary:
+    """Attach (or replace) a GPX file for a race distance. Recomputes distance_km/elevation_gain_m
+    from the real parsed course data — the GPX becomes the authoritative source once attached."""
+    race = db.find_race(race_id)
+    if race is None:
+        raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
+    _require_race_owner(race, organizer)
+
+    suffix = Path(file.filename or "").suffix or ".gpx"
+    contents = await file.read()
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp_file:
+        temp_file.write(contents)
+        temp_path = Path(temp_file.name)
+
+    try:
+        points = read_track_points(temp_path)
+        features = extract_features(points)
+    except GpxParseError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    finally:
+        temp_path.unlink(missing_ok=True)
+
+    updated = db.attach_gpx(
+        race_id,
+        filename=file.filename or "course.gpx",
+        content=contents.decode("utf-8", errors="replace"),
+        distance_km=features.distance_km,
+        elevation_gain_m=features.elevation_gain_m,
+    )
+    return _race_summary(updated)
+
+
+@app.get("/races/{race_id}/gpx")
+def get_race_gpx(race_id: str) -> Response:
+    result = db.get_gpx_content(race_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"no GPX file attached to race {race_id!r}")
+    _filename, content = result
+    return Response(content=content, media_type="application/gpx+xml")
+
+
+# --- Results ------------------------------------------------------------------
+
+
+def _score_results(race: db.Race, results: list) -> list[RunnerScoreOut]:
+    return [RunnerScoreOut(**score.to_dict()) for score in score_race(race.to_race_record(), results)]
 
 
 @app.get("/races/{race_id}/results", response_model=list[RunnerScoreOut])
@@ -212,7 +431,7 @@ def get_race_results(race_id: str) -> list[RunnerScoreOut]:
 async def submit_race_results(
     race_id: str, file: UploadFile, organizer: Organizer = Depends(require_organizer)
 ) -> SubmissionResult:
-    """Organizer submission workflow. Requires a valid organizer bearer token.
+    """Organizer submission workflow. Requires ownership of the race's event.
 
     Always validates then re-scores from the raw uploaded file — the
     organizer can never supply a score directly (HANDBOOK.md "Validation and
@@ -222,6 +441,7 @@ async def submit_race_results(
     race = db.find_race(race_id)
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
+    _require_race_owner(race, organizer)
 
     suffix = Path(file.filename or "").suffix or ".csv"
     contents = await file.read()

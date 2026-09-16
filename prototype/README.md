@@ -14,7 +14,7 @@ A separate, working demonstration of the full pipeline built so far — kept apa
 
 1. **Races** — static, pre-computed leaderboards (see "Why it's static" below).
 2. **GPX tester** — upload any `.gpx` file and a target time; calls the live `POST /gpx/analyze` endpoint to parse the course and return an **illustrative** score estimate (not a calibrated prediction — see `scoring/estimator.py`).
-3. **Organizer upload** — register a race (`POST /races`) then submit a result file (`POST /races/{race_id}/results`) against the live API; shows validation errors/warnings or the computed leaderboard.
+3. **Organizer upload** — a full organizer dashboard against the live API: register + verify an email, create events, add one or more race distances per event, edit/delete either, attach a GPX to a distance, and submit a result file (`POST /races/{race_id}/results`) — shows validation errors/warnings or the computed leaderboard.
 
 The GPX tester and organizer tabs need the API running locally (or wherever `VITE_OTRI_API_BASE_URL` points — see `.env.example`):
 

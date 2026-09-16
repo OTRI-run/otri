@@ -26,7 +26,12 @@ async function request(path, options) {
     }
     throw new Error(detail)
   }
+  if (response.status === 204) return null
   return response.json()
+}
+
+function authHeaders(token, extra) {
+  return { Authorization: `Bearer ${token}`, ...extra }
 }
 
 export function registerOrganizer(email, password) {
@@ -53,6 +58,14 @@ export function verifyEmail(token) {
   })
 }
 
+export function resendVerification(email) {
+  return request('/auth/resend-verification', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+}
+
 export function requestPasswordReset(email) {
   return request('/auth/request-password-reset', {
     method: 'POST',
@@ -69,11 +82,67 @@ export function resetPassword(token, newPassword) {
   })
 }
 
-export function createRace(payload, token) {
-  return request('/races', {
+export function listMyEvents(token) {
+  return request('/events?mine=true', { headers: authHeaders(token) })
+}
+
+export function getEvent(eventId) {
+  return request(`/events/${encodeURIComponent(eventId)}`)
+}
+
+export function createEvent(payload, token) {
+  return request('/events', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
     body: JSON.stringify(payload),
+  })
+}
+
+export function updateEvent(eventId, payload, token) {
+  return request(`/events/${encodeURIComponent(eventId)}`, {
+    method: 'PATCH',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  })
+}
+
+export function deleteEvent(eventId, token) {
+  return request(`/events/${encodeURIComponent(eventId)}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  })
+}
+
+export function createRace(eventId, payload, token) {
+  return request(`/events/${encodeURIComponent(eventId)}/races`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  })
+}
+
+export function updateRace(raceId, payload, token) {
+  return request(`/races/${encodeURIComponent(raceId)}`, {
+    method: 'PATCH',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  })
+}
+
+export function deleteRace(raceId, token) {
+  return request(`/races/${encodeURIComponent(raceId)}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  })
+}
+
+export function attachRaceGpx(raceId, file, token) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request(`/races/${encodeURIComponent(raceId)}/gpx`, {
+    method: 'POST',
+    headers: authHeaders(token),
+    body: formData,
   })
 }
 
@@ -82,7 +151,7 @@ export function submitRaceResults(raceId, file, token) {
   formData.append('file', file)
   return request(`/races/${encodeURIComponent(raceId)}/results`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
+    headers: authHeaders(token),
     body: formData,
   })
 }

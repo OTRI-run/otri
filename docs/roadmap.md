@@ -57,14 +57,16 @@ Depends on Phase 2's parsed GPX data existing; otherwise there's nothing to rend
 
 ## Phase 4 — API & organizer submission workflow ✅ done (Postgres-backed)
 
-- [x] **Machine-readable API** (`api/`, FastAPI) exposing races, course data, and scored results (`GET /races`, `GET /races/{race_id}`, `GET /races/{race_id}/results`).
-- [x] **Organizer upload workflow** (`POST /races/{race_id}/results`) — an organizer submits a raw result file; the endpoint always validates it (`ingestion.validate_result_file`) and then re-scores it from scratch (`scoring.score_race`). The organizer can never supply a score directly (`HANDBOOK.md` "Validation and anti-gaming").
-- [x] **Real persistence** (`api/db.py`, PostgreSQL) — races, results, and organizer accounts survive a server restart. Seed the demo dataset with `python scripts/seed_demo_data.py`.
-- [x] **Organizer auth** (`api/auth.py`) — register/login/email verification/password reset, JWT sessions, passwords hashed with bcrypt. Verification and reset emails sent via Resend (`api/email.py`).
+- [x] **Machine-readable API** (`api/`, FastAPI) exposing events, race distances, course data, and scored results (`GET /events`, `GET /events/{event_id}`, `GET /races`, `GET /races/{race_id}`, `GET /races/{race_id}/results`).
+- [x] **Events & race distances data model** — an event (owned by an organizer) can hold multiple race distances (e.g. "50K", "25K"), each with independent course stats and an optional attached GPX file (`POST /races/{race_id}/gpx`, authoritative for distance/elevation once attached). Full CRUD on both (`POST`/`PATCH`/`DELETE /events/{event_id}`, `POST /events/{event_id}/races`, `PATCH`/`DELETE /races/{race_id}`), with ownership enforced server-side (403 if you don't own the event).
+- [x] **Organizer upload workflow** (`POST /races/{race_id}/results`) — an organizer submits a raw result file; the endpoint always validates it (`ingestion.validate_result_file`) and then re-scores it from scratch (`scoring.score_race`). The organizer can never supply a score directly (`HANDBOOK.md` "Validation and anti-gaming"). Requires ownership of the race's event.
+- [x] **Real persistence** (`api/db.py`, PostgreSQL) — events, races, results, and organizer accounts survive a server restart. Seed the demo dataset with `python scripts/seed_demo_data.py`.
+- [x] **Organizer auth with mandatory email verification** (`api/auth.py`) — register/login/email verification/resend-verification/password reset, JWT sessions, passwords hashed with bcrypt. Registering does **not** log you in — `/auth/login` returns 403 until the account is verified. Verification and reset emails sent via Resend (`api/email.py`).
 - [x] **Basic abuse protection** (`api/rate_limit.py`) — in-process rate limiting on auth endpoints. Known limitation: not shared across multiple worker processes yet (needs Redis for that).
-- [x] Tests (`tests/unit/test_api.py`, `tests/unit/test_auth.py`) covering races, scoring, auth, and email verification/reset, run against a real Postgres test database (`tests/conftest.py`).
+- [x] Tests (`tests/unit/test_api.py`, `tests/unit/test_auth.py`) covering events, races, scoring, auth (including the verification gate and ownership checks), and email verification/reset, run against a real Postgres test database (`tests/conftest.py`).
+- [x] **Organizer dashboard UI** (`prototype/OrganizerUpload.jsx`) — full event/distance CRUD, GPX attach, and results submission wired to the live API, gated behind email-verified sign-in.
 
-**Known gaps, documented in `api/README.md`:** no database migration tool yet (schema created via `CREATE TABLE IF NOT EXISTS`), rate limiting isn't multi-worker-safe, and JWT sessions have no refresh token.
+**Known gaps, documented in `api/README.md`:** no database migration tool yet (schema created via `CREATE TABLE IF NOT EXISTS`), rate limiting isn't multi-worker-safe, JWT sessions have no refresh token, and `GET /events`/`GET /races` compute counts/joins with one query per event (N+1, fine at prototype scale).
 
 Depended on Phases 0–1 being stable enough to expose publicly — they were.
 

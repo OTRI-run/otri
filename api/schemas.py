@@ -11,22 +11,48 @@ from datetime import date
 from pydantic import BaseModel
 
 
+class EventSummary(BaseModel):
+    event_id: str
+    event_name: str
+    event_date: date
+    race_count: int = 0
+
+
+class EventCreate(BaseModel):
+    event_name: str
+    event_date: date
+
+
+class EventUpdate(BaseModel):
+    event_name: str | None = None
+    event_date: date | None = None
+
+
 class RaceSummary(BaseModel):
     race_id: str
-    race_name: str
+    event_id: str
+    event_name: str
     event_date: date
     course_name: str
     distance_km: float
     elevation_gain_m: float
+    has_gpx: bool = False
+
+
+class EventDetail(EventSummary):
+    races: list[RaceSummary] = []
 
 
 class RaceCreate(BaseModel):
-    race_id: str
-    race_name: str
-    event_date: date
     course_name: str
     distance_km: float
     elevation_gain_m: float
+
+
+class RaceUpdate(BaseModel):
+    course_name: str | None = None
+    distance_km: float | None = None
+    elevation_gain_m: float | None = None
 
 
 class RunnerScoreOut(BaseModel):
@@ -86,6 +112,10 @@ class MessageResponse(BaseModel):
 
 class EmailVerificationRequest(BaseModel):
     token: str
+
+
+class ResendVerificationRequest(BaseModel):
+    email: str
 
 
 class PasswordResetRequest(BaseModel):

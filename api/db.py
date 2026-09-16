@@ -1,11 +1,12 @@
 """PostgreSQL persistence layer for the OTRI API.
 
-Replaces the prototype-era CSV-append/discard behavior documented in
-api/README.md's former "Known gaps" — organizer accounts, races, and
-submitted results now survive a server restart. Schema is created on first
-connection (``init_db()``), no separate migration tool: the schema is small
-and stable enough that a migration framework would be premature (HANDBOOK.md
-"start small").
+Schema is created on first connection (``init_db()``), no separate migration
+tool: the schema is small and stable enough that a migration framework would
+be premature (HANDBOOK.md "start small").
+
+Data model: an **event** (e.g. "Phuket Mountain Trail 2026") owned by an
+organizer can have multiple **race distances** under it (e.g. "50K", "30K"),
+each with its own course data and, optionally, an attached GPX file.
 
 Connection string via ``DATABASE_URL``, e.g.:
     postgresql://postgres:otri_dev_password@localhost:5432/otri
@@ -14,7 +15,9 @@ Connection string via ``DATABASE_URL``, e.g.:
 from __future__ import annotations
 
 import os
+import secrets
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import date
 from typing import Iterator
 
@@ -49,15 +52,25 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS events (
+    event_id TEXT PRIMARY KEY,
+    event_name TEXT NOT NULL,
+    event_date DATE NOT NULL,
+    organizer_id INTEGER REFERENCES organizers(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS races (
     race_id TEXT PRIMARY KEY,
-    race_name TEXT NOT NULL,
-    event_date DATE NOT NULL,
+    event_id TEXT NOT NULL REFERENCES events(event_id) ON DELETE CASCADE,
     course_name TEXT NOT NULL,
     distance_km DOUBLE PRECISION NOT NULL,
     elevation_gain_m DOUBLE PRECISION NOT NULL,
-    organizer_id INTEGER REFERENCES organizers(id),
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    gpx_filename TEXT,
+    gpx_content TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS results (
@@ -72,6 +85,42 @@ CREATE TABLE IF NOT EXISTS results (
     submitted_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 """
+
+
+class NotFoundError(Exception):
+    """Raised when looking up an event/race that doesn't exist."""
+
+
+@dataclass(frozen=True)
+class Event:
+    event_id: str
+    event_name: str
+    event_date: date
+    organizer_id: int | None
+
+
+@dataclass(frozen=True)
+class Race:
+    race_id: str
+    event_id: str
+    course_name: str
+    distance_km: float
+    elevation_gain_m: float
+    has_gpx: bool
+    event_name: str | None = None
+    event_date: date | None = None
+    organizer_id: int | None = None
+
+    def to_race_record(self) -> RaceRecord:
+        """Adapt to the shape ``scoring.score_race()`` expects."""
+        return RaceRecord(
+            race_id=self.race_id,
+            race_name=self.event_name or self.course_name,
+            event_date=self.event_date or date.today(),
+            course_name=self.course_name,
+            distance_km=self.distance_km,
+            elevation_gain_m=self.elevation_gain_m,
+        )
 
 
 @contextmanager
@@ -94,43 +143,155 @@ def init_db() -> None:
         connection.execute(_SCHEMA)
 
 
-# --- Races -------------------------------------------------------------
+def _new_id(prefix: str) -> str:
+    return f"{prefix}-{secrets.token_hex(4)}"
 
 
-def list_races() -> list[RaceRecord]:
+# --- Events --------------------------------------------------------------
+
+
+def list_events() -> list[Event]:
     with get_connection() as connection:
         rows = connection.execute(
-            "SELECT race_id, race_name, event_date, course_name, distance_km, elevation_gain_m "
-            "FROM races ORDER BY event_date"
+            "SELECT event_id, event_name, event_date, organizer_id FROM events ORDER BY event_date"
         ).fetchall()
-    return [RaceRecord(**row) for row in rows]
+    return [Event(**row) for row in rows]
 
 
-def find_race(race_id: str) -> RaceRecord | None:
+def find_event(event_id: str) -> Event | None:
     with get_connection() as connection:
         row = connection.execute(
-            "SELECT race_id, race_name, event_date, course_name, distance_km, elevation_gain_m "
-            "FROM races WHERE race_id = %s",
-            (race_id,),
+            "SELECT event_id, event_name, event_date, organizer_id FROM events WHERE event_id = %s", (event_id,)
         ).fetchone()
-    return RaceRecord(**row) if row else None
+    return Event(**row) if row else None
 
 
-def insert_race(race: RaceRecord, organizer_id: int | None = None) -> None:
+def create_event(event_name: str, event_date_: date, organizer_id: int | None, event_id: str | None = None) -> Event:
+    event_id = event_id or _new_id("evt")
     with get_connection() as connection:
         connection.execute(
-            "INSERT INTO races (race_id, race_name, event_date, course_name, distance_km, elevation_gain_m, organizer_id) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
-            (
-                race.race_id,
-                race.race_name,
-                race.event_date,
-                race.course_name,
-                race.distance_km,
-                race.elevation_gain_m,
-                organizer_id,
-            ),
+            "INSERT INTO events (event_id, event_name, event_date, organizer_id) VALUES (%s, %s, %s, %s)",
+            (event_id, event_name, event_date_, organizer_id),
         )
+    return Event(event_id=event_id, event_name=event_name, event_date=event_date_, organizer_id=organizer_id)
+
+
+def update_event(event_id: str, *, event_name: str | None = None, event_date_: date | None = None) -> Event:
+    with get_connection() as connection:
+        row = connection.execute(
+            "UPDATE events SET event_name = COALESCE(%s, event_name), event_date = COALESCE(%s, event_date), "
+            "updated_at = now() WHERE event_id = %s "
+            "RETURNING event_id, event_name, event_date, organizer_id",
+            (event_name, event_date_, event_id),
+        ).fetchone()
+        if row is None:
+            raise NotFoundError(f"event {event_id!r} not found")
+    return Event(**row)
+
+
+def delete_event(event_id: str) -> None:
+    with get_connection() as connection:
+        cursor = connection.execute("DELETE FROM events WHERE event_id = %s", (event_id,))
+        if cursor.rowcount == 0:
+            raise NotFoundError(f"event {event_id!r} not found")
+
+
+# --- Races (distances under an event) ------------------------------------
+
+_RACE_JOIN_SELECT = """
+    SELECT r.race_id, r.event_id, r.course_name, r.distance_km, r.elevation_gain_m,
+           (r.gpx_content IS NOT NULL) AS has_gpx,
+           e.event_name, e.event_date, e.organizer_id
+    FROM races r JOIN events e ON e.event_id = r.event_id
+"""
+
+
+def list_races() -> list[Race]:
+    with get_connection() as connection:
+        rows = connection.execute(_RACE_JOIN_SELECT + " ORDER BY e.event_date").fetchall()
+    return [Race(**row) for row in rows]
+
+
+def list_races_for_event(event_id: str) -> list[Race]:
+    with get_connection() as connection:
+        rows = connection.execute(
+            _RACE_JOIN_SELECT + " WHERE r.event_id = %s ORDER BY r.distance_km", (event_id,)
+        ).fetchall()
+    return [Race(**row) for row in rows]
+
+
+def find_race(race_id: str) -> Race | None:
+    with get_connection() as connection:
+        row = connection.execute(_RACE_JOIN_SELECT + " WHERE r.race_id = %s", (race_id,)).fetchone()
+    return Race(**row) if row else None
+
+
+def create_race(
+    event_id: str, course_name: str, distance_km: float, elevation_gain_m: float, race_id: str | None = None
+) -> Race:
+    race_id = race_id or _new_id("race")
+    with get_connection() as connection:
+        connection.execute(
+            "INSERT INTO races (race_id, event_id, course_name, distance_km, elevation_gain_m) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            (race_id, event_id, course_name, distance_km, elevation_gain_m),
+        )
+    race = find_race(race_id)
+    assert race is not None
+    return race
+
+
+def update_race(
+    race_id: str,
+    *,
+    course_name: str | None = None,
+    distance_km: float | None = None,
+    elevation_gain_m: float | None = None,
+) -> Race:
+    with get_connection() as connection:
+        cursor = connection.execute(
+            "UPDATE races SET course_name = COALESCE(%s, course_name), "
+            "distance_km = COALESCE(%s, distance_km), "
+            "elevation_gain_m = COALESCE(%s, elevation_gain_m), "
+            "updated_at = now() WHERE race_id = %s",
+            (course_name, distance_km, elevation_gain_m, race_id),
+        )
+        if cursor.rowcount == 0:
+            raise NotFoundError(f"race {race_id!r} not found")
+    race = find_race(race_id)
+    assert race is not None
+    return race
+
+
+def delete_race(race_id: str) -> None:
+    with get_connection() as connection:
+        cursor = connection.execute("DELETE FROM races WHERE race_id = %s", (race_id,))
+        if cursor.rowcount == 0:
+            raise NotFoundError(f"race {race_id!r} not found")
+
+
+def attach_gpx(race_id: str, filename: str, content: str, distance_km: float, elevation_gain_m: float) -> Race:
+    """Store a GPX file for a race and refresh its course stats from the real parsed data."""
+    with get_connection() as connection:
+        cursor = connection.execute(
+            "UPDATE races SET gpx_filename = %s, gpx_content = %s, distance_km = %s, elevation_gain_m = %s, "
+            "updated_at = now() WHERE race_id = %s",
+            (filename, content, distance_km, elevation_gain_m, race_id),
+        )
+        if cursor.rowcount == 0:
+            raise NotFoundError(f"race {race_id!r} not found")
+    race = find_race(race_id)
+    assert race is not None
+    return race
+
+
+def get_gpx_content(race_id: str) -> tuple[str, str] | None:
+    """Returns (filename, content) or None if no GPX is attached."""
+    with get_connection() as connection:
+        row = connection.execute(
+            "SELECT gpx_filename, gpx_content FROM races WHERE race_id = %s AND gpx_content IS NOT NULL", (race_id,)
+        ).fetchone()
+    return (row["gpx_filename"], row["gpx_content"]) if row else None
 
 
 # --- Results -------------------------------------------------------------

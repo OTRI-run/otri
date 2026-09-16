@@ -30,11 +30,13 @@ def clean_state():
     db.init_db()
     with db.get_connection() as connection:
         connection.execute(
-            "TRUNCATE organizers, email_verification_tokens, password_reset_tokens, races, results "
+            "TRUNCATE organizers, email_verification_tokens, password_reset_tokens, events, races, results "
             "RESTART IDENTITY CASCADE"
         )
     for race in race_records(RACES_FILE):
-        db.insert_race(race)
+        event_id = f"evt-{race.race_id}"
+        db.create_event(race.race_name, race.event_date, organizer_id=None, event_id=event_id)
+        db.create_race(event_id, race.course_name, race.distance_km, race.elevation_gain_m, race_id=race.race_id)
         result_path = RESULTS_DIR / f"{race.race_id}.csv"
         if result_path.exists():
             db.replace_results(race.race_id, result_records(result_path))
