@@ -16,6 +16,7 @@ concurrency:
 
 env:
   NODE_VERSION: 22
+  VITE_OTRI_API_BASE_URL: https://api.otri.run
 
 jobs:
   build:
