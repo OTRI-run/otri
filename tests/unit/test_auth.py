@@ -1,4 +1,4 @@
-"""Unit tests for organizer authentication (register/login/JWT).
+"""Unit tests for organizer authentication (register/login/JWT/verify/reset).
 
 Run with: pytest tests/unit
 """
@@ -6,13 +6,6 @@ Run with: pytest tests/unit
 import pytest
 
 import api.auth as auth_module
-
-
-@pytest.fixture(autouse=True)
-def isolated_db(tmp_path, monkeypatch):
-    """Point the auth DB at a throwaway file so tests never touch real data."""
-    monkeypatch.setattr(auth_module, "DB_PATH", tmp_path / "organizers-test.db")
-    yield
 
 
 def test_register_then_authenticate():
@@ -62,3 +55,40 @@ def test_access_token_round_trips():
 def test_decode_rejects_garbage_token():
     with pytest.raises(auth_module.AuthError):
         auth_module.decode_access_token("not-a-real-token")
+
+
+def test_email_verification_round_trip():
+    organizer = auth_module.register_organizer("verify@example.com", "correct horse battery")
+    token = auth_module.create_email_verification_token(organizer)
+
+    verified = auth_module.verify_email(token)
+    assert verified.email == organizer.email
+
+
+def test_verify_email_rejects_unknown_token():
+    with pytest.raises(auth_module.AuthError):
+        auth_module.verify_email("not-a-real-token")
+
+
+def test_password_reset_round_trip():
+    organizer = auth_module.register_organizer("reset@example.com", "correct horse battery")
+    result = auth_module.create_password_reset_token(organizer.email)
+    assert result is not None
+    _, token = result
+
+    auth_module.reset_password(token, "new correct horse battery")
+    authenticated = auth_module.authenticate_organizer("reset@example.com", "new correct horse battery")
+    assert authenticated.id == organizer.id
+
+
+def test_password_reset_token_is_single_use():
+    organizer = auth_module.register_organizer("resetonce@example.com", "correct horse battery")
+    _, token = auth_module.create_password_reset_token(organizer.email)
+
+    auth_module.reset_password(token, "new correct horse battery")
+    with pytest.raises(auth_module.AuthError):
+        auth_module.reset_password(token, "another new password")
+
+
+def test_password_reset_for_unknown_email_returns_none():
+    assert auth_module.create_password_reset_token("nobody@example.com") is None

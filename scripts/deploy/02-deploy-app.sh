@@ -24,6 +24,19 @@ if [[ -z "${OTRI_API_ALLOWED_ORIGINS:-}" ]]; then
   exit 1
 fi
 
+if [[ -z "${DATABASE_URL:-}" ]] && [[ -f "${HOME}/otri-database-url.txt" ]]; then
+  DATABASE_URL="$(cat "${HOME}/otri-database-url.txt")"
+fi
+if [[ -z "${DATABASE_URL:-}" ]]; then
+  echo "Set DATABASE_URL, or run 01-bootstrap.sh first (it writes ~/otri-database-url.txt)." >&2
+  exit 1
+fi
+
+if [[ -z "${RESEND_API_KEY:-}" ]]; then
+  echo "WARNING: RESEND_API_KEY not set — verification/password-reset emails will" >&2
+  echo "         be logged instead of sent until you set it (see api/README.md)." >&2
+fi
+
 echo "==> Fetching code into ${APP_DIR}"
 if [[ ! -d "${APP_DIR}/.git" ]]; then
   sudo mkdir -p "${APP_DIR}"
@@ -61,8 +74,17 @@ echo "==> Writing ${APP_DIR}/.env"
 cat >"${APP_DIR}/.env" <<EOF
 OTRI_API_ALLOWED_ORIGINS=${OTRI_API_ALLOWED_ORIGINS}
 OTRI_API_JWT_SECRET=${OTRI_API_JWT_SECRET}
+DATABASE_URL=${DATABASE_URL}
+RESEND_API_KEY=${RESEND_API_KEY:-}
+OTRI_EMAIL_FROM=${OTRI_EMAIL_FROM:-OTRI <noreply@otri.run>}
+OTRI_APP_BASE_URL=${OTRI_APP_BASE_URL:-https://otri.run}
 EOF
 chmod 600 "${APP_DIR}/.env"
+
+echo "==> Initializing database schema (and seeding demo data on first run)"
+source venv/bin/activate
+DATABASE_URL="${DATABASE_URL}" python scripts/seed_demo_data.py
+deactivate
 
 echo "==> Installing systemd unit"
 sudo tee /etc/systemd/system/otri-api.service >/dev/null <<EOF

@@ -45,6 +45,30 @@ export function loginOrganizer(email, password) {
   })
 }
 
+export function verifyEmail(token) {
+  return request('/auth/verify-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  })
+}
+
+export function requestPasswordReset(email) {
+  return request('/auth/request-password-reset', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+}
+
+export function resetPassword(token, newPassword) {
+  return request('/auth/reset-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, new_password: newPassword }),
+  })
+}
+
 export function createRace(payload, token) {
   return request('/races', {
     method: 'POST',

@@ -5,26 +5,17 @@ Run with: pytest tests/unit
 
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
 
-import api.auth as auth_module
 from api import app
+from api import db
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEMO_RESULT_001 = REPO_ROOT / "data" / "demo" / "results" / "OTRI-DEMO-001.csv"
 INVALID_RESULT = REPO_ROOT / "tests" / "fixtures" / "results" / "invalid-result.csv"
-RACES_FILE = REPO_ROOT / "data" / "demo" / "races.csv"
 FLAT_LOOP_GPX = REPO_ROOT / "tests" / "fixtures" / "gpx" / "flat-loop.gpx"
 
 client = TestClient(app)
-
-
-@pytest.fixture(autouse=True)
-def isolated_auth_db(tmp_path, monkeypatch):
-    """Point the auth DB at a throwaway file so these tests never touch real data."""
-    monkeypatch.setattr(auth_module, "DB_PATH", tmp_path / "organizers-test.db")
-    yield
 
 
 def _organizer_auth_headers(email: str = "organizer@example.com", password: str = "correct horse battery") -> dict:
@@ -125,27 +116,23 @@ def test_submit_results_without_token_returns_401():
 
 
 def test_create_race_then_appears_in_list():
-    original = RACES_FILE.read_text(encoding="utf-8")
-    try:
-        response = client.post(
-            "/races",
-            json={
-                "race_id": "OTRI-TEST-CREATE-001",
-                "race_name": "Test Created Race",
-                "event_date": "2026-07-01",
-                "course_name": "Test Course",
-                "distance_km": 15.0,
-                "elevation_gain_m": 500.0,
-            },
-            headers=_organizer_auth_headers(),
-        )
-        assert response.status_code == 201
-        assert response.json()["race_id"] == "OTRI-TEST-CREATE-001"
+    response = client.post(
+        "/races",
+        json={
+            "race_id": "OTRI-TEST-CREATE-001",
+            "race_name": "Test Created Race",
+            "event_date": "2026-07-01",
+            "course_name": "Test Course",
+            "distance_km": 15.0,
+            "elevation_gain_m": 500.0,
+        },
+        headers=_organizer_auth_headers(),
+    )
+    assert response.status_code == 201
+    assert response.json()["race_id"] == "OTRI-TEST-CREATE-001"
 
-        listed = client.get("/races").json()
-        assert "OTRI-TEST-CREATE-001" in {race["race_id"] for race in listed}
-    finally:
-        RACES_FILE.write_text(original, encoding="utf-8")
+    listed = client.get("/races").json()
+    assert "OTRI-TEST-CREATE-001" in {race["race_id"] for race in listed}
 
 
 def test_create_race_without_token_returns_401():
@@ -180,24 +167,20 @@ def test_create_race_with_duplicate_id_returns_409():
 
 
 def test_create_race_with_invalid_data_rolls_back():
-    original = RACES_FILE.read_text(encoding="utf-8")
-    try:
-        response = client.post(
-            "/races",
-            json={
-                "race_id": "OTRI-TEST-INVALID-001",
-                "race_name": "Bad Race",
-                "event_date": "2026-07-01",
-                "course_name": "Test Course",
-                "distance_km": -5.0,
-                "elevation_gain_m": 500.0,
-            },
-            headers=_organizer_auth_headers(),
-        )
-        assert response.status_code == 422
-        assert RACES_FILE.read_text(encoding="utf-8") == original
-    finally:
-        RACES_FILE.write_text(original, encoding="utf-8")
+    response = client.post(
+        "/races",
+        json={
+            "race_id": "OTRI-TEST-INVALID-001",
+            "race_name": "Bad Race",
+            "event_date": "2026-07-01",
+            "course_name": "Test Course",
+            "distance_km": -5.0,
+            "elevation_gain_m": 500.0,
+        },
+        headers=_organizer_auth_headers(),
+    )
+    assert response.status_code == 422
+    assert db.find_race("OTRI-TEST-INVALID-001") is None
 
 
 def test_analyze_gpx_returns_features():

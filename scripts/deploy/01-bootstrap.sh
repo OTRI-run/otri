@@ -40,7 +40,22 @@ apt-get update
 apt-get install -y \
   ufw fail2ban unattended-upgrades \
   python3.12 python3.12-venv \
-  nginx git certbot python3-certbot-nginx
+  nginx git certbot python3-certbot-nginx \
+  postgresql
+
+echo "==> Creating PostgreSQL role and database for the app"
+DB_CREDENTIALS_FILE="/home/${DEPLOY_USER}/otri-database-url.txt"
+if [[ ! -f "${DB_CREDENTIALS_FILE}" ]]; then
+  DB_PASSWORD="$(openssl rand -hex 24)"
+  sudo -u postgres psql -c "CREATE ROLE otri WITH LOGIN PASSWORD '${DB_PASSWORD}';"
+  sudo -u postgres psql -c "CREATE DATABASE otri OWNER otri;"
+  echo "postgresql://otri:${DB_PASSWORD}@localhost:5432/otri" >"${DB_CREDENTIALS_FILE}"
+  chown "${DEPLOY_USER}:${DEPLOY_USER}" "${DB_CREDENTIALS_FILE}"
+  chmod 600 "${DB_CREDENTIALS_FILE}"
+  echo "    Database URL saved to ${DB_CREDENTIALS_FILE} (readable by ${DEPLOY_USER} only)."
+else
+  echo "    ${DB_CREDENTIALS_FILE} already exists — leaving the existing database/role alone."
+fi
 
 echo "==> Configuring firewall (ufw)"
 ufw allow OpenSSH
@@ -64,6 +79,11 @@ cat <<EOF
 Next: confirm you can log in as the deploy user, then continue with
 02-deploy-app.sh:
   ssh ${DEPLOY_USER}@<droplet-ip>
+
+02-deploy-app.sh will automatically pick up the database URL from
+${DB_CREDENTIALS_FILE}. Also set RESEND_API_KEY (and optionally
+OTRI_EMAIL_FROM / OTRI_APP_BASE_URL) before running it, so organizer
+verification/password-reset emails actually send — see api/README.md.
 
 Also remember to enable DigitalOcean's Cloud Firewall (Networking -> Firewalls)
 with the same 22/80/443 rule as a second layer in front of this Droplet.

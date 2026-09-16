@@ -55,13 +55,16 @@ Still missing on purpose (documented in `scoring/README.md`): cross-race calibra
 
 Depends on Phase 2's parsed GPX data existing; otherwise there's nothing to render.
 
-## Phase 4 — API & organizer submission workflow ✅ done (stateless MVP)
+## Phase 4 — API & organizer submission workflow ✅ done (Postgres-backed)
 
 - [x] **Machine-readable API** (`api/`, FastAPI) exposing races, course data, and scored results (`GET /races`, `GET /races/{race_id}`, `GET /races/{race_id}/results`).
 - [x] **Organizer upload workflow** (`POST /races/{race_id}/results`) — an organizer submits a raw result file; the endpoint always validates it (`ingestion.validate_result_file`) and then re-scores it from scratch (`scoring.score_race`). The organizer can never supply a score directly (`HANDBOOK.md` "Validation and anti-gaming").
-- [x] Tests (`tests/unit/test_api.py`) covering races, scoring, 404s, and both a valid and an invalid organizer submission.
+- [x] **Real persistence** (`api/db.py`, PostgreSQL) — races, results, and organizer accounts survive a server restart. Seed the demo dataset with `python scripts/seed_demo_data.py`.
+- [x] **Organizer auth** (`api/auth.py`) — register/login/email verification/password reset, JWT sessions, passwords hashed with bcrypt. Verification and reset emails sent via Resend (`api/email.py`).
+- [x] **Basic abuse protection** (`api/rate_limit.py`) — in-process rate limiting on auth endpoints. Known limitation: not shared across multiple worker processes yet (needs Redis for that).
+- [x] Tests (`tests/unit/test_api.py`, `tests/unit/test_auth.py`) covering races, scoring, auth, and email verification/reset, run against a real Postgres test database (`tests/conftest.py`).
 
-**Known gaps, documented in `api/README.md`:** no database (every request re-reads `data/demo/` from disk), no authentication, no rate limiting, and submitted files are scored and discarded rather than persisted. These are necessary before any real public deployment.
+**Known gaps, documented in `api/README.md`:** no database migration tool yet (schema created via `CREATE TABLE IF NOT EXISTS`), rate limiting isn't multi-worker-safe, and JWT sessions have no refresh token.
 
 Depended on Phases 0–1 being stable enough to expose publicly — they were.
 

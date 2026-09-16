@@ -1,33 +1,52 @@
 """OTRI public API — races, scored results, and the organizer submission workflow.
 
-Stateless for now: races/results are read from ``data/demo/`` on each request
-and nothing is persisted. A real database is a separate, future decision
-(see ``docs/roadmap.md``) — this establishes the request/response contract
-first, per HANDBOOK.md's "start small" guidance.
+Races, results, and organizer accounts are persisted in PostgreSQL (``api/db.py``).
+Organizer submissions are always re-validated and re-scored from the raw
+uploaded file before being stored — an organizer can never supply a score
+directly (``HANDBOOK.md`` "Validation and anti-gaming").
 
 Run locally with: ``uvicorn api.app:app --reload``
 """
 
 from __future__ import annotations
 
-import csv
 import os
 import tempfile
+from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Form, HTTPException, UploadFile, Depends
+from fastapi import FastAPI, Form, HTTPException, Request, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from course import GpxParseError, extract_features, read_track_points
-from ingestion import InvalidFileError, race_records, result_records, validate_race_file, validate_result_file
+from ingestion import InvalidFileError, result_records, validate_result_file
+from ingestion.records import RaceRecord
 from scoring import estimate_illustrative_score, score_race
 
-from .auth import AuthError, Organizer, authenticate_organizer, create_access_token, decode_access_token, register_organizer
+from . import db
+from .auth import (
+    AuthError,
+    Organizer,
+    authenticate_organizer,
+    create_access_token,
+    create_email_verification_token,
+    create_password_reset_token,
+    decode_access_token,
+    register_organizer,
+    reset_password,
+    verify_email,
+)
+from .email import send_password_reset_email, send_verification_email
+from .rate_limit import enforce_rate_limit
 from .schemas import (
+    EmailVerificationRequest,
     GpxAnalysis,
     IllustrativeEstimateOut,
+    MessageResponse,
     OrganizerCredentials,
+    PasswordResetConfirm,
+    PasswordResetRequest,
     RaceCreate,
     RaceSummary,
     RunnerScoreOut,
@@ -37,14 +56,21 @@ from .schemas import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-RACES_FILE = REPO_ROOT / "data" / "demo" / "races.csv"
-RESULTS_DIR = REPO_ROOT / "data" / "demo" / "results"
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    db.init_db()
+    yield
+
 
 app = FastAPI(
     title="OTRI API",
     description="Open Trail Running Index — races, scored results, and the organizer submission workflow.",
     version="0.1.0",
+    lifespan=_lifespan,
 )
+
 
 # Configurable via OTRI_API_ALLOWED_ORIGINS (comma-separated), e.g.
 # "https://otri.run,https://www.otri.run" in production. Defaults to the
@@ -78,16 +104,22 @@ def require_organizer(credentials: HTTPAuthorizationCredentials | None = Depends
 
 
 @app.post("/auth/register", response_model=TokenResponse, status_code=201)
-def register(payload: OrganizerCredentials) -> TokenResponse:
+def register(payload: OrganizerCredentials, request: Request) -> TokenResponse:
+    enforce_rate_limit(request, max_requests=5)
     try:
         organizer = register_organizer(payload.email, payload.password)
     except AuthError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+
+    token = create_email_verification_token(organizer)
+    send_verification_email(organizer.email, token)
+
     return TokenResponse(access_token=create_access_token(organizer), email=organizer.email)
 
 
 @app.post("/auth/login", response_model=TokenResponse)
-def login(payload: OrganizerCredentials) -> TokenResponse:
+def login(payload: OrganizerCredentials, request: Request) -> TokenResponse:
+    enforce_rate_limit(request, max_requests=10)
     try:
         organizer = authenticate_organizer(payload.email, payload.password)
     except AuthError as error:
@@ -95,18 +127,45 @@ def login(payload: OrganizerCredentials) -> TokenResponse:
     return TokenResponse(access_token=create_access_token(organizer), email=organizer.email)
 
 
+@app.post("/auth/verify-email", response_model=MessageResponse)
+def confirm_email(payload: EmailVerificationRequest) -> MessageResponse:
+    try:
+        verify_email(payload.token)
+    except AuthError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return MessageResponse(message="email verified")
+
+
+@app.post("/auth/request-password-reset", response_model=MessageResponse)
+def request_password_reset(payload: PasswordResetRequest, request: Request) -> MessageResponse:
+    enforce_rate_limit(request, max_requests=5)
+    result = create_password_reset_token(payload.email)
+    if result is not None:
+        organizer, token = result
+        send_password_reset_email(organizer.email, token)
+    # Always return the same response whether or not the email exists, so this
+    # endpoint can't be used to enumerate registered organizer accounts.
+    return MessageResponse(message="if that email has an account, a reset link has been sent")
+
+
+@app.post("/auth/reset-password", response_model=TokenResponse)
+def confirm_password_reset(payload: PasswordResetConfirm, request: Request) -> TokenResponse:
+    enforce_rate_limit(request, max_requests=10)
+    try:
+        organizer = reset_password(payload.token, payload.new_password)
+    except AuthError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return TokenResponse(access_token=create_access_token(organizer), email=organizer.email)
+
+
 @app.get("/races", response_model=list[RaceSummary])
 def list_races() -> list[RaceSummary]:
-    return [RaceSummary(**vars(race)) for race in race_records(RACES_FILE)]
-
-
-def _find_race(race_id: str):
-    return next((race for race in race_records(RACES_FILE) if race.race_id == race_id), None)
+    return [RaceSummary(**vars(race)) for race in db.list_races()]
 
 
 @app.get("/races/{race_id}", response_model=RaceSummary)
 def get_race(race_id: str) -> RaceSummary:
-    race = _find_race(race_id)
+    race = db.find_race(race_id)
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     return RaceSummary(**vars(race))
@@ -114,62 +173,39 @@ def get_race(race_id: str) -> RaceSummary:
 
 @app.post("/races", response_model=RaceSummary, status_code=201)
 def create_race(payload: RaceCreate, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
-    """Organizer race registration. Requires a valid organizer bearer token.
-
-    Prototype-only persistence: appends to the demo ``races.csv`` on disk and
-    re-validates the whole file, rolling back on failure. This is NOT safe
-    under concurrent writes and is not a real database — see api/README.md
-    "Known gaps". Replace with real persistence before any production use.
-    """
-    if _find_race(payload.race_id) is not None:
+    """Organizer race registration. Requires a valid organizer bearer token."""
+    if db.find_race(payload.race_id) is not None:
         raise HTTPException(status_code=409, detail=f"race {payload.race_id!r} already exists")
 
-    with RACES_FILE.open("a", newline="", encoding="utf-8") as handle:
-        csv.writer(handle).writerow(
-            [
-                payload.race_id,
-                payload.race_name,
-                payload.event_date.isoformat(),
-                payload.course_name,
-                payload.distance_km,
-                payload.elevation_gain_m,
-            ]
-        )
+    race = RaceRecord(
+        race_id=payload.race_id,
+        race_name=payload.race_name,
+        event_date=payload.event_date,
+        course_name=payload.course_name,
+        distance_km=payload.distance_km,
+        elevation_gain_m=payload.elevation_gain_m,
+    )
+    if race.distance_km <= 0 or race.elevation_gain_m < 0:
+        raise HTTPException(status_code=422, detail="distance_km must be > 0 and elevation_gain_m must be >= 0")
 
-    report = validate_race_file(RACES_FILE)
-    if not report.is_valid:
-        _remove_last_races_row()
-        raise HTTPException(status_code=422, detail=[issue.to_dict() for issue in report.errors])
-
-    return RaceSummary(**vars(_find_race(payload.race_id)))
+    db.insert_race(race, organizer_id=organizer.id)
+    return RaceSummary(**vars(race))
 
 
-def _remove_last_races_row() -> None:
-    lines = RACES_FILE.read_text(encoding="utf-8").splitlines(keepends=True)
-    RACES_FILE.write_text("".join(lines[:-1]), encoding="utf-8")
-
-
-def _score_result_file(race, result_path: Path) -> list[RunnerScoreOut]:
-    results = result_records(result_path)
+def _score_results(race: RaceRecord, results: list) -> list[RunnerScoreOut]:
     return [RunnerScoreOut(**score.to_dict()) for score in score_race(race, results)]
 
 
 @app.get("/races/{race_id}/results", response_model=list[RunnerScoreOut])
 def get_race_results(race_id: str) -> list[RunnerScoreOut]:
-    race = _find_race(race_id)
+    race = db.find_race(race_id)
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
 
-    result_path = RESULTS_DIR / f"{race_id}.csv"
-    if not result_path.exists():
+    if not db.has_results(race_id):
         raise HTTPException(status_code=404, detail=f"no results on file for race {race_id!r}")
 
-    try:
-        return _score_result_file(race, result_path)
-    except InvalidFileError as error:
-        # A result file already on disk should always be valid; surface this
-        # loudly rather than silently returning an empty/partial response.
-        raise HTTPException(status_code=500, detail=str(error)) from error
+    return _score_results(race, db.get_results(race_id))
 
 
 @app.post("/races/{race_id}/results", response_model=SubmissionResult)
@@ -180,9 +216,10 @@ async def submit_race_results(
 
     Always validates then re-scores from the raw uploaded file — the
     organizer can never supply a score directly (HANDBOOK.md "Validation and
-    anti-gaming"). Nothing is persisted yet; see module docstring.
+    anti-gaming"). A successful submission replaces any previously stored
+    results for this race.
     """
-    race = _find_race(race_id)
+    race = db.find_race(race_id)
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
 
@@ -202,11 +239,14 @@ async def submit_race_results(
                 scores=[],
             )
 
+        results = result_records(temp_path)
+        db.replace_results(race_id, results)
+
         return SubmissionResult(
             is_valid=True,
             errors=[],
             warnings=[ValidationIssueOut(**issue.to_dict()) for issue in report.warnings],
-            scores=_score_result_file(race, temp_path),
+            scores=_score_results(race, results),
         )
     finally:
         temp_path.unlink(missing_ok=True)

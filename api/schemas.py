@@ -78,3 +78,20 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     email: str
+
+
+class MessageResponse(BaseModel):
+    message: str
+
+
+class EmailVerificationRequest(BaseModel):
+    token: str
+
+
+class PasswordResetRequest(BaseModel):
+    email: str
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str

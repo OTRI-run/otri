@@ -4,3 +4,5 @@ python-multipart>=0.0.9
 gunicorn>=23.0
 bcrypt>=4.1
 PyJWT>=2.9
+psycopg[binary]>=3.1
+resend>=2.0
