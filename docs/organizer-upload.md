@@ -66,7 +66,7 @@ The initial organizer-compatible XLSX layout uses one row per participant and th
 | City | Optional | City supplied by organizer |
 | Team | Optional | Team/club |
 
-The initial format deliberately resembles the established organizer-style result spreadsheet documented by ITRA. OTRI does not copy ITRA's database or scoring system; the compatibility is limited to a practical file-ingestion format.
+The initial format deliberately resembles a widely used organizer-style result spreadsheet layout. OTRI does not copy any other organization's database or scoring system; the compatibility is limited to a practical file-ingestion format.
 
 ## DNF and DNS
 

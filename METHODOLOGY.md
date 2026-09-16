@@ -8,7 +8,7 @@ This document describes the principles and research direction for the Open Trail
 
 Estimate the relative strength of a trail-running performance while accounting for meaningful differences between races and courses.
 
-The goal is prediction and comparability — not replication of ITRA, UTMB, or any other proprietary system.
+The goal is prediction and comparability — not replication of any other proprietary system.
 
 ## 2. Core inputs
 
@@ -68,7 +68,7 @@ Repeat-runner evidence should strengthen the model without allowing a single ath
 
 OTRI should use a clearly defined numerical scale. The scale and interpretation must be documented independently of other trail indexes.
 
-Avoid implying that an OTRI value is equivalent to an ITRA score or UTMB Index value.
+Avoid implying that an OTRI value is equivalent to another organization's proprietary score or index value.
 
 ## 8. Confidence
 

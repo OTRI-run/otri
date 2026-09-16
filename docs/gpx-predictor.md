@@ -82,4 +82,4 @@ The actual curve must come from the published OTRI model and its calibrated para
 
 ## Independence
 
-The predictor must calculate OTRI using OTRI's own independently developed methodology. It must never present an estimate as an ITRA score or UTMB Index prediction.
+The predictor must calculate OTRI using OTRI's own independently developed methodology. It must never present an estimate as another organization's proprietary score or index prediction.

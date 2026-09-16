@@ -61,6 +61,6 @@ Run it: `pip install -r requirements-dev.txt && pytest tests/unit`.
 
 ## Open-source constraints that apply to every phase
 
-- No proprietary/paid APIs as hard dependencies (Google Maps, Mapbox tokens, ITRA/UTMB data) — the whole stack must be runnable by a volunteer with no budget.
+- No proprietary/paid APIs as hard dependencies (Google Maps, Mapbox tokens, other organizations' proprietary race data) — the whole stack must be runnable by a volunteer with no budget.
 - Every new dependency needs a permissive license (MIT/BSD/Apache-2.0) compatible with this project's MIT license.
 - Real race data ingestion follows `DATA_POLICY.md`'s source hierarchy — synthetic demo data only until real data is secured.

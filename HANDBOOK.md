@@ -2,7 +2,7 @@
 
 This handbook defines the initial product strategy, data architecture, scoring philosophy, governance, and roadmap for OTRI.
 
-> **Core principle:** Build an independent, transparent trail-running performance index from legitimately obtained data. Do not copy proprietary ITRA or UTMB scores or databases.
+> **Core principle:** Build an independent, transparent trail-running performance index from legitimately obtained data. Do not copy other organizations' proprietary scores or databases.
 
 ## Mission
 
@@ -23,14 +23,12 @@ A runner should be able to ask **“How strong was this performance?”** withou
 
 ## What OTRI is not
 
-- ITRA.
-- UTMB.
 - A race timing system.
 - A guarantee of athletic ability.
 - An official qualification system unless another organization explicitly adopts it.
 - A mirror of another organization's proprietary database.
 
-OTRI should clearly state that it is independent and unaffiliated with ITRA, UTMB, or other commercial ranking organizations.
+OTRI should clearly state that it is independent and unaffiliated with other commercial ranking organizations.
 
 ## Data principles
 
@@ -132,7 +130,7 @@ New or poorly mapped courses should receive wider intervals.
 
 ### Independence
 
-The predictor calculates **OTRI**, not ITRA or UTMB scores. Its model, parameters, terminology, and training data must be independently developed and documented.
+The predictor calculates **OTRI**, not another organization's scores. Its model, parameters, terminology, and training data must be independently developed and documented.
 
 ## Validation and anti-gaming
 

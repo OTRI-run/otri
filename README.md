@@ -78,7 +78,7 @@ The website uses React, Vite, Tailwind CSS, Lucide icons, and responsive modern 
 
 ## Independence
 
-OTRI is an independent open-source project. It is **not affiliated with ITRA, UTMB, or any other commercial trail-running ranking organization**.
+OTRI is an independent open-source project. It is **not affiliated with any commercial trail-running ranking organization**.
 
 OTRI must not copy proprietary scores, rankings, databases, or restricted datasets. The project should build its own data supply chain through organizers, licensed providers, explicitly reusable public datasets, and appropriate athlete submissions.
 
