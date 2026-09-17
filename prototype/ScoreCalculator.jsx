@@ -74,19 +74,6 @@ function ScoreCard({ estimate, scoring, targetSeconds }) {
             {estimate.predicted_score}
           </p>
           <p className="mt-2 font-mono text-sm text-slate-500">{formatHms(targetSeconds)}</p>
-          {estimate.confidence && (
-            <p
-              className={`mt-2 inline-block rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-[.06em] ${
-                estimate.confidence === 'High'
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : estimate.confidence === 'Medium'
-                    ? 'bg-slate-100 text-slate-600'
-                    : 'bg-amber-50 text-amber-700'
-              }`}
-            >
-              {estimate.confidence} confidence
-            </p>
-          )}
           {scoring && (
             <p className="mt-2 flex items-center justify-center gap-2 text-xs text-slate-500">
               <Spinner /> Updating…
@@ -123,35 +110,17 @@ function Stat({ label, value, mono = true }) {
 // Two audiences, one panel. The plain-language story on top reads the API's own breakdown of
 // the score — nothing is recomputed here — and the maths lives behind a native <details>, so
 // it costs nothing to ignore and needs no state.
-// Why a score can or cannot be trusted: where the elevation came from, and whether the track was
-// dense enough to measure the route. Both are decided by the API; this only renders them.
-function MeasurementTrust({ estimate, measurement }) {
-  const flags = estimate.quality_flags ?? []
-  const reasons = flags.filter((flag) => flag.startsWith('elevation_not_dem_sourced') || flag.startsWith('route_not_reproducible'))
-  const demSourced = measurement?.source?.dataset && measurement.source.dataset !== 'uploaded-gpx'
-  const spacing = measurement?.median_edge_m
-  if (!estimate.confidence) return null
+// One quiet line, only when elevation was not verified against terrain data; silent otherwise.
+// (Sparse-recording advice lives on the course card, where it shows before any score exists.
+// Flag names and dataset ids stay in "Show the maths".)
+function MeasurementTrust({ estimate }) {
+  const unverified = (estimate.quality_flags ?? []).some((flag) => flag.startsWith('elevation_not_dem_sourced'))
+  if (!unverified) return null
   return (
-    <div
-      className={`mt-3 rounded-xl border px-3 py-2.5 text-xs ${
-        estimate.confidence === 'High' ? 'border-emerald-100 bg-emerald-50/60 text-emerald-800' : 'border-amber-100 bg-amber-50/60 text-amber-800'
-      }`}
-    >
-      <p className="font-semibold">
-        {estimate.confidence === 'High'
-          ? 'Measured from a pinned terrain dataset on a dense track — the same route scores the same from any device.'
-          : 'This score depends on how the course was recorded.'}
-      </p>
-      <ul className="mt-1 space-y-0.5">
-        <li>
-          Elevation: {demSourced ? `${measurement.source.dataset}${measurement.source.release ? ` (${measurement.source.release})` : ''}` : 'from your GPX file — not independently verified'}
-        </li>
-        {spacing != null && <li>Track density: one point every {spacing} m{spacing > 30 ? ' — too sparse; switchbacks get cut short' : ''}</li>}
-        {reasons.map((flag) => (
-          <li key={flag} className="break-words">{flag.replace(/^[a-z_]+: /, '')}</li>
-        ))}
-      </ul>
-    </div>
+    <p className="mt-3 text-xs text-slate-500">
+      Elevation for this course comes from your GPX file rather than verified terrain data, so the score can differ
+      slightly between devices.
+    </p>
   )
 }
 
@@ -236,7 +205,7 @@ function ScoreExplanation({ estimate, features, targetSeconds, publishedAnchors,
         being long.
       </p>
 
-      <MeasurementTrust estimate={estimate} measurement={measurement} />
+      <MeasurementTrust estimate={estimate} />
 
       <details className="group mt-4 rounded-xl border border-slate-200 bg-slate-50/60">
         <summary className="cursor-pointer select-none px-4 py-2.5 font-mono text-[10px] uppercase tracking-[.08em] text-slate-500 hover:text-slate-700">
@@ -467,8 +436,6 @@ export default function ScoreCalculator() {
     }
   }
 
-  const anomalyFlags = ['implausible_local_elevation_change', 'conflicting_duplicate_elevations', 'sustained_grade_outside_scoring_domain']
-  const hasAnomaly = measurement?.quality_flags?.some((flag) => anomalyFlags.includes(flag))
   const tooSparse = measurement?.quality_flags?.includes('sparse_geometry_median_over_30m')
 
   // Which curve produced this estimate: V0.4 scales by the endurance reference, V0.3 by the
@@ -586,9 +553,6 @@ export default function ScoreCalculator() {
                 </div>
               ))}
             </dl>
-            {hasAnomaly && (
-              <p className="mt-3 text-sm text-amber-700">Elevation anomalies detected. Review the course profile before trusting this estimate.</p>
-            )}
             {tooSparse && (
               <p className="mt-3 text-sm text-amber-700">
                 This track has a point only every {measurement.median_edge_m} m. Sparse recordings cut switchbacks short,
