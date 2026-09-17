@@ -1,6 +1,6 @@
 # OTRI Scoring — ELI5
 
-**Status:** Explainer — describes the model running in the code today
+**Status:** Historical — explains the V0.1 model; the model in production today is explained in [`../HOW-OTRI-SCORES.md`](../HOW-OTRI-SCORES.md)
 **Audience:** Runners, race organizers, anyone who doesn't want to read a spec
 **Source of truth:** [`OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md`](OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md). If anything here disagrees with that spec or the code, the spec/code wins.
 

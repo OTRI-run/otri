@@ -6,7 +6,7 @@ Draft work should remain clearly marked as research until adopted into a publish
 
 ## Start here
 
-- **New to OTRI scoring?** Read [`v0.1/OTRI-SCORING-ELI5.md`](v0.1/OTRI-SCORING-ELI5.md) first — a plain-language explanation of the model actually implemented in `scoring/`.
+- **New to OTRI scoring, or checking whether to trust it?** Read [`HOW-OTRI-SCORES.md`](HOW-OTRI-SCORES.md) first — a plain-language explanation of the model in production, followed by the provenance of every constant, the evidence, the honest list of what it does not know, and straight answers to the hard questions. (The older [`v0.1/OTRI-SCORING-ELI5.md`](v0.1/OTRI-SCORING-ELI5.md) describes the V0.1 model and is kept as history.)
 - **Want the math without the full spec?** [`v0.1/OTRI-SCORING-MATH-EXPLAINED.md`](v0.1/OTRI-SCORING-MATH-EXPLAINED.md) walks through the actual equations (course demand, performance rate, score curve) in plain terms.
 - **Implementing or reviewing the scoring engine?** [`v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md`](v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md) is the exact, versioned specification and the source of truth for `scoring/course_standard.py` + `scoring/course_demand.py`.
 - **How a score is computed today?** [`v0.8/OTRI-POWER-CURVE.md`](v0.8/OTRI-POWER-CURVE.md) documents `0.8.0-course-standard-power`, the **current default model**: one power law, `score = 1000 × (fraction of the human-ceiling rate)^0.85`, with V0.7's measurement and gating unchanged. The last V0.1 demo anchors are retired; the top of the scale holds and everything below it is lower.
