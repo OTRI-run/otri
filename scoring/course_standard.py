@@ -113,6 +113,36 @@ OFFICIAL_CURVE = ScoreCurve(
 SCORING_VERSION = OFFICIAL_CURVE.version
 MEASURED_CURVE = replace(OFFICIAL_CURVE, version='0.2.0-course-standard-measured')
 
+# V0.1's anchors were calibrated entirely from one course of this course demand (spec section
+# 12.1). Treating Q (demand-km/h) as duration-invariant works near that reference size, but
+# breaks down for radically larger courses: a real 100-mile mountain race (course demand ~218.7
+# demand-km) has a winning Q barely above V0.1's 692-anchor Q, so V0.1 scores its own winner
+# only ~700 instead of near the top of the scale. This mirrors a well-documented real-world
+# effect in endurance sport: sustainable pace/rate necessarily drops as event duration grows.
+#
+# DURATION_SCALED_CURVE corrects for this using Riegel's published race-time-prediction formula
+# (T2 = T1 * (D2/D1)^b, b=1.06 — Riegel, P.S. "Athletic Records and Human Endurance," American
+# Scientist 69(3):285-290, 1981), applied to course demand (our own distance-equivalent unit)
+# instead of raw distance. It rescales the *observed* performance rate relative to the reference
+# course's size before looking it up in the exact same V0.1 anchor table, rather than inventing
+# new anchors — so it reduces to V0.1 exactly at the reference course size (see
+# `_duration_scale_factor`).
+#
+# This is a provisional V2 calibration candidate, not a validated model: it rests on Riegel's
+# generic (non-ultra-specific) exponent plus exactly one real ultra-distance validation point.
+# Riegel's own literature notes b=1.06 underestimates fatigue at very long distances, so this
+# likely still under-corrects for extreme mountain ultras. See
+# docs/methodology/v0.3/OTRI-DURATION-SCALED-CURVE.md.
+ENDURANCE_EXPONENT = 1.06
+REFERENCE_DEMAND_KM = 27.560
+DURATION_SCALED_CURVE = replace(OFFICIAL_CURVE, version='0.3.0-course-standard-duration-scaled')
+
+
+def _duration_scale_factor(course_demand_km: float) -> float:
+    if not math.isfinite(course_demand_km) or course_demand_km <= 0:
+        raise ValueError("course_demand_km must be positive and finite")
+    return (course_demand_km / REFERENCE_DEMAND_KM) ** (ENDURANCE_EXPONENT - 1.0)
+
 
 def performance_rate(equivalent_km: float, finish_time_seconds: float) -> float:
     if not math.isfinite(equivalent_km) or equivalent_km <= 0:
@@ -124,7 +154,8 @@ def performance_rate(equivalent_km: float, finish_time_seconds: float) -> float:
 
 def score_for_time(equivalent_km: float, finish_time_seconds: float, curve: ScoreCurve = OFFICIAL_CURVE) -> dict:
     q = performance_rate(equivalent_km, finish_time_seconds)
-    raw = curve.raw_score(q)
+    lookup_q = q * _duration_scale_factor(equivalent_km) if curve.version == DURATION_SCALED_CURVE.version else q
+    raw = curve.raw_score(lookup_q)
     public = round(max(SCALE_MIN, min(SCALE_MAX, raw)))
     return {"performance_rate": q, "otri_raw": raw, "otri_score": public}
 
@@ -133,6 +164,8 @@ def target_time_seconds(equivalent_km: float, score: float, curve: ScoreCurve = 
     if equivalent_km <= 0:
         raise ValueError("equivalent_km must be greater than 0")
     q = curve.required_q(score)
+    if curve.version == DURATION_SCALED_CURVE.version:
+        q = q / _duration_scale_factor(equivalent_km)
     if q <= 0:
         return math.inf
     return equivalent_km / q * 3600.0
@@ -157,7 +190,7 @@ def score_race_course_standard(
         return []
 
     if gpx_points is not None:
-        if curve.version == MEASURED_CURVE.version:
+        if curve.version in (MEASURED_CURVE.version, DURATION_SCALED_CURVE.version):
             from .measured_demand import compute_measured_demand
             demand = compute_measured_demand(gpx_points, measurement=measurement)
         else:

@@ -5,7 +5,7 @@ The current default is the official Course Standard V0.1 curved model
 scoring curves remain selectable for historical reproducibility.
 """
 
-from .course_standard import CALIBRATED_CURVE, OFFICIAL_CURVE, SPEC_CURVE, ScoreCurve
+from .course_standard import CALIBRATED_CURVE, DURATION_SCALED_CURVE, OFFICIAL_CURVE, SPEC_CURVE, ScoreCurve
 from .course_standard import score_race_course_standard, score_for_time, target_time_seconds
 from .estimator import DISCLAIMER, ScoreEstimate, estimate_score
 from .model import SCORING_VERSION as FIELD_RELATIVE_VERSION
@@ -14,6 +14,7 @@ from .registry import (
     COURSE_STANDARD_CALIBRATED_VERSION,
     COURSE_STANDARD_SPEC_VERSION,
     COURSE_STANDARD_VERSION,
+    DURATION_SCALED_VERSION,
     DEFAULT_SCORING_VERSION,
     ScoringModelInfo,
     available_scoring_models,
@@ -40,6 +41,8 @@ __all__ = [
     "COURSE_STANDARD_VERSION",
     "COURSE_STANDARD_CALIBRATED_VERSION",
     "COURSE_STANDARD_SPEC_VERSION",
+    "DURATION_SCALED_VERSION",
+    "DURATION_SCALED_CURVE",
     "FIELD_RELATIVE_VERSION",
     "DEFAULT_SCORING_VERSION",
     "ScoringModelInfo",

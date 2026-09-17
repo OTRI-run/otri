@@ -8,7 +8,9 @@ import pytest
 from ingestion.records import RaceRecord, ResultRecord
 from scoring.course_standard import (
     CALIBRATED_CURVE,
+    DURATION_SCALED_CURVE,
     OFFICIAL_CURVE,
+    REFERENCE_DEMAND_KM,
     SCALE_MAX,
     SPEC_CURVE,
     performance_rate,
@@ -144,4 +146,52 @@ def test_scoring_version_is_official():
 def test_scoring_version_reflects_chosen_curve():
     scores = score_race_course_standard(_race(), [_finisher("1", 3600)], curve=SPEC_CURVE)
     assert scores[0].score.scoring_version == SPEC_CURVE.version
+
+
+def test_duration_scaled_curve_matches_official_at_reference_demand():
+    """At the exact reference course demand, duration scaling must be a no-op (spec: it must
+    reduce to V0.1 exactly at the calibration course's own size)."""
+    for score in [0, 100, 349, 544, 692, 900, 1000]:
+        official_time = target_time_seconds(REFERENCE_DEMAND_KM, score, curve=OFFICIAL_CURVE)
+        scaled_time = target_time_seconds(REFERENCE_DEMAND_KM, score, curve=DURATION_SCALED_CURVE)
+        assert scaled_time == pytest.approx(official_time, rel=1e-9)
+
+
+def test_duration_scaled_curve_credits_a_real_ultra_winner_more_than_v01():
+    """Regression test for the reported bug: a real elite 100-mile mountain-race winning
+    performance (course demand ~218.7 demand-km, finish 18:16:29) should score meaningfully
+    higher under duration scaling than under V0.1's duration-invariant curve, without saturating
+    at 1000 for a merely-elite (not superhuman) performance."""
+    demand_km = 218.671
+    finish_seconds = 18 * 3600 + 16 * 60 + 29
+    official = score_for_time(demand_km, finish_seconds, curve=OFFICIAL_CURVE)["otri_score"]
+    scaled = score_for_time(demand_km, finish_seconds, curve=DURATION_SCALED_CURVE)["otri_score"]
+    assert scaled > official
+    assert scaled < 1000
+
+
+def test_duration_scaled_curve_does_not_saturate_for_absurd_paces():
+    """A physically-impossible performance rate must not clip to the same score as a real elite
+    performance \u2014 the bug a naive single-anchor patch produced."""
+    demand_km = 218.671
+    elite_seconds = 18 * 3600 + 16 * 60 + 29
+    impossible_seconds = elite_seconds // 2
+    elite_score = score_for_time(demand_km, elite_seconds, curve=DURATION_SCALED_CURVE)["otri_score"]
+    impossible_score = score_for_time(demand_km, impossible_seconds, curve=DURATION_SCALED_CURVE)["otri_score"]
+    assert impossible_score > elite_score
+    assert elite_score < 1000
+
+
+@pytest.mark.parametrize("demand_km", [5.0, REFERENCE_DEMAND_KM, 50.0, 218.671])
+def test_duration_scaled_target_time_inverse(demand_km):
+    for score in [100, 300, 544, 692, 900, 1000]:
+        target = target_time_seconds(demand_km, score, curve=DURATION_SCALED_CURVE)
+        recovered = score_for_time(demand_km, target, curve=DURATION_SCALED_CURVE)["otri_score"]
+        assert recovered == pytest.approx(score, abs=1)
+
+
+def test_duration_scaled_curve_is_monotonic_in_finish_time():
+    times = [3600, 7200, 18000, 36000, 65789, 100000]
+    scores = [score_for_time(218.671, t, curve=DURATION_SCALED_CURVE)["otri_score"] for t in times]
+    assert scores == sorted(scores, reverse=True)
 

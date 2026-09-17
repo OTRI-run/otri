@@ -9,6 +9,7 @@ Draft work should remain clearly marked as research until adopted into a publish
 - **New to OTRI scoring?** Read [`v0.1/OTRI-SCORING-ELI5.md`](v0.1/OTRI-SCORING-ELI5.md) first — a plain-language explanation of the model actually implemented in `scoring/`.
 - **Want the math without the full spec?** [`v0.1/OTRI-SCORING-MATH-EXPLAINED.md`](v0.1/OTRI-SCORING-MATH-EXPLAINED.md) walks through the actual equations (course demand, performance rate, score curve) in plain terms.
 - **Implementing or reviewing the scoring engine?** [`v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md`](v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md) is the exact, versioned specification and the source of truth for `scoring/course_standard.py` + `scoring/course_demand.py`.
+- **Scoring extreme ultra-distance courses?** [`v0.3/OTRI-DURATION-SCALED-CURVE.md`](v0.3/OTRI-DURATION-SCALED-CURVE.md) documents `0.3.0-course-standard-duration-scaled` — a provisional addendum to V0.1 that keeps very long/hard courses from saturating at the top of the scale (default model as of this version).
 
 Each scoring-model version's spec lives in its own `docs/methodology/v<major>.<minor>/` folder so historical specs stay intact when a new version is published.
 

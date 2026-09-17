@@ -363,7 +363,16 @@ export default function ScoreCalculator() {
                     <dd className="font-mono font-semibold text-[#0b1220]">{estimate.scoring_version}</dd>
                   </div>
                 </dl>
-                <p className="mt-3 font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">Published V0.1 curve anchors</p>
+                {estimate.scoring_version?.includes('duration-scaled') && (
+                  <p className="mt-3 text-xs text-slate-500">
+                    This course's demand is duration-scaled (Riegel exponent, see{' '}
+                    <code>docs/methodology/v0.3/OTRI-DURATION-SCALED-CURVE.md</code>) before being looked up in the
+                    table below, since sustainable performance rate naturally drops on much longer/harder courses.
+                  </p>
+                )}
+                <p className="mt-3 font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">
+                  Published reference-course curve anchors{estimate.scoring_version?.includes('duration-scaled') ? ' (before duration-scaling)' : ''}
+                </p>
                 <table className="mt-1 w-full text-left text-xs">
                   <tbody>
                     {PUBLISHED_ANCHORS.map((anchor) => (

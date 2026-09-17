@@ -472,7 +472,7 @@ def _score_results(race: db.Race, results: list) -> list[RunnerScoreOut]:
         _filename, content = stored_gpx
         gpx_points = parse_track_points(content)
     stored_measurement = db.get_measurement(race.race_id)
-    if gpx_points is not None and race.scoring_version == '0.2.0-course-standard-measured' and stored_measurement is None:
+    if gpx_points is not None and race.scoring_version in ('0.2.0-course-standard-measured', '0.3.0-course-standard-duration-scaled') and stored_measurement is None:
         raise ValueError('reattach the GPX to save a versioned measurement before using measured scoring')
     measurement = Measurement(**stored_measurement["snapshot"]) if stored_measurement else None
     scores = score_race(race.to_race_record(), results, model_version=race.scoring_version, gpx_points=gpx_points, measurement=measurement)
