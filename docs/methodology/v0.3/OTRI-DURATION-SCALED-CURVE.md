@@ -19,18 +19,18 @@
 
 V0.1's score curve maps a performance rate `Q` (demand-km/h) to a score using one fixed anchor table, calibrated entirely from a single reference course of course demand `D_ref = 27.560` demand-km (spec v0.1 §12.1). This implicitly treats `Q` as **duration-invariant** — the same `Q` always means the same score, no matter how large the course is.
 
-That assumption breaks down at extreme distances. A real 2026 UTMB winning performance (a ~171 km / +9,890 m course, course demand `D ≈ 218.671` demand-km, finish time `18:16:29`) computes to `Q ≈ 11.97` — only marginally above V0.1's own `692`-anchor `Q` (`11.769`), giving the winner of one of the world's most competitive 100-mile mountain races a V0.1 score of only **702**. Meanwhile V0.1's `1000`-anchor (`Q ≈ 17.94`) was never a real observation at all — it was documented as "upper-scale continuation," a pure extrapolation (spec v0.1 §12, anchor table).
+That assumption breaks down at extreme distances. A real 2026 winning performance on an alpine 100-mile course (~171 km / +9,890 m, course demand `D ≈ 218.671` demand-km, finish time `18:16:29`) computes to `Q ≈ 11.97` — only marginally above V0.1's own `692`-anchor `Q` (`11.769`), giving the winner of one of the world's most competitive 100-mile mountain races a V0.1 score of only **702**. Meanwhile V0.1's `1000`-anchor (`Q ≈ 17.94`) was never a real observation at all — it was documented as "upper-scale continuation," a pure extrapolation (spec v0.1 §12, anchor table).
 
 This is not a bug in the course-demand math. It reflects a well-documented real phenomenon: **sustainable performance rate necessarily drops as event duration grows** — nobody can hold their 3-hour intensity for 18 hours. V0.1's explicit exclusion of "fatigue" and "training history" as *scoring inputs* is still correct (§2) — but a fixed universal `Q`-to-score table implicitly assumes no such drop exists *at all*, which is a modeling gap, not a calibration error.
 
 ### 1.1 Why a naive fix does not work
 
-Replacing V0.1's `1000` anchor with the real UTMB `Q` (so the winner scores exactly 1000) was tested and rejected: any performance rate above the winner's — including physically impossible ones — then also clips to 1000, since the anchor table has no room above the observation used to define it. See the required-Q table below at `D = 218.671`:
+Replacing V0.1's `1000` anchor with the real calibration-performance `Q` (so the winner scores exactly 1000) was tested and rejected: any performance rate above the winner's — including physically impossible ones — then also clips to 1000, since the anchor table has no room above the observation used to define it. See the required-Q table below at `D = 218.671`:
 
 | Q | V0.1 score | naive single-anchor-replace score |
 |---:|---:|---:|
 | 11.769 (V0.1's own 692 anchor) | 692 | 692 |
-| 11.97 (the real UTMB winner) | 702 | 1000 |
+| 11.97 (the real calibration performance) | 702 | 1000 |
 | 15.0 (never run by a human) | 855 | 1000 |
 
 A real fix needs required-`Q` to depend on **course demand**, not just score.
@@ -107,7 +107,7 @@ This is a real, meaningful improvement over V0.1 (783 vs 702) — but note it is
 ## 5. Explicit limitations (read before trusting this for anything but "better than V0.1")
 
 - **`b = 1.06` is a generic, non-ultra-specific, non-trail-specific constant.** It was not fit to OTRI's own data — it is borrowed from Riegel's original road-running/swimming/walking survey. Riegel's own literature flags it as an *underestimate* of fatigue at long distances, which likely means V0.3 still under-corrects for extreme mountain ultras.
-- **Exactly one real ultra-distance point has been used to validate (not calibrate) this model**, the 2026 UTMB winning performance. `b` was **not** fit to that point — it is Riegel's literal published constant, deliberately not tuned to match this single observation (tuning one exponent to one data point would be nearly meaningless).
+- **Exactly one real ultra-distance point has been used to validate (not calibrate) this model**, the 2026 calibration performance. `b` was **not** fit to that point — it is Riegel's literal published constant, deliberately not tuned to match this single observation (tuning one exponent to one data point would be nearly meaningless).
 - **This is not calibrated against, or intended to reproduce, any third-party proprietary index** (e.g. a race organizer's own performance index). Any resemblance or difference is incidental — OTRI's principle of independence from competitor methodologies applies here as everywhere else in this project.
 - Course-demand sizes far below the reference course (very short races) are equally untested against real data — only the long-distance direction has a real validation point so far.
 

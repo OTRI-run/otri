@@ -20,18 +20,18 @@ from scoring.estimator import estimate_score
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEMO_GPX = REPO_ROOT / "data" / "demo" / "gpx"
 FIXTURE_GPX = REPO_ROOT / "tests" / "fixtures" / "gpx"
-UTMB = DEMO_GPX / "utmb_174km_universal.gpx"
+REFERENCE_100MI = DEMO_GPX / "alpine-100mi-reference.gpx"
 CM6 = DEMO_GPX / "cm6-2026-cm6-i1.gpx"
 ROAD_HALF = DEMO_GPX / "Sunday_Laguna_Half_Marathon.gpx"
 
 # Real organizer course files are deliberately not committed (DATA_POLICY.md); see
 # test_scoring_terrain.py for the same arrangement.
 needs_real_courses = pytest.mark.skipif(
-    not (UTMB.exists() and CM6.exists() and ROAD_HALF.exists()),
+    not (REFERENCE_100MI.exists() and CM6.exists() and ROAD_HALF.exists()),
     reason="real demo GPX courses not present (see DATA_POLICY.md)",
 )
 
-UTMB_WINNER_SECONDS = 18 * 3600 + 16 * 60 + 29
+REFERENCE_WIN_SECONDS = 18 * 3600 + 16 * 60 + 29
 
 
 def _points(path: Path):
@@ -128,7 +128,7 @@ def test_mid_pack_lift_on_the_reference_race_is_halved_and_the_back_is_untouched
 
 @needs_real_courses
 def test_mountain_ultra_winner_stays_near_the_top():
-    assert estimate_score(UTMB_WINNER_SECONDS, gpx_points=_points(UTMB), curve=SMOOTHED_UPPER_CURVE).predicted_score == 966
+    assert estimate_score(REFERENCE_WIN_SECONDS, gpx_points=_points(REFERENCE_100MI), curve=SMOOTHED_UPPER_CURVE).predicted_score == 966
 
 
 @needs_real_courses
@@ -144,4 +144,4 @@ def test_road_runners_in_the_former_kink_band_come_down_and_the_rest_do_not():
 
 @needs_real_courses
 def test_v05_remains_reproducible():
-    assert estimate_score(UTMB_WINNER_SECONDS, gpx_points=_points(UTMB), curve=TERRAIN_ADJUSTED_CURVE).predicted_score == 970
+    assert estimate_score(REFERENCE_WIN_SECONDS, gpx_points=_points(REFERENCE_100MI), curve=TERRAIN_ADJUSTED_CURVE).predicted_score == 970

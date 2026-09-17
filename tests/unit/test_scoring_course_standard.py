@@ -218,8 +218,8 @@ WORLD_BESTS = {
     "100 miles road": (160.934, 10 * 3600 + 51 * 60 + 39),
 }
 
-UTMB_DEMAND_KM = 218.671
-UTMB_WINNER_SECONDS = 18 * 3600 + 16 * 60 + 29
+REFERENCE_100MI_DEMAND_KM = 218.671
+REFERENCE_WIN_SECONDS = 18 * 3600 + 16 * 60 + 29
 
 
 def test_endurance_referenced_curve_matches_official_shape_at_reference_demand():
@@ -302,7 +302,7 @@ def test_short_course_no_longer_saturates_for_a_merely_good_runner():
 
 
 def test_real_ultra_winner_is_credited_far_more_than_by_the_models_it_replaces():
-    kwargs = dict(equivalent_km=UTMB_DEMAND_KM, finish_time_seconds=UTMB_WINNER_SECONDS)
+    kwargs = dict(equivalent_km=REFERENCE_100MI_DEMAND_KM, finish_time_seconds=REFERENCE_WIN_SECONDS)
     official = score_for_time(**kwargs, curve=OFFICIAL_CURVE)["otri_score"]
     scaled = score_for_time(**kwargs, curve=DURATION_SCALED_CURVE)["otri_score"]
     referenced = score_for_time(**kwargs, curve=ENDURANCE_REFERENCED_CURVE)["otri_score"]
@@ -315,9 +315,9 @@ def test_real_ultra_winner_is_credited_far_more_than_by_the_models_it_replaces()
 def test_raw_performance_rate_is_reported_unscaled():
     """Scaling is a scoring-lookup concern only; the reported rate stays a plain physical
     quantity, identical across every curve."""
-    computed = score_for_time(UTMB_DEMAND_KM, UTMB_WINNER_SECONDS, curve=ENDURANCE_REFERENCED_CURVE)
+    computed = score_for_time(REFERENCE_100MI_DEMAND_KM, REFERENCE_WIN_SECONDS, curve=ENDURANCE_REFERENCED_CURVE)
     assert computed["performance_rate"] == pytest.approx(
-        performance_rate(UTMB_DEMAND_KM, UTMB_WINNER_SECONDS)
+        performance_rate(REFERENCE_100MI_DEMAND_KM, REFERENCE_WIN_SECONDS)
     )
 
 
@@ -353,5 +353,5 @@ def test_scaling_flags_reach_the_scored_output():
 
 def test_duration_scaled_curve_still_reproduces_its_published_scores():
     """V0.3 is superseded but must stay byte-for-byte reproducible (spec section 21)."""
-    assert score_for_time(UTMB_DEMAND_KM, UTMB_WINNER_SECONDS, curve=DURATION_SCALED_CURVE)["otri_score"] == 783
+    assert score_for_time(REFERENCE_100MI_DEMAND_KM, REFERENCE_WIN_SECONDS, curve=DURATION_SCALED_CURVE)["otri_score"] == 783
     assert score_for_time(REFERENCE_DEMAND_KM, 2 * 3600 + 20 * 60 + 30, curve=DURATION_SCALED_CURVE)["otri_score"] == 692

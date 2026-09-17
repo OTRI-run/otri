@@ -11,7 +11,7 @@ V0.6 is deterministic in the GPX *file*: same file, same time, same version → 
 
 | course | native | thinned ×5 | thinned ×20 |
 |---|---:|---:|---:|
-| UTMB, 171 km | 218.1 demand-km | −4.3% | **−12.6%** |
+| Reference 100-miler, 171 km | 218.1 demand-km | −4.3% | **−12.6%** |
 | Phuket trail, 14.6 km | 17.4 demand-km | −10.6% | **−25.6%** |
 
 Two organizers uploading the same route from different watches got different scores, and nothing told either of them. For a score whose purpose is cross-race comparison, that is the defect that matters most.
@@ -22,7 +22,7 @@ The loss decomposes into a horizontal part and a vertical part:
 
 | | distance | gain | demand |
 |---|---:|---:|---:|
-| UTMB ×20 | **−15.8%** | −5.4% | −12.6% |
+| Reference 100-miler ×20 | **−15.8%** | −5.4% | −12.6% |
 | Phuket ×20 | **−26.3%** | −19.2% | −25.6% |
 
 Most of it is **horizontal**: a sparse track chords the switchbacks into straight lines and the course simply gets shorter. A digital elevation model supplies elevation at whatever geometry it is given; it cannot put the switchbacks back. So "use a DEM" alone does not make the score route-invariant, and V0.7 does not claim that it does.
@@ -42,7 +42,7 @@ median point spacing > 30 m  ->  quality flag  sparse_geometry_median_over_30m
 
 The threshold comes from data, not preference. Demand error against median spacing on four real courses:
 
-| median spacing | UTMB | Phuket | Canyons 50k | CM6 |
+| median spacing | Reference 100-miler | Phuket | Canyons 50k | CM6 |
 |---:|---:|---:|---:|---:|
 | ≤ 30 m | −1.2% | −2.2% | −2.0% | −3.6% |
 | ~45 m | −3.2% | −5.8% | — | −5.6% |
@@ -79,16 +79,16 @@ Low     otherwise — with the reason(s) appended to quality_flags:
 
 Two flags are deliberately treated differently from the first draft of this model:
 
-- **`sustained_grade_outside_scoring_domain` marks review but never blocks `High`.** It is a scoring-domain clamp notice — a 50 m window past Minetti's ±45% — inherent to steep terrain (12 of 3,430 windows on UTMB, 0.35% of the course) and applied deterministically. On the Phuket trail the DEM and the uploaded file agree on ascent to the metre (618 m) yet one sliding window tips 0.39 → 0.47 on a surface-model canopy edge; letting that decide confidence would make `High` unreachable for exactly the courses OTRI exists for.
-- **`implausible_local_elevation_change` is raised only for the elevation actually used.** The first draft computed it from the uploaded per-point elevations even when the DEM was the source, so a noisy watch file could never reach `High` on the DEM (this blocked both UTMB and the V0.1 reference race). Under a DEM the noise is recorded as informational `uploaded_elevation_implausible_unused` and not held against the measurement.
+- **`sustained_grade_outside_scoring_domain` marks review but never blocks `High`.** It is a scoring-domain clamp notice — a 50 m window past Minetti's ±45% — inherent to steep terrain (12 of 3,430 windows on the reference 100-miler, 0.35% of the course) and applied deterministically. On the Phuket trail the DEM and the uploaded file agree on ascent to the metre (618 m) yet one sliding window tips 0.39 → 0.47 on a surface-model canopy edge; letting that decide confidence would make `High` unreachable for exactly the courses OTRI exists for.
+- **`implausible_local_elevation_change` is raised only for the elevation actually used.** The first draft computed it from the uploaded per-point elevations even when the DEM was the source, so a noisy watch file could never reach `High` on the DEM (this blocked both the reference 100-miler and the V0.1 reference race). Under a DEM the noise is recorded as informational `uploaded_elevation_implausible_unused` and not held against the measurement.
 
 Pre-V0.7 curves keep their historical rule (`Medium` with a GPX, `Low` without), so nothing about older scores changes.
 
 ### 2.4 Processing version v3: the same maths, in C and numpy
 
-After the DEM sampler was vectorised, profiling showed ~70% of a measurement in `geographiclib`'s pure-Python geodesics (one inverse solve per track edge, one direct solve per 10 m grid point — about 31,000 calls for UTMB) and ~25% in the smoother calling `statistics.mean` point by point. `course-measurement-v3` keeps every formula, window and threshold and changes only the arithmetic engine: geodesics through `pyproj.Geod` (GeographicLib's Karney algorithm in C, one vectorised call per segment) and the smoother in numpy with the same by-distance windows.
+After the DEM sampler was vectorised, profiling showed ~70% of a measurement in `geographiclib`'s pure-Python geodesics (one inverse solve per track edge, one direct solve per 10 m grid point — about 31,000 calls for the reference 100-miler) and ~25% in the smoother calling `statistics.mean` point by point. `course-measurement-v3` keeps every formula, window and threshold and changes only the arithmetic engine: geodesics through `pyproj.Geod` (GeographicLib's Karney algorithm in C, one vectorised call per segment) and the smoother in numpy with the same by-distance windows.
 
-Measured against the v2 implementation on three real courses (UTMB, CM6, Phuket), end to end: total distance within **1.4e-8 m**, gain and loss within **5.5e-9 m**, every profile point within **2.3e-8 m**, identical quality flags, identical scores (966 / 707 / 554). Component by component: per-edge geodesic distances agree to 2.8e-9 m and grid positions to 2e-14°; the median filter is bit-identical and the mean filter differs by at most 4.5e-13 m (summation order); the larger end-to-end figure is nanometre chainage shifts propagating through interpolation. `profile_hash` is a SHA over those floats, so v2 and v3 measurements of the same file hash differently. That is exactly the case §21 reserves a new processing version for; stored v2 snapshots replay unchanged.
+Measured against the v2 implementation on three real courses (the reference 100-miler, CM6, Phuket), end to end: total distance within **1.4e-8 m**, gain and loss within **5.5e-9 m**, every profile point within **2.3e-8 m**, identical quality flags, identical scores (966 / 707 / 554). Component by component: per-edge geodesic distances agree to 2.8e-9 m and grid positions to 2e-14°; the median filter is bit-identical and the mean filter differs by at most 4.5e-13 m (summation order); the larger end-to-end figure is nanometre chainage shifts propagating through interpolation. `profile_hash` is a SHA over those floats, so v2 and v3 measurements of the same file hash differently. That is exactly the case §21 reserves a new processing version for; stored v2 snapshots replay unchanged.
 
 ## 3. What V0.7 can honestly claim
 
@@ -113,12 +113,12 @@ The score itself. For the same measurement, V0.7 and V0.6 produce identical `otr
 - **Two tiers:** `CONFIDENCE_BLOCKING_FLAGS` is a strict subset of `REVIEW_FLAGS` that excludes the grade-domain flag; a measurement carrying only that flag is `needs_review` *and* `High`.
 - **Elevation actually used:** a file with 300 m spikes measured on the DEM carries `uploaded_elevation_implausible_unused`, not the blocking flag, and is `High`; the same file measured from its own elevations carries `implausible_local_elevation_change` and is `Low`.
 - **Score identity:** V0.7 equals V0.6 for the same measurement.
-- **Real course (skipped if absent):** the UTMB track passes the gate natively and fails it thinned ×5.
+- **Real course (skipped if absent):** the reference 100-mile track passes the gate natively and fails it thinned ×5.
 
 ## 6. Explicit limitations
 
 - **The gate is a floor, not a fix.** A track at 25 m spacing passes and still measures ~1–3% short of a 10 m one. That residual is inside the claim in §3 but it is not zero.
 - **Coverage is operational.** Confidence is `High` only where tiles are installed. The install script takes a tile list; someone has to decide which regions to cover, and an upload from anywhere else is `Low` until its tiles are added.
-- **GLO-30 is a surface model, and it shows.** On UTMB it reads 10,311 m of ascent against 9,592 m from the uploaded file and 9,890 m official — the two sources sit −3% / +4% either side of the organizer's figure — and the same winning performance scores **987** on the DEM against the **966** pinned in the V0.6 note on uploaded elevation. On the Phuket trail the two agree exactly (618 m). The difference is alpine rock and canopy, not a general bias. Production numbers are DSM-based; the V0.5/V0.6 calibration and pins were made on uploaded elevation and are recorded as such there. No constant has been re-tuned to close the gap: the measurement spec's benchmarking programme (Copernicus vs a bare-earth model such as FABDEM vs calibrated barometric traversals on a known route) is the honest route to that, and has not been run. `High` means *reproducible against a named dataset*, not *validated against the ground*.
+- **GLO-30 is a surface model, and it shows.** On the reference 100-miler it reads 10,311 m of ascent against 9,592 m from the uploaded file and 9,890 m official — the two sources sit −3% / +4% either side of the organizer's figure — and the same winning performance scores **987** on the DEM against the **966** pinned in the V0.6 note on uploaded elevation. On the Phuket trail the two agree exactly (618 m). The difference is alpine rock and canopy, not a general bias. Production numbers are DSM-based; the V0.5/V0.6 calibration and pins were made on uploaded elevation and are recorded as such there. No constant has been re-tuned to close the gap: the measurement spec's benchmarking programme (Copernicus vs a bare-earth model such as FABDEM vs calibrated barometric traversals on a known route) is the honest route to that, and has not been run. `High` means *reproducible against a named dataset*, not *validated against the ground*.
 - **Switchback loss is unaddressed.** Only snapping to a route network recovers geometry a sparse track never recorded.
 - Everything in V0.6 §5 and V0.5 §5 still applies to the curve and the terrain factor.

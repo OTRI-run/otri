@@ -23,7 +23,7 @@ Above roughly 20% grade a mountain course stops being run and starts being power
 
 | course | 0–10% | 10–20% | 20–30% | 30–45% | >45% |
 |---|---:|---:|---:|---:|---:|
-| UTMB (technical alpine) | 51.7 | 29.9 | 13.7 | 4.3 | 0.3 |
+| Reference 100-miler (technical alpine) | 51.7 | 29.9 | 13.7 | 4.3 | 0.3 |
 | CM6 (V0.1 reference race) | 55.5 | 25.8 | 14.8 | 3.9 | 0.0 |
 | Phuket trail (jungle) | 66.0 | 20.2 | 12.7 | 1.0 | 0.0 |
 | Canyons 50k (US trail) | 77.7 | 19.9 | 2.2 | 0.2 | 0.0 |
@@ -31,7 +31,7 @@ Above roughly 20% grade a mountain course stops being run and starts being power
 
 ### 2.2 Recoverable: altitude
 
-Aerobic capacity declines above roughly 1500 m. Read straight off the course's own denoised elevation profile as a distance-weighted mean excess, this is the **only** measured feature that distinguishes a high-alpine course from a merely steep one — UTMB carries 243 m of it, and every other course in the table above carries zero.
+Aerobic capacity declines above roughly 1500 m. Read straight off the course's own denoised elevation profile as a distance-weighted mean excess, this is the **only** measured feature that distinguishes a high-alpine course from a merely steep one — the reference 100-miler carries 243 m of it, and every other course in the table above carries zero.
 
 ### 2.3 Not recoverable: technical footing
 
@@ -73,9 +73,9 @@ A flat sea-level course has both inputs at zero and a factor of exactly **1.000*
 | Canyons 50k (US trail) | 2.4% | 0 m | 1.014 | 54.62 → 55.40 | 696 → 703 |
 | Phuket trail (jungle) | 13.7% | 0 m | 1.082 | 17.36 → 18.78 | 526 → 557 |
 | CM6 (V0.1 reference race) | 18.7% | 0 m | 1.111 | 27.35 → 30.39 | 687 → **737** |
-| UTMB (technical alpine) | 18.4% | 243 m | 1.126 | 218.07 → 245.63 | 888 → **970** |
+| Reference 100-miler (technical alpine) | 18.4% | 243 m | 1.126 | 218.07 → 245.63 | 888 → **970** |
 
-### 4.1 Worked example — the 2026 UTMB winning performance
+### 4.1 Worked example — the 2026 calibration performance
 
 ```text
 measured demand      218.073 demand-km
@@ -113,17 +113,17 @@ About 5% of headroom. A future win under roughly 17:16 would reach 1000 and stop
 
 ### 5.1 `STEEP_COEFFICIENT` is calibrated, not measured
 
-`0.5951` was chosen so that one real performance — the 2026 UTMB win — scores 970. **One coefficient fitted to one data point.** V0.3 §5 rightly called that "nearly meaningless" as evidence, and nothing here changes that judgement. What can honestly be claimed:
+`0.5951` was chosen so that one real performance — the 2026 calibration performance — scores 970. **One coefficient fitted to one data point.** V0.3 §5 rightly called that "nearly meaningless" as evidence, and nothing here changes that judgement. What can honestly be claimed:
 
 - The *shape* of the model (cost rising with steep-terrain share and with altitude) is physically motivated and independent of the calibration.
 - `ALTITUDE_COEFFICIENT` is taken from published physiology and was **not** tuned.
 - The target of 970 is a **product decision** — that the best trail performance in the world should sit near the top of a trail-running index — not a measurement result.
 
-Read this model as "OTRI's scale now spans the sport it serves", not as "OTRI has measured how hard UTMB is."
+Read this model as "OTRI's scale now spans the sport it serves", not as "OTRI has measured how hard the reference 100-miler is."
 
 ### 5.2 It cannot tell a technical course from a merely steep one
 
-Because footing is invisible to GPX (§2.3), the steep-terrain term lifts **every** steep course by roughly the same proportion. UTMB (18.4% steep) and the V0.1 reference race CM6 (18.7% steep) receive nearly identical factors, despite being very different courses. A smooth steep fire-road gets the same treatment as an alpine scramble at the same gradient.
+Because footing is invisible to GPX (§2.3), the steep-terrain term lifts **every** steep course by roughly the same proportion. The reference 100-miler (18.4% steep) and the V0.1 reference race CM6 (18.7% steep) receive nearly identical factors, despite being very different courses. A smooth steep fire-road gets the same treatment as an alpine scramble at the same gradient.
 
 Closing that would need a technicality signal from outside the GPX — an organizer-declared class, surface data, or field-measured split times.
 
@@ -144,12 +144,12 @@ OTRI's independence from competitor methodologies applies here as everywhere els
 - **Road courses are untouched:** `terrain_factor == 1.0` exactly, and a road course scores identically under V0.4 and V0.5.
 - **Monotonicity:** the factor rises with both steep-terrain share and altitude excess; real courses order road < jungle trail < alpine.
 - **Altitude stays traceable:** 1000 m of excess costs exactly 7%.
-- **The calibration point holds:** the 2026 UTMB winning performance scores exactly 970.
+- **The calibration point holds:** the 2026 calibration performance scores exactly 970.
 - **Headroom survives:** a faster run on the same course scores strictly higher, up to 1000.
 - **The adjustment is surfaced** as a `terrain_adjustment_applied` quality flag, never silently applied.
 - **Both terms are load-bearing:** zeroing either coefficient lowers the mountain score.
 - **Invalid inputs are rejected** rather than silently clamped.
-- **The documented limitation is pinned:** UTMB and CM6 must measure within 2 percentage points of each other on steepness, so §5.2 cannot quietly stop being true.
+- **The documented limitation is pinned:** the reference 100-miler and CM6 must measure within 2 percentage points of each other on steepness, so §5.2 cannot quietly stop being true.
 - All V0.4 and earlier required tests continue to apply to their own curves unchanged.
 
 ## 7. What would make this non-provisional

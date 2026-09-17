@@ -36,14 +36,14 @@ No anchor table. The last two V0.1 demo-race anchors (349 and 544) retire; the o
 |---|---:|---:|---:|
 | 5000 m / marathon / 24 h world bests | 100% | 1000 | **1000** |
 | 100 km / 100 mile road world bests | 95% | 964 / 968 | **957 / 960** |
-| UTMB winner, 18:16 (uploaded elevation) | 95% | 966 | **958** |
-| UTMB 24 h | 72% | 800 | **760** |
-| UTMB 32 h | 54% | 656 | **595** |
+| Reference 100-mile win, 18:16 (calibration value; uploaded elevation) | 95% | 966 | **958** |
+| Reference 100-miler, 24 h | 72% | 800 | **760** |
+| Reference 100-miler, 32 h | 54% | 656 | **595** |
 | CM4 80 km, 12:33 (DEM-measured, production) | 53% | 643 | **581** |
 | CM6 winner 2:20 (V0.1's 692 finisher) | 61% | 707 | **653** |
 | Road half 1:45 / 2:00 | 56% / 49% | 667 / 608 | **609 / 543** |
 | CM6 last finisher 6:30 | 22% | 371 | **274** |
-| UTMB 46 h | 38% | 515 | **437** |
+| Reference 100-miler, 46 h | 38% | 515 | **437** |
 
 Two invariants from V0.4 hold by construction and are tested: a runner at a fixed fraction of the ceiling scores the same at every course size, and every world best stays at or above 940.
 
@@ -53,7 +53,7 @@ Two invariants from V0.4 hold by construction and are tested: a runner at a fixe
 - **Definition:** `raw_score(f × Q_1000) == 1000 × f^0.85` to 1e-12 for `f` from 0.05 to 1.1.
 - **Top held, middle lowered:** within 8 points of V0.7 at `f ≥ 0.95`; at least 40 points lower at `f` in 0.2–0.65.
 - **Inverse round-trip** across course sizes 3–700 demand-km and scores 50–1000; **monotone** in finish time; **calibre-invariant** across course sizes to within 1 point; **world bests ≥ 940**.
-- **Real-course pins** (skipped without the files): UTMB winner 958, CM6 winner 653 on uploaded elevation; CM4 12:33:43 within 640–680 on the file's noise-inflated ascent (581 on the DEM in production); V0.7 still returns 966.
+- **Real-course pins** (skipped without the files): Reference 100-mile winner (calibration value) 958, CM6 winner 653 on uploaded elevation; CM4 12:33:43 within 640–680 on the file's noise-inflated ascent (581 on the DEM in production); V0.7 still returns 966.
 
 ## 5. Explicit limitations
 

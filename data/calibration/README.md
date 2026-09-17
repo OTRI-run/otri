@@ -4,9 +4,9 @@
 
 ## Why synthetic, not real race data
 
-This started as a request to pull real GPX courses and real ITRA/UTMB points from race organizer sites. That would conflict directly with `DATA_POLICY.md`:
+This started as a request to pull real GPX courses and real third-party performance points from race organizer sites. That would conflict directly with `DATA_POLICY.md`:
 
-- ITRA/UTMB points are **proprietary calculated scores** — `DATA_POLICY.md` explicitly prohibits scraping/redistributing those without permission ("the fact that a result can be viewed online does not by itself establish permission for bulk extraction or republication").
+- third-party performance points are **proprietary calculated scores** — `DATA_POLICY.md` explicitly prohibits scraping/redistributing those without permission ("the fact that a result can be viewed online does not by itself establish permission for bulk extraction or republication").
 - Real organizer GPX files are typically copyrighted/restricted to participant use.
 - Real finishers' names would need organizer permission and minimum-necessary-data justification per `PRIVACY.md`.
 

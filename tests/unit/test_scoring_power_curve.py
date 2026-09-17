@@ -19,8 +19,8 @@ from scoring.estimator import estimate_score
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEMO_GPX = REPO_ROOT / "data" / "demo" / "gpx"
-UTMB, CM6, CM4 = DEMO_GPX / "utmb_174km_universal.gpx", DEMO_GPX / "cm6-2026-cm6-i1.gpx", DEMO_GPX / "chiang-mai-2021-cm4.gpx"
-needs_real_courses = pytest.mark.skipif(not (UTMB.exists() and CM6.exists() and CM4.exists()), reason="real demo GPX not present (see DATA_POLICY.md)")
+REFERENCE_100MI, CM6, CM4 = DEMO_GPX / "alpine-100mi-reference.gpx", DEMO_GPX / "cm6-2026-cm6-i1.gpx", DEMO_GPX / "chiang-mai-2021-cm4.gpx"
+needs_real_courses = pytest.mark.skipif(not (REFERENCE_100MI.exists() and CM6.exists() and CM4.exists()), reason="real demo GPX not present (see DATA_POLICY.md)")
 
 
 def _points(path):
@@ -83,12 +83,12 @@ def test_world_bests_stay_at_the_top():
 @needs_real_courses
 def test_real_course_pins():
     """Uploaded-elevation pins (production measures from the DEM and differs by a few %)."""
-    utmb = estimate_score(65789, gpx_points=_points(UTMB), curve=POWER_CURVE).predicted_score
+    reference_ultra = estimate_score(65789, gpx_points=_points(REFERENCE_100MI), curve=POWER_CURVE).predicted_score
     cm6 = estimate_score(8430, gpx_points=_points(CM6), curve=POWER_CURVE).predicted_score
     cm4 = estimate_score(12 * 3600 + 33 * 60 + 43, gpx_points=_points(CM4), curve=POWER_CURVE).predicted_score
-    assert utmb == 958
+    assert reference_ultra == 958
     assert cm6 == 653
     # On the file's noise-inflated ascent; the DEM-measured production score is ~581.
     assert 640 <= cm4 <= 680
     # V0.7 remains reproducible.
-    assert estimate_score(65789, gpx_points=_points(UTMB), curve=DEM_GATED_CURVE).predicted_score == 966
+    assert estimate_score(65789, gpx_points=_points(REFERENCE_100MI), curve=DEM_GATED_CURVE).predicted_score == 966

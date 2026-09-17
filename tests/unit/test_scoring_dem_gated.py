@@ -24,8 +24,8 @@ from scoring.estimator import estimate_score
 from scoring.measured_demand import compute_measured_demand
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-UTMB = REPO_ROOT / "data" / "demo" / "gpx" / "utmb_174km_universal.gpx"
-needs_real_courses = pytest.mark.skipif(not UTMB.exists(), reason="real demo GPX not present (see DATA_POLICY.md)")
+REFERENCE_100MI = REPO_ROOT / "data" / "demo" / "gpx" / "alpine-100mi-reference.gpx"
+needs_real_courses = pytest.mark.skipif(not REFERENCE_100MI.exists(), reason="real demo GPX not present (see DATA_POLICY.md)")
 
 # The synthetic world: a 30 m raster over 97.99-98.05 E, 7.96-8.15 N with gentle 600 m-wavelength
 # hills, and a 12 km switchbacking track through it heading north from (8.0, 98.0). The raster
@@ -210,7 +210,7 @@ def test_v07_scores_identically_to_v06_for_the_same_measurement(dem):
 
 @needs_real_courses
 def test_real_course_is_dense_enough_to_pass_the_gate():
-    pts = parse_track_points(UTMB.read_text(encoding="utf-8"))
+    pts = parse_track_points(REFERENCE_100MI.read_text(encoding="utf-8"))
     m = measure_course(pts)
     assert m.median_edge_m <= PARAMETERS["max_median_edge_m"]
     assert "sparse_geometry_median_over_30m" not in m.quality_flags

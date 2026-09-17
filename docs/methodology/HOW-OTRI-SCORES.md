@@ -15,7 +15,7 @@ Read a score like this:
 | score | means roughly |
 |---:|---|
 | **1000** | the world-best rate for a course of that size |
-| **984** | the 2026 UTMB winner, 18:16:29 — 98% of the ceiling |
+| **984** | the 2026 calibration performance — an alpine 100-mile win, 18:16:29 — 98% of the ceiling |
 | **581** | 12:33:43 on an 80 km / ~4,500 m Chiang Mai mountain course — 53% of the ceiling |
 | **543** | a 2:00 road half-marathon — 49% |
 | **274** | 6:30 on a 22 km mountain course — 22% |
@@ -48,8 +48,8 @@ The right question to ask of any index is: *which numbers were measured, which w
 | Gradient energy cost | Minetti 2002 polynomial | **published** (treadmill, −45…+45%) | the core of course demand |
 | Ceiling anchors | 5000 m 12:35.36; marathon 2:00:35; 24 h 319.614 km | **public world bests** | defines what 1000 means |
 | Ceiling shape | piecewise power law through those three | derived | its short segment reproduces Riegel's published exponent (1.059 vs 1.06) without using it — the model's one independent corroboration |
-| Altitude cost | 7% per 1,000 m above 1,500 m | **physiology literature** | small (UTMB: +1.7%) |
-| Steep-terrain cost | 0.5951 per unit share of ≥ 20% ground | **calibrated to one performance** (the 2026 UTMB win → 970, V0.5) | material (UTMB: +10.9%) — the model's weakest constant |
+| Altitude cost | 7% per 1,000 m above 1,500 m | **physiology literature** | small (the reference 100-miler: +1.7%) |
+| Steep-terrain cost | 0.5951 per unit share of ≥ 20% ground | **calibrated to one performance** (the 2026 calibration performance → 970, V0.5) | material (the reference 100-miler: +10.9%) — the model's weakest constant |
 | Curve exponent | 0.85 | **chosen** — between "percentage of world best" (1.0) and the earlier 0.692 | shapes the whole scale below the top |
 | Sparse-track gate | median spacing > 30 m | **from data** on four real courses (error ≤ 3% below it, 4–8% above) | affects trust, not the number |
 | Measurement details | 10 m grid, ±10 m smoothing, 8 m prominence, 50 m segments | **chosen**, sensitivity documented, not field-validated | affects every ascent figure |
@@ -62,13 +62,13 @@ Nothing in the model is fitted to a field of results, and nothing is referenced 
 - **Length-invariance.** With three anchors chosen for depth of competition, nine other world records the curve never saw land at 92–102% of it: 1500 m to half marathon within 2.4%; the 100 km, 100-mile, 6-hour and 12-hour records at 92–97% (softer events, as expected) — [`v0.4`](v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md) §4.
 - **Riegel corroboration.** The 5 km → marathon segment of the ceiling, built only from those two records, has an exponent of 1.059. Riegel's 1981 survey found 1.06. The model did not use his number.
 - **Route-invariance, bounded.** The same real course thinned to simulate coarser recording: within ~2–3% of full-density demand while median spacing stays ≤ 30 m; 4–13% short beyond it — which is why the gate sits at 30 m and why sparser tracks are labelled rather than scored silently ([`v0.7`](v0.7/OTRI-DEM-GATED-MEASUREMENT.md) §2.1).
-- **Elevation source matters, and the model says so.** On UTMB the terrain model reads 10,311 m of ascent against 9,592 m from the file and 9,890 m official. On an 80 km Chiang Mai course whose watch file carried 3,844 implausible jumps, the file said 7,525 m, the terrain model 4,549 m, and heavier smoothing of the file converged on the terrain model. On a Phuket trail the two agree to the metre. Production uses the terrain model; the note records both figures.
+- **Elevation source matters, and the model says so.** On the reference 100-miler the terrain model reads 10,311 m of ascent against 9,592 m from the file and 9,890 m official. On an 80 km Chiang Mai course whose watch file carried 3,844 implausible jumps, the file said 7,525 m, the terrain model 4,549 m, and heavier smoothing of the file converged on the terrain model. On a Phuket trail the two agree to the metre. Production uses the terrain model; the note records both figures.
 - **Determinism.** Three repeat runs of the same file are bit-identical. Changing the arithmetic engine (v2 → v3) moved every number by less than 3e-8 m and no score by a point — and still triggered a new processing version, because the hashes changed.
 
 ### 2.3 What the model does not know — the honest list
 
 1. **Technical footing is invisible.** A GPX cannot see rock, roots, mud or exposure. Two courses with the same gradient profile get the same steep-terrain factor whether one is a fire road and the other an alpine scramble. This is the single largest reason a mountain-ultra winner sits at 98% of a *road-referenced* ceiling rather than 100%.
-2. **One constant is calibrated to one performance.** The steep-terrain coefficient was set so that one real UTMB win scored 970. That is the definition of a provisional constant.
+2. **One constant is calibrated to one performance.** The steep-terrain coefficient was set so that one real calibration performance scored 970. That is the definition of a provisional constant.
 3. **The curve exponent is a judgement.** 0.85 was chosen, not measured. Its consequence is stated plainly: the further from the top, the larger the relative drop compared with the previous shape.
 4. **The terrain model is a surface model.** GLO-30 includes tree canopy and buildings; on forested alpine ground it can read ascent high. `High` confidence means *reproducible against a named dataset*, not *validated against the ground*. The benchmarking programme in [`REAL-WORLD-COURSE-MEASUREMENT-SPEC.md`](REAL-WORLD-COURSE-MEASUREMENT-SPEC.md) has not been run.
 5. **Terrain coverage is per region.** A course outside the installed tiles is measured from its own file, at `Low` confidence, and says so.

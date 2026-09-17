@@ -19,7 +19,7 @@ Scoring the published world-best performance at each distance — the same calib
 | Marathon WR (2:00:35) | 42.195 | 1000 | 1000 | 1000 |
 | 100 km road WR (6:05:35) | 100.000 | 925 | 990 | 969 |
 | 100 miles road WR (10:51:39) | 160.934 | 846 | 928 | 971 |
-| UTMB 2026 winner (18:16:29) | 218.671 | 702 | 783 | 889 |
+| Reference 100-mile win, 18:16:29 (calibration value) | 218.671 | 702 | 783 | 889 |
 | 24-hour road WR (319.614 km) | 319.614 | 771 | 877 | 1000 |
 
 Two separate defects produced that spread, and V0.3 only addressed the first one.
@@ -28,7 +28,7 @@ Two separate defects produced that spread, and V0.3 only addressed the first one
 
 V0.3 already identified the cause — sustainable performance rate necessarily drops as an event gets longer — and corrected for it with Riegel's published exponent `b = 1.06`.
 
-But `b = 1.06` was derived from a survey whose "endurance range" was roughly 3.5–230 minutes. Fitting `b` segment by segment to world-best performances shows it is not a constant at all: it stays near 1.06 from 1500 m to the marathon, then climbs steeply into the ultra range. V0.3's own limitations section flagged exactly this risk. Applying the 4-hour-and-under exponent to an 18-hour race leaves most of the correction unmade, which is why the UTMB winner still only reached 783.
+But `b = 1.06` was derived from a survey whose "endurance range" was roughly 3.5–230 minutes. Fitting `b` segment by segment to world-best performances shows it is not a constant at all: it stays near 1.06 from 1500 m to the marathon, then climbs steeply into the ultra range. V0.3's own limitations section flagged exactly this risk. Applying the 4-hour-and-under exponent to an 18-hour race leaves most of the correction unmade, which is why the Reference 100-mile winner (calibration value) still only reached 783.
 
 ### 1.2 The short-race defect: the top of the scale was invented, and saturated
 
@@ -154,7 +154,7 @@ None of the following were used to build the curve:
 
 From 1500 m to the half marathon the curve reproduces records it never saw to within 2.4%, and mostly within 1%. The ultra records sit at 92–97% of the reference rather than at 100%, which is expected and is not a fit error: those events are contested by far smaller fields than the marathon, so their records genuinely sit further below the human ceiling. They score 948–983 — high, not saturated, and correctly ordered.
 
-### 4.1 Worked example — the 2026 UTMB winning performance
+### 4.1 Worked example — the 2026 calibration performance
 
 ```text
 D = 218.671 demand-km
@@ -190,7 +190,7 @@ V0.4 score:  889
 
 ## 6. Explicit limitations
 
-- **The reference observations are road and track performances.** Course demand normalises gradient cost, but not technical footing, altitude, night running, cumulative descent damage, or self-sufficiency. A mountain ultra therefore has a structurally lower achievable fraction of the road-referenced ceiling, which is most of why the UTMB winner lands at 889 rather than near 1000. That gap belongs to the course-demand model, not to this curve, and closing it needs a terrain/technicality term that OTRI does not yet have data for. Until then, 889 should be read as "82.5% of the road-equivalent human ceiling", not as "11% off a perfect run".
+- **The reference observations are road and track performances.** Course demand normalises gradient cost, but not technical footing, altitude, night running, cumulative descent damage, or self-sufficiency. A mountain ultra therefore has a structurally lower achievable fraction of the road-referenced ceiling, which is most of why the Reference 100-mile winner (calibration value) lands at 889 rather than near 1000. That gap belongs to the course-demand model, not to this curve, and closing it needs a terrain/technicality term that OTRI does not yet have data for. Until then, 889 should be read as "82.5% of the road-equivalent human ceiling", not as "11% off a perfect run".
 - **Courses beyond 319.614 demand-km extrapolate the 24-hour exponent.** Multi-day mountain ultras include sleep stops, so their true rate decay is steeper than the continued exponent and this model under-credits them. These courses receive a `course_demand_above_reference_range` quality flag. The same applies below 5 demand-km, with a matching flag.
 - **Three anchors is a deliberately small basis.** The held-out validation in §4 is what justifies it; a larger, OTRI-owned dataset would justify more.
 - **The reference observations are frozen constants of model version `0.4.0`.** When a record falls, refreshing the table is a new model version, never an edit in place (V0.1 spec §21). Historical scores are never silently rewritten.

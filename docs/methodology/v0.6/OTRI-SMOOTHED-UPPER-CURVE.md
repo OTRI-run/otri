@@ -61,7 +61,7 @@ Everything at or below 544 is byte-for-byte V0.5. Above 544 the elasticity is co
 | 4:00:00 | 464 | 496 | **496** | +32 | +32 |
 | 6:29:58 | 338 | 371 | **371** | +33 | +33 |
 
-| UTMB 171 km | V0.4 | V0.5 | V0.6 | V0.4→V0.5 | V0.4→V0.6 |
+| Reference 100-miler, 171 km | V0.4 | V0.5 | V0.6 | V0.4→V0.5 | V0.4→V0.6 |
 |---|---:|---:|---:|---:|---:|
 | 18:16:29 | 888 | 970 | **966** | +82 | +78 |
 | 24:00:00 | 752 | 822 | **800** | +70 | +48 |
@@ -69,7 +69,7 @@ Everything at or below 544 is byte-for-byte V0.5. Above 544 the elasticity is co
 | 40:00:00 | 513 | 566 | **562** | +53 | +49 |
 | 46:00:00 | 472 | 515 | **515** | +43 | +43 |
 
-*UTMB figures use the file's own elevations. On Copernicus GLO-30 (V0.7 production) the winner scores 987 rather than 966 — see [V0.7 §6](../v0.7/OTRI-DEM-GATED-MEASUREMENT.md).*
+*the reference 100-miler figures use the file's own elevations. On Copernicus GLO-30 (V0.7 production) the winner scores 987 rather than 966 — see [V0.7 §6](../v0.7/OTRI-DEM-GATED-MEASUREMENT.md).*
 
 | Phuket trail 14.6 km | V0.4 | V0.5 | V0.6 | V0.4→V0.5 | V0.4→V0.6 |
 |---|---:|---:|---:|---:|---:|
@@ -78,7 +78,7 @@ Everything at or below 544 is byte-for-byte V0.5. Above 544 the elasticity is co
 | 2:20:00 | 480 | 504 | **504** | +24 | +24 |
 | 4:00:00 | 343 | 366 | **366** | +23 | +23 |
 
-The 2:40 lift on CM6 halves (+63 → +33); the 32-hour UTMB lift drops from +82 to +50; back-of-field scores do not move.
+The 2:40 lift on CM6 halves (+63 → +33); the 32-hour the reference 100-miler lift drops from +82 to +50; back-of-field scores do not move.
 
 ### 3.1 The side effect: road scores in the same band come down
 
@@ -102,8 +102,8 @@ Those runners were not scored "correctly" under V0.5 and "penalised" now; they w
 - **At or below 544, V0.6 equals V0.5** to floating-point tolerance at the reference course size.
 - **One exponent above 544:** `raw_score` reproduces `544 × (Q/Q₅₄₄)^(1/p)` exactly across the segment.
 - **The kink is gone:** V0.5's +10%-rate gain at 620 exceeds its gain at 850 (pinning the defect); V0.6's gain rises monotonically with score and is the same proportion of score everywhere above 544.
-- **Real-course pins** (skipped when the course files are absent — see DATA_POLICY.md): CM6 2:40 goes 676 → 646 and the winner 737 → 707 while 3:30 and the last finisher are unchanged; UTMB's winner scores 966; a 1:45 road half goes 700 → 667 while 2:45 is unchanged.
-- **V0.5 stays reproducible:** the UTMB winner still scores exactly 970 on `TERRAIN_ADJUSTED_CURVE`.
+- **Real-course pins** (skipped when the course files are absent — see DATA_POLICY.md): CM6 2:40 goes 676 → 646 and the winner 737 → 707 while 3:30 and the last finisher are unchanged; the reference 100-miler's winner scores 966; a 1:45 road half goes 700 → 667 while 2:45 is unchanged.
+- **V0.5 stays reproducible:** the Reference 100-mile winner (calibration value) still scores exactly 970 on `TERRAIN_ADJUSTED_CURVE`.
 - Inverse round-trip and monotonicity across course sizes, and world bests ≥ 940, as for V0.4.
 
 ## 5. Explicit limitations
