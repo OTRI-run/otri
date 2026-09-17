@@ -62,7 +62,9 @@ def _create_event_and_race(headers: dict, scoring_version: str | None = None) ->
 def test_root_reports_app_status():
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json()["name"] == "OTRI API"
+    body = response.json()
+    assert body["name"] == "OTRI API"
+    assert body["started_at"]
 
 
 def test_list_scoring_models_includes_all_options():

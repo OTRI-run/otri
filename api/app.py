@@ -93,6 +93,10 @@ app = FastAPI(
     lifespan=_lifespan,
 )
 
+# Captured once at process/worker start — the practical "last restarted at" for this API
+# instance (a deploy restarts the systemd service, spawning a fresh process).
+_STARTED_AT = datetime.now(timezone.utc)
+
 
 # Configurable via OTRI_API_ALLOWED_ORIGINS (comma-separated), e.g.
 # "https://otri.run,https://www.otri.run" in production. Defaults to the
@@ -109,7 +113,7 @@ app.add_middleware(
 
 @app.get("/")
 def root() -> dict:
-    return {"name": "OTRI API", "status": "in development", "docs": "/docs"}
+    return {"name": "OTRI API", "status": "in development", "docs": "/docs", "started_at": _STARTED_AT.isoformat()}
 
 
 _bearer_scheme = HTTPBearer(auto_error=False)

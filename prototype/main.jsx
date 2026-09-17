@@ -4,6 +4,7 @@ import { ArrowLeft, Mountain, TrendingUp } from 'lucide-react'
 import CourseMap from '../src/components/CourseMap'
 import ScoreCalculator from './ScoreCalculator'
 import OrganizerUpload from './OrganizerUpload'
+import { getApiStatus } from './apiClient'
 import racesData from './data/races.json'
 import '../src/styles.css'
 
@@ -33,11 +34,35 @@ function formatTimeAgo(isoDate) {
 
 function BuildBanner() {
   const [timeAgo, setTimeAgo] = useState(() => formatTimeAgo(COMMIT_DATE))
+  const [apiStartedAt, setApiStartedAt] = useState(null)
+  const [apiTimeAgo, setApiTimeAgo] = useState(null)
+  const [apiUnreachable, setApiUnreachable] = useState(false)
 
   useEffect(() => {
     const id = setInterval(() => setTimeAgo(formatTimeAgo(COMMIT_DATE)), 60_000)
     return () => clearInterval(id)
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    getApiStatus()
+      .then((status) => {
+        if (!cancelled) setApiStartedAt(status.started_at)
+      })
+      .catch(() => {
+        if (!cancelled) setApiUnreachable(true)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!apiStartedAt) return undefined
+    setApiTimeAgo(formatTimeAgo(apiStartedAt))
+    const id = setInterval(() => setApiTimeAgo(formatTimeAgo(apiStartedAt)), 60_000)
+    return () => clearInterval(id)
+  }, [apiStartedAt])
 
   return (
     <div className="h-7 bg-[#0b1220] text-center font-mono text-[10px] leading-7 text-slate-300">
@@ -50,6 +75,8 @@ function BuildBanner() {
         <span className="font-semibold text-white">{COMMIT}</span>
       )}
       {timeAgo ? ` · ${timeAgo}` : ''}
+      {apiStartedAt && ` · API last restarted ${apiTimeAgo}`}
+      {apiUnreachable && ' · API unreachable'}
     </div>
   )
 }
@@ -212,14 +239,6 @@ function App() {
       <Header />
       <main className="mx-auto w-[min(1120px,calc(100%-28px))] py-12">
         <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">PROTOTYPE</p>
-        <h1 className="mt-2 max-w-[640px] text-[clamp(32px,5vw,52px)] font-bold leading-[1.05] tracking-[-.05em]">
-          Ingestion → scoring → course, wired end to end.
-        </h1>
-        <p className="mt-4 max-w-[620px] text-sm leading-7 text-slate-500">
-          Every score below was computed by the real Python pipeline (<code>ingestion</code> → <code>scoring</code> →{' '}
-          <code>course</code>) against synthetic demo data, then exported to static JSON for this page — see{' '}
-          <code>scripts/build_prototype_data.py</code>. The calculator and organizer upload tabs call the live API.
-        </p>
 
         <TabNav active={activeTab} onChange={setActiveTab} />
 

@@ -173,6 +173,12 @@ export function listRaces() {
   return request('/races')
 }
 
+/** The live API's root status, including `started_at` — the last time this API process
+ * (re)started, i.e. the last deploy/restart. */
+export function getApiStatus() {
+  return request('/')
+}
+
 /** Fetches a race's attached GPX as a File, so it can be reused with analyzeGpx()
  * exactly like a user-uploaded file (used by the "search existing race" calculator path). */
 export async function fetchRaceGpxFile(raceId) {
