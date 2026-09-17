@@ -222,7 +222,13 @@ function ScoreExplanation({ estimate, features, targetSeconds, publishedAnchors,
   const pct = b?.fraction_of_ceiling != null ? Math.round(b.fraction_of_ceiling * 100) : null
   const terrainPct = b ? Math.round((b.terrain_factor - 1) * 1000) / 10 : 0
   const hasTerrain = terrainPct > 0
-  const hours = targetSeconds / 3600
+  const steepPct = b ? Math.round(b.steep_distance_fraction * 100) : 0
+  const isPower = estimate.scoring_version?.includes('-power')
+  // Paces: on the ground (per physical km) and on flat road (per flat-equivalent km).
+  const groundPace = b ? formatPace(targetSeconds, b.physical_distance_km) : null
+  const flatPace = b ? formatPace(targetSeconds, b.adjusted_demand_km) : null
+  const bestGroundPace = b?.world_best_time_seconds ? formatPace(b.world_best_time_seconds, b.physical_distance_km) : null
+  const bestFlatPace = b?.world_best_time_seconds ? formatPace(b.world_best_time_seconds, b.adjusted_demand_km) : null
 
   return (
     <section className="bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] py-14 sm:py-20">
@@ -241,9 +247,13 @@ function ScoreExplanation({ estimate, features, targetSeconds, publishedAnchors,
               <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">Your number.</span>
             </h2>
             <p className="mt-5 max-w-[440px] text-sm leading-7 text-slate-500">
-              Only the course and your time go in — never who else raced. Sustainable pace naturally drops as races get
-              longer, so the yardstick drops with it: a long mountain race is never scored worse than a short one just
-              for being long.
+              Two things go in: the course and your time. Not who else raced, not the weather, not your age. The course is
+              converted into the flat road distance it costs to run, and your speed over that is compared with the fastest
+              a human has ever sustained over the same amount of ground.
+            </p>
+            <p className="mt-3 max-w-[440px] text-sm leading-7 text-slate-500">
+              That yardstick already allows for distance: nobody holds their 5 km pace for 20 hours, so the best-ever rate
+              falls as courses get longer. A long mountain race is never scored worse than a short one for being long.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-2 font-mono text-[8px] text-slate-500">
               <GitBranch size={16} className="text-blue-600" />
@@ -256,32 +266,51 @@ function ScoreExplanation({ estimate, features, targetSeconds, publishedAnchors,
             {b ? (
               <>
                 <ExplanationStep n="01" title="How hard is the course?">
-                  {fmt1(b.physical_distance_km)} km with +{Math.round(features.elevation_gain_m)} m of climbing. Counting every
-                  climb and descent, it's as hard as running <strong>{fmt1(b.course_demand_km)} km on flat road</strong>.
-                  {hasTerrain && (
+                  <strong>{fmt1(b.physical_distance_km)} km</strong> with <strong>+{Math.round(features.elevation_gain_m)} m</strong> of
+                  climbing and {Math.round(features.elevation_loss_m)} m of descent. Every 50 m is weighed by what its gradient
+                  costs to run, so this course takes as much effort as{' '}
+                  <strong>{fmt1(b.course_demand_km)} km on flat road</strong>.
+                  {hasTerrain ? (
                     <>
                       {' '}
-                      Sustained steep ground{b.altitude_excess_m > 0 ? ' and altitude push' : ' pushes'} that up another{' '}
-                      <strong>{terrainPct}%</strong>, to <strong>{fmt1(b.adjusted_demand_km)} flat km</strong>.
+                      {steepPct > 0 ? `${steepPct}% of it is steeper than 20%` : 'Part of it is high altitude'}
+                      {steepPct > 0 && b.altitude_excess_m > 0 ? ', and it runs above 1,500 m' : ''}, which adds{' '}
+                      <strong>{terrainPct}%</strong>: <strong>{fmt1(b.adjusted_demand_km)} flat km</strong> in total.
                     </>
+                  ) : (
+                    ' No sustained steep ground or altitude, so that is the full demand.'
                   )}
                 </ExplanationStep>
-                <ExplanationStep n="02" title="How fast would you cover it?">
-                  Finishing in {formatHms(targetSeconds)} means covering those {fmt1(b.adjusted_demand_km)} flat km in{' '}
-                  {hours.toFixed(2)} hours — <strong>{fmt1(b.performance_rate)} flat km per hour</strong>.
+                <ExplanationStep n="02" title="How fast would you run it?">
+                  <strong>{formatHms(targetSeconds)}</strong> is <strong>{groundPace}</strong> on the ground. Spread over{' '}
+                  {fmt1(b.adjusted_demand_km)} flat km, it is a flat-road pace of <strong>{flatPace}</strong>, or{' '}
+                  <strong>{fmt1(b.performance_rate)} flat km per hour</strong>. That rate is what gets scored.
                 </ExplanationStep>
                 {b.reference_rate != null ? (
-                  <ExplanationStep n="03" title="How close is that to the best ever?">
-                    The fastest anyone has ever covered a course this hard is about{' '}
-                    <strong>{fmt1(b.reference_rate)} flat km per hour</strong> — a{' '}
-                    <strong>{formatHms(b.world_best_time_seconds)}</strong> finish here. You'd be at <strong>{pct}%</strong> of
-                    that, which scores <strong>{estimate.predicted_score}</strong>.
+                  <ExplanationStep n="03" title="How does that compare with the best ever?">
+                    The fastest anyone has ever sustained over a course this demanding is about{' '}
+                    <strong>{fmt1(b.reference_rate)} flat km per hour</strong>
+                    {bestFlatPace ? ` (${bestFlatPace} on flat road)` : ''}. Here that would be a{' '}
+                    <strong>{formatHms(b.world_best_time_seconds)}</strong> finish
+                    {bestGroundPace ? `, ${bestGroundPace} on the ground` : ''}. Your rate is <strong>{pct}%</strong> of it.
+                    {isPower ? (
+                      <>
+                        {' '}
+                        Score = 1000 × {pct}%<sup>0.85</sup> = <strong>{estimate.predicted_score}</strong>.
+                      </>
+                    ) : (
+                      <>
+                        {' '}
+                        On the published curve that scores <strong>{estimate.predicted_score}</strong>.
+                      </>
+                    )}
                     <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200/80" aria-hidden="true">
                       <div className="h-full rounded-full bg-gradient-to-r from-blue-700 to-cyan-500" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
                     </div>
                     <p className="mt-1 flex justify-between font-mono text-[9px] text-slate-400">
                       <span>0</span>
-                      <span>1000 = world best</span>
+                      <span>{pct}% · score {estimate.predicted_score}</span>
+                      <span>100% = 1000</span>
                     </p>
                   </ExplanationStep>
                 ) : (
