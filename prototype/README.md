@@ -13,10 +13,10 @@ A separate, working demonstration of the full pipeline built so far — kept apa
 ## Three tabs
 
 1. **Races** — static, pre-computed leaderboards (see "Why it's static" below).
-2. **GPX tester** — upload any `.gpx` file and a target time; calls the live `POST /gpx/analyze` endpoint to parse the course and return an **illustrative** score estimate (not a calibrated prediction — see `scoring/estimator.py`).
+2. **Calculate score** — the guided runner pre-race calculator from `docs/AI_PRODUCT_IMPLEMENTATION_BRIEF.md` section 6: pick a course (search races with a verified/attached GPX via the live API, or upload your own), confirm it, enter a target finish time, watch the real computation stages, then see the projected OTRI score with a "why this score" explain layer and a nearby-times table — every number comes from real `POST /gpx/analyze` calls, nothing is hardcoded.
 3. **Organizer upload** — a full organizer dashboard against the live API: register + verify an email, create events, add one or more race distances per event, edit/delete either, attach a GPX to a distance, and submit a result file (`POST /races/{race_id}/results`) — shows validation errors/warnings or the computed leaderboard.
 
-The GPX tester and organizer tabs need the API running locally (or wherever `VITE_OTRI_API_BASE_URL` points — see `.env.example`):
+The calculator and organizer tabs need the API running locally (or wherever `VITE_OTRI_API_BASE_URL` points — see `.env.example`):
 
 ```powershell
 pip install -r requirements-dev.txt
@@ -44,11 +44,12 @@ npm install
 npm run dev
 ```
 
-Then open the printed local URL and navigate to `/prototype/`. Start the API too (see above) if you want the GPX tester / organizer tabs to work.
+Then open the printed local URL and navigate to `/prototype/`. Start the API too (see above) if you want the calculator / organizer tabs to work.
 
 ## Known limitations
 
 - The organizer "create race" endpoint appends to a demo CSV file on the server — not a real database, and not safe under concurrent writes. See `api/README.md`.
-- GPX tester scores are **illustrative only** — not a calibrated cross-race prediction.
+- Calculator scores are **illustrative/provisional projections** — not a calibrated cross-race prediction (see `scoring/estimator.py`'s disclaimer, also shown in the UI).
 - The sample GPX course shown on the Races tab is illustrative, not any listed race's real course.
+- "Search existing race" only lists races that already have a GPX attached (`has_gpx`); races without one aren't calculable yet.
 

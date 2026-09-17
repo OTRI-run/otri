@@ -259,8 +259,8 @@ function ElevationProfile({ profile }) {
           </linearGradient>
         </defs>
 
-        {horizontalGridLines.map((line) => (
-          <g key={line.label}>
+        {horizontalGridLines.map((line, index) => (
+          <g key={index}>
             <line x1={padding.left} x2={width - padding.right} y1={line.y} y2={line.y} stroke="#e2e8f0" strokeWidth="1" />
             <text x={padding.left - 6} y={line.y + 3} textAnchor="end" fontSize="9" fill="#64748b">
               {line.label}
@@ -268,8 +268,8 @@ function ElevationProfile({ profile }) {
           </g>
         ))}
 
-        {verticalGridLines.map((line) => (
-          <g key={line.label}>
+        {verticalGridLines.map((line, index) => (
+          <g key={index}>
             <line x1={line.x} x2={line.x} y1={padding.top} y2={baselineY} stroke="#eef2f7" strokeWidth="1" />
             <text x={line.x} y={height - 6} textAnchor="middle" fontSize="9" fill="#64748b">
               {line.label}

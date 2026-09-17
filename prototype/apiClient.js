@@ -168,3 +168,18 @@ export function analyzeGpx(file, finishTimeSeconds) {
   }
   return request('/gpx/analyze', { method: 'POST', body: formData })
 }
+
+export function listRaces() {
+  return request('/races')
+}
+
+/** Fetches a race's attached GPX as a File, so it can be reused with analyzeGpx()
+ * exactly like a user-uploaded file (used by the "search existing race" calculator path). */
+export async function fetchRaceGpxFile(raceId) {
+  const response = await fetch(`${API_BASE_URL}/races/${encodeURIComponent(raceId)}/gpx`)
+  if (!response.ok) {
+    throw new Error(`Could not load the course for this race (HTTP ${response.status}).`)
+  }
+  const text = await response.text()
+  return new File([text], `${raceId}.gpx`, { type: 'application/gpx+xml' })
+}

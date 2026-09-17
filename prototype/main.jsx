@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ArrowLeft, Mountain, TrendingUp } from 'lucide-react'
 import CourseMap from '../src/components/CourseMap'
-import GpxTester from './GpxTester'
+import ScoreCalculator from './ScoreCalculator'
 import OrganizerUpload from './OrganizerUpload'
 import racesData from './data/races.json'
 import '../src/styles.css'
@@ -129,7 +129,7 @@ function SampleCourseSection({ sampleCourse }) {
 
 const TABS = [
   { id: 'races', label: 'Races' },
-  { id: 'gpx', label: 'GPX tester' },
+  { id: 'calculator', label: 'Calculate score' },
   { id: 'organizer', label: 'Organizer upload' },
 ]
 
@@ -170,7 +170,7 @@ function App() {
         <p className="mt-4 max-w-[620px] text-sm leading-7 text-slate-500">
           Every score below was computed by the real Python pipeline (<code>ingestion</code> → <code>scoring</code> →{' '}
           <code>course</code>) against synthetic demo data, then exported to static JSON for this page — see{' '}
-          <code>scripts/build_prototype_data.py</code>. The GPX tester and organizer upload tabs call the live API.
+          <code>scripts/build_prototype_data.py</code>. The calculator and organizer upload tabs call the live API.
         </p>
 
         <TabNav active={activeTab} onChange={setActiveTab} />
@@ -193,7 +193,7 @@ function App() {
           </>
         )}
 
-        {activeTab === 'gpx' && <GpxTester />}
+        {activeTab === 'calculator' && <ScoreCalculator />}
         {activeTab === 'organizer' && <OrganizerUpload />}
       </main>
     </div>
