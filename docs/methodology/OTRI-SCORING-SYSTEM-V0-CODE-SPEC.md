@@ -154,9 +154,35 @@ Sum course demand
 
 No external service or live race database may be required to calculate a score from a stored course definition.
 
+### 6.0 Canonical constants
+
+An implementation MUST reproduce these exact values to get bit-for-bit identical results to the reference implementation:
+
+```text
+EARTH_RADIUS_M                = 6,371,000.0   # haversine mean Earth radius
+SEGMENT_LENGTH_M              = 50.0          # section 6.3
+SPIKE_THRESHOLD_M             = 50.0          # section 6.2
+ELEVATION_SMOOTHING_RADIUS_M   = 10.0          # section 6.2
+MIN_GRADE                     = -0.45         # section 9
+MAX_GRADE                     = +0.45         # section 9
+```
+
+Canonical modules: `course/features.py` (haversine distance), `scoring/course_demand.py` (GPX → course demand pipeline), `scoring/course_standard.py` (course demand + finish time → 0–1000 score curve). All of section 6–14 below describes exactly what these modules compute — an AI or human reimplementing this spec elsewhere should port these modules directly rather than deriving equivalent-but-different code.
+
 ### 6.1 Horizontal distance
 
-Use one documented Earth-distance algorithm consistently. The V0 recommendation is WGS84 geodesic distance.
+The reference implementation MUST use the haversine great-circle formula over a fixed spherical Earth radius, not a full WGS84 ellipsoidal geodesic — this is what the canonical code computes, and reproducing the same result requires the same formula:
+
+```text
+R = 6,371,000 m               # mean Earth radius (canonical constant)
+
+phi1 = radians(lat1); phi2 = radians(lat2)
+d_phi = radians(lat2 - lat1)
+d_lambda = radians(lon2 - lon1)
+
+a = sin(d_phi/2)^2 + cos(phi1) * cos(phi2) * sin(d_lambda/2)^2
+d_i = 2 * R * asin(min(1.0, sqrt(a)))
+```
 
 The physical course distance is:
 
@@ -164,37 +190,56 @@ The physical course distance is:
 D_physical = Σ d_i
 ```
 
-where `d_i` is horizontal segment distance.
+where `d_i` is the haversine horizontal distance between consecutive track points, computed as above.
 
 The advertised race distance is metadata only. It MUST NOT replace the GPX-derived physical distance inside the mathematical engine.
 
+Canonical implementation: `course/features.py`'s `haversine_m`.
+
 ### 6.2 Elevation processing
 
-Elevation MUST be processed deterministically before gradient is calculated:
+Elevation MUST be processed deterministically before gradient is calculated, in this exact order:
 
 ```text
 raw elevation
-→ remove non-finite values
+→ fill missing/non-finite values (linear interpolation between nearest valid neighbours)
 → remove obvious isolated spikes
 → rolling median
 → rolling mean
 ```
 
+The canonical fixed parameters for the current processing version are:
+
+```text
+SPIKE_THRESHOLD_M = 50.0 metres
+ELEVATION_SMOOTHING_RADIUS_M = 10.0 metres
+```
+
+1. **Fill missing values.** For any point with a missing/non-finite elevation, linearly interpolate between the nearest earlier and later valid readings. If only one side has a valid reading, use that value.
+2. **Remove isolated spikes.** A point whose elevation differs from *both* immediate neighbours by more than `SPIKE_THRESHOLD_M` is replaced with the average of those two neighbours.
+3. **Rolling median**, then **rolling mean**, each over a **±`ELEVATION_SMOOTHING_RADIUS_M` window measured in cumulative horizontal distance** (metres), not a fixed point count — real GPX tracks are unevenly sampled (dense on curves, sparse on straights), so an index-based window would mix readings from very different physical distances.
+
 Window sizes, spike rules, and all other preprocessing parameters MUST be fixed for a processing version. Do not tune them separately for individual races.
 
 Raw elevation MUST remain available for audit.
+
+Canonical implementation: `scoring/course_demand.py`'s `_clean_elevations` (and its helpers `_interpolate_missing`, `_remove_isolated_spikes`, `_rolling_median`, `_rolling_mean`).
 
 ### 6.3 Segment resolution
 
 Production resolution:
 
 ```text
-50 metres
+SEGMENT_LENGTH_M = 50 metres
 ```
 
-Resample along cumulative horizontal distance so segments are approximately 50 m long. Retain the final remainder.
+Build segment boundaries by starting at 0 and stepping by `SEGMENT_LENGTH_M` until reaching the total cumulative course distance, then append the total distance itself as the final boundary — this naturally retains a shorter final remainder segment instead of dropping or stretching it.
+
+For each segment boundary, the cleaned elevation value is **linearly interpolated** along the cumulative-distance polyline (not snapped to the nearest raw track point) — see `_interpolate_at` in the canonical implementation.
 
 The 50 m production resolution is the current deterministic compromise between local gradient representation and stability. Shorter resolutions may be used for research comparisons but are not the V0.5 production definition.
+
+Canonical implementation: `scoring/course_demand.py`'s `_segment_boundaries` and `_interpolate_at`.
 
 ---
 
@@ -286,16 +331,18 @@ R(+0.10) ≠ R(-0.10)
 V0.5 supports:
 
 ```text
--0.45 ≤ g ≤ +0.45
+MIN_GRADE = -0.45
+MAX_GRADE = +0.45
 ```
 
-If a production segment lies outside this domain:
+If a segment's grade falls outside this domain, the reference implementation does **not** reject the whole course. Instead it:
 
-```text
-quality_flag = "gradient_out_of_supported_domain"
-```
+1. Clamps that segment's grade to the nearest bound (`MIN_GRADE` or `MAX_GRADE`) before evaluating `R(g)`, so the course still produces a demand and a score.
+2. Appends a `quality_flags` entry recording the segment location, the original grade, and the clamped grade actually used, e.g. `"gradient_out_of_supported_domain: segment 12.30-12.35 km (grade +52%, clamped to +45% for scoring)"`.
 
-and the course MUST be rejected for scoring review. Do not silently extrapolate the polynomial and do not invent a fallback formula.
+Do not silently extrapolate the polynomial beyond ±45%, and do not invent a different fallback formula — clamp-and-flag is the only permitted fallback. A non-empty `quality_flags` list means the result is a best-effort approximation for those segments and should be surfaced to organizers/runners for review, not hidden.
+
+Canonical implementation: `scoring/course_demand.py`'s `UnsupportedGradientError` handling inside `compute_course_demand`.
 
 ---
 
@@ -378,14 +425,14 @@ The authoritative anchor table is:
 | Score S | Required Q (demand-km/h) | Source/role |
 |---:|---:|---|
 | 0 | 1.0000000000 | Lower-bound convention |
-| 349 | 4.2403624241 | CM6 real-result calibration anchor |
-| 544 | 8.9351585014 | CM6 real-result calibration anchor |
-| 692 | 11.7693950178 | CM6 real-result calibration anchor |
+| 349 | 4.2403624241 | Demo/test race calibration anchor |
+| 544 | 8.9351585014 | Demo/test race calibration anchor |
+| 692 | 11.7693950178 | Demo/test race calibration anchor |
 | 1000 | 17.9398623462 | Upper-scale continuation |
 
-### 12.1 Real calibration observations
+### 12.1 Demo/test calibration observations
 
-The three real CM6 observations used to shape V0.5 were:
+The three demo/test race observations used to shape V0.5 came from a single non-production reference race (internally nicknamed "CM6") used only as illustrative calibration data, not a claim about any specific real-world event:
 
 ```text
 6:29:58 → score 349
@@ -393,7 +440,7 @@ The three real CM6 observations used to shape V0.5 were:
 2:20:30 → score 692
 ```
 
-For the CM6 course-demand calculation used in calibration:
+For the demo/test course-demand calculation used in calibration:
 
 ```text
 D ≈ 27.560 demand-km
@@ -407,7 +454,7 @@ Therefore:
 2:20:30 → Q ≈ 11.7693950178
 ```
 
-These observations are **calibration evidence only**. A production scorer MUST NOT inspect other runners or race results when calculating an individual's V0.5 score.
+These observations are **calibration evidence only**, drawn from demo/test data. A production scorer MUST NOT inspect other runners or race results when calculating an individual's V0.5 score.
 
 ---
 
@@ -847,7 +894,7 @@ Changing any published course-processing parameter or score-curve constant creat
 
 ## 22. Calibration policy
 
-V0.5 is a **calibration candidate**, not a claim that three CM6 observations define the final universal OTRI scale.
+V0.5 is a **calibration candidate**, not a claim that three demo/test race observations define the final universal OTRI scale.
 
 The calibration procedure is:
 
