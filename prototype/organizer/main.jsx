@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import '../../src/styles.css'
+import UnitsMenu from '../../src/components/UnitsMenu'
 import { CheckEmail, Forgot, Login, Register, Reset, Verify, Welcome } from './pages/Auth'
 import { Dashboard, EventPage, NewEvent } from './pages/Events'
 import { CourseStep, NewRace, ResultsStep, ReviewStep } from './pages/Race'
@@ -18,6 +19,7 @@ function Header({ session, onSignOut }) {
           FOR ORGANIZERS
         </Link>
         <div className="ml-auto flex items-center gap-4 text-sm">
+          <UnitsMenu />
           {session ? (
             <>
               <Link to="/events" className="font-semibold text-[#0b1220] no-underline">

@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ArrowLeft, ArrowUpRight, Mail } from 'lucide-react'
 import Logo from '../src/components/Logo'
+import UnitsMenu from '../src/components/UnitsMenu'
+import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import Home from './Home'
 import NextSteps from './NextSteps'
 import RaceCard from './RaceCard'
@@ -150,6 +152,7 @@ function Header({ tab }) {
             <a className="flex items-center gap-1 text-[13px] font-semibold text-[#0b1220] no-underline" href={GITHUB_URL}>
               GitHub <ArrowUpRight size={14} />
             </a>
+            <UnitsMenu />
           </nav>
           <a
             className="ml-auto flex shrink-0 items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white no-underline md:hidden"
@@ -170,10 +173,9 @@ function Header({ tab }) {
               className={`border-b-2 py-3 ${tab === item.id ? 'border-blue-600' : 'border-transparent'}`}
             />
           ))}
-          <span className="ml-auto flex items-center gap-1.5 font-mono text-[8px] tracking-[.08em] text-blue-600">
-            <i className="h-1.5 w-1.5 rounded-full bg-blue-600" />
-            PROTOTYPE
-          </span>
+          <div className="ml-auto py-1.5">
+            <UnitsMenu />
+          </div>
         </div>
       </div>
     </>
@@ -198,6 +200,7 @@ function Footer() {
 // ------------------------------------------------------------------------------------- races
 
 function Leaderboard({ race, onBack }) {
+  const units = useUnits()
   return (
     <div>
       <button onClick={onBack} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600">
@@ -206,7 +209,8 @@ function Leaderboard({ race, onBack }) {
       <p className="mt-6 font-mono text-[9px] tracking-[.08em] text-blue-600">{race.race_id}</p>
       <h2 className="mt-2 text-[clamp(32px,4.5vw,52px)] font-bold leading-[.98] tracking-[-.05em] text-[#0b1220]">{race.race_name}</h2>
       <p className="mt-3 text-sm text-slate-500">
-        {race.course_name} · {race.distance_km} km · +{race.elevation_gain_m} m · {race.event_date}
+        {race.course_name} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })} ·{' '}
+        {race.event_date}
       </p>
       {race.non_finishers > 0 && (
         <p className="mt-2 text-xs text-slate-500">{race.non_finishers} runner(s) did not finish (excluded from scoring).</p>

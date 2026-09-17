@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import CourseMap from '../../../src/components/CourseMap'
+import { formatDistance, formatElevation, useUnits } from '../../../src/lib/units'
 import {
   analyzeGpx,
   attachRaceGpx,
@@ -121,6 +122,7 @@ function pct(a, b) {
 }
 
 function CourseFacts({ measurement, features, entered }) {
+  const units = useUnits()
   const sparse = measurement?.quality_flags?.includes('sparse_geometry_median_over_30m')
   const dem = measurement?.source?.dataset && measurement.source.dataset !== 'uploaded-gpx'
   const dDist = pct(features.distance_km, entered.distance_km)
@@ -130,8 +132,8 @@ function CourseFacts({ measurement, features, entered }) {
     <div className="grid gap-3">
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          ['Measured distance', `${features.distance_km} km`, entered.distance_km ? `you entered ${entered.distance_km} km` : null, dDist],
-          ['Measured climb', `+${Math.round(features.elevation_gain_m)} m`, entered.elevation_gain_m ? `you entered +${Math.round(entered.elevation_gain_m)} m` : null, dGain],
+          ['Measured distance', formatDistance(features.distance_km, units), entered.distance_km ? `you entered ${formatDistance(entered.distance_km, units)}` : null, dDist],
+          ['Measured climb', formatElevation(features.elevation_gain_m, units, { sign: '+' }), entered.elevation_gain_m ? `you entered ${formatElevation(entered.elevation_gain_m, units, { sign: '+' })}` : null, dGain],
           ['Descent', `-${Math.round(features.elevation_loss_m)} m`, null, null],
           ['Elevation source', dem ? 'Terrain model' : 'Your GPX file', dem ? measurement.source.dataset : 'not independently verified', null],
         ].map(([label, value, sub, delta]) => (
@@ -167,6 +169,7 @@ function CourseFacts({ measurement, features, entered }) {
 }
 
 export function CourseStep({ session, raceId }) {
+  const units = useUnits()
   const { race, error: loadError, reload } = useRace(raceId)
   const [file, setFile] = useState(null)
   const [gpxText, setGpxText] = useState('')
@@ -237,7 +240,8 @@ export function CourseStep({ session, raceId }) {
               <div>
                 <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">COURSE ON FILE</p>
                 <p className="mt-1 text-sm text-slate-600">
-                  {race.distance_km} km · +{Math.round(race.elevation_gain_m)} m · measurement {race.measurement_version ?? '—'}
+                  {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })} · measurement{' '}
+                  {race.measurement_version ?? '—'}
                   {race.measurement_status === 'needs_review' ? ' · flagged for review' : ''}
                 </p>
               </div>
@@ -470,6 +474,7 @@ export function ResultsStep({ session, raceId }) {
 // --------------------------------------------------------------------------- Step 4: review
 
 export function ReviewStep({ session, raceId }) {
+  const units = useUnits()
   const { race, error: loadError } = useRace(raceId)
   const [results, setResults] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -510,7 +515,7 @@ export function ReviewStep({ session, raceId }) {
           </div>
           <ul className="mt-2 divide-y divide-slate-100">
             <ChecklistRow ok label="Event" detail={`${race.event_name} · ${formatDate(race.event_date)}`} />
-            <ChecklistRow ok label="Race" detail={`${race.course_name} · ${race.distance_km} km · +${Math.round(race.elevation_gain_m)} m`} />
+            <ChecklistRow ok label="Race" detail={`${race.course_name} · ${formatDistance(race.distance_km, units)} · ${formatElevation(race.elevation_gain_m, units, { sign: '+' })}`} />
             <ChecklistRow
               ok={race.has_gpx}
               label="Course"

@@ -3,6 +3,7 @@ import { ArrowUpRight, GitBranch, Mountain, RefreshCw, Search, Timer, Upload } f
 import CourseMap from '../src/components/CourseMap'
 import { analyzeGpx, listRaces, fetchRaceGpxFile } from './apiClient'
 import NextSteps from './NextSteps'
+import { distanceUnit, formatDistance, formatElevation, formatPace as formatPaceUnits, formatRate, kmToUnit, useUnits } from '../src/lib/units'
 
 // Published anchor tables, shown for context in the "why this score" breakdown. The actual
 // score always comes from the API. Scores 0-544 are V0.1's real demo/test anchors in every
@@ -46,12 +47,14 @@ function formatHms(totalSeconds) {
   return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
 }
 
-function formatPace(totalSeconds, distanceKm) {
-  if (!distanceKm) return null
-  const paceSeconds = totalSeconds / distanceKm
-  const m = Math.floor(paceSeconds / 60)
-  const s = Math.round(paceSeconds % 60)
-  return `${m}:${String(s).padStart(2, '0')} / km`
+// Pace/speed in the site-wide units (min/km, min/mi, km/h or mph).
+function formatPace(totalSeconds, distanceKm, units) {
+  return formatPaceUnits(totalSeconds, distanceKm, units)
+}
+
+// A distance in km shown as a number in the display unit, one decimal, without the unit.
+function fmtDist(km, units) {
+  return fmt1(kmToUnit(Number(km), units))
 }
 
 // Plain-language numbers are shown to one decimal; the maths section keeps full precision.
@@ -84,14 +87,15 @@ function Spinner({ className = '' }) {
 // in every state — empty, calculating, live — so the hero never jumps when a course arrives.
 
 function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel }) {
+  const units = useUnits()
   const b = estimate?.breakdown
   const pct = b?.fraction_of_ceiling != null ? Math.round(b.fraction_of_ceiling * 100) : null
   const status = scoring ? 'CALCULATING' : estimate ? 'LIVE' : courseLabel ? 'READY' : 'WAITING'
 
   const rows = estimate
     ? [
-        [Mountain, 'COURSE', `${fmt1(b?.physical_distance_km ?? features?.distance_km ?? 0)} km · +${Math.round(features?.elevation_gain_m ?? 0)} m`],
-        [Timer, 'YOUR TIME', `${formatHms(targetSeconds)} · ${formatPace(targetSeconds, features?.distance_km) ?? ''}`],
+        [Mountain, 'COURSE', `${formatDistance(b?.physical_distance_km ?? features?.distance_km ?? 0, units)} · ${formatElevation(features?.elevation_gain_m ?? 0, units, { sign: '+' })}`],
+        [Timer, 'YOUR TIME', `${formatHms(targetSeconds)} · ${formatPace(targetSeconds, features?.distance_km, units) ?? ''}`],
         [GitBranch, 'MODEL', `${shortVersion(estimate.scoring_version)} · versioned · reproducible`],
       ]
     : [
@@ -218,6 +222,8 @@ function ExplanationStep({ n, title, children }) {
 }
 
 function ScoreExplanation({ estimate, features, targetSeconds, publishedAnchors, scaledVersion }) {
+  const units = useUnits()
+  const du = distanceUnit(units)
   const b = estimate.breakdown
   const pct = b?.fraction_of_ceiling != null ? Math.round(b.fraction_of_ceiling * 100) : null
   const terrainPct = b ? Math.round((b.terrain_factor - 1) * 1000) / 10 : 0
@@ -225,10 +231,10 @@ function ScoreExplanation({ estimate, features, targetSeconds, publishedAnchors,
   const steepPct = b ? Math.round(b.steep_distance_fraction * 100) : 0
   const isPower = estimate.scoring_version?.includes('-power')
   // Paces: on the ground (per physical km) and on flat road (per flat-equivalent km).
-  const groundPace = b ? formatPace(targetSeconds, b.physical_distance_km) : null
-  const flatPace = b ? formatPace(targetSeconds, b.adjusted_demand_km) : null
-  const bestGroundPace = b?.world_best_time_seconds ? formatPace(b.world_best_time_seconds, b.physical_distance_km) : null
-  const bestFlatPace = b?.world_best_time_seconds ? formatPace(b.world_best_time_seconds, b.adjusted_demand_km) : null
+  const groundPace = b ? formatPace(targetSeconds, b.physical_distance_km, units) : null
+  const flatPace = b ? formatPace(targetSeconds, b.adjusted_demand_km, units) : null
+  const bestGroundPace = b?.world_best_time_seconds ? formatPace(b.world_best_time_seconds, b.physical_distance_km, units) : null
+  const bestFlatPace = b?.world_best_time_seconds ? formatPace(b.world_best_time_seconds, b.adjusted_demand_km, units) : null
 
   return (
     <section className="bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] py-14 sm:py-20">
@@ -266,16 +272,16 @@ function ScoreExplanation({ estimate, features, targetSeconds, publishedAnchors,
             {b ? (
               <>
                 <ExplanationStep n="01" title="How hard is the course?">
-                  <strong>{fmt1(b.physical_distance_km)} km</strong> with <strong>+{Math.round(features.elevation_gain_m)} m</strong> of
-                  climbing and {Math.round(features.elevation_loss_m)} m of descent. Every 50 m is weighed by what its gradient
-                  costs to run, so this course takes as much effort as{' '}
-                  <strong>{fmt1(b.course_demand_km)} km on flat road</strong>.
+                  <strong>{formatDistance(b.physical_distance_km, units)}</strong> with{' '}
+                  <strong>{formatElevation(features.elevation_gain_m, units, { sign: '+' })}</strong> of climbing and{' '}
+                  {formatElevation(features.elevation_loss_m, units)} of descent. Every 50 m is weighed by what its gradient costs to
+                  run, so this course takes as much effort as <strong>{formatDistance(b.course_demand_km, units)} on flat road</strong>.
                   {hasTerrain ? (
                     <>
                       {' '}
                       {steepPct > 0 ? `${steepPct}% of it is steeper than 20%` : 'Part of it is high altitude'}
                       {steepPct > 0 && b.altitude_excess_m > 0 ? ', and it runs above 1,500 m' : ''}, which adds{' '}
-                      <strong>{terrainPct}%</strong>: <strong>{fmt1(b.adjusted_demand_km)} flat km</strong> in total.
+                      <strong>{terrainPct}%</strong>: <strong>{fmtDist(b.adjusted_demand_km, units)} flat {du}</strong> in total.
                     </>
                   ) : (
                     ' No sustained steep ground or altitude, so that is the full demand.'
@@ -283,14 +289,16 @@ function ScoreExplanation({ estimate, features, targetSeconds, publishedAnchors,
                 </ExplanationStep>
                 <ExplanationStep n="02" title="How fast would you run it?">
                   <strong>{formatHms(targetSeconds)}</strong> is <strong>{groundPace}</strong> on the ground. Spread over{' '}
-                  {fmt1(b.adjusted_demand_km)} flat km, it is a flat-road pace of <strong>{flatPace}</strong>, or{' '}
-                  <strong>{fmt1(b.performance_rate)} flat km per hour</strong>. That rate is what gets scored.
+                  {fmtDist(b.adjusted_demand_km, units)} flat {du}, it is a flat-road {units.pace === 'speed' ? 'speed' : 'pace'} of{' '}
+                  <strong>{flatPace}</strong>
+                  {units.pace === 'speed' ? '' : <>, or <strong>{fmtDist(b.performance_rate, units)} flat {du} per hour</strong></>}. That
+                  rate is what gets scored.
                 </ExplanationStep>
                 {b.reference_rate != null ? (
                   <ExplanationStep n="03" title="How does that compare with the best ever?">
                     The fastest anyone has ever sustained over a course this demanding is about{' '}
-                    <strong>{fmt1(b.reference_rate)} flat km per hour</strong>
-                    {bestFlatPace ? ` (${bestFlatPace} on flat road)` : ''}. Here that would be a{' '}
+                    <strong>{fmtDist(b.reference_rate, units)} flat {du} per hour</strong>
+                    {bestFlatPace && units.pace !== 'speed' ? ` (${bestFlatPace} on flat road)` : ''}. Here that would be a{' '}
                     <strong>{formatHms(b.world_best_time_seconds)}</strong> finish
                     {bestGroundPace ? `, ${bestGroundPace} on the ground` : ''}. Your rate is <strong>{pct}%</strong> of it.
                     {isPower ? (
@@ -430,6 +438,7 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
 // ----------------------------------------------------------------------------- course picker
 
 function CoursePicker({ races, racesLoading, racesError, query, onQuery, onChooseRace, onUpload, loadingCourse, loadError }) {
+  const units = useUnits()
   return (
     <section className="bg-white py-14 sm:py-20">
       <div className={CONTAINER}>
@@ -486,7 +495,7 @@ function CoursePicker({ races, racesLoading, racesError, query, onQuery, onChoos
                       {race.event_name} · {race.course_name}
                     </span>
                     <span className="mt-0.5 block font-mono text-[10px] text-slate-500">
-                      {race.event_date} · {race.distance_km} km · +{race.elevation_gain_m} m
+                      {race.event_date} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
                     </span>
                   </span>
                   <span className="shrink-0 font-mono text-[8px] tracking-[.08em] text-blue-600">VERIFIED</span>
@@ -537,11 +546,12 @@ function CoursePicker({ races, racesLoading, racesError, query, onQuery, onChoos
 // ----------------------------------------------------------------------------- loaded course
 
 function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCourse }) {
+  const units = useUnits()
   const tooSparse = measurement?.quality_flags?.includes('sparse_geometry_median_over_30m')
   const stats = [
-    ['DISTANCE', `${fmt1(features.distance_km)} km`],
-    ['CLIMB', `+${Math.round(features.elevation_gain_m)} m`],
-    ['DESCENT', `-${Math.round(features.elevation_loss_m)} m`],
+    ['DISTANCE', formatDistance(features.distance_km, units)],
+    ['CLIMB', formatElevation(features.elevation_gain_m, units, { sign: '+' })],
+    ['DESCENT', formatElevation(features.elevation_loss_m, units, { sign: '-' })],
     [
       'STEEPEST 50 M',
       features.max_climb_grade == null ? 'n/a' : `+${(features.max_climb_grade * 100).toFixed(0)}% / -${(features.max_descent_grade * 100).toFixed(0)}%`,
@@ -600,6 +610,7 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
 // ----------------------------------------------------------------------------- hero
 
 function TargetTimeControls({ targetSeconds, timeInput, onSlider, onInput, distanceKm, analysisError }) {
+  const units = useUnits()
   return (
     <div className="mt-8 rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] backdrop-blur">
       <label htmlFor="calc-time-input" className="font-mono text-[9px] tracking-[.08em] text-blue-600">
@@ -615,7 +626,7 @@ function TargetTimeControls({ targetSeconds, timeInput, onSlider, onInput, dista
           placeholder="HH:MM:SS"
           className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-center font-mono text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
         />
-        <p className="font-mono text-xs text-slate-400">{formatPace(targetSeconds, distanceKm)}</p>
+        <p className="font-mono text-xs text-slate-400">{formatPace(targetSeconds, distanceKm, units)}</p>
       </div>
       <input
         type="range"

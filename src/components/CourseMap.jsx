@@ -3,6 +3,7 @@ import { FullscreenControl, LngLatBounds, Map as MapLibreMap, NavigationControl,
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { buildElevationProfile, parseGpxTrackPoints, toGeoJsonLine } from '../lib/gpx'
+import { distanceUnit, elevationUnit, kmToUnit, metresToUnit, useUnits } from '../lib/units'
 
 // MapLibre's default worker-URL auto-detection breaks under Vite's
 // production build (the worker chunk gets content-hashed, but MapLibre's
@@ -53,6 +54,23 @@ const ROUTE_BLUE = '#2563eb'
 const START_GREEN = '#16a34a'
 const HOVER_CYAN = '#06b6d4'
 const LABEL_FONT = ['Noto Sans Bold']
+const KM_PER_MI = 1.609344
+
+// Start (green, flag) and finish (dark, chequered flag) icons, drawn at 2x for crisp rendering.
+const START_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="${START_GREEN}" stroke="#ffffff" stroke-width="4"/><path d="M18 14v22" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/><path d="M19.5 15h13l-3.5 5.5 3.5 5.5h-13z" fill="#ffffff"/></svg>`
+const FINISH_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="${INK}" stroke="#ffffff" stroke-width="4"/><path d="M17 14v22" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/><rect x="18.5" y="15" width="15" height="11" fill="#ffffff"/><g fill="${INK}"><rect x="18.5" y="15" width="5" height="3.67"/><rect x="28.5" y="15" width="5" height="3.67"/><rect x="23.5" y="18.67" width="5" height="3.67"/><rect x="18.5" y="22.33" width="5" height="3.67"/><rect x="28.5" y="22.33" width="5" height="3.67"/></g></svg>`
+
+const iconImages = {}
+function loadIcon(name, svg) {
+  if (iconImages[name]) return iconImages[name]
+  iconImages[name] = new Promise((resolve, reject) => {
+    const image = new Image(48, 48)
+    image.onload = () => resolve(image)
+    image.onerror = reject
+    image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+  })
+  return iconImages[name]
+}
 
 // ---------------------------------------------------------------------------- geometry helpers
 
@@ -91,21 +109,32 @@ function positionAtKm(points, cumulativeKm, km) {
   return [a.lon + (b.lon - a.lon) * t, a.lat + (b.lat - a.lat) * t]
 }
 
-function markerFeatures(points, cumulativeKm, stepKm) {
+function haversineKm(a, b) {
+  const toRad = (deg) => (deg * Math.PI) / 180
+  const dLat = toRad(b.lat - a.lat)
+  const dLon = toRad(b.lon - a.lon)
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)))
+}
+
+// Distance markers every `stepKm`, labelled in the display unit, plus start and finish.
+function markerFeatures(points, cumulativeKm, stepKm, kmPerUnit) {
   const total = cumulativeKm[cumulativeKm.length - 1]
   const features = []
   for (let km = stepKm; km < total - stepKm * 0.35; km += stepKm) {
     features.push({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: positionAtKm(points, cumulativeKm, km) },
-      properties: { kind: 'km', label: String(Math.round(km * 10) / 10) },
+      properties: { kind: 'km', label: String(Math.round((km / kmPerUnit) * 10) / 10) },
     })
   }
   const first = points[0]
   const last = points[points.length - 1]
-  features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [first.lon, first.lat] }, properties: { kind: 'start', label: 'S' } })
-  features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [last.lon, last.lat] }, properties: { kind: 'finish', label: 'F' } })
-  return { type: 'FeatureCollection', features }
+  features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [first.lon, first.lat] }, properties: { kind: 'start' } })
+  features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [last.lon, last.lat] }, properties: { kind: 'finish' } })
+  // A loop course: nudge the finish flag so both icons stay visible.
+  const loop = haversineKm(first, last) < 0.15
+  return { type: 'FeatureCollection', features, loop }
 }
 
 const EMPTY_COLLECTION = { type: 'FeatureCollection', features: [] }
@@ -192,26 +221,6 @@ function addCourseLayers(map, { line, markers }, { includeHillshade }) {
       layout: { 'text-field': ['get', 'label'], 'text-font': LABEL_FONT, 'text-size': 10, 'text-allow-overlap': true },
       paint: { 'text-color': '#ffffff' },
     })
-    map.addLayer({
-      id: 'route-ends',
-      type: 'circle',
-      source: 'route-markers',
-      filter: ['!=', ['get', 'kind'], 'km'],
-      paint: {
-        'circle-radius': 11,
-        'circle-color': ['case', ['==', ['get', 'kind'], 'start'], START_GREEN, INK],
-        'circle-stroke-color': '#ffffff',
-        'circle-stroke-width': 2.5,
-      },
-    })
-    map.addLayer({
-      id: 'route-ends-label',
-      type: 'symbol',
-      source: 'route-markers',
-      filter: ['!=', ['get', 'kind'], 'km'],
-      layout: { 'text-field': ['get', 'label'], 'text-font': LABEL_FONT, 'text-size': 11, 'text-allow-overlap': true },
-      paint: { 'text-color': '#ffffff' },
-    })
   }
 
   if (!map.getSource('route-hover')) {
@@ -223,17 +232,51 @@ function addCourseLayers(map, { line, markers }, { includeHillshade }) {
       paint: { 'circle-radius': 7, 'circle-color': HOVER_CYAN, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2.5 },
     })
   }
+
+  // Start / finish icons: images load asynchronously, so their layers are added once ready.
+  Promise.all([loadIcon('otri-start', START_ICON_SVG), loadIcon('otri-finish', FINISH_ICON_SVG)])
+    .then(([startImage, finishImage]) => {
+      if (!map.getStyle() || !map.getSource('route-markers')) return
+      if (!map.hasImage('otri-start')) map.addImage('otri-start', startImage, { pixelRatio: 2 })
+      if (!map.hasImage('otri-finish')) map.addImage('otri-finish', finishImage, { pixelRatio: 2 })
+      const iconLayout = { 'icon-size': 1, 'icon-allow-overlap': true, 'icon-ignore-placement': true }
+      if (!map.getLayer('route-start')) {
+        map.addLayer({
+          id: 'route-start',
+          type: 'symbol',
+          source: 'route-markers',
+          filter: ['==', ['get', 'kind'], 'start'],
+          layout: { ...iconLayout, 'icon-image': 'otri-start' },
+        })
+      }
+      if (!map.getLayer('route-finish')) {
+        map.addLayer({
+          id: 'route-finish',
+          type: 'symbol',
+          source: 'route-markers',
+          filter: ['==', ['get', 'kind'], 'finish'],
+          layout: { ...iconLayout, 'icon-image': 'otri-finish', 'icon-offset': markers.loop ? [14, -14] : [0, 0] },
+        })
+      }
+      // Hover dot stays on top.
+      if (map.getLayer('route-hover')) map.moveLayer('route-hover')
+    })
+    .catch(() => {
+      // Icons unavailable (blocked data: URLs): the course is still drawn and labelled.
+    })
 }
 
 /**
  * Renders a GPX route on a map with an elevation profile beneath it. Hovering the profile
- * shows the matching point on the map.
+ * shows the matching point on the map. Distances and elevations follow the site-wide units.
  *
  * @param {{ gpxText?: string, measurement?: object, styleUrl?: string, className?: string }} props
  */
 export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STYLE_URL, className = '' }) {
+  const units = useUnits()
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
+  const scaleRef = useRef(null)
   const is3DRef = useRef(false)
   const isSatelliteRef = useRef(false)
   const [is3D, setIs3D] = useState(false)
@@ -254,13 +297,17 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
   const line = useMemo(() => (points.length > 1 ? toGeoJsonLine(points) : null), [points])
   const cumulativeKm = useMemo(() => buildElevationProfile(points).map((point) => point.distanceKm), [points])
   const totalKm = cumulativeKm[cumulativeKm.length - 1] ?? 0
-  // One step for both the map markers and the profile's x-axis, so they line up.
-  const stepKm = useMemo(() => niceStep(totalKm, 8), [totalKm])
+  // One step, chosen in the display unit, for both the map markers and the profile's x-axis.
+  const kmPerUnit = units.distance === 'mi' ? KM_PER_MI : 1
+  const stepUnit = useMemo(() => niceStep(totalKm / kmPerUnit, 8), [totalKm, kmPerUnit])
+  const stepKm = stepUnit * kmPerUnit
   const markers = useMemo(
-    () => (points.length > 1 && totalKm > 0 ? markerFeatures(points, cumulativeKm, stepKm) : EMPTY_COLLECTION),
-    [points, cumulativeKm, stepKm, totalKm],
+    () => (points.length > 1 && totalKm > 0 ? markerFeatures(points, cumulativeKm, stepKm, kmPerUnit) : EMPTY_COLLECTION),
+    [points, cumulativeKm, stepKm, kmPerUnit, totalKm],
   )
-  const courseData = useMemo(() => ({ line, markers }), [line, markers])
+  // Read at load time by the map effects, so a units change never rebuilds the map.
+  const courseDataRef = useRef({ line, markers })
+  courseDataRef.current = { line, markers }
 
   useEffect(() => {
     is3DRef.current = is3D
@@ -283,10 +330,12 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
     mapRef.current = map
     map.addControl(new NavigationControl({ showCompass: false }), 'top-left')
     map.addControl(new FullscreenControl(), 'top-left')
-    map.addControl(new ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left')
+    const scale = new ScaleControl({ maxWidth: 120, unit: 'metric' })
+    scaleRef.current = scale
+    map.addControl(scale, 'bottom-left')
 
     map.on('load', () => {
-      addCourseLayers(map, courseData, { includeHillshade: !isSatelliteRef.current })
+      addCourseLayers(map, courseDataRef.current, { includeHillshade: !isSatelliteRef.current })
       map.setTerrain(is3DRef.current ? { source: 'terrain-dem', exaggeration: 1.3 } : null)
 
       const [first, ...rest] = line.geometry.coordinates.flat()
@@ -299,8 +348,18 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
       })
     })
 
-    return () => map.remove()
-  }, [line, courseData, styleUrl])
+    return () => {
+      scaleRef.current = null
+      map.remove()
+    }
+  }, [line, styleUrl])
+
+  // Units change: relabel the markers and the scale bar in place.
+  useEffect(() => {
+    const map = mapRef.current
+    map?.getSource('route-markers')?.setData(markers)
+    scaleRef.current?.setUnit(units.distance === 'mi' ? 'imperial' : 'metric')
+  }, [markers, units.distance])
 
   // Switch the base style between vector map and satellite imagery.
   // setStyle() discards all custom sources/layers, so they're re-added once
@@ -318,7 +377,7 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
       // satellite style is applied as a patch and never fires 'style.load', so the route
       // layers would not be re-added until the next full load.
       map.once('style.load', () => {
-        addCourseLayers(map, courseData, { includeHillshade: !isSatellite })
+        addCourseLayers(map, courseDataRef.current, { includeHillshade: !isSatellite })
         map.setTerrain(is3DRef.current ? { source: 'terrain-dem', exaggeration: 1.3 } : null)
       })
       map.setStyle(isSatellite ? SATELLITE_STYLE : styleUrl, { diff: false })
@@ -330,7 +389,7 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
       map.once('load', applyNewStyle)
     }
     return undefined
-  }, [isSatellite, line, courseData, styleUrl])
+  }, [isSatellite, line, styleUrl])
 
   // Toggle 2D <-> 3D terrain exaggeration + camera pitch. Skipped on mount.
   useEffect(() => {
@@ -386,7 +445,7 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
           </button>
         </div>
       </div>
-      <ElevationProfile profile={profile} stepKm={stepKm} onHover={handleProfileHover} />
+      <ElevationProfile profile={profile} stepUnit={stepUnit} units={units} onHover={handleProfileHover} />
       <p className="mt-2 text-xs text-slate-500">
         {measurement
           ? `Estimated elevation · ${measurement.source.dataset} · ${measurement.version}`
@@ -399,10 +458,10 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
 // ---------------------------------------------------------------------------- elevation profile
 
 const PROFILE_HEIGHT = 220
-const PAD = { top: 22, right: 18, bottom: 30, left: 52 }
+const PAD = { top: 22, right: 18, bottom: 30, left: 56 }
 
-function formatMetres(value) {
-  return `${Math.round(value).toLocaleString('en-US')} m`
+function formatNumber(value) {
+  return Math.round(value).toLocaleString('en-US')
 }
 
 // Keep at most two points per pixel column (the lowest and highest), so a 100,000-point
@@ -416,11 +475,11 @@ function decimate(points, toX) {
   const flush = () => {
     if (!lo) return
     if (lo === hi) out.push(lo)
-    else if (lo.distanceKm <= hi.distanceKm) out.push(lo, hi)
+    else if (lo.distance <= hi.distance) out.push(lo, hi)
     else out.push(hi, lo)
   }
   for (const point of points) {
-    const c = Math.floor(toX(point.distanceKm))
+    const c = Math.floor(toX(point.distance))
     if (c !== column) {
       flush()
       column = c
@@ -435,10 +494,12 @@ function decimate(points, toX) {
   return out
 }
 
-function ElevationProfile({ profile, stepKm, onHover }) {
+function ElevationProfile({ profile, stepUnit, units, onHover }) {
   const wrapperRef = useRef(null)
   const [width, setWidth] = useState(0)
   const [hover, setHover] = useState(null)
+  const distanceLabel = distanceUnit(units)
+  const elevationLabel = elevationUnit(units)
 
   useEffect(() => {
     const element = wrapperRef.current
@@ -449,13 +510,26 @@ function ElevationProfile({ profile, stepKm, onHover }) {
     return () => observer.disconnect()
   }, [])
 
-  const valid = useMemo(() => profile.filter((point) => point.elevation != null), [profile])
+  // Profile points in display units; the raw metric values stay for the grade calculation.
+  const valid = useMemo(
+    () =>
+      profile
+        .filter((point) => point.elevation != null)
+        .map((point) => ({
+          distance: kmToUnit(point.distanceKm, units),
+          elevation: metresToUnit(point.elevation, units),
+          km: point.distanceKm,
+          metres: point.elevation,
+          segmentId: point.segmentId,
+        })),
+    [profile, units],
+  )
 
   const geometry = useMemo(() => {
     if (valid.length < 2 || width < 80) return null
     const chartWidth = width - PAD.left - PAD.right
     const chartHeight = PROFILE_HEIGHT - PAD.top - PAD.bottom
-    const maxDistance = valid[valid.length - 1].distanceKm || 1
+    const maxDistance = valid[valid.length - 1].distance || 1
     let minElevation = Infinity
     let maxElevation = -Infinity
     let peak = valid[0]
@@ -466,11 +540,11 @@ function ElevationProfile({ profile, stepKm, onHover }) {
         peak = point
       }
     }
-    const yStep = niceStep(Math.max(maxElevation - minElevation, 10), 4)
+    const yStep = niceStep(Math.max(maxElevation - minElevation, units.elevation === 'ft' ? 30 : 10), 4)
     const subStep = yStep / 5
     const yMin = Math.floor(minElevation / subStep) * subStep
     const yMax = Math.max(Math.ceil((maxElevation + subStep * 0.5) / subStep) * subStep, yMin + yStep)
-    const toX = (km) => PAD.left + (km / maxDistance) * chartWidth
+    const toX = (distance) => PAD.left + (distance / maxDistance) * chartWidth
     const toY = (elevation) => PAD.top + chartHeight - ((elevation - yMin) / (yMax - yMin)) * chartHeight
     const baselineY = PAD.top + chartHeight
 
@@ -481,44 +555,45 @@ function ElevationProfile({ profile, stepKm, onHover }) {
     }
     const paths = groups.map((group) => {
       const pts = decimate(group.points, toX)
-      const coords = pts.map((point) => `${toX(point.distanceKm).toFixed(1)},${toY(point.elevation).toFixed(1)}`)
+      const coords = pts.map((point) => `${toX(point.distance).toFixed(1)},${toY(point.elevation).toFixed(1)}`)
       return {
         line: coords.join(' '),
-        area: [`${toX(pts[0].distanceKm).toFixed(1)},${baselineY}`, ...coords, `${toX(pts[pts.length - 1].distanceKm).toFixed(1)},${baselineY}`].join(' '),
+        area: [`${toX(pts[0].distance).toFixed(1)},${baselineY}`, ...coords, `${toX(pts[pts.length - 1].distance).toFixed(1)},${baselineY}`].join(' '),
       }
     })
 
     const yTicks = []
     for (let elevation = Math.ceil(yMin / yStep) * yStep; elevation <= yMax + 1e-9; elevation += yStep) {
-      yTicks.push({ y: toY(elevation), label: formatMetres(elevation) })
+      yTicks.push({ y: toY(elevation), label: `${formatNumber(elevation)} ${elevationLabel}` })
     }
     const xTicks = []
-    for (let km = 0; km <= maxDistance + 1e-9; km += stepKm) {
-      xTicks.push({ x: toX(km), label: km === 0 ? '0 km' : String(Math.round(km * 10) / 10) })
+    for (let distance = 0; distance <= maxDistance + 1e-9; distance += stepUnit) {
+      xTicks.push({ x: toX(distance), label: distance === 0 ? `0 ${distanceLabel}` : String(Math.round(distance * 10) / 10) })
     }
 
     return { chartWidth, chartHeight, maxDistance, toX, toY, baselineY, paths, yTicks, xTicks, peak, yMax }
-  }, [valid, width, stepKm])
+  }, [valid, width, stepUnit, units.elevation, distanceLabel, elevationLabel])
 
-  const distances = useMemo(() => valid.map((point) => point.distanceKm), [valid])
+  const distances = useMemo(() => valid.map((point) => point.distance), [valid])
+  const kilometres = useMemo(() => valid.map((point) => point.km), [valid])
 
   const updateHover = useCallback(
     (event) => {
       if (!geometry) return
       const rect = event.currentTarget.getBoundingClientRect()
       const x = event.clientX - rect.left
-      const km = Math.min(geometry.maxDistance, Math.max(0, ((x - PAD.left) / geometry.chartWidth) * geometry.maxDistance))
-      const i = lowerBound(distances, km)
+      const distance = Math.min(geometry.maxDistance, Math.max(0, ((x - PAD.left) / geometry.chartWidth) * geometry.maxDistance))
+      const i = lowerBound(distances, distance)
       const point = valid[i]
-      // Grade over the preceding ~100 m of the profile.
-      const j = lowerBound(distances, Math.max(0, point.distanceKm - 0.1))
+      // Grade over the preceding ~100 m of the profile (metric, unit-independent).
+      const j = lowerBound(kilometres, Math.max(0, point.km - 0.1))
       const back = valid[j]
-      const run = (point.distanceKm - back.distanceKm) * 1000
-      const grade = run > 20 ? ((point.elevation - back.elevation) / run) * 100 : null
-      setHover({ km: point.distanceKm, elevation: point.elevation, grade, x: geometry.toX(point.distanceKm), y: geometry.toY(point.elevation) })
-      onHover?.(point.distanceKm)
+      const run = (point.km - back.km) * 1000
+      const grade = run > 20 ? ((point.metres - back.metres) / run) * 100 : null
+      setHover({ distance: point.distance, elevation: point.elevation, grade, x: geometry.toX(point.distance), y: geometry.toY(point.elevation) })
+      onHover?.(point.km)
     },
-    [geometry, distances, valid, onHover],
+    [geometry, distances, kilometres, valid, onHover],
   )
 
   const clearHover = useCallback(() => {
@@ -591,17 +666,17 @@ function ElevationProfile({ profile, stepKm, onHover }) {
 
             {/* Highest point */}
             <g>
-              <circle cx={geometry.toX(geometry.peak.distanceKm)} cy={geometry.toY(geometry.peak.elevation)} r="3.5" fill="#ffffff" stroke="#1d4ed8" strokeWidth="2" />
+              <circle cx={geometry.toX(geometry.peak.distance)} cy={geometry.toY(geometry.peak.elevation)} r="3.5" fill="#ffffff" stroke="#1d4ed8" strokeWidth="2" />
               <text
-                x={geometry.toX(geometry.peak.distanceKm)}
+                x={geometry.toX(geometry.peak.distance)}
                 y={geometry.toY(geometry.peak.elevation) - 9}
-                textAnchor={geometry.toX(geometry.peak.distanceKm) > width - 80 ? 'end' : geometry.toX(geometry.peak.distanceKm) < PAD.left + 60 ? 'start' : 'middle'}
+                textAnchor={geometry.toX(geometry.peak.distance) > width - 80 ? 'end' : geometry.toX(geometry.peak.distance) < PAD.left + 60 ? 'start' : 'middle'}
                 fontSize="10"
                 fontWeight="700"
                 fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
                 fill={INK}
               >
-                {formatMetres(geometry.peak.elevation)}
+                {formatNumber(geometry.peak.elevation)} {elevationLabel}
               </text>
             </g>
 
@@ -618,9 +693,11 @@ function ElevationProfile({ profile, stepKm, onHover }) {
               className="pointer-events-none absolute top-2 rounded-lg bg-[#0b1220] px-2.5 py-1.5 font-mono text-[10px] leading-4 text-white shadow-lg"
               style={{ left: tooltipLeft, transform: tooltipAlign }}
             >
-              <div className="font-semibold">{(Math.round(hover.km * 10) / 10).toFixed(1)} km</div>
+              <div className="font-semibold">
+                {(Math.round(hover.distance * 10) / 10).toFixed(1)} {distanceLabel}
+              </div>
               <div className="text-slate-300">
-                {formatMetres(hover.elevation)}
+                {formatNumber(hover.elevation)} {elevationLabel}
                 {hover.grade != null && (
                   <span className={hover.grade >= 0 ? 'text-cyan-300' : 'text-blue-300'}>
                     {' '}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createEvent, deleteEvent, getEvent, getRaceResults, listMyEvents, updateEvent } from '../../apiClient'
 import { Link, navigate } from '../router'
+import { formatDistance, formatElevation, useUnits } from '../../../src/lib/units'
 import { Button, Card, EmptyState, Field, Notice, Page, StatusChip, formatDate, inputClass, raceStatus } from '../ui'
 
 export function Dashboard({ session }) {
@@ -103,6 +104,7 @@ function useHasResults(raceId) {
 }
 
 function RaceCard({ race }) {
+  const units = useUnits()
   const hasResults = useHasResults(race.race_id)
   const status = raceStatus(race, hasResults === true)
   const next = status === 'draft' ? 'course' : status === 'course' ? 'results' : 'review'
@@ -111,7 +113,8 @@ function RaceCard({ race }) {
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-[#0b1220]">{race.course_name}</p>
         <p className="mt-0.5 font-mono text-[10px] text-slate-500">
-          {race.distance_km} km · +{Math.round(race.elevation_gain_m)} m{race.has_gpx ? ' · measured from GPX' : ''}
+          {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
+          {race.has_gpx ? ' · measured from GPX' : ''}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-3">

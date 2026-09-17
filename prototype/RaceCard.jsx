@@ -1,7 +1,9 @@
 import { ArrowUpRight, Mountain, TrendingUp } from 'lucide-react'
+import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 
 // A scored race, as a real link so it can be opened in a new tab and shows a URL on hover.
 export default function RaceCard({ race }) {
+  const units = useUnits()
   return (
     <a
       href={`#races/${encodeURIComponent(race.race_id)}`}
@@ -18,10 +20,11 @@ export default function RaceCard({ race }) {
       <div className="mt-4 flex gap-4 font-mono text-[10px] text-slate-500">
         <span className="flex items-center gap-1">
           <TrendingUp size={12} className="text-blue-600" />
-          {race.distance_km} km
+          {formatDistance(race.distance_km, units)}
         </span>
         <span className="flex items-center gap-1">
-          <Mountain size={12} className="text-blue-600" />+{race.elevation_gain_m} m
+          <Mountain size={12} className="text-blue-600" />
+          {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
         </span>
       </div>
       <div className="mt-4 flex items-center justify-between text-xs font-semibold text-blue-600">
