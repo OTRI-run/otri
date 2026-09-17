@@ -9,3 +9,11 @@ __pycache__/
 # Local-only deploy helper (contains this machine's SSH key path/droplet address) — never push.
 redeploy.ps1
 redeploy.bat
+
+# Real organizer course files used for local scoring/calibration work. DATA_POLICY.md treats
+# third-party GPX as restricted (typically copyrighted, participant-use only), so these stay
+# local and are never pushed. The synthetic sample course is committed and stays tracked.
+# Tests that measure real courses skip cleanly when these are absent
+# (tests/unit/test_scoring_terrain.py).
+data/demo/gpx/*.gpx
+!data/demo/gpx/sample-course.gpx

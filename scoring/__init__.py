@@ -13,12 +13,14 @@ from .course_standard import (
     MEASURED_CURVE,
     OFFICIAL_CURVE,
     SPEC_CURVE,
+    TERRAIN_ADJUSTED_CURVE,
     EnduranceReference,
     RiegelScaling,
     ScoreCurve,
 )
 from .course_standard import score_race_course_standard, score_for_time, target_time_seconds
 from .estimator import DISCLAIMER, ScoreEstimate, estimate_score
+from .terrain import TERRAIN_MODEL, TerrainModel
 from .model import SCORING_VERSION as FIELD_RELATIVE_VERSION
 from .model import RunnerScore, ScoreBreakdown, equivalent_distance_km, score_race_field_relative
 from .registry import (
@@ -27,6 +29,7 @@ from .registry import (
     COURSE_STANDARD_VERSION,
     DURATION_SCALED_VERSION,
     ENDURANCE_REFERENCED_VERSION,
+    TERRAIN_ADJUSTED_VERSION,
     DEFAULT_SCORING_VERSION,
     ScoringModelInfo,
     available_scoring_models,
@@ -58,6 +61,10 @@ __all__ = [
     "ENDURANCE_REFERENCED_VERSION",
     "ENDURANCE_REFERENCED_CURVE",
     "ENDURANCE_REFERENCE",
+    "TERRAIN_ADJUSTED_VERSION",
+    "TERRAIN_ADJUSTED_CURVE",
+    "TERRAIN_MODEL",
+    "TerrainModel",
     "EnduranceReference",
     "RiegelScaling",
     "MEASURED_CURVE",

@@ -21,8 +21,9 @@ from dataclasses import dataclass, replace
 from course.gpx import TrackPoint
 from ingestion.records import RaceRecord, ResultRecord
 
-from .course_demand import compute_course_demand, equivalent_flat_distance_from_totals
+from .course_demand import CourseDemand, compute_course_demand, equivalent_flat_distance_from_totals
 from .model import RunnerScore, ScoreBreakdown
+from .terrain import TERRAIN_MODEL, TerrainModel
 
 SCALE_MIN = 0.0
 SCALE_MAX = 1000.0
@@ -41,6 +42,9 @@ class ScoreCurve:
     # How an observed performance rate is rescaled for course size before the anchor-table
     # lookup. `None` means "no rescaling" — the V0.1/V0.2 duration-invariant behaviour.
     demand_scaling: "DemandScaling | None" = None
+    # What the gradient integral alone does not price (steep mountain terrain, altitude).
+    # `None` means course demand is used exactly as the integral produced it.
+    terrain_adjustment: "TerrainModel | None" = None
 
     @property
     def is_curved(self) -> bool:
@@ -299,10 +303,44 @@ ENDURANCE_REFERENCED_CURVE = replace(
     demand_scaling=ENDURANCE_REFERENCE,
 )
 
+# V0.4 scores a mountain 100-miler's winner at 889 — 82.5% of the road-referenced human
+# ceiling — because course demand measures gradient but not what mountain terrain actually
+# costs. V0.5 closes that gap by adjusting demand itself (see `scoring/terrain.py`), leaving the
+# endurance-referenced curve untouched. Road courses have a terrain factor of exactly 1.0 and
+# are unaffected; steep courses rise together, including the V0.1 reference race, whose winner
+# moves from 692 to 737 as a result. See docs/methodology/v0.5/OTRI-TERRAIN-ADJUSTED-DEMAND.md.
+TERRAIN_ADJUSTED_CURVE = replace(
+    ENDURANCE_REFERENCED_CURVE,
+    version='0.5.0-course-standard-terrain-adjusted',
+    terrain_adjustment=TERRAIN_MODEL,
+)
+
 # Curves scored from the V0.2 measured-demand pipeline rather than the raw V0.1 integral.
 MEASURED_DEMAND_VERSIONS = frozenset(
-    {MEASURED_CURVE.version, DURATION_SCALED_CURVE.version, ENDURANCE_REFERENCED_CURVE.version}
+    {
+        MEASURED_CURVE.version,
+        DURATION_SCALED_CURVE.version,
+        ENDURANCE_REFERENCED_CURVE.version,
+        TERRAIN_ADJUSTED_CURVE.version,
+    }
 )
+
+
+def adjusted_demand(demand: CourseDemand, curve: ScoreCurve) -> tuple[float, tuple[str, ...]]:
+    """Course demand as `curve` scores it, plus any flags the adjustment raises.
+
+    Terrain adjustment happens here — on the course, before any performance rate exists — so it
+    stays a property of the course rather than of the runner, and `score_for_time` keeps taking
+    a plain demand figure.
+    """
+    terrain = curve.terrain_adjustment
+    if terrain is None:
+        return demand.course_demand_km, tuple(demand.quality_flags)
+    factor = terrain.factor(demand.steep_distance_fraction, demand.altitude_excess_m)
+    flags = tuple(demand.quality_flags) + terrain.flags(
+        demand.steep_distance_fraction, demand.altitude_excess_m
+    )
+    return demand.course_demand_km * factor, flags
 
 
 def performance_rate(equivalent_km: float, finish_time_seconds: float) -> float:
@@ -362,8 +400,7 @@ def score_race_course_standard(
             demand = compute_measured_demand(gpx_points, measurement=measurement)
         else:
             demand = compute_course_demand(gpx_points)
-        equivalent_km = demand.course_demand_km
-        quality_flags = demand.quality_flags
+        equivalent_km, quality_flags = adjusted_demand(demand, curve)
     else:
         equivalent_km = equivalent_flat_distance_from_totals(race.distance_km, race.elevation_gain_m)
         quality_flags = ()

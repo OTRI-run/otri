@@ -12,9 +12,10 @@ from course.gpx import TrackPoint
 
 from .course_demand import compute_course_demand, equivalent_flat_distance_from_totals
 from .course_standard import (
-    ENDURANCE_REFERENCED_CURVE,
     MEASURED_DEMAND_VERSIONS,
+    TERRAIN_ADJUSTED_CURVE,
     ScoreCurve,
+    adjusted_demand,
     score_for_time,
 )
 
@@ -52,7 +53,7 @@ def estimate_score(
     gpx_points: list[TrackPoint] | None = None,
     distance_km: float | None = None,
     elevation_gain_m: float | None = None,
-    curve: ScoreCurve = ENDURANCE_REFERENCED_CURVE,
+    curve: ScoreCurve = TERRAIN_ADJUSTED_CURVE,
     measurement=None,
 ) -> ScoreEstimate:
     """Predict the Course Standard score for `finish_time_seconds` on this course.
@@ -70,8 +71,7 @@ def estimate_score(
             demand = compute_measured_demand(gpx_points, measurement=measurement)
         else:
             demand = compute_course_demand(gpx_points)
-        equivalent_km = demand.course_demand_km
-        quality_flags = demand.quality_flags
+        equivalent_km, quality_flags = adjusted_demand(demand, curve)
     elif distance_km is not None and elevation_gain_m is not None:
         equivalent_km = equivalent_flat_distance_from_totals(distance_km, elevation_gain_m)
         quality_flags = ()

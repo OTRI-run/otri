@@ -22,6 +22,7 @@ from .course_standard import (
     MEASURED_CURVE,
     OFFICIAL_CURVE,
     SPEC_CURVE,
+    TERRAIN_ADJUSTED_CURVE,
 )
 from .course_standard import score_race_course_standard
 from .model import RunnerScore
@@ -33,7 +34,8 @@ COURSE_STANDARD_CALIBRATED_VERSION = CALIBRATED_CURVE.version
 COURSE_STANDARD_SPEC_VERSION = SPEC_CURVE.version
 DURATION_SCALED_VERSION = DURATION_SCALED_CURVE.version
 ENDURANCE_REFERENCED_VERSION = ENDURANCE_REFERENCED_CURVE.version
-DEFAULT_SCORING_VERSION = ENDURANCE_REFERENCED_CURVE.version
+TERRAIN_ADJUSTED_VERSION = TERRAIN_ADJUSTED_CURVE.version
+DEFAULT_SCORING_VERSION = TERRAIN_ADJUSTED_CURVE.version
 
 
 @dataclass(frozen=True)
@@ -45,6 +47,18 @@ class ScoringModelInfo:
 
 
 _MODEL_INFO: dict[str, ScoringModelInfo] = {
+    TERRAIN_ADJUSTED_VERSION: ScoringModelInfo(
+        version=TERRAIN_ADJUSTED_VERSION,
+        name='Course Standard V0.5 (terrain-adjusted)',
+        description=(
+            "V0.4's endurance-referenced curve, with course demand additionally adjusted for "
+            'what the gradient-cost integral does not price: sustained steep mountain terrain '
+            'and altitude, both measured from the course GPX. Road courses are unaffected '
+            '(factor exactly 1.0); steep high-mountain courses are scored materially harder '
+            '(see docs/methodology/v0.5/OTRI-TERRAIN-ADJUSTED-DEMAND.md).'
+        ),
+        uses_competitors=False,
+    ),
     ENDURANCE_REFERENCED_VERSION: ScoringModelInfo(
         version=ENDURANCE_REFERENCED_VERSION,
         name='Course Standard V0.4 (endurance-referenced)',
@@ -132,6 +146,10 @@ def score_race(
     measurement=None,
 ) -> list[RunnerScore]:
     """Score a race with the selected model version."""
+    if model_version == TERRAIN_ADJUSTED_VERSION:
+        return score_race_course_standard(
+            race, results, gpx_points=gpx_points, curve=TERRAIN_ADJUSTED_CURVE, measurement=measurement
+        )
     if model_version == ENDURANCE_REFERENCED_VERSION:
         return score_race_course_standard(
             race, results, gpx_points=gpx_points, curve=ENDURANCE_REFERENCED_CURVE, measurement=measurement

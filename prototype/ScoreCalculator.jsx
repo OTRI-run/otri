@@ -197,8 +197,13 @@ export default function ScoreCalculator() {
   // Riegel exponent, and everything older looks the observed rate up directly.
   const scoringVersion = estimate?.scoring_version ?? ''
   const scaledVersion =
-    scoringVersion.includes('endurance-referenced') || scoringVersion.includes('duration-scaled')
-  const legacyCurve = !scoringVersion.includes('endurance-referenced')
+    scoringVersion.includes('endurance-referenced') ||
+    scoringVersion.includes('terrain-adjusted') ||
+    scoringVersion.includes('duration-scaled')
+  // V0.4 and V0.5 share the endurance-referenced anchor table; older curves keep V0.1's.
+  const legacyCurve = !(
+    scoringVersion.includes('endurance-referenced') || scoringVersion.includes('terrain-adjusted')
+  )
 
   return (
     <section className="mt-10">
@@ -375,6 +380,15 @@ export default function ScoreCalculator() {
                     <dd className="font-mono font-semibold text-[#0b1220]">{estimate.scoring_version}</dd>
                   </div>
                 </dl>
+                {estimate.scoring_version?.includes('terrain-adjusted') && (
+                  <p className="mt-3 text-xs text-slate-500">
+                    This course's demand is first adjusted for what gradient alone does not capture — sustained
+                    steep terrain and altitude, both measured from your GPX (see{' '}
+                    <code>docs/methodology/v0.5/OTRI-TERRAIN-ADJUSTED-DEMAND.md</code>) — and then compared against
+                    the best rate a human has achieved on a course of that demand. Flat road courses are unchanged.
+                    A score of 1000 means world-best at any course size.
+                  </p>
+                )}
                 {estimate.scoring_version?.includes('endurance-referenced') && (
                   <p className="mt-3 text-xs text-slate-500">
                     Your performance rate is compared against the best rate a human has achieved on a course of this

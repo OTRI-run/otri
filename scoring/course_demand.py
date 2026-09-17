@@ -100,6 +100,10 @@ class CourseDemand:
     # Non-empty means this course's demand/score is a best-effort approximation for those
     # segments, not a hard rejection — surfaced so organizers/runners can review the course.
     quality_flags: tuple[str, ...] = ()
+    # Terrain inputs (see scoring/terrain.py). Zero for a flat sea-level course, and zero on
+    # the V0.1 pipeline, which does not measure them — so V0.1/V0.2 demand is unaffected.
+    steep_distance_fraction: float = 0.0
+    altitude_excess_m: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -111,6 +115,8 @@ class CourseDemand:
             "minimum_grade": self.minimum_grade,
             "maximum_grade": self.maximum_grade,
             "quality_flags": list(self.quality_flags),
+            "steep_distance_fraction": self.steep_distance_fraction,
+            "altitude_excess_m": self.altitude_excess_m,
         }
 
 
