@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ArrowLeft, Mountain, TrendingUp } from 'lucide-react'
 import CourseMap from '../src/components/CourseMap'
@@ -6,6 +6,53 @@ import ScoreCalculator from './ScoreCalculator'
 import OrganizerUpload from './OrganizerUpload'
 import racesData from './data/races.json'
 import '../src/styles.css'
+
+// Injected at build time by vite.config.js from `git rev-parse`/`git log` — see there for the
+// fallback when no .git is available (e.g. a tarball deploy).
+const COMMIT = typeof __OTRI_COMMIT__ !== 'undefined' ? __OTRI_COMMIT__ : 'unknown'
+const COMMIT_FULL = typeof __OTRI_COMMIT_FULL__ !== 'undefined' ? __OTRI_COMMIT_FULL__ : ''
+const COMMIT_DATE = typeof __OTRI_COMMIT_DATE__ !== 'undefined' ? __OTRI_COMMIT_DATE__ : ''
+const COMMIT_URL = COMMIT_FULL ? `https://github.com/OTRI-run/otri/commit/${COMMIT_FULL}` : null
+
+function formatTimeAgo(isoDate) {
+  if (!isoDate) return null
+  const seconds = Math.max(0, Math.floor((Date.now() - new Date(isoDate).getTime()) / 1000))
+  const units = [
+    ['year', 31536000],
+    ['month', 2592000],
+    ['day', 86400],
+    ['hour', 3600],
+    ['minute', 60],
+  ]
+  for (const [label, secondsInUnit] of units) {
+    const value = Math.floor(seconds / secondsInUnit)
+    if (value >= 1) return `${value} ${label}${value > 1 ? 's' : ''} ago`
+  }
+  return 'just now'
+}
+
+function BuildBanner() {
+  const [timeAgo, setTimeAgo] = useState(() => formatTimeAgo(COMMIT_DATE))
+
+  useEffect(() => {
+    const id = setInterval(() => setTimeAgo(formatTimeAgo(COMMIT_DATE)), 60_000)
+    return () => clearInterval(id)
+  }, [])
+
+  return (
+    <div className="h-7 bg-[#0b1220] text-center font-mono text-[10px] leading-7 text-slate-300">
+      Built from commit{' '}
+      {COMMIT_URL ? (
+        <a href={COMMIT_URL} target="_blank" rel="noreferrer" className="font-semibold text-white underline underline-offset-2">
+          {COMMIT}
+        </a>
+      ) : (
+        <span className="font-semibold text-white">{COMMIT}</span>
+      )}
+      {timeAgo ? ` · ${timeAgo}` : ''}
+    </div>
+  )
+}
 
 function Badge({ children }) {
   return (
@@ -161,6 +208,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#f7f9fc] text-[#0b1220]">
+      <BuildBanner />
       <Header />
       <main className="mx-auto w-[min(1120px,calc(100%-28px))] py-12">
         <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">PROTOTYPE</p>
