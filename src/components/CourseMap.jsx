@@ -314,11 +314,14 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
     if (!map || !line) return undefined
 
     const applyNewStyle = () => {
-      map.setStyle(isSatellite ? SATELLITE_STYLE : styleUrl)
+      // diff: false forces a full style load. With diffing on, switching to the inline
+      // satellite style is applied as a patch and never fires 'style.load', so the route
+      // layers would not be re-added until the next full load.
       map.once('style.load', () => {
         addCourseLayers(map, courseData, { includeHillshade: !isSatellite })
         map.setTerrain(is3DRef.current ? { source: 'terrain-dem', exaggeration: 1.3 } : null)
       })
+      map.setStyle(isSatellite ? SATELLITE_STYLE : styleUrl, { diff: false })
     }
 
     if (map.loaded()) {
