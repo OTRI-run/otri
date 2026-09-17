@@ -2,17 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import CourseMap from '../src/components/CourseMap'
 import { analyzeGpx, listRaces, fetchRaceGpxFile } from './apiClient'
 
-// Real computation stages of scoring/course_demand.py + scoring/estimator.py — deliberately not
-// "pacing"/"fatigue" stages, since this model never simulates either (see the V0.1 spec's
-// explicit exclusions). The checklist only advances to "done" once the real API call resolves.
-const STAGES = [
-  { label: 'READING COURSE', items: ['Distance', 'Elevation', 'Terrain'] },
-  { label: 'CALCULATING DEMAND', items: ['Segment gradient cost', 'Course demand'] },
-  { label: 'SCORING', items: ['Performance rate', 'Score transformation'] },
-]
-
 // Published V0.1 anchor table (docs/methodology/v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md section 13) —
-// shown for context only in the technical explain layer. The actual score always comes from the API.
+// shown for context in the "why this score" breakdown. The actual score always comes from the API.
 const PUBLISHED_ANCHORS = [
   { score: 0, q: 1.0 },
   { score: 349, q: 4.240362424138815 },
@@ -20,8 +11,6 @@ const PUBLISHED_ANCHORS = [
   { score: 692, q: 11.769395017793594 },
   { score: 1000, q: 17.93986234619293 },
 ]
-
-const EXPLORE_OFFSETS_MIN = [-15, -10, -5, 0, 5, 10, 15]
 
 function parseHmsToSeconds(value) {
   const parts = value.trim().split(':').map(Number)
@@ -44,31 +33,6 @@ function formatPace(totalSeconds, distanceKm) {
   const m = Math.floor(paceSeconds / 60)
   const s = Math.round(paceSeconds % 60)
   return `${m}:${String(s).padStart(2, '0')} / km`
-}
-
-const STEP_ORDER = ['source', 'target', 'analyzing', 'result']
-const STEP_LABELS = { source: 'Course', target: 'Target time', analyzing: 'Analysing', result: 'Result' }
-
-function StepProgress({ step }) {
-  const visibleSteps = STEP_ORDER.filter((s) => s !== 'analyzing')
-  const currentIndex = STEP_ORDER.indexOf(step === 'analyzing' ? 'target' : step)
-  return (
-    <div className="mt-6 flex flex-wrap items-center gap-2 font-mono text-[9px] tracking-[.06em] text-slate-400">
-      {visibleSteps.map((s, i) => (
-        <span key={s} className={`flex items-center gap-2 ${STEP_ORDER.indexOf(s) <= currentIndex ? 'text-blue-600' : ''}`}>
-          <span
-            className={`flex h-4 w-4 items-center justify-center rounded-full border text-[8px] ${
-              STEP_ORDER.indexOf(s) <= currentIndex ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300'
-            }`}
-          >
-            {i + 1}
-          </span>
-          {STEP_LABELS[s].toUpperCase()}
-          {i < visibleSteps.length - 1 && <span className="mx-1 text-slate-300">—</span>}
-        </span>
-      ))}
-    </div>
-  )
 }
 
 function ContextBar({ courseLabel }) {
@@ -104,15 +68,10 @@ export default function ScoreCalculator() {
 
   const [targetSeconds, setTargetSeconds] = useState(17700)
   const [timeInput, setTimeInput] = useState(formatHms(17700))
-  const [targetError, setTargetError] = useState(null)
-  const [visibleStage, setVisibleStage] = useState(0)
-  const [estimate, setEstimate] = useState(null)
-  const [analysisError, setAnalysisError] = useState(null)
 
-  const [showExplain, setShowExplain] = useState(false)
-  const [showTechnical, setShowTechnical] = useState(false)
-  const [exploreRows, setExploreRows] = useState(null)
-  const [exploreLoading, setExploreLoading] = useState(false)
+  const [estimate, setEstimate] = useState(null)
+  const [scoring, setScoring] = useState(false)
+  const [analysisError, setAnalysisError] = useState(null)
 
   const analysisRunId = useRef(0)
 
@@ -135,6 +94,33 @@ export default function ScoreCalculator() {
     return races.filter((race) => `${race.event_name} ${race.course_name}`.toLowerCase().includes(q))
   }, [races, query])
 
+  // Recompute the real score shortly after the target time settles (typing or dragging the
+  // slider) — debounced so scrubbing the slider doesn't fire an API call per pixel, but no
+  // "Analyse" button to click: the result is always live for whatever time is currently set.
+  useEffect(() => {
+    if (step !== 'target' || !courseFile || targetSeconds <= 0) return undefined
+    const runId = ++analysisRunId.current
+    const timer = setTimeout(() => {
+      setScoring(true)
+      setAnalysisError(null)
+      analyzeGpx(courseFile, targetSeconds)
+        .then((response) => {
+          if (analysisRunId.current !== runId) return
+          setEstimate(response.estimate)
+          setFeatures(response.features)
+          setMeasurement(response.measurement)
+        })
+        .catch((err) => {
+          if (analysisRunId.current !== runId) return
+          setAnalysisError(err.message)
+        })
+        .finally(() => {
+          if (analysisRunId.current === runId) setScoring(false)
+        })
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [targetSeconds, courseFile, step])
+
   async function loadCourse(loader, label) {
     setLoadError(null)
     setLoadingCourse(true)
@@ -147,6 +133,7 @@ export default function ScoreCalculator() {
       setFeatures(analysis.features)
       setMeasurement(analysis.measurement)
       setCourseLabel(label)
+      setEstimate(null)
       // Default target time: a 6 min/km pace on this course, clamped to the slider's range.
       const suggested = analysis.features?.distance_km ? Math.round((analysis.features.distance_km * 360) / 30) * 30 : 17700
       const clamped = Math.min(86400, Math.max(600, suggested))
@@ -183,15 +170,11 @@ export default function ScoreCalculator() {
     setFeatures(null)
     setMeasurement(null)
     setEstimate(null)
-    setExploreRows(null)
-    setShowExplain(false)
-    setShowTechnical(false)
   }
 
   function updateTargetSeconds(seconds) {
     setTargetSeconds(seconds)
     setTimeInput(formatHms(seconds))
-    setTargetError(null)
   }
 
   function updateTimeInput(value) {
@@ -199,69 +182,6 @@ export default function ScoreCalculator() {
     const seconds = parseHmsToSeconds(value)
     if (seconds !== null && seconds > 0) {
       setTargetSeconds(Math.min(86400, seconds))
-      setTargetError(null)
-    }
-  }
-
-  function startAnalysis() {
-    const seconds = parseHmsToSeconds(timeInput)
-    if (seconds === null || seconds <= 0) {
-      setTargetError('Enter your target finish time as HH:MM:SS')
-      return
-    }
-    setTargetError(null)
-    setAnalysisError(null)
-    setEstimate(null)
-    setExploreRows(null)
-    setShowExplain(false)
-    setShowTechnical(false)
-    setStep('analyzing')
-    setVisibleStage(0)
-
-    const runId = ++analysisRunId.current
-    const ticker = setInterval(() => {
-      setVisibleStage((current) => (current < STAGES.length - 1 ? current + 1 : current))
-    }, 380)
-
-    analyzeGpx(courseFile, seconds)
-      .then((response) => {
-        if (analysisRunId.current !== runId) return
-        clearInterval(ticker)
-        setVisibleStage(STAGES.length - 1)
-        setFeatures(response.features)
-        setMeasurement(response.measurement)
-        setEstimate(response.estimate)
-        setTimeout(() => {
-          if (analysisRunId.current === runId) setStep('result')
-        }, 300)
-      })
-      .catch((err) => {
-        if (analysisRunId.current !== runId) return
-        clearInterval(ticker)
-        setAnalysisError(err.message)
-        setStep('target')
-      })
-  }
-
-  async function exploreNearbyTimes() {
-    const seconds = parseHmsToSeconds(timeInput)
-    if (seconds === null || !courseFile) return
-    setExploreLoading(true)
-    setExploreRows(null)
-    try {
-      const rows = []
-      for (const offsetMin of EXPLORE_OFFSETS_MIN) {
-        const candidateSeconds = seconds + offsetMin * 60
-        if (candidateSeconds <= 0) continue
-        // eslint-disable-next-line no-await-in-loop
-        const response = await analyzeGpx(courseFile, candidateSeconds)
-        rows.push({ seconds: candidateSeconds, isCurrent: offsetMin === 0, score: response.estimate.predicted_score })
-      }
-      setExploreRows(rows)
-    } catch (err) {
-      setAnalysisError(err.message)
-    } finally {
-      setExploreLoading(false)
     }
   }
 
@@ -275,16 +195,15 @@ export default function ScoreCalculator() {
         Know your OTRI score before you race.
       </h2>
       <p className="mt-2 max-w-[680px] text-sm text-slate-500">
-        Choose a course, enter a target finish time, and see the score the real OTRI model would give that
-        performance. Course + time + scoring version determine the score — nothing about who else is racing.
+        Choose a course, then drag to your target finish time — the real OTRI score updates live. Course + time +
+        scoring version determine the score — nothing about who else is racing.
       </p>
 
-      <StepProgress step={step} />
       <ContextBar courseLabel={courseLabel} />
 
       {step === 'source' && (
         <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="font-mono text-[9px] tracking-[.08em] text-slate-400">STEP 1 — HOW DO YOU WANT TO GET THE COURSE?</p>
+          <p className="font-mono text-[9px] tracking-[.08em] text-slate-400">HOW DO YOU WANT TO GET THE COURSE?</p>
           <div className="mt-3 flex flex-wrap gap-3">
             <button
               onClick={() => setSourceMode('search')}
@@ -354,201 +273,114 @@ export default function ScoreCalculator() {
       )}
 
       {step === 'target' && features && (
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="font-mono text-[9px] tracking-[.08em] text-slate-400">STEP 2 — YOUR COURSE & TARGET</p>
-          {gpxText && <CourseMap gpxText={gpxText} measurement={measurement} className="mt-3" />}
-          <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              ['Distance', `${features.distance_km} km`],
-              ['Elevation gain', `+${features.elevation_gain_m} m`],
-              ['Elevation loss', `-${features.elevation_loss_m} m`],
-              [
-                'Steepest 50 m grade',
-                features.max_climb_grade == null ? 'Unavailable (short track)' : `+${(features.max_climb_grade * 100).toFixed(1)}% / -${(features.max_descent_grade * 100).toFixed(1)}%`,
-              ],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-lg bg-slate-50 px-3 py-2">
-                <dt className="font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">{label}</dt>
-                <dd className="mt-0.5 text-sm font-semibold text-[#0b1220]">{value}</dd>
+        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            {gpxText && <CourseMap gpxText={gpxText} measurement={measurement} className="mt-1" />}
+            <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                ['Distance', `${features.distance_km} km`],
+                ['Elevation gain', `+${features.elevation_gain_m} m`],
+                ['Elevation loss', `-${features.elevation_loss_m} m`],
+                [
+                  'Steepest 50 m grade',
+                  features.max_climb_grade == null ? 'Unavailable (short track)' : `+${(features.max_climb_grade * 100).toFixed(1)}% / -${(features.max_descent_grade * 100).toFixed(1)}%`,
+                ],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-lg bg-slate-50 px-3 py-2">
+                  <dt className="font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">{label}</dt>
+                  <dd className="mt-0.5 text-sm font-semibold text-[#0b1220]">{value}</dd>
+                </div>
+              ))}
+            </dl>
+            {hasAnomaly && (
+              <p className="mt-3 text-sm text-amber-700">Elevation anomalies detected. Review the course profile before trusting this estimate.</p>
+            )}
+
+            <div className="mt-5 border-t border-slate-100 pt-4">
+              <label className="font-mono text-[9px] tracking-[.08em] text-slate-400">YOUR TARGET FINISH TIME</label>
+              <div className="mt-2 flex flex-wrap items-center gap-4">
+                <p className="font-mono text-4xl font-bold tracking-[-.02em] text-[#0b1220]">{formatHms(targetSeconds)}</p>
+                <input
+                  type="text"
+                  value={timeInput}
+                  onChange={(event) => updateTimeInput(event.target.value)}
+                  placeholder="HH:MM:SS"
+                  className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-center font-mono text-sm"
+                />
+                <p className="font-mono text-xs text-slate-400">{formatPace(targetSeconds, features.distance_km)}</p>
               </div>
-            ))}
-          </dl>
-          {hasAnomaly && (
-            <p className="mt-3 text-sm text-amber-700">Elevation anomalies detected. Review the course profile before trusting this estimate.</p>
-          )}
-
-          <div className="mt-5 border-t border-slate-100 pt-4">
-            <label className="font-mono text-[9px] tracking-[.08em] text-slate-400">YOUR TARGET FINISH TIME</label>
-            <div className="mt-2 flex flex-wrap items-center gap-4">
-              <p className="font-mono text-4xl font-bold tracking-[-.02em] text-[#0b1220]">{formatHms(targetSeconds)}</p>
               <input
-                type="text"
-                value={timeInput}
-                onChange={(event) => updateTimeInput(event.target.value)}
-                placeholder="HH:MM:SS"
-                className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-center font-mono text-sm"
+                type="range"
+                min={600}
+                max={86400}
+                step={30}
+                value={targetSeconds}
+                onChange={(event) => updateTargetSeconds(Number(event.target.value))}
+                className="mt-3 w-full accent-blue-600"
               />
-              <p className="font-mono text-xs text-slate-400">{formatPace(targetSeconds, features.distance_km)}</p>
+              {analysisError && <p className="mt-2 text-xs text-red-600">{analysisError}</p>}
             </div>
-            <input
-              type="range"
-              min={600}
-              max={86400}
-              step={30}
-              value={targetSeconds}
-              onChange={(event) => updateTargetSeconds(Number(event.target.value))}
-              className="mt-3 w-full max-w-xl accent-blue-600"
-            />
-            {targetError && <p className="mt-2 text-xs text-red-600">{targetError}</p>}
-            {analysisError && <p className="mt-2 text-xs text-red-600">{analysisError}</p>}
-          </div>
 
-          <div className="mt-4 flex gap-3">
-            <button onClick={startOver} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600">
+            <button onClick={startOver} className="mt-4 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600">
               Change course
             </button>
-            <button onClick={startAnalysis} className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white">
-              Analyse performance
-            </button>
           </div>
-        </div>
-      )}
 
-      {step === 'analyzing' && (
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          {gpxText && <CourseMap gpxText={gpxText} measurement={measurement} className="mb-5" />}
-          <div className="space-y-4">
-            {STAGES.map((stage, i) => (
-              <div key={stage.label}>
-                <p className={`font-mono text-[10px] tracking-[.08em] ${i <= visibleStage ? 'text-blue-600' : 'text-slate-300'}`}>{stage.label}</p>
-                <ul className="mt-1 flex flex-wrap gap-3 text-xs">
-                  {stage.items.map((item) => (
-                    <li key={item} className={i <= visibleStage ? 'text-[#0b1220]' : 'text-slate-300'}>
-                      {i <= visibleStage ? '✓' : '·'} {item}
-                    </li>
-                  ))}
-                </ul>
+          {estimate && (
+            <div className="space-y-4">
+              <div className={`rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-5 text-center transition-opacity ${scoring ? 'opacity-60' : ''}`}>
+                <p className="font-mono text-[9px] tracking-[.08em] text-blue-600">OTRI</p>
+                <p className="mt-2 text-6xl font-bold tracking-[-.03em] text-blue-600">{estimate.predicted_score}</p>
+                <p className="mt-2 font-mono text-sm text-slate-500">{formatHms(targetSeconds)}</p>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {step === 'result' && estimate && (
-        <div className="mt-6">
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,260px)_1fr]">
-            <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-5 text-center">
-              <p className="font-mono text-[9px] tracking-[.08em] text-blue-600">OTRI</p>
-              <p className="mt-2 text-6xl font-bold tracking-[-.03em] text-blue-600">{estimate.predicted_score}</p>
-              <p className="mt-2 font-mono text-sm text-slate-500">{formatHms(parseHmsToSeconds(timeInput))}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5">
-              <dl className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <dt className="font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">Course</dt>
-                  <dd className="font-semibold text-[#0b1220]">{features.distance_km} km / +{features.elevation_gain_m} m</dd>
-                </div>
-                <div>
-                  <dt className="font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">Score version</dt>
-                  <dd className="font-mono text-xs font-semibold text-[#0b1220]">{estimate.scoring_version}</dd>
-                </div>
-                <div className="col-span-2">
-                  <dt className="font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">Evidence</dt>
-                  <dd className="text-slate-600">Model-based projection · {estimate.disclaimer}</dd>
-                </div>
-              </dl>
-              {estimate.quality_flags?.length > 0 && (
-                <p className="mt-3 text-xs text-amber-700">Quality flags: {estimate.quality_flags.join(', ')}</p>
-              )}
-              <div className="mt-4 flex flex-wrap gap-3">
-                <button onClick={() => setShowExplain((v) => !v)} className="text-xs font-semibold text-blue-600">
-                  {showExplain ? 'Hide' : 'Why this score?'}
-                </button>
-                <button onClick={() => setStep('target')} className="text-xs font-semibold text-slate-500">
-                  Try a different time
-                </button>
-                <button onClick={startOver} className="text-xs font-semibold text-slate-500">
-                  Start over
-                </button>
+              <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                <p className="font-mono text-[9px] tracking-[.08em] text-slate-400">WHY THIS SCORE</p>
+                <p className="mt-2 text-sm text-slate-600">
+                  What the <strong>course</strong> demands (distance and gradient, integrated segment by segment) ÷ how
+                  fast you covered that demand (your <strong>performance</strong>) → mapped through a fixed, published
+                  curve. Never anyone else's result.
+                </p>
+                <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <dt className="font-mono text-[9px] uppercase text-slate-400">Physical distance</dt>
+                    <dd className="font-semibold text-[#0b1220]">{features.distance_km} km</dd>
+                  </div>
+                  <div>
+                    <dt className="font-mono text-[9px] uppercase text-slate-400">Flat-equivalent distance (course demand)</dt>
+                    <dd className="font-semibold text-[#0b1220]">{estimate.equivalent_distance_km} demand-km</dd>
+                  </div>
+                  <div>
+                    <dt className="font-mono text-[9px] uppercase text-slate-400">Performance rate</dt>
+                    <dd className="font-semibold text-[#0b1220]">{estimate.performance_rate} demand-km/h</dd>
+                  </div>
+                  <div>
+                    <dt className="font-mono text-[9px] uppercase text-slate-400">Raw score (unrounded)</dt>
+                    <dd className="font-semibold text-[#0b1220]">{estimate.otri_raw}</dd>
+                  </div>
+                  <div className="col-span-2">
+                    <dt className="font-mono text-[9px] uppercase text-slate-400">Score version</dt>
+                    <dd className="font-mono font-semibold text-[#0b1220]">{estimate.scoring_version}</dd>
+                  </div>
+                </dl>
+                <p className="mt-3 font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">Published V0.1 curve anchors</p>
+                <table className="mt-1 w-full text-left text-xs">
+                  <tbody>
+                    {PUBLISHED_ANCHORS.map((anchor) => (
+                      <tr key={anchor.score}>
+                        <td className="py-0.5 pr-4 font-mono">{anchor.score}</td>
+                        <td className="py-0.5 font-mono">{anchor.q.toFixed(3)} demand-km/h</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="mt-3 text-xs text-slate-500">Model-based projection · {estimate.disclaimer}</p>
               </div>
-            </div>
-          </div>
-
-          {showExplain && (
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5">
-              <p className="font-mono text-[9px] tracking-[.08em] text-slate-400">WHY THIS SCORE</p>
-              <p className="mt-2 text-sm text-slate-600">
-                Your score comes from two things: what the <strong>course</strong> demands (distance and gradient,
-                integrated segment by segment), and how fast you covered that demand (your{' '}
-                <strong>performance</strong>). OTRI converts that ratio into one 0–1000 score using a fixed, published
-                curve — never anyone else's result.
-              </p>
-              <button onClick={() => setShowTechnical((v) => !v)} className="mt-3 text-xs font-semibold text-blue-600">
-                {showTechnical ? 'Hide technical calculation' : 'View technical calculation'}
-              </button>
-              {showTechnical && (
-                <div className="mt-3 rounded-xl bg-slate-50 p-4 text-xs text-slate-600">
-                  <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    <div>
-                      <dt className="font-mono text-[9px] uppercase text-slate-400">Course demand</dt>
-                      <dd className="font-semibold text-[#0b1220]">{estimate.equivalent_distance_km} demand-km</dd>
-                    </div>
-                    <div>
-                      <dt className="font-mono text-[9px] uppercase text-slate-400">Performance rate</dt>
-                      <dd className="font-semibold text-[#0b1220]">{estimate.performance_rate} demand-km/h</dd>
-                    </div>
-                    <div>
-                      <dt className="font-mono text-[9px] uppercase text-slate-400">Raw score</dt>
-                      <dd className="font-semibold text-[#0b1220]">{estimate.otri_raw}</dd>
-                    </div>
-                    <div>
-                      <dt className="font-mono text-[9px] uppercase text-slate-400">Model</dt>
-                      <dd className="font-mono font-semibold text-[#0b1220]">{estimate.scoring_version}</dd>
-                    </div>
-                  </dl>
-                  <p className="mt-3 font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">Published V0.1 curve anchors</p>
-                  <table className="mt-1 w-full max-w-xs text-left">
-                    <tbody>
-                      {PUBLISHED_ANCHORS.map((anchor) => (
-                        <tr key={anchor.score}>
-                          <td className="py-0.5 pr-4 font-mono">{anchor.score}</td>
-                          <td className="py-0.5 font-mono">{anchor.q.toFixed(3)} demand-km/h</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
             </div>
           )}
-
-          <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5">
-            <p className="font-mono text-[9px] tracking-[.08em] text-slate-400">EXPLORE OTHER TIMES</p>
-            {!exploreRows && (
-              <button
-                onClick={exploreNearbyTimes}
-                disabled={exploreLoading}
-                className="mt-3 rounded-lg border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-blue-300 disabled:opacity-50"
-              >
-                {exploreLoading ? 'Calculating…' : 'Show nearby finish times'}
-              </button>
-            )}
-            {exploreRows && (
-              <table className="mt-3 w-full max-w-sm text-left text-sm">
-                <tbody>
-                  {exploreRows.map((row) => (
-                    <tr key={row.seconds} className={row.isCurrent ? 'font-bold text-blue-600' : 'text-slate-600'}>
-                      <td className="py-1 font-mono">{formatHms(row.seconds)}</td>
-                      <td className="py-1 pl-4">→</td>
-                      <td className="py-1 pl-4 font-mono">{row.score}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
         </div>
       )}
     </section>
   )
 }
+
