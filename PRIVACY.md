@@ -13,6 +13,8 @@ This page describes what personal data OTRI collects and why. For race-result da
 
 **Race/result submissions**: race metadata and result files organizers choose to submit (see `DATA_POLICY.md` for how athlete data within those files is handled).
 
+**Score calculator uploads** (`POST /gpx/analyze`): a GPX file you upload is measured and then discarded; it is not linked to any account. If you click **Share this score**, the file is stored (`POST /gpx/share`) under an id derived from its contents so the link can reopen it, together with the course name you saw on screen. Anyone with the link can view that course. The target time travels in the link, not on the server. There is no automated expiry yet; email hello@otri.run to have a shared course removed.
+
 **Server logs**: standard web server access logs (IP address, request path, timestamp) for operational/security purposes (e.g. the rate limiter in `api/rate_limit.py` uses request IP to throttle abuse). Not used for tracking or analytics.
 
 We do not use cookies, third-party analytics, or advertising trackers.
@@ -34,6 +36,7 @@ We do not use cookies, third-party analytics, or advertising trackers.
 - Organizer accounts: until the organizer asks for deletion, or the account has been inactive for an extended period (no automated deletion policy exists yet — this is a gap to close before a real launch).
 - Password reset tokens: expire after 1 hour and are deleted after 2 hours; used tokens are marked and rejected on reuse.
 - Email verification tokens: expire after 2 days.
+- Shared calculator courses: kept until removed on request (no automated expiry yet — another gap to close before a real launch).
 
 ## Your rights
 

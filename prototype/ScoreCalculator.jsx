@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUpRight, GitBranch, Mountain, RefreshCw, Search, Timer, Upload } from 'lucide-react'
+import { ArrowUpRight, Check, Copy, GitBranch, Link2, Mountain, RefreshCw, Search, Share2, Timer, Upload } from 'lucide-react'
 import CourseMap from '../src/components/CourseMap'
-import { analyzeGpx, listRaces, fetchRaceGpxFile } from './apiClient'
+import { analyzeGpx, fetchRaceGpxFile, fetchSharedGpxFile, getRace, listRaces, shareGpx } from './apiClient'
 import NextSteps from './NextSteps'
 import { distanceUnit, formatDistance, formatElevation, formatPace as formatPaceUnits, formatRate, kmToUnit, useUnits } from '../src/lib/units'
 
@@ -435,6 +435,136 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
   )
 }
 
+// ----------------------------------------------------------------------------- share links
+// #calculator?race=<race_id>&t=<seconds>          a verified race
+// #calculator?gpx=<share_id>&name=<name>&t=<sec>  an uploaded course the user chose to share
+
+function readCalculatorQuery() {
+  const hash = window.location.hash
+  const q = hash.indexOf('?')
+  if (!hash.startsWith('#calculator') || q < 0) return null
+  const params = new URLSearchParams(hash.slice(q + 1))
+  const t = Number(params.get('t'))
+  return {
+    race: params.get('race'),
+    gpx: params.get('gpx'),
+    name: params.get('name'),
+    seconds: Number.isFinite(t) && t > 0 ? Math.min(86400, Math.max(600, Math.round(t))) : null,
+  }
+}
+
+function buildShareHash({ raceId, shareId, name, seconds }) {
+  const params = new URLSearchParams()
+  if (raceId) params.set('race', raceId)
+  else if (shareId) {
+    params.set('gpx', shareId)
+    if (name) params.set('name', name)
+  }
+  params.set('t', String(Math.round(seconds)))
+  return `#calculator?${params.toString()}`
+}
+
+function buildShareUrl(args) {
+  return `${window.location.origin}${window.location.pathname}${buildShareHash(args)}`
+}
+
+function ShareBox({ courseLabel, courseFile, targetSeconds, shareId, onShared }) {
+  const [state, setState] = useState('idle') // idle | sharing | ready | copied
+  const [error, setError] = useState(null)
+  const raceId = courseLabel.raceId ?? null
+  const linkReady = Boolean(raceId || shareId)
+  const url = linkReady ? buildShareUrl({ raceId, shareId, name: courseLabel.name, seconds: targetSeconds }) : null
+  const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+
+  async function copy(link) {
+    try {
+      await navigator.clipboard.writeText(link)
+      setState('copied')
+      setTimeout(() => setState('ready'), 2500)
+    } catch {
+      setState('ready')
+    }
+  }
+
+  async function share() {
+    setError(null)
+    try {
+      let id = shareId
+      if (!raceId && !id) {
+        setState('sharing')
+        const result = await shareGpx(courseFile, courseLabel.name)
+        id = result.share_id
+        onShared(id)
+      }
+      await copy(buildShareUrl({ raceId, shareId: id, name: courseLabel.name, seconds: targetSeconds }))
+    } catch (err) {
+      setError(err.message)
+      setState('idle')
+    }
+  }
+
+  async function nativeShare() {
+    try {
+      await navigator.share({ title: 'My OTRI score', text: `${courseLabel.name} in ${formatHms(targetSeconds)}`, url })
+    } catch {
+      // The user closed the share sheet.
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <button
+          type="button"
+          onClick={share}
+          disabled={state === 'sharing'}
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 px-5 text-[14px] font-semibold text-white shadow-[0_10px_28px_rgba(37,99,235,.25)] transition hover:from-blue-800 hover:to-blue-600 disabled:opacity-60"
+        >
+          {state === 'sharing' ? (
+            <>
+              <span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" /> Creating link…
+            </>
+          ) : state === 'copied' ? (
+            <>
+              <Check size={16} /> Link copied
+            </>
+          ) : (
+            <>
+              <Share2 size={16} /> Share this score
+            </>
+          )}
+        </button>
+        {url && canNativeShare && (
+          <button
+            type="button"
+            onClick={nativeShare}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-[13px] font-semibold text-[#0b1220] hover:border-blue-300"
+          >
+            Send… <ArrowUpRight size={14} />
+          </button>
+        )}
+      </div>
+      {url ? (
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+          <Link2 size={14} className="shrink-0 text-blue-600" />
+          <input readOnly value={url} onFocus={(event) => event.target.select()} aria-label="Share link" className="min-w-0 flex-1 bg-transparent font-mono text-[11px] text-slate-600 outline-none" />
+          <button type="button" onClick={() => copy(url)} className="shrink-0 text-xs font-semibold text-blue-600 hover:underline" aria-label="Copy link">
+            <Copy size={14} />
+          </button>
+        </div>
+      ) : null}
+      <p className="mt-2 text-xs leading-5 text-slate-500">
+        {raceId
+          ? 'The link opens this race with your target time. Change the time and the link updates.'
+          : shareId
+            ? 'Anyone with the link sees this course and your target time. Change the time and the link updates.'
+            : 'Sharing stores your course file on OTRI so the link works for anyone; the target time travels in the link itself.'}
+      </p>
+      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+    </div>
+  )
+}
+
 // ----------------------------------------------------------------------------- course picker
 
 function CoursePicker({ races, racesLoading, racesError, query, onQuery, onChooseRace, onUpload, loadingCourse, loadError }) {
@@ -525,8 +655,8 @@ function CoursePicker({ races, racesLoading, racesError, query, onQuery, onChoos
                   <Upload size={22} className="text-blue-600" />
                   <span className="font-semibold text-[#0b1220]">Drop a .gpx file here, or browse</span>
                   <span className="max-w-[320px] text-xs text-slate-500">
-                    The file is analysed for this calculation only and never stored. Dense recordings (a point at least
-                    every 30 m) give a trustworthy result.
+                    The file is analysed for this calculation and not stored unless you create a share link. Dense
+                    recordings (a point at least every 30 m) give a trustworthy result.
                   </span>
                   <span className="mt-1 inline-flex min-h-10 items-center rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 px-4 text-[13px] font-semibold text-white shadow-[0_10px_28px_rgba(37,99,235,.2)]">
                     Choose file
@@ -568,7 +698,7 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
             <p className="mt-2 text-sm text-slate-500">
               {courseLabel.meta ? `${courseLabel.meta} · ` : ''}
               <span className={courseLabel.verified ? 'font-semibold text-blue-600' : 'font-semibold text-amber-600'}>
-                {courseLabel.verified ? 'Verified course' : 'Your upload'}
+                {courseLabel.verified ? 'Verified course' : courseLabel.meta === 'Shared course' ? 'Shared course' : 'Your upload'}
               </span>
             </p>
           </div>
@@ -668,7 +798,18 @@ export default function ScoreCalculator() {
   const [scoring, setScoring] = useState(false)
   const [analysisError, setAnalysisError] = useState(null)
 
+  const [shareId, setShareId] = useState(null)
   const analysisRunId = useRef(0)
+  const loadedLinkRef = useRef(null)
+
+  // A share link in the URL (#calculator?race=… or ?gpx=…) opens that course and time.
+  const [linkHash, setLinkHash] = useState(() => window.location.hash)
+  useEffect(() => {
+    const onChange = () => setLinkHash(window.location.hash)
+    window.addEventListener('hashchange', onChange)
+    return () => window.removeEventListener('hashchange', onChange)
+  }, [])
+  const linked = useMemo(() => readCalculatorQuery(), [linkHash])
 
   useEffect(() => {
     let cancelled = false
@@ -720,7 +861,7 @@ export default function ScoreCalculator() {
     return () => clearTimeout(timer)
   }, [targetSeconds, courseFile])
 
-  async function loadCourse(loader, label) {
+  async function loadCourse(loader, label, initialSeconds = null) {
     setLoadError(null)
     setLoadingCourse(true)
     try {
@@ -735,7 +876,7 @@ export default function ScoreCalculator() {
       setEstimate(null)
       // Default target time: a 6 min/km pace on this course, clamped to the slider's range.
       const suggested = analysis.features?.distance_km ? Math.round((analysis.features.distance_km * 360) / 30) * 30 : 17700
-      const clamped = Math.min(86400, Math.max(600, suggested))
+      const clamped = initialSeconds ?? Math.min(86400, Math.max(600, suggested))
       setTargetSeconds(clamped)
       setTimeInput(formatHms(clamped))
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -746,13 +887,42 @@ export default function ScoreCalculator() {
     }
   }
 
-  function chooseExistingRace(race) {
-    loadCourse(() => fetchRaceGpxFile(race.race_id), {
-      name: `${race.event_name} · ${race.course_name}`,
-      meta: race.event_date,
-      verified: true,
-    })
+  function raceLabel(race) {
+    return { name: `${race.event_name} · ${race.course_name}`, meta: race.event_date, verified: true, raceId: race.race_id }
   }
+
+  function chooseExistingRace(race) {
+    setShareId(null)
+    loadCourse(() => fetchRaceGpxFile(race.race_id), raceLabel(race))
+  }
+
+  useEffect(() => {
+    if (!linked || (!linked.race && !linked.gpx)) return
+    const key = linked.race ? `race:${linked.race}` : `gpx:${linked.gpx}`
+    if (loadedLinkRef.current === key) return
+    loadedLinkRef.current = key
+    if (linked.race) {
+      getRace(linked.race)
+        .then((race) => loadCourse(() => fetchRaceGpxFile(race.race_id), raceLabel(race), linked.seconds))
+        .catch((err) => setLoadError(err.message))
+    } else {
+      setShareId(linked.gpx)
+      loadCourse(
+        () => fetchSharedGpxFile(linked.gpx, linked.name),
+        { name: linked.name || 'Shared course', meta: 'Shared course', verified: false },
+        linked.seconds,
+      )
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linked])
+
+  // Keep the address bar in sync once the course has an id, so the URL is always shareable.
+  useEffect(() => {
+    const raceId = courseLabel?.raceId
+    if (!courseFile || (!raceId && !shareId)) return
+    const hash = buildShareHash({ raceId, shareId, name: courseLabel.name, seconds: targetSeconds })
+    if (window.location.hash !== hash) window.history.replaceState(null, '', hash)
+  }, [courseFile, courseLabel, shareId, targetSeconds])
 
   function handleUpload(event) {
     const selected = event.target.files?.[0]
@@ -763,6 +933,9 @@ export default function ScoreCalculator() {
 
   function startOver() {
     analysisRunId.current += 1
+    loadedLinkRef.current = null
+    setShareId(null)
+    if (window.location.hash.startsWith('#calculator?')) window.history.replaceState(null, '', '#calculator')
     setCourseFile(null)
     setGpxText('')
     setCourseLabel(null)
@@ -826,6 +999,7 @@ export default function ScoreCalculator() {
                   distanceKm={features.distance_km}
                   analysisError={analysisError}
                 />
+                <ShareBox courseLabel={courseLabel} courseFile={courseFile} targetSeconds={targetSeconds} shareId={shareId} onShared={setShareId} />
               </>
             ) : (
               <>

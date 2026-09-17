@@ -126,6 +126,14 @@ class GpxAnalysis(BaseModel):
     estimate: IllustrativeEstimateOut | None = None
 
 
+class SharedCourseOut(BaseModel):
+    """A course file stored, with the uploader's consent, so a calculator link can reopen it."""
+
+    share_id: str
+    name: str | None = None
+    created: bool
+
+
 class ScoringModelOut(BaseModel):
     version: str
     name: str

@@ -169,6 +169,23 @@ export function analyzeGpx(file, finishTimeSeconds) {
   return request('/gpx/analyze', { method: 'POST', body: formData })
 }
 
+/** Stores an uploaded GPX (with the user's consent, on "Share") so a calculator link can reopen it. */
+export function shareGpx(file, name) {
+  const formData = new FormData()
+  formData.append('file', file)
+  if (name) formData.append('name', name)
+  return request('/gpx/share', { method: 'POST', body: formData })
+}
+
+/** The GPX behind a share link, as a File so it can be analysed like an upload. */
+export async function fetchSharedGpxFile(shareId, name) {
+  const response = await fetch(`${API_BASE_URL}/gpx/shared/${encodeURIComponent(shareId)}`)
+  if (response.status === 404) throw new Error('This shared course is no longer available.')
+  if (!response.ok) throw new Error(`Could not load the shared course (HTTP ${response.status}).`)
+  const text = await response.text()
+  return new File([text], `${name || shareId}.gpx`, { type: 'application/gpx+xml' })
+}
+
 export function getRace(raceId) {
   return request(`/races/${encodeURIComponent(raceId)}`)
 }

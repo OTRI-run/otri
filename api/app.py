@@ -21,6 +21,7 @@ import os
 from dataclasses import asdict
 from hashlib import sha256
 from datetime import datetime, timezone
+import re
 import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -64,6 +65,7 @@ from .auth import (
 from .email import send_password_reset_email, send_verification_email
 from .rate_limit import enforce_rate_limit
 from .schemas import (
+    SharedCourseOut,
     EmailVerificationRequest,
     EventCreate,
     EventDetail,
@@ -652,3 +654,61 @@ async def analyze_gpx(file: UploadFile, finish_time_seconds: int | None = Form(d
             raise HTTPException(status_code=422, detail=str(error)) from error
 
     return GpxAnalysis(features=features.to_dict(), estimate=estimate, measurement={**measurement.to_dict(), "raw_sha256": sha256(contents).hexdigest()})
+
+
+# ----------------------------------------------------------------------------- shared courses
+# A calculator share link needs the course file to still exist when someone opens the link.
+# Verified races are referenced by race id; an uploaded GPX is stored here only when the user
+# explicitly clicks "Share", under an id derived from its content (the same file shares one id).
+_SHARED_COURSE_DIR = Path(__file__).resolve().parents[1] / "data" / "cache" / "shared-courses"
+_SHARE_ID_RE = re.compile(r"^[0-9a-f]{16}$")
+
+
+def _shared_course_path(share_id: str) -> Path:
+    return _SHARED_COURSE_DIR / f"{share_id}.gpx"
+
+
+@app.post("/gpx/share", response_model=SharedCourseOut)
+async def share_gpx(file: UploadFile, name: str | None = Form(default=None)) -> SharedCourseOut:
+    """Store an uploaded GPX so a calculator link can reopen it. The uploader consents by sharing."""
+    contents = await file.read(20_000_001)
+    if len(contents) > 20_000_000:
+        raise HTTPException(status_code=413, detail="Upload exceeds 20 MB")
+    try:
+        points = parse_track_points(contents.decode("utf-8"))
+    except (GpxParseError, ValueError, UnicodeError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    if len(points) < 2:
+        raise HTTPException(status_code=422, detail="The GPX has fewer than two track points")
+
+    share_id = sha256(contents).hexdigest()[:16]
+    path = _shared_course_path(share_id)
+    created = not path.exists()
+    if created:
+        _SHARED_COURSE_DIR.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(contents)
+        clean_name = (name or Path(file.filename or "").stem or "").strip()[:120] or None
+        path.with_suffix(".json").write_text(
+            json.dumps({"name": clean_name, "filename": file.filename, "created_at": datetime.now(timezone.utc).isoformat()}),
+            encoding="utf-8",
+        )
+    meta = _shared_course_meta(share_id)
+    return SharedCourseOut(share_id=share_id, name=meta.get("name"), created=created)
+
+
+def _shared_course_meta(share_id: str) -> dict:
+    try:
+        return json.loads(_shared_course_path(share_id).with_suffix(".json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+@app.get("/gpx/shared/{share_id}")
+def get_shared_gpx(share_id: str) -> Response:
+    """The GPX behind a share link, exactly as uploaded."""
+    if not _SHARE_ID_RE.match(share_id):
+        raise HTTPException(status_code=404, detail="No shared course with that id")
+    path = _shared_course_path(share_id)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="No shared course with that id")
+    return Response(content=path.read_bytes(), media_type="application/gpx+xml")

@@ -657,3 +657,38 @@ def test_analyze_gpx_reuses_the_cached_measurement_for_the_same_file(tmp_path, m
     assert calls == [], "second analysis of the same file must not re-measure the course"
     assert second.json()["measurement"]["profile_hash"] == first.json()["measurement"]["profile_hash"]
     assert second.json()["estimate"]["predicted_score"] != first.json()["estimate"]["predicted_score"]
+
+
+def test_share_gpx_stores_the_file_under_a_content_id_and_serves_it_back(tmp_path, monkeypatch):
+    """A calculator share link must reopen the exact file; the same file always gets the same id."""
+    import importlib
+    api_module = importlib.import_module("api.app")
+    monkeypatch.setattr(api_module, "_SHARED_COURSE_DIR", tmp_path / "shared")
+    with FLAT_LOOP_GPX.open("rb") as handle:
+        first = client.post("/gpx/share", files={"file": ("flat-loop.gpx", handle, "application/gpx+xml")}, data={"name": "Flat loop"})
+    assert first.status_code == 200
+    body = first.json()
+    assert len(body["share_id"]) == 16 and body["created"] is True and body["name"] == "Flat loop"
+
+    with FLAT_LOOP_GPX.open("rb") as handle:
+        again = client.post("/gpx/share", files={"file": ("renamed.gpx", handle, "application/gpx+xml")})
+    assert again.json()["share_id"] == body["share_id"]
+    assert again.json()["created"] is False
+    assert again.json()["name"] == "Flat loop", "the first uploader's name is kept"
+
+    served = client.get(f"/gpx/shared/{body['share_id']}")
+    assert served.status_code == 200
+    assert served.content == FLAT_LOOP_GPX.read_bytes()
+    assert served.headers["content-type"].startswith("application/gpx+xml")
+
+
+def test_share_gpx_rejects_invalid_files_and_unknown_ids(tmp_path, monkeypatch):
+    import importlib
+    api_module = importlib.import_module("api.app")
+    monkeypatch.setattr(api_module, "_SHARED_COURSE_DIR", tmp_path / "shared")
+    response = client.post("/gpx/share", files={"file": ("bad.gpx", b"<not gpx>", "application/gpx+xml")})
+    assert response.status_code == 422
+    assert not (tmp_path / "shared").exists()
+    assert client.get("/gpx/shared/0123456789abcdef").status_code == 404
+    assert client.get("/gpx/shared/../../etc/passwd").status_code == 404
+    assert client.get("/gpx/shared/not-hex!").status_code == 404
