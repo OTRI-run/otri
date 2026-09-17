@@ -482,7 +482,7 @@ def test_analyze_gpx_returns_features():
     body = response.json()
     assert body["features"]["elevation_gain_m"] == 0.0
     assert body["estimate"] is None
-    assert body['measurement']['version'] == 'course-measurement-v1'
+    assert body['measurement']['version'] == 'course-measurement-v2'
     assert body['measurement']['profile'][-1]['distanceKm'] == pytest.approx(body['features']['distance_km'], abs=.0005)
     assert body['measurement']['source']['dataset'] == 'uploaded-gpx'
     assert len(body['measurement']['raw_sha256']) == 64
@@ -494,7 +494,7 @@ def test_attached_measurement_is_persisted_and_totals_cannot_diverge(monkeypatch
     with FLAT_LOOP_GPX.open('rb') as handle:
         attached = client.post(f'/races/{race_id}/gpx', files={'file': ('flat.gpx', handle, 'application/gpx+xml')}, headers=headers)
     assert attached.status_code == 200
-    assert attached.json()['measurement_version'] == 'course-measurement-v1'
+    assert attached.json()['measurement_version'] == 'course-measurement-v2'
     saved = client.get(f'/races/{race_id}/measurement')
     assert saved.status_code == 200
     assert 'snapshot' not in saved.json()
@@ -502,7 +502,7 @@ def test_attached_measurement_is_persisted_and_totals_cannot_diverge(monkeypatch
     assert client.patch(f'/races/{race_id}', json={'elevation_gain_m': 999}, headers=headers).status_code == 422
     def unavailable_provider():
         raise AssertionError('saved measurement must not request current terrain')
-    monkeypatch.setattr('scoring.measured_demand.configured_provider', unavailable_provider)
+    monkeypatch.setattr('course.elevation.configured_provider', unavailable_provider)
     csv = 'Ranking,Time,Family name,First Name,Gender\n1,01:00:00,Runner,Test,M\n'
     submitted = client.post(f'/races/{race_id}/results', files={'file': ('results.csv', csv.encode(), 'text/csv')}, headers=headers)
     assert submitted.status_code == 200
