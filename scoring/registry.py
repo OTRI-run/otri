@@ -22,6 +22,7 @@ from .course_standard import (
     ENDURANCE_REFERENCED_CURVE,
     MEASURED_CURVE,
     OFFICIAL_CURVE,
+    POWER_CURVE,
     SMOOTHED_UPPER_CURVE,
     SPEC_CURVE,
     TERRAIN_ADJUSTED_CURVE,
@@ -39,7 +40,8 @@ ENDURANCE_REFERENCED_VERSION = ENDURANCE_REFERENCED_CURVE.version
 TERRAIN_ADJUSTED_VERSION = TERRAIN_ADJUSTED_CURVE.version
 SMOOTHED_UPPER_VERSION = SMOOTHED_UPPER_CURVE.version
 DEM_GATED_VERSION = DEM_GATED_CURVE.version
-DEFAULT_SCORING_VERSION = DEM_GATED_CURVE.version
+POWER_VERSION = POWER_CURVE.version
+DEFAULT_SCORING_VERSION = POWER_CURVE.version
 
 
 @dataclass(frozen=True)
@@ -51,6 +53,18 @@ class ScoringModelInfo:
 
 
 _MODEL_INFO: dict[str, ScoringModelInfo] = {
+    POWER_VERSION: ScoringModelInfo(
+        version=POWER_VERSION,
+        name='Course Standard V0.8 (power curve)',
+        description=(
+            "V0.7's measurement, terrain adjustment, endurance reference and confidence gating, with "
+            'the score curve reduced to one power law: score = 1000 x (fraction of the human-ceiling '
+            'rate) ** 0.85. Retires the last V0.1 demo anchors; the top of the scale is unchanged and '
+            'everything below it is lower, more so further down '
+            '(see docs/methodology/v0.8/OTRI-POWER-CURVE.md).'
+        ),
+        uses_competitors=False,
+    ),
     DEM_GATED_VERSION: ScoringModelInfo(
         version=DEM_GATED_VERSION,
         name='Course Standard V0.7 (DEM-gated measurement)',
@@ -174,6 +188,10 @@ def score_race(
     measurement=None,
 ) -> list[RunnerScore]:
     """Score a race with the selected model version."""
+    if model_version == POWER_VERSION:
+        return score_race_course_standard(
+            race, results, gpx_points=gpx_points, curve=POWER_CURVE, measurement=measurement
+        )
     if model_version == DEM_GATED_VERSION:
         return score_race_course_standard(
             race, results, gpx_points=gpx_points, curve=DEM_GATED_CURVE, measurement=measurement

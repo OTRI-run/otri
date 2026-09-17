@@ -1,6 +1,6 @@
 # OTRI DEM-Gated Measurement — V0.7
 
-**Status:** Current default scoring model
+**Status:** Measurement and gating still current; scored through [V0.8](../v0.8/OTRI-POWER-CURVE.md), which changes only the curve — V0.7 remains selectable and reproducible
 **Model identifier:** `0.7.0-course-standard-dem-gated` · **Processing version:** `course-measurement-v2`
 **Extends:** [`../v0.6/OTRI-SMOOTHED-UPPER-CURVE.md`](../v0.6/OTRI-SMOOTHED-UPPER-CURVE.md) — the score curve, terrain adjustment and endurance reference are V0.6's, unchanged. V0.7 changes **how the course is measured** and **what the score is allowed to claim**.
 **Depends on:** [`../v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md`](../v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md) §21 (versioning), [`../REAL-WORLD-COURSE-MEASUREMENT-SPEC.md`](../REAL-WORLD-COURSE-MEASUREMENT-SPEC.md) (terrain providers)

@@ -12,8 +12,8 @@ from course.gpx import TrackPoint
 
 from .course_demand import compute_course_demand, equivalent_flat_distance_from_totals
 from .course_standard import (
-    DEM_GATED_CURVE,
     MEASURED_DEMAND_VERSIONS,
+    POWER_CURVE,
     ScoreCurve,
     adjusted_demand,
     confidence_for,
@@ -137,7 +137,7 @@ def estimate_score(
     gpx_points: list[TrackPoint] | None = None,
     distance_km: float | None = None,
     elevation_gain_m: float | None = None,
-    curve: ScoreCurve = DEM_GATED_CURVE,
+    curve: ScoreCurve = POWER_CURVE,
     measurement=None,
 ) -> ScoreEstimate:
     """Predict the Course Standard score for `finish_time_seconds` on this course.

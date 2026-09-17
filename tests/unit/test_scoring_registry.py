@@ -14,6 +14,7 @@ from scoring import (
     COURSE_STANDARD_VERSION,
     DURATION_SCALED_VERSION,
     ENDURANCE_REFERENCED_VERSION,
+    DEM_GATED_VERSION,
     SMOOTHED_UPPER_VERSION,
     TERRAIN_ADJUSTED_VERSION,
     FIELD_RELATIVE_VERSION,
@@ -49,6 +50,7 @@ def test_available_scoring_models_includes_all_models():
     versions = {model.version for model in available_scoring_models()}
     assert versions == {
         DEFAULT_SCORING_VERSION,
+        DEM_GATED_VERSION,
         SMOOTHED_UPPER_VERSION,
         TERRAIN_ADJUSTED_VERSION,
         ENDURANCE_REFERENCED_VERSION,

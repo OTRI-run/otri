@@ -46,6 +46,9 @@ class ScoreCurve:
     # What the gradient integral alone does not price (steep mountain terrain, altitude).
     # `None` means course demand is used exactly as the integral produced it.
     terrain_adjustment: "TerrainModel | None" = None
+    # `curve_type == "power"` only: score = 1000 * (Q / q_1000) ** power_exponent. One published
+    # constant, no anchor table (V0.8).
+    power_exponent: float = 1.0
 
     @property
     def is_curved(self) -> bool:
@@ -96,6 +99,8 @@ class ScoreCurve:
             raise ValueError(f"score must be between {SCALE_MIN} and {SCALE_MAX}")
         if self.curve_type == "piecewise_power":
             return self._piecewise_required_q(score)
+        if self.curve_type == "power":
+            return self.q_1000 * (score / SCALE_MAX) ** (1.0 / self.power_exponent)
         return self.q_500 * math.exp((score - 500.0) / self.k)
 
     def raw_score(self, q: float) -> float:
@@ -104,6 +109,8 @@ class ScoreCurve:
             raise ValueError("performance rate must be positive and finite")
         if self.curve_type == "piecewise_power":
             return self._piecewise_raw_score(q)
+        if self.curve_type == "power":
+            return SCALE_MAX * (q / self.q_1000) ** self.power_exponent
         return 500.0 + self.k * math.log(q / self.q_500)
 
 
@@ -345,6 +352,25 @@ SMOOTHED_UPPER_CURVE = replace(
 # docs/methodology/v0.7/OTRI-DEM-GATED-MEASUREMENT.md.
 DEM_GATED_CURVE = replace(SMOOTHED_UPPER_CURVE, version='0.7.0-course-standard-dem-gated')
 
+# Above 544, V0.6/V0.7 were already exactly score = 1000 * f**0.692 with f the runner's fraction
+# of the human-ceiling rate; an exponent below 1 is concave and flatters the middle of the field
+# (53% of the ceiling scored 64% of the scale). V0.8 makes the whole scale one power law with a
+# single published exponent and retires the last two V0.1 demo anchors (349, 544). The top of the
+# scale stays where it is - world bests 949-1000, the 100-mile mountain winner 958 - and every
+# score below it drops, more so further down (a runner at 53% of the ceiling: 643 -> 581; at 22%:
+# 371 -> 274). 0.85 is a judgement between "score is your percentage of world best" (1.0) and the
+# old curve, not a fitted or externally referenced value.
+# See docs/methodology/v0.8/OTRI-POWER-CURVE.md.
+POWER_EXPONENT = 0.85
+POWER_CURVE = replace(
+    DEM_GATED_CURVE,
+    version='0.8.0-course-standard-power',
+    curve_type='power',
+    power_exponent=POWER_EXPONENT,
+    anchor_scores=(),
+    anchor_qs=(),
+)
+
 # Curves scored from the V0.2 measured-demand pipeline rather than the raw V0.1 integral.
 MEASURED_DEMAND_VERSIONS = frozenset(
     {
@@ -354,6 +380,7 @@ MEASURED_DEMAND_VERSIONS = frozenset(
         TERRAIN_ADJUSTED_CURVE.version,
         SMOOTHED_UPPER_CURVE.version,
         DEM_GATED_CURVE.version,
+        POWER_CURVE.version,
     }
 )
 
@@ -383,7 +410,7 @@ def confidence_for(measurement, curve: ScoreCurve, has_gpx: bool) -> tuple[str, 
     `needs_review` for an organizer's attention and still `High` here - review and
     reproducibility are different questions.
     """
-    if curve.version != DEM_GATED_CURVE.version or measurement is None:
+    if curve.version not in (DEM_GATED_CURVE.version, POWER_CURVE.version) or measurement is None:
         return _confidence_for_course(has_gpx), ()
     reasons = []
     if not measurement.dem_sourced:

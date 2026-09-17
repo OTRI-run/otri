@@ -72,6 +72,7 @@ def test_list_scoring_models_includes_all_options():
     assert response.status_code == 200
     versions = {model["version"] for model in response.json()}
     assert versions == {
+        "0.8.0-course-standard-power",
         "0.7.0-course-standard-dem-gated",
         "0.6.0-course-standard-smoothed-upper",
         "0.5.0-course-standard-terrain-adjusted",
@@ -89,7 +90,7 @@ def test_new_race_defaults_to_course_standard_scoring():
     headers = _organizer_auth_headers()
     _, race_id = _create_event_and_race(headers)
     response = client.get(f"/races/{race_id}")
-    assert response.json()["scoring_version"] == "0.7.0-course-standard-dem-gated"
+    assert response.json()["scoring_version"] == "0.8.0-course-standard-power"
 
 
 def test_race_can_be_created_with_explicit_scoring_version():
@@ -534,7 +535,7 @@ def test_analyze_gpx_with_finish_time_returns_predicted_score():
     assert estimate is not None
     assert "predicted_score" in estimate
     assert estimate["predicted_score"] < 1000
-    assert estimate["scoring_version"] == "0.7.0-course-standard-dem-gated"
+    assert estimate["scoring_version"] == "0.8.0-course-standard-power"
     # The explanation the prototype renders comes from the API, not from client-side maths.
     # No DEM manifest in the test environment, so V0.7 must say Low and say why.
     assert estimate["confidence"] == "Low"

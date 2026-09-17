@@ -16,6 +16,7 @@ const ANCHOR_1000_LEGACY = { score: 1000, q: 17.93986234619293 }
 const ANCHOR_1000 = { score: 1000, q: 21.5331347785071 }
 
 function publishedAnchorsFor(scoringVersion) {
+  if (scoringVersion.includes('-power')) return []  // V0.8: one power law, no anchor table
   if (scoringVersion.includes('smoothed-upper') || scoringVersion.includes('dem-gated')) {
     return [ANCHOR_0, ANCHOR_349, ANCHOR_544, ANCHOR_1000]
   }
@@ -224,7 +225,10 @@ rate(D)  = world-best rate at D  (b = ${b.riegel_exponent})  = ${b.reference_rat
 factor   = rate(D_ref) / rate(D)               = ${b.reference_factor}
 Q_lookup = Q × factor                          = ${b.lookup_rate} demand-km/h`
   : ''}
-{`
+{estimate.scoring_version?.includes('-power')
+  ? `
+score    = 1000 × (Q_lookup / Q_1000)^0.85     = ${estimate.otri_raw}  →  ${estimate.predicted_score}`
+  : `
 score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${estimate.predicted_score}`}
             </pre>
           )}
@@ -242,23 +246,33 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
             <Stat label="Score version" value={estimate.scoring_version} />
           </dl>
 
-          <p className="mt-4 font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">
-            Published anchor table{scaledVersion ? ' (Q_lookup → score, at the reference course size)' : ''}
-          </p>
-          <table className="mt-1 w-full text-left text-xs">
-            <tbody>
-              {publishedAnchors.map((anchor) => (
-                <tr key={anchor.score}>
-                  <td className="py-0.5 pr-4 font-mono">{anchor.score}</td>
-                  <td className="py-0.5 font-mono">{anchor.q.toFixed(3)} demand-km/h</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="mt-1 text-[11px] text-slate-500">
-            Piecewise power law between anchors; one exponent from 544 to 1000. "demand-km" is a kilometre of flat
-            road at Minetti's metabolic cost — the unit called "flat km" above.
-          </p>
+          {publishedAnchors.length > 0 ? (
+            <>
+              <p className="mt-4 font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">
+                Published anchor table{scaledVersion ? ' (Q_lookup → score, at the reference course size)' : ''}
+              </p>
+              <table className="mt-1 w-full text-left text-xs">
+                <tbody>
+                  {publishedAnchors.map((anchor) => (
+                    <tr key={anchor.score}>
+                      <td className="py-0.5 pr-4 font-mono">{anchor.score}</td>
+                      <td className="py-0.5 font-mono">{anchor.q.toFixed(3)} demand-km/h</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="mt-1 text-[11px] text-slate-500">
+                Piecewise power law between anchors; one exponent from 544 to 1000. "demand-km" is a kilometre of flat
+                road at Minetti's metabolic cost — the unit called "flat km" above.
+              </p>
+            </>
+          ) : (
+            <p className="mt-4 text-[11px] text-slate-500">
+              One published curve, no anchor table: score = 1000 × (fraction of the human-ceiling rate)^0.85, with
+              Q_1000 = {ANCHOR_1000.q.toFixed(3)} demand-km/h at the reference course size. "demand-km" is a kilometre
+              of flat road at Minetti's metabolic cost — the unit called "flat km" above.
+            </p>
+          )}
 
           {estimate.quality_flags?.length > 0 && (
             <>
@@ -272,7 +286,8 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
           )}
 
           <p className="mt-4 text-[11px] text-slate-500">
-            Methodology: <code>docs/methodology/v0.7/OTRI-DEM-GATED-MEASUREMENT.md</code> (measurement & confidence),{' '}
+            Methodology: <code>docs/methodology/v0.8/OTRI-POWER-CURVE.md</code> (curve),{' '}
+            <code>v0.7/OTRI-DEM-GATED-MEASUREMENT.md</code> (measurement & confidence),{' '}
             <code>v0.6/OTRI-SMOOTHED-UPPER-CURVE.md</code> (curve),{' '}
             <code>v0.5/OTRI-TERRAIN-ADJUSTED-DEMAND.md</code> (terrain),{' '}
             <code>v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md</code> (human ceiling),{' '}
@@ -446,6 +461,7 @@ export default function ScoreCalculator() {
     scoringVersion.includes('terrain-adjusted') ||
     scoringVersion.includes('smoothed-upper') ||
     scoringVersion.includes('dem-gated') ||
+    scoringVersion.includes('-power') ||
     scoringVersion.includes('duration-scaled')
   const publishedAnchors = publishedAnchorsFor(scoringVersion)
 
