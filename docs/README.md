@@ -10,7 +10,7 @@ This directory contains technical, methodology, data, governance, product UX, re
 - `product/pre-race-score-calculator.md` — detailed runner pre-race score calculator and analysis experience
 - `methodology/` — scoring and statistical research
 - `methodology/overall-runner-index.md` — proposed rolling overall OTRI Index and rules for which race scores count
-- `research/itra-utmb-product-research.md` — current public research on ITRA and UTMB organizer/index workflows, and how OTRI should adapt the useful patterns independently
+- `research/platform-product-patterns.md` — research on organizer, race, scoring, and index product patterns and how OTRI should adapt useful patterns independently
 - `architecture/` — system and repository architecture
 - `data/` — schemas, provenance, validation, and data lifecycle
 - `governance/` — project governance and decision records
