@@ -1,43 +1,105 @@
 import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import { ArrowUpRight, Mail } from 'lucide-react'
 import '../../src/styles.css'
+import Logo from '../../src/components/Logo'
 import UnitsMenu from '../../src/components/UnitsMenu'
 import { CheckEmail, Forgot, Login, Register, Reset, Verify, Welcome } from './pages/Auth'
 import { Dashboard, EventPage, NewEvent } from './pages/Events'
 import { CourseStep, NewRace, ResultsStep, ReviewStep } from './pages/Race'
 import { Link, match, navigate, useRoute } from './router'
 import { clearSession, readSession, writeSession } from './session'
+import { Button, CONTAINER } from './ui'
+
+const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 
 function Header({ session, onSignOut }) {
   return (
-    <header className="sticky top-0 z-50 h-[64px] border-b border-slate-200/90 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex h-full w-[min(1120px,calc(100%-28px))] items-center gap-4">
-        <a href="../../" className="text-[15px] font-bold tracking-[-.02em] text-[#0b1220] no-underline">
-          OTRI
-        </a>
-        <Link to="/" className="font-mono text-[10px] tracking-[.08em] text-slate-500 no-underline">
-          FOR ORGANIZERS
-        </Link>
-        <div className="ml-auto flex items-center gap-4 text-sm">
-          <UnitsMenu />
-          {session ? (
-            <>
-              <Link to="/events" className="font-semibold text-[#0b1220] no-underline">
-                Events
+    <>
+      <header className="sticky top-0 z-50 h-[68px] border-b border-slate-200/90 bg-white/95 backdrop-blur">
+        <div className={`${CONTAINER} flex h-full min-w-0 items-center`}>
+          <Logo href="../#home" />
+          <Link
+            to="/"
+            className="ml-6 hidden shrink-0 items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 font-mono text-[9px] font-medium tracking-[.08em] text-blue-600 no-underline sm:flex"
+          >
+            <i className="h-1.5 w-1.5 rounded-full bg-blue-600 shadow-[0_0_0_3px_#dbeafe]" />
+            FOR ORGANIZERS
+          </Link>
+          <nav className="ml-auto hidden shrink-0 items-center gap-7 md:flex">
+            <a href="../#calculator" className="text-[13px] font-medium text-slate-500 no-underline hover:text-slate-950">
+              Calculate score
+            </a>
+            <a href="../#races" className="text-[13px] font-medium text-slate-500 no-underline hover:text-slate-950">
+              Races
+            </a>
+            {session && (
+              <Link to="/events" className="text-[13px] font-semibold text-[#0b1220] no-underline">
+                Your events
               </Link>
-              <span className="hidden text-xs text-slate-500 sm:inline">{session.email}</span>
-              <button onClick={onSignOut} className="text-xs font-semibold text-blue-600">
+            )}
+            <a className="flex items-center gap-1 text-[13px] font-semibold text-[#0b1220] no-underline" href={GITHUB_URL}>
+              GitHub <ArrowUpRight size={14} />
+            </a>
+            <UnitsMenu />
+            {session ? (
+              <button onClick={onSignOut} className="text-[13px] font-medium text-slate-500 hover:text-slate-950" title={session.email}>
                 Sign out
               </button>
-            </>
-          ) : (
-            <Link to="/login" className="font-semibold text-blue-600 no-underline">
-              Sign in
+            ) : (
+              <Link to="/login" className="inline-flex min-h-9 items-center rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white no-underline hover:bg-blue-700">
+                Sign in
+              </Link>
+            )}
+          </nav>
+          <div className="ml-auto flex items-center gap-2 md:hidden">
+            {session ? (
+              <button onClick={onSignOut} className="text-xs font-semibold text-slate-500">
+                Sign out
+              </button>
+            ) : (
+              <Link to="/login" className="inline-flex min-h-9 items-center rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white no-underline">
+                Sign in
+              </Link>
+            )}
+          </div>
+        </div>
+      </header>
+      {/* Small screens: section links in their own row. */}
+      <div className="border-b border-slate-200 bg-white md:hidden">
+        <div className={`${CONTAINER} flex items-center gap-5`}>
+          <a href="../#calculator" className="py-3 text-[13px] font-medium text-slate-500 no-underline">
+            Calculate score
+          </a>
+          <a href="../#races" className="py-3 text-[13px] font-medium text-slate-500 no-underline">
+            Races
+          </a>
+          {session && (
+            <Link to="/events" className="py-3 text-[13px] font-semibold text-[#0b1220] no-underline">
+              Your events
             </Link>
           )}
+          <div className="ml-auto py-1.5">
+            <UnitsMenu />
+          </div>
         </div>
       </div>
-    </header>
+    </>
+  )
+}
+
+function Footer() {
+  return (
+    <footer className="border-t border-slate-200 bg-white py-6">
+      <div className={`${CONTAINER} flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center`}>
+        <Logo href="../#home" />
+        <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">
+          <Mail size={14} />
+          hello@otri.run
+        </a>
+        <span className="font-mono text-[8px] tracking-[.08em] text-slate-500">OPEN · TRANSPARENT · REPRODUCIBLE · INDEPENDENT</span>
+      </div>
+    </footer>
   )
 }
 
@@ -86,27 +148,25 @@ function App() {
   else if (!needsAuth) page = <NotFound />
 
   return (
-    <div className="min-h-screen bg-[#f7f9fc] text-[#0b1220]">
+    <div id="top" className="flex min-h-screen max-w-full flex-col overflow-x-clip bg-[#f7f9fc] text-[#0b1220]">
       <Header session={session} onSignOut={signOut} />
-      <main>{page}</main>
-      <footer className="mx-auto w-[min(1120px,calc(100%-28px))] py-10 text-xs text-slate-400">
-        OTRI · scores depend only on the course and each finisher's own time ·{' '}
-        <a className="underline" href="https://github.com/OTRI-run/otri/blob/main/docs/methodology/HOW-OTRI-SCORES.md" target="_blank" rel="noreferrer">
-          how it works
-        </a>
-      </footer>
+      <main className="flex-1">{page}</main>
+      <Footer />
     </div>
   )
 }
 
 function NotFound() {
   return (
-    <div className="mx-auto w-[min(760px,calc(100%-28px))] py-16">
-      <h1 className="text-2xl font-bold text-[#0b1220]">Page not found</h1>
-      <p className="mt-2 text-sm text-slate-500">
-        <Link to="/" className="font-semibold text-blue-600">Back to the start</Link>
-      </p>
-    </div>
+    <section className="py-16">
+      <div className={CONTAINER}>
+        <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">404</p>
+        <h1 className="mt-3 text-[clamp(32px,4.5vw,52px)] font-bold leading-[.98] tracking-[-.05em] text-[#0b1220]">Page not found.</h1>
+        <div className="mt-6">
+          <Button onClick={() => navigate('/')}>Back to the start</Button>
+        </div>
+      </div>
+    </section>
   )
 }
 

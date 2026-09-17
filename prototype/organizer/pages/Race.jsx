@@ -14,7 +14,8 @@ import {
   submitRaceResults,
 } from '../../apiClient'
 import { Link, navigate } from '../router'
-import { Button, Card, ChecklistRow, Field, Notice, Page, StatusChip, Stepper, formatDate, inputClass, raceStatus } from '../ui'
+import { ArrowRight } from 'lucide-react'
+import { Button, Card, ChecklistRow, Dropzone, Eyebrow, Field, Gradient, Notice, Page, StatusChip, Stepper, formatDate, inputClass, raceStatus } from '../ui'
 
 function raceSteps(raceId) {
   const base = `/races/${encodeURIComponent(raceId)}`
@@ -26,13 +27,19 @@ function raceSteps(raceId) {
   ]
 }
 
+const STEP_EYEBROW = ['STEP 3 OF 5 · RACE', 'STEP 4 OF 5 · COURSE', 'STEP 5 OF 5 · RESULTS', 'REVIEW']
+
 function RaceShell({ race, step, children }) {
   return (
-    <Page wide back={{ to: `/events/${encodeURIComponent(race.event_id)}`, label: race.event_name }} eyebrow={`${race.event_name} · ${formatDate(race.event_date)}`} title={race.course_name}>
-      <div className="mt-4">
+    <Page
+      back={{ to: `/events/${encodeURIComponent(race.event_id)}`, label: race.event_name }}
+      eyebrow={`${STEP_EYEBROW[step]} · ${race.event_name.toUpperCase()} · ${formatDate(race.event_date).toUpperCase()}`}
+      title={race.course_name}
+    >
+      <div className="mt-8">
         <Stepper steps={raceSteps(race.race_id)} current={step} />
       </div>
-      <div className="mt-6">{children}</div>
+      <div className="mt-8">{children}</div>
     </Page>
   )
 }
@@ -80,8 +87,19 @@ export function NewRace({ session, eventId }) {
   }
 
   return (
-    <Page back={{ to: `/events/${encodeURIComponent(eventId)}`, label: 'Event' }} eyebrow="STEP 3 OF 5" title="Add a race" intro="One race per distance. Enter your official figures now; OTRI will measure the course from the GPX in the next step and show you how they compare.">
-      <Card className="mt-6 max-w-[560px]">
+    <Page
+      back={{ to: `/events/${encodeURIComponent(eventId)}`, label: 'Event' }}
+      eyebrow="STEP 3 OF 5 · RACE"
+      headline={
+        <>
+          Add a
+          <br />
+          <Gradient>race distance.</Gradient>
+        </>
+      }
+      intro="One race per distance. Enter your official figures now; OTRI measures the course from the GPX in the next step and shows you how they compare."
+      aside={
+      <Card>
         <form onSubmit={submit} className="grid gap-4" noValidate>
           <Field label="Race name" htmlFor="rc-name" hint="How this distance is listed — “50K”, “100 mile”, “Vertical”.">
             <input id="rc-name" required value={form.course_name} onChange={(e) => setForm((f) => ({ ...f, course_name: e.target.value }))} className={inputClass} placeholder="50K" />
@@ -100,9 +118,9 @@ export function NewRace({ session, eventId }) {
             <p className="mt-1">Scores depend only on the course and each finisher's own time — never on who else raced.</p>
           </div>
           {error && <Notice kind="error">{error}</Notice>}
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Button type="submit" busy={busy} disabled={!form.course_name.trim() || !form.distance_km || form.elevation_gain_m === ''}>
-              Save and add the course
+              Save and add the course <ArrowRight size={15} />
             </Button>
             <Button type="button" variant="secondary" onClick={() => navigate(`/events/${encodeURIComponent(eventId)}`)}>
               Cancel
@@ -110,7 +128,8 @@ export function NewRace({ session, eventId }) {
           </div>
         </form>
       </Card>
-    </Page>
+      }
+    />
   )
 }
 
@@ -134,7 +153,7 @@ function CourseFacts({ measurement, features, entered }) {
         {[
           ['Measured distance', formatDistance(features.distance_km, units), entered.distance_km ? `you entered ${formatDistance(entered.distance_km, units)}` : null, dDist],
           ['Measured climb', formatElevation(features.elevation_gain_m, units, { sign: '+' }), entered.elevation_gain_m ? `you entered ${formatElevation(entered.elevation_gain_m, units, { sign: '+' })}` : null, dGain],
-          ['Descent', `-${Math.round(features.elevation_loss_m)} m`, null, null],
+          ['Descent', features.elevation_loss_m != null ? formatElevation(features.elevation_loss_m, units, { sign: '-' }) : '—', null, null],
           ['Elevation source', dem ? 'Terrain model' : 'Your GPX file', dem ? measurement.source.dataset : 'not independently verified', null],
         ].map(([label, value, sub, delta]) => (
           <div key={label} className="rounded-lg bg-slate-50 px-3 py-2">
@@ -238,14 +257,16 @@ export function CourseStep({ session, raceId }) {
           <Card>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">COURSE ON FILE</p>
+                <Eyebrow>COURSE ON FILE</Eyebrow>
                 <p className="mt-1 text-sm text-slate-600">
                   {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })} · measurement{' '}
                   {race.measurement_version ?? '—'}
                   {race.measurement_status === 'needs_review' ? ' · flagged for review' : ''}
                 </p>
               </div>
-              <Button onClick={() => navigate(`/races/${encodeURIComponent(race.race_id)}/results`)}>Continue to results</Button>
+              <Button onClick={() => navigate(`/races/${encodeURIComponent(race.race_id)}/results`)}>
+                Continue to results <ArrowRight size={15} />
+              </Button>
             </div>
             {existing?.gpxText && <CourseMap gpxText={existing.gpxText} measurement={existing.measurement} className="mt-4" />}
             {existing?.measurement?.quality_flags?.includes('sparse_geometry_median_over_30m') && (
@@ -259,33 +280,35 @@ export function CourseStep({ session, raceId }) {
         )}
 
         <Card>
-          <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">{race.has_gpx ? 'REPLACE THE COURSE' : 'UPLOAD THE COURSE'}</p>
+          <Eyebrow>{race.has_gpx ? 'REPLACE THE COURSE' : 'UPLOAD THE COURSE'}</Eyebrow>
           <p className="mt-1 text-sm text-slate-600">
             Upload the official route as a GPX. OTRI measures it — every 10 m, elevation from verified terrain data where available — and shows how it compares with the figures you entered before anything is saved.
           </p>
-          <label htmlFor="course-file" className="mt-4 flex cursor-pointer items-center justify-between gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm hover:border-blue-400 hover:bg-blue-50/40">
-            <span className="text-slate-600">{file ? file.name : 'Drop or click to choose a .gpx file'}</span>
-            <span className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white">Browse</span>
-            <input id="course-file" type="file" accept=".gpx" onChange={chooseFile} className="hidden" />
-          </label>
-          {busy === 'analyzing' && (
-            <p className="mt-3 flex items-center gap-2 text-sm text-slate-500">
-              <span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600" /> Measuring the course… long courses take a few seconds.
-            </p>
-          )}
+          <div className="mt-4">
+            <Dropzone
+              id="course-file"
+              accept=".gpx"
+              onChange={chooseFile}
+              busy={busy === 'analyzing'}
+              busyLabel="Measuring the course… long courses take a few seconds."
+              label="Drop a .gpx file here, or browse"
+              hint="A point at least every 30 m gives a trustworthy measurement. Nothing is saved until you confirm."
+              fileName={file?.name}
+            />
+          </div>
           {error && <div className="mt-3"><Notice kind="error">{error}</Notice></div>}
         </Card>
 
         {analysis && (
           <Card>
-            <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">MEASURED COURSE</p>
+            <Eyebrow>MEASURED COURSE</Eyebrow>
             <CourseMap gpxText={gpxText} measurement={analysis.measurement} className="mt-3" />
             <div className="mt-4">
               <CourseFacts measurement={analysis.measurement} features={analysis.features} entered={entered} />
             </div>
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <Button busy={busy === 'attaching'} onClick={useCourse}>
-                Use this course
+                Use this course <ArrowRight size={15} />
               </Button>
               <Button variant="secondary" onClick={() => { setAnalysis(null); setFile(null) }}>
                 Choose another file
@@ -332,7 +355,7 @@ function IssueList({ issues, kind }) {
 export function ScoresTable({ rows, limit, compact = false }) {
   const shown = limit ? rows.slice(0, limit) : rows
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-200">
+    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
       <table className={`w-full text-left text-sm ${compact ? '' : 'min-w-[480px]'}`}>
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
@@ -399,16 +422,18 @@ export function ResultsStep({ session, raceId }) {
           <Card>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">RESULTS ON FILE</p>
+                <Eyebrow>RESULTS ON FILE</Eyebrow>
                 <p className="mt-1 text-sm text-slate-600">{existing.length} finishers scored. Uploading a new file replaces them.</p>
               </div>
-              <Button onClick={() => navigate(`/races/${encodeURIComponent(raceId)}/review`)}>Continue to review</Button>
+              <Button onClick={() => navigate(`/races/${encodeURIComponent(raceId)}/review`)}>
+                Continue to review <ArrowRight size={15} />
+              </Button>
             </div>
           </Card>
         )}
 
         <Card>
-          <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">{existing?.length ? 'REPLACE RESULTS' : 'UPLOAD RESULTS'}</p>
+          <Eyebrow>{existing?.length ? 'REPLACE RESULTS' : 'UPLOAD RESULTS'}</Eyebrow>
           <p className="mt-1 text-sm text-slate-600">
             One row per finisher, CSV or XLSX. OTRI validates the file first and tells you exactly what to fix; nothing is scored until it passes.
           </p>
@@ -428,16 +453,20 @@ export function ResultsStep({ session, raceId }) {
               </tbody>
             </table>
           )}
-          <label htmlFor="results-file" className="mt-4 flex cursor-pointer items-center justify-between gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm hover:border-blue-400 hover:bg-blue-50/40">
-            <span className="text-slate-600">{file ? file.name : 'Drop or click to choose a .csv or .xlsx file'}</span>
-            <span className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white">Browse</span>
-            <input id="results-file" type="file" accept=".csv,.xlsx" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setSubmission(null); setError(null) }} className="hidden" />
-          </label>
-          <div className="mt-4 flex items-center gap-3">
+          <div className="mt-4">
+            <Dropzone
+              id="results-file"
+              accept=".csv,.xlsx"
+              onChange={(e) => { setFile(e.target.files?.[0] ?? null); setSubmission(null); setError(null) }}
+              label="Drop a .csv or .xlsx file here, or browse"
+              hint="One row per finisher. The file is validated before anything is scored."
+              fileName={file?.name}
+            />
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button busy={busy} disabled={!file} onClick={submit}>
-              Validate and score
+              Validate and score <ArrowRight size={15} />
             </Button>
-            {file && <span className="text-xs text-slate-500">{file.name}</span>}
           </div>
           {error && <div className="mt-3"><Notice kind="error">{error}</Notice></div>}
         </Card>
@@ -462,7 +491,7 @@ export function ResultsStep({ session, raceId }) {
               <ScoresTable rows={submission.scores} limit={8} />
             </div>
             <Button className="mt-4" onClick={() => navigate(`/races/${encodeURIComponent(raceId)}/review`)}>
-              Continue to review
+              Continue to review <ArrowRight size={15} />
             </Button>
           </Card>
         )}
@@ -510,7 +539,7 @@ export function ReviewStep({ session, raceId }) {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <Card>
           <div className="flex items-center justify-between gap-3">
-            <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">PRE-FLIGHT CHECK</p>
+            <Eyebrow>PRE-FLIGHT CHECK</Eyebrow>
             <StatusChip status={status} />
           </div>
           <ul className="mt-2 divide-y divide-slate-100">
@@ -552,7 +581,7 @@ export function ReviewStep({ session, raceId }) {
           </div>
         </Card>
         <Card>
-          <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">LEADERBOARD</p>
+          <Eyebrow>LEADERBOARD</Eyebrow>
           {hasResults ? (
             <div className="mt-3">
               <ScoresTable rows={results} limit={12} compact />
