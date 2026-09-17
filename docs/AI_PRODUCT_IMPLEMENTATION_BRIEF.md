@@ -14,7 +14,7 @@ Build an OTRI product that is:
 - visually premium;
 - scientifically transparent;
 - reproducible;
-- independent from ITRA and UTMB;
+- independent from proprietary competitor methodologies and branding;
 - simple at the surface and deep underneath.
 
 Existing OTRI documentation identifies transparency, reproducibility, data provenance, privacy, organizer cooperation and scientific rigor as core project values. fileciteturn297file2L529-L555
@@ -141,7 +141,7 @@ Avoid:
 - fake 3D effects;
 - meaningless animated numbers;
 - neon overload;
-- copied ITRA/UTMB styling.
+- copied competitor styling.
 
 ## 5. Runner home experience
 
@@ -161,17 +161,21 @@ The primary runner experience should reach the race selector within one click.
 
 ## 6. Runner calculator exact flow
 
-### Screen 1 — Race search
+### Screen 1 — Race/course source choice
 
-Large search box.
+The runner must choose how to provide the course:
 
 ```text
 What are you racing?
 
-[ Search races __________________ ]
+[ Search existing race ]
+
+or
+
+[ Upload GPX ]
 ```
 
-Results show:
+Search results show:
 
 - race name;
 - location;
@@ -179,6 +183,19 @@ Results show:
 - distance;
 - D+;
 - course status.
+
+For GPX upload:
+
+```text
+UPLOAD YOUR COURSE
+
+[ Drop GPX here ]
+
+We'll analyse the track and build a temporary course model
+for your calculation.
+```
+
+The system must distinguish between an OTRI-approved course and a user-supplied course.
 
 ### Screen 2 — Course confirmation
 
@@ -188,6 +205,14 @@ Show the course map/elevation as visual confirmation.
 2027 · Chiang Mai 50K
 51.8 km · 2,900 m D+
 ✓ Verified course
+```
+
+For uploaded GPX:
+
+```text
+YOUR GPX
+51.4 km · 2,870 m D+
+Course status: User supplied
 ```
 
 Primary button:
@@ -333,7 +358,7 @@ visible evidence depth
 category views
 ```
 
-These are product defaults pending statistical validation. ITRA currently uses up to five best scores over 36 months for its general Performance Index and category indexes, while UTMB describes its Index as an aggregation of best scores over three years with more influence from higher and more recent scores. These are research references, not OTRI equations. citehttps://itra.run/FAQ/PerformanceIndex citehttps://utmb.world/news/Index-evolution
+These are product defaults pending statistical validation. They are OTRI product hypotheses and must be validated independently before becoming final methodology.
 
 The UI must show exactly which races count.
 
@@ -467,7 +492,8 @@ The course page should show:
 - course version;
 - verification status;
 - data sources;
-- last update.
+- last update;
+- rights/provenance status.
 
 For GPX-enabled courses, show both organizer-declared and GPX-derived measurements where useful.
 
@@ -512,52 +538,22 @@ calculation explanation
 
 The existing OTRI handbook requires scores to be traceable, reproducible, explainable, versioned, statistically defensible and legally sourced. fileciteturn297file8L1523-L1537
 
-## 16. Research-driven comparison references
+## 16. Product pattern research
 
-### ITRA
+Research should focus on generic, reusable product patterns rather than copying another service.
 
-Current public information shows:
+Evaluate:
 
-- organizer accounts;
-- event → race workflow;
-- result upload through organizer space;
-- structured result template;
-- one general Performance Index;
-- category indexes;
-- up to five best results over 36 months;
-- recency and experience weighting. citehttps://itra.run/Info/Contact citehttps://itra.run/FAQ/Organizers citehttps://itra.run/FAQ/PerformanceIndex
+- organizer account → organization → event → race workflows;
+- reusable annual editions;
+- structured result upload;
+- pre-publication approval;
+- separate race score and aggregate runner index;
+- recent/best-result aggregation patterns;
+- transparent score explanations;
+- visible calculation state and evidence.
 
-### UTMB
-
-Current public information shows:
-
-- My UTMB organizer account;
-- Organizer Space;
-- event/race creation;
-- approval before calendar publication;
-- explicit race metadata;
-- Race Score separate from overall Index;
-- Index built from recent best scores;
-- public explanation of Race Score calculation. citehttps://utmb.world/index-organiser-info citehttps://utmb.world/race-score-utmb-index citehttps://utmb.world/news/Index-evolution
-
-### OTRI adaptation
-
-Use the familiar product structure but make the transparency stronger:
-
-```text
-ITRA / UTMB style
-familiar organizer + runner workflows
-
-+
-
-OTRI
-explicit model version
-explicit counted races
-pre-race prediction
-same-input reproducibility
-course-first explanation
-open implementation roadmap
-```
+OTRI must decide each rule independently and publish the resulting methodology.
 
 ## 17. AI coding constraints
 
@@ -571,7 +567,7 @@ Before implementing any UI or backend logic, the AI must read:
 - `docs/product/organizer-onboarding.md`
 - `docs/product/pre-race-score-calculator.md`
 - `docs/methodology/overall-runner-index.md`
-- `docs/research/itra-utmb-product-research.md`
+- `docs/research/platform-product-patterns.md`
 - the authoritative current scoring methodology/version if one exists.
 
 Do not invent missing model math.
