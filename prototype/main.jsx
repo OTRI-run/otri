@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowLeft, Mountain, TrendingUp } from 'lucide-react'
-import CourseMap from '../src/components/CourseMap'
+import { ArrowLeft, ArrowUpRight, Mail, Mountain, TrendingUp } from 'lucide-react'
+import Logo from '../src/components/Logo'
 import ScoreCalculator from './ScoreCalculator'
 import { getApiStatus } from './apiClient'
 import racesData from './data/races.json'
@@ -13,6 +13,7 @@ const COMMIT = typeof __OTRI_COMMIT__ !== 'undefined' ? __OTRI_COMMIT__ : 'unkno
 const COMMIT_FULL = typeof __OTRI_COMMIT_FULL__ !== 'undefined' ? __OTRI_COMMIT_FULL__ : ''
 const COMMIT_DATE = typeof __OTRI_COMMIT_DATE__ !== 'undefined' ? __OTRI_COMMIT_DATE__ : ''
 const COMMIT_URL = COMMIT_FULL ? `https://github.com/OTRI-run/otri/commit/${COMMIT_FULL}` : null
+const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 
 function formatTimeAgo(isoDate) {
   if (!isoDate) return null
@@ -80,29 +81,116 @@ function BuildBanner() {
   )
 }
 
-function Badge({ children }) {
+// ------------------------------------------------------------------------------------ routing
+// Hash routes so every screen has a URL: #races, #races/<race_id>, #calculator.
+
+function parseHash(hash) {
+  const path = hash.replace(/^#\/?/, '')
+  if (path.startsWith('calculator')) return { tab: 'calculator', raceId: null }
+  const raceMatch = path.match(/^races\/(.+)$/)
+  return { tab: 'races', raceId: raceMatch ? decodeURIComponent(raceMatch[1]) : null }
+}
+
+function useRoute() {
+  const [hash, setHash] = useState(() => window.location.hash)
+  useEffect(() => {
+    const onChange = () => setHash(window.location.hash)
+    window.addEventListener('hashchange', onChange)
+    return () => window.removeEventListener('hashchange', onChange)
+  }, [])
+  return useMemo(() => parseHash(hash), [hash])
+}
+
+function navigate(hash) {
+  window.location.hash = hash
+  window.scrollTo({ top: 0 })
+}
+
+// ------------------------------------------------------------------------------------- shell
+
+const NAV = [
+  { id: 'races', label: 'Races', href: '#races' },
+  { id: 'calculator', label: 'Calculate score', href: '#calculator' },
+]
+
+function NavLink({ item, active, className = '' }) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 font-mono text-[9px] font-medium tracking-[.08em] text-blue-600">
-      <i className="h-1.5 w-1.5 rounded-full bg-blue-600 shadow-[0_0_0_3px_#dbeafe]" />
-      {children}
-    </span>
+    <a
+      href={item.href}
+      aria-current={active ? 'page' : undefined}
+      className={`text-[13px] font-medium no-underline ${active ? 'text-[#0b1220]' : 'text-slate-500 hover:text-slate-950'} ${className}`}
+    >
+      {item.label}
+    </a>
   )
 }
 
-function Header() {
+function Header({ tab }) {
   return (
-    <header className="sticky top-0 z-50 h-[68px] border-b border-slate-200/90 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex h-full min-w-0 w-[min(1120px,calc(100%-28px))] items-center gap-4">
-        <a href="../" className="flex items-center gap-1 text-[13px] font-semibold text-[#0b1220] no-underline">
-          <ArrowLeft size={14} /> OTRI
-        </a>
-        <div className="ml-auto">
-          <Badge>PROTOTYPE · NOT FINAL DESIGN</Badge>
+    <>
+      <header className="sticky top-0 z-50 h-[68px] border-b border-slate-200/90 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex h-full min-w-0 w-[min(1120px,calc(100%-28px))] items-center">
+          <Logo href="../" />
+          <div className="ml-auto mr-6 hidden shrink-0 items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 font-mono text-[9px] font-medium tracking-[.08em] text-blue-600 sm:flex">
+            <i className="h-1.5 w-1.5 rounded-full bg-blue-600 shadow-[0_0_0_3px_#dbeafe]" />
+            PROTOTYPE <span className="text-slate-400">v0.x</span>
+          </div>
+          <nav className="hidden shrink-0 items-center gap-7 md:flex">
+            {NAV.map((item) => (
+              <NavLink key={item.id} item={item} active={tab === item.id} />
+            ))}
+            <a href="organizer/" className="text-[13px] font-medium text-slate-500 no-underline hover:text-slate-950">
+              For organizers
+            </a>
+            <a className="flex items-center gap-1 text-[13px] font-semibold text-[#0b1220] no-underline" href={GITHUB_URL}>
+              GitHub <ArrowUpRight size={14} />
+            </a>
+          </nav>
+          <a
+            className="ml-auto flex shrink-0 items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white no-underline md:hidden"
+            href="organizer/"
+          >
+            Organizers <ArrowUpRight size={13} />
+          </a>
+        </div>
+      </header>
+      {/* Small screens: the section links live in their own row under the header. */}
+      <div className="border-b border-slate-200 bg-white md:hidden">
+        <div className="mx-auto flex w-[min(1120px,calc(100%-28px))] items-center gap-5">
+          {NAV.map((item) => (
+            <NavLink
+              key={item.id}
+              item={item}
+              active={tab === item.id}
+              className={`border-b-2 py-3 ${tab === item.id ? 'border-blue-600' : 'border-transparent'}`}
+            />
+          ))}
+          <span className="ml-auto flex items-center gap-1.5 font-mono text-[8px] tracking-[.08em] text-blue-600">
+            <i className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+            PROTOTYPE
+          </span>
         </div>
       </div>
-    </header>
+    </>
   )
 }
+
+function Footer() {
+  return (
+    <footer className="border-t border-slate-200 bg-white py-6">
+      <div className="mx-auto flex w-[min(1120px,calc(100%-28px))] flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+        <Logo href="../" />
+        <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">
+          <Mail size={14} />
+          hello@otri.run
+        </a>
+        <span className="font-mono text-[8px] tracking-[.08em] text-slate-500">OPEN · TRANSPARENT · REPRODUCIBLE · INDEPENDENT</span>
+      </div>
+    </footer>
+  )
+}
+
+// ------------------------------------------------------------------------------------- races
 
 function RaceCard({ race, onSelect }) {
   return (
@@ -137,16 +225,15 @@ function Leaderboard({ race, onBack }) {
       <button onClick={onBack} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600">
         <ArrowLeft size={13} /> All races
       </button>
-      <h2 className="mt-4 text-3xl font-bold tracking-[-.04em] text-[#0b1220]">{race.race_name}</h2>
-      <p className="mt-1 text-sm text-slate-500">
+      <p className="mt-6 font-mono text-[9px] tracking-[.08em] text-blue-600">{race.race_id}</p>
+      <h2 className="mt-2 text-[clamp(32px,4.5vw,52px)] font-bold leading-[.98] tracking-[-.05em] text-[#0b1220]">{race.race_name}</h2>
+      <p className="mt-3 text-sm text-slate-500">
         {race.course_name} · {race.distance_km} km · +{race.elevation_gain_m} m · {race.event_date}
       </p>
       {race.non_finishers > 0 && (
-        <p className="mt-2 text-xs text-slate-500">
-          {race.non_finishers} runner(s) did not finish (excluded from scoring).
-        </p>
+        <p className="mt-2 text-xs text-slate-500">{race.non_finishers} runner(s) did not finish (excluded from scoring).</p>
       )}
-      <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200">
+      <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
         <table className="w-full min-w-[520px] border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
@@ -173,56 +260,53 @@ function Leaderboard({ race, onBack }) {
         </table>
       </div>
       <p className="mt-3 font-mono text-[9px] tracking-[.05em] text-slate-400">
-        scoring_version {race.leaderboard[0]?.scoring_version ?? 'n/a'} · Course Standard model — depends only on
-        the course and each runner's own finish time, never the field
+        scoring_version {race.leaderboard[0]?.scoring_version ?? 'n/a'} · Course Standard model — depends only on the course and
+        each runner's own finish time, never the field
       </p>
     </div>
   )
 }
 
-function SampleCourseSection({ sampleCourse }) {
+function RacesPage({ raceId }) {
+  const selectedRace = useMemo(() => racesData.races.find((race) => race.race_id === raceId) ?? null, [raceId])
+
   return (
-    <section className="mt-14 rounded-2xl border border-slate-200 bg-white p-5">
-      <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">SAMPLE COURSE / GPX VIEWER</p>
-      <h3 className="mt-2 text-xl font-bold tracking-[-.03em] text-[#0b1220]">{sampleCourse.name}</h3>
-      <p className="mt-1 text-xs text-slate-500">{sampleCourse.note}</p>
-      <CourseMap gpxText={sampleCourse.gpx_text} measurement={sampleCourse.measurement} className="mt-4" />
-      <div className="mt-3 flex flex-wrap gap-4 font-mono text-[10px] text-slate-500">
-        <span>{sampleCourse.features.distance_km} km</span>
-        <span>+{sampleCourse.features.elevation_gain_m} m</span>
-        <span>-{sampleCourse.features.elevation_loss_m} m</span>
-        <span>
-          steep grade +{(sampleCourse.features.max_climb_grade * 100).toFixed(1)}% / -
-          {(sampleCourse.features.max_descent_grade * 100).toFixed(1)}%
-        </span>
+    <section className="bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] py-14 sm:py-20">
+      <div className="mx-auto w-[min(1120px,calc(100%-28px))]">
+        {selectedRace ? (
+          <Leaderboard race={selectedRace} onBack={() => navigate('#races')} />
+        ) : (
+          <>
+            <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
+              <div className="font-mono text-xs text-blue-600">01</div>
+              <div className="min-w-0">
+                <p className="mb-3 font-mono text-[10px] tracking-[.08em] text-slate-500">RACES</p>
+                <h1 className="text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
+                  Scored races.
+                  <br />
+                  <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">Every number explained.</span>
+                </h1>
+              </div>
+              <p className="min-w-0 text-sm leading-7 text-slate-500">
+                Demonstration races scored under the Course Standard model. Each score depends only on the course and the
+                runner's own finish time — never on who else raced. Open a race to see its leaderboard.
+              </p>
+            </div>
+            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {racesData.races.map((race) => (
+                <RaceCard key={race.race_id} race={race} onSelect={(id) => navigate(`#races/${encodeURIComponent(id)}`)} />
+              ))}
+            </div>
+            <p className="mt-8 text-sm text-slate-500">
+              Want a number for your own race?{' '}
+              <a href="#calculator" className="font-semibold text-blue-600 no-underline">
+                Calculate a score →
+              </a>
+            </p>
+          </>
+        )}
       </div>
     </section>
-  )
-}
-
-const TABS = [
-  { id: 'races', label: 'Races' },
-  { id: 'calculator', label: 'Calculate score' },
-]
-
-function TabNav({ active, onChange }) {
-  return (
-    <nav className="mt-6 flex flex-wrap items-center gap-2 border-b border-slate-200">
-      {TABS.map((tab) => (
-        <button
-          key={tab.id}
-          onClick={() => onChange(tab.id)}
-          className={`border-b-2 px-3 py-2 text-sm font-semibold ${
-            active === tab.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-[#0b1220]'
-          }`}
-        >
-          {tab.label}
-        </button>
-      ))}
-      <a href="organizer/" className="ml-auto px-3 py-2 text-sm font-semibold text-blue-600 no-underline">
-        For organizers →
-      </a>
-    </nav>
   )
 }
 
@@ -238,42 +322,17 @@ function redirectAuthLinks() {
 redirectAuthLinks()
 
 function App() {
-  const [activeTab, setActiveTab] = useState('races')
-  const [selectedRaceId, setSelectedRaceId] = useState(null)
-  const selectedRace = useMemo(
-    () => racesData.races.find((race) => race.race_id === selectedRaceId) ?? null,
-    [selectedRaceId],
-  )
+  const route = useRoute()
 
   return (
-    <div className="min-h-screen bg-[#f7f9fc] text-[#0b1220]">
+    <div id="top" className="min-h-screen max-w-full overflow-x-clip bg-[#f7f9fc] text-[#0b1220]">
       <BuildBanner />
-      <Header />
-      <main className="mx-auto w-[min(1120px,calc(100%-28px))] py-12">
-        <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">PROTOTYPE</p>
-
-        <TabNav active={activeTab} onChange={setActiveTab} />
-
-        {activeTab === 'races' && (
-          <>
-            {selectedRace ? (
-              <div className="mt-10">
-                <Leaderboard race={selectedRace} onBack={() => setSelectedRaceId(null)} />
-              </div>
-            ) : (
-              <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {racesData.races.map((race) => (
-                  <RaceCard key={race.race_id} race={race} onSelect={setSelectedRaceId} />
-                ))}
-              </div>
-            )}
-
-            {!selectedRace && <SampleCourseSection sampleCourse={racesData.sample_course} />}
-          </>
-        )}
-
-        {activeTab === 'calculator' && <ScoreCalculator />}
+      <Header tab={route.tab} />
+      <main>
+        {route.tab === 'races' && <RacesPage raceId={route.raceId} />}
+        {route.tab === 'calculator' && <ScoreCalculator />}
       </main>
+      <Footer />
     </div>
   )
 }

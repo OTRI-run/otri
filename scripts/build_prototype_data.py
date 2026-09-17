@@ -25,7 +25,6 @@ from scoring import score_race  # noqa: E402
 
 RACES_FILE = REPO_ROOT / "data" / "demo" / "races.csv"
 RESULTS_DIR = REPO_ROOT / "data" / "demo" / "results"
-SAMPLE_GPX = REPO_ROOT / "data" / "demo" / "gpx" / "sample-course.gpx"
 OUTPUT_FILE = REPO_ROOT / "prototype" / "data" / "races.json"
 
 
@@ -64,30 +63,12 @@ def build_race_entry(race) -> dict:
     return entry
 
 
-def build_sample_course() -> dict:
-    points = read_track_points(SAMPLE_GPX)
-    from course.measurement import measure_course
-    from course.features import features_from_measurement
-    measurement = measure_course(points)
-    features = features_from_measurement(measurement)
-    return {
-        "name": "Sample illustrative course",
-        "note": (
-            "Synthetic profile for demonstrating the map/elevation-profile viewer. "
-            "Not the real course of any listed race."
-        ),
-        "gpx_text": SAMPLE_GPX.read_text(encoding="utf-8"),
-        "features": features.to_dict(),
-        "measurement": measurement.to_dict(),
-    }
-
 
 def main() -> None:
     races = [build_race_entry(race) for race in race_records(RACES_FILE)]
     data = {
         "generated_by": "scripts/build_prototype_data.py",
         "races": races,
-        "sample_course": build_sample_course(),
     }
 
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)

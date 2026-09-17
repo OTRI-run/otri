@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { ArrowUpRight, GitBranch, Mountain, RefreshCw, Search, Timer, Upload } from 'lucide-react'
 import CourseMap from '../src/components/CourseMap'
 import { analyzeGpx, listRaces, fetchRaceGpxFile } from './apiClient'
 
@@ -8,6 +9,7 @@ import { analyzeGpx, listRaces, fetchRaceGpxFile } from './apiClient'
 //   - V0.1-V0.3: 692 kept, 1000-anchor is V0.1's extrapolated 17.940
 //   - V0.4-V0.5: 692 kept, 1000-anchor is the measured human ceiling 21.533
 //   - V0.6+:     692 dropped (docs/methodology/v0.6/OTRI-SMOOTHED-UPPER-CURVE.md)
+//   - V0.8:      one power law, no anchor table (docs/methodology/v0.8/OTRI-POWER-CURVE.md)
 const ANCHOR_0 = { score: 0, q: 1.0 }
 const ANCHOR_349 = { score: 349, q: 4.240362424138815 }
 const ANCHOR_544 = { score: 544, q: 8.935158501440922 }
@@ -15,8 +17,10 @@ const ANCHOR_692 = { score: 692, q: 11.769395017793594 }
 const ANCHOR_1000_LEGACY = { score: 1000, q: 17.93986234619293 }
 const ANCHOR_1000 = { score: 1000, q: 21.5331347785071 }
 
+const METHODOLOGY_URL = 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/HOW-OTRI-SCORES.md'
+
 function publishedAnchorsFor(scoringVersion) {
-  if (scoringVersion.includes('-power')) return []  // V0.8: one power law, no anchor table
+  if (scoringVersion.includes('-power')) return []
   if (scoringVersion.includes('smoothed-upper') || scoringVersion.includes('dem-gated')) {
     return [ANCHOR_0, ANCHOR_349, ANCHOR_544, ANCHOR_1000]
   }
@@ -49,6 +53,22 @@ function formatPace(totalSeconds, distanceKm) {
   return `${m}:${String(s).padStart(2, '0')} / km`
 }
 
+// Plain-language numbers are shown to one decimal; the maths section keeps full precision.
+function fmt1(value) {
+  return Number(value).toFixed(1)
+}
+
+function shortVersion(scoringVersion) {
+  const match = scoringVersion?.match(/^(\d+\.\d+)/)
+  return match ? `v${match[1]}` : scoringVersion || 'v0.x'
+}
+
+const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
+
+function Eyebrow({ children, className = '' }) {
+  return <p className={`font-mono text-[10px] tracking-[.08em] text-slate-500 ${className}`}>{children}</p>
+}
+
 function Spinner({ className = '' }) {
   return (
     <span
@@ -58,46 +78,110 @@ function Spinner({ className = '' }) {
   )
 }
 
-// The score itself. Rendered as soon as a calculation is in flight — not only once a result
-// exists — so a long course never shows an empty column while the API integrates 13,000 points.
-function ScoreCard({ estimate, scoring, targetSeconds }) {
+// ----------------------------------------------------------------------------- the score card
+// The dark "index engine" panel from the landing page, now showing a live number. It is rendered
+// in every state — empty, calculating, live — so the hero never jumps when a course arrives.
+
+function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel }) {
+  const b = estimate?.breakdown
+  const pct = b?.fraction_of_ceiling != null ? Math.round(b.fraction_of_ceiling * 100) : null
+  const status = scoring ? 'CALCULATING' : estimate ? 'LIVE' : courseLabel ? 'READY' : 'WAITING'
+
+  const rows = estimate
+    ? [
+        [Mountain, 'COURSE', `${fmt1(b?.physical_distance_km ?? features?.distance_km ?? 0)} km · +${Math.round(features?.elevation_gain_m ?? 0)} m`],
+        [Timer, 'YOUR TIME', `${formatHms(targetSeconds)} · ${formatPace(targetSeconds, features?.distance_km) ?? ''}`],
+        [GitBranch, 'MODEL', `${shortVersion(estimate.scoring_version)} · versioned · reproducible`],
+      ]
+    : [
+        [Mountain, 'COURSE', 'distance · elevation · steepness'],
+        [Timer, 'YOUR TIME', 'a target, not a result'],
+        [GitBranch, 'MODEL', 'versioned · reproducible'],
+      ]
+
   return (
     <div
       role="status"
       aria-live="polite"
       aria-busy={scoring}
-      className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-5 text-center"
+      className="min-w-0 overflow-hidden rounded-2xl bg-[linear-gradient(145deg,#08111f_0%,#0b1730_58%,#123b85_100%)] p-4 text-white shadow-[0_24px_70px_rgba(11,18,32,.2)] sm:p-5"
     >
-      <p className="font-mono text-[9px] tracking-[.08em] text-blue-600">OTRI</p>
-      {estimate ? (
-        <>
-          <p className={`mt-2 text-6xl font-bold tracking-[-.03em] text-blue-600 transition-opacity ${scoring ? 'opacity-40' : ''}`}>
-            {estimate.predicted_score}
-          </p>
-          <p className="mt-2 font-mono text-sm text-slate-500">{formatHms(targetSeconds)}</p>
-          {scoring && (
-            <p className="mt-2 flex items-center justify-center gap-2 text-xs text-slate-500">
-              <Spinner /> Updating…
-            </p>
-          )}
-        </>
-      ) : (
-        <div className="py-4">
-          <Spinner className="h-8 w-8 border-4" />
-          <p className="mt-3 text-sm font-semibold text-[#0b1220]">Calculating your score…</p>
-          <p className="mt-1 text-xs text-slate-500">
-            Every 50 m of the course is measured and costed. Longer and hillier courses take a few seconds.
-          </p>
-        </div>
-      )}
+      <div className="flex items-center justify-between font-mono text-[8px] tracking-[.08em] text-slate-400">
+        <span>OTRI / SCORE</span>
+        <span className="flex items-center gap-1.5">
+          <i className={`h-1.5 w-1.5 rounded-full ${scoring ? 'animate-pulse bg-cyan-300' : 'bg-blue-400'} shadow-[0_0_10px_rgba(96,165,250,.9)]`} />
+          {status}
+        </span>
+      </div>
+
+      <div className="border-b border-slate-700/70 py-8 text-center">
+        {estimate ? (
+          <>
+            <small className="font-mono text-[8px] tracking-[.08em] text-blue-300">YOUR PROJECTED SCORE</small>
+            <strong
+              className={`mt-1 block bg-gradient-to-r from-white to-blue-200 bg-clip-text pb-1 text-[84px] font-bold leading-none tracking-[-.06em] text-transparent transition-opacity ${scoring ? 'opacity-40' : ''}`}
+            >
+              {estimate.predicted_score}
+            </strong>
+            {pct != null ? (
+              <>
+                <span className="mt-2 block font-mono text-[11px] text-slate-300">{pct}% of the world-best rate for this course</span>
+                <div className="mx-auto mt-3 h-1.5 w-full max-w-[260px] overflow-hidden rounded-full bg-slate-700/70" aria-hidden="true">
+                  <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-300" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
+                </div>
+                <span className="mx-auto mt-1 flex w-full max-w-[260px] justify-between font-mono text-[8px] text-slate-500">
+                  <span>0</span>
+                  <span>1000 = WORLD BEST</span>
+                </span>
+              </>
+            ) : (
+              <span className="mt-2 block font-mono text-[11px] text-slate-300">{formatHms(targetSeconds)}</span>
+            )}
+            {scoring && (
+              <span className="mt-3 flex items-center justify-center gap-2 font-mono text-[9px] tracking-[.08em] text-slate-400">
+                <Spinner className="border-slate-600 border-t-white" /> UPDATING
+              </span>
+            )}
+          </>
+        ) : scoring ? (
+          <>
+            <Spinner className="h-8 w-8 border-4 border-slate-600 border-t-white" />
+            <strong className="mt-4 block text-lg font-bold tracking-[-.03em]">Calculating your score…</strong>
+            <span className="mt-1 block text-xs text-slate-400">
+              Every 50 m of the course is measured and costed. Long, hilly courses take a few seconds.
+            </span>
+          </>
+        ) : (
+          <>
+            <small className="font-mono text-[8px] tracking-[.08em] text-blue-300">WHY THIS SCORE?</small>
+            <strong className="mt-2 block bg-gradient-to-r from-white to-blue-200 bg-clip-text pb-1 text-4xl font-bold leading-[1.25] tracking-[-.05em] text-transparent">
+              Pick a course.
+            </strong>
+            <span className="mt-1 block text-xs text-slate-400">Then set a finish time. The score updates live.</span>
+          </>
+        )}
+      </div>
+
+      <div>
+        {rows.map(([Icon, title, desc]) => (
+          <div key={title} className="grid min-w-0 grid-cols-[22px_minmax(0,auto)_minmax(0,1fr)] items-center gap-2 border-b border-slate-700/70 py-4">
+            <Icon size={16} className="text-blue-400" />
+            <span className="text-xs font-semibold">{title}</span>
+            <small className="truncate text-right font-mono text-[8px] text-slate-500">{desc}</small>
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-between gap-3 pt-4 font-mono text-[8px] tracking-[.08em]">
+        <b>OTRI INDEX</b>
+        <span className="text-right text-blue-300">COURSE + TIME + VERSION = SCORE</span>
+      </div>
     </div>
   )
 }
 
-// Plain-language numbers are shown to one decimal; the maths section keeps full precision.
-function fmt1(value) {
-  return Number(value).toFixed(1)
-}
+// ----------------------------------------------------------------------------- explanation
+// Two audiences, one section. The plain-language story reads the API's own breakdown of the
+// score — nothing is recomputed here — and the maths lives behind a native <details>.
 
 function Stat({ label, value, mono = true }) {
   return (
@@ -108,24 +192,31 @@ function Stat({ label, value, mono = true }) {
   )
 }
 
-// Two audiences, one panel. The plain-language story on top reads the API's own breakdown of
-// the score — nothing is recomputed here — and the maths lives behind a native <details>, so
-// it costs nothing to ignore and needs no state.
 // One quiet line, only when elevation was not verified against terrain data; silent otherwise.
-// (Sparse-recording advice lives on the course card, where it shows before any score exists.
-// Flag names and dataset ids stay in "Show the maths".)
 function MeasurementTrust({ estimate }) {
   const unverified = (estimate.quality_flags ?? []).some((flag) => flag.startsWith('elevation_not_dem_sourced'))
   if (!unverified) return null
   return (
-    <p className="mt-3 text-xs text-slate-500">
+    <p className="mt-4 text-xs text-slate-500">
       Elevation for this course comes from your GPX file rather than verified terrain data, so the score can differ
       slightly between devices.
     </p>
   )
 }
 
-function ScoreExplanation({ estimate, features, targetSeconds, publishedAnchors, scaledVersion, measurement }) {
+function ExplanationStep({ n, title, children }) {
+  return (
+    <div className="grid min-w-0 grid-cols-[30px_minmax(0,1fr)] gap-3 border-b border-slate-300 py-5">
+      <b className="pt-0.5 font-mono text-[9px] text-slate-400">{n}</b>
+      <div className="min-w-0">
+        <strong className="text-[13px] text-[#0b1220]">{title}</strong>
+        <div className="mt-1.5 text-sm leading-6 text-slate-600">{children}</div>
+      </div>
+    </div>
+  )
+}
+
+function ScoreExplanation({ estimate, features, targetSeconds, publishedAnchors, scaledVersion }) {
   const b = estimate.breakdown
   const pct = b?.fraction_of_ceiling != null ? Math.round(b.fraction_of_ceiling * 100) : null
   const terrainPct = b ? Math.round((b.terrain_factor - 1) * 1000) / 10 : 0
@@ -133,88 +224,86 @@ function ScoreExplanation({ estimate, features, targetSeconds, publishedAnchors,
   const hours = targetSeconds / 3600
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
-      <p className="font-mono text-[9px] tracking-[.08em] text-slate-400">HOW YOUR SCORE IS CALCULATED</p>
+    <section className="bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] py-14 sm:py-20">
+      <div className={CONTAINER}>
+        <div className="flex items-center justify-between gap-4">
+          <Eyebrow>02 / WHY THIS SCORE</Eyebrow>
+          <a href={METHODOLOGY_URL} className="flex shrink-0 items-center gap-1 text-xs font-semibold text-blue-600 no-underline">
+            Open methodology <ArrowUpRight size={14} />
+          </a>
+        </div>
+        <div className="mt-6 grid min-w-0 gap-10 lg:grid-cols-[.82fr_1.18fr] lg:gap-20">
+          <div className="min-w-0">
+            <h2 className="text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
+              Open method.
+              <br />
+              <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">Your number.</span>
+            </h2>
+            <p className="mt-5 max-w-[440px] text-sm leading-7 text-slate-500">
+              Only the course and your time go in — never who else raced. Sustainable pace naturally drops as races get
+              longer, so the yardstick drops with it: a long mountain race is never scored worse than a short one just
+              for being long.
+            </p>
+            <div className="mt-6 flex flex-wrap items-center gap-2 font-mono text-[8px] text-slate-500">
+              <GitBranch size={16} className="text-blue-600" />
+              same course + same time + same version <b className="text-blue-600">=</b> same score
+            </div>
+            <MeasurementTrust estimate={estimate} />
+          </div>
 
-      {b ? (
-        <ol className="mt-3 space-y-3 text-sm text-slate-600">
-          <li className="flex gap-3">
-            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 font-mono text-[10px] font-bold text-slate-600">1</span>
-            <div>
-              <p className="font-semibold text-[#0b1220]">How hard is the course?</p>
-              <p>
-                {fmt1(b.physical_distance_km)} km with +{Math.round(features.elevation_gain_m)} m of climbing. Counting
-                every climb and descent, it's as hard as running <strong>{fmt1(b.course_demand_km)} km on flat road</strong>.
-                {hasTerrain && (
-                  <>
-                    {' '}Sustained steep ground{b.altitude_excess_m > 0 ? ' and altitude' : ''} push that up
-                    another <strong>{terrainPct}%</strong>, to <strong>{fmt1(b.adjusted_demand_km)} flat km</strong>.
-                  </>
+          <div className="min-w-0 border-t border-slate-400/70">
+            {b ? (
+              <>
+                <ExplanationStep n="01" title="How hard is the course?">
+                  {fmt1(b.physical_distance_km)} km with +{Math.round(features.elevation_gain_m)} m of climbing. Counting every
+                  climb and descent, it's as hard as running <strong>{fmt1(b.course_demand_km)} km on flat road</strong>.
+                  {hasTerrain && (
+                    <>
+                      {' '}
+                      Sustained steep ground{b.altitude_excess_m > 0 ? ' and altitude push' : ' pushes'} that up another{' '}
+                      <strong>{terrainPct}%</strong>, to <strong>{fmt1(b.adjusted_demand_km)} flat km</strong>.
+                    </>
+                  )}
+                </ExplanationStep>
+                <ExplanationStep n="02" title="How fast would you cover it?">
+                  Finishing in {formatHms(targetSeconds)} means covering those {fmt1(b.adjusted_demand_km)} flat km in{' '}
+                  {hours.toFixed(2)} hours — <strong>{fmt1(b.performance_rate)} flat km per hour</strong>.
+                </ExplanationStep>
+                {b.reference_rate != null ? (
+                  <ExplanationStep n="03" title="How close is that to the best ever?">
+                    The fastest anyone has ever covered a course this hard is about{' '}
+                    <strong>{fmt1(b.reference_rate)} flat km per hour</strong> — a{' '}
+                    <strong>{formatHms(b.world_best_time_seconds)}</strong> finish here. You'd be at <strong>{pct}%</strong> of
+                    that, which scores <strong>{estimate.predicted_score}</strong>.
+                    <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200/80" aria-hidden="true">
+                      <div className="h-full rounded-full bg-gradient-to-r from-blue-700 to-cyan-500" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
+                    </div>
+                    <p className="mt-1 flex justify-between font-mono text-[9px] text-slate-400">
+                      <span>0</span>
+                      <span>1000 = world best</span>
+                    </p>
+                  </ExplanationStep>
+                ) : (
+                  <ExplanationStep n="03" title="Turn that into a score">
+                    That rate is looked up on a fixed, published curve, which gives <strong>{estimate.predicted_score}</strong>.
+                  </ExplanationStep>
                 )}
-              </p>
-            </div>
-          </li>
-          <li className="flex gap-3">
-            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 font-mono text-[10px] font-bold text-slate-600">2</span>
-            <div>
-              <p className="font-semibold text-[#0b1220]">How fast would you cover it?</p>
-              <p>
-                Finishing in {formatHms(targetSeconds)} means covering those {fmt1(b.adjusted_demand_km)} flat km in{' '}
-                {hours.toFixed(2)} hours — <strong>{fmt1(b.performance_rate)} flat km per hour</strong>.
-              </p>
-            </div>
-          </li>
-          {b.reference_rate != null ? (
-            <li className="flex gap-3">
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 font-mono text-[10px] font-bold text-slate-600">3</span>
-              <div>
-                <p className="font-semibold text-[#0b1220]">How close is that to the best ever?</p>
-                <p>
-                  The fastest anyone has ever covered a course this hard is about{' '}
-                  <strong>{fmt1(b.reference_rate)} flat km per hour</strong> — a{' '}
-                  <strong>{formatHms(b.world_best_time_seconds)}</strong> finish here. You'd be at{' '}
-                  <strong>{pct}%</strong> of that, which scores <strong>{estimate.predicted_score}</strong>.
-                </p>
-                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
-                  <div className="h-full rounded-full bg-blue-600" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
-                </div>
-                <p className="mt-1 flex justify-between font-mono text-[9px] text-slate-400">
-                  <span>0</span>
-                  <span>1000 = world best</span>
-                </p>
-              </div>
-            </li>
-          ) : (
-            <li className="flex gap-3">
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 font-mono text-[10px] font-bold text-slate-600">3</span>
-              <div>
-                <p className="font-semibold text-[#0b1220]">Turn that into a score</p>
-                <p>That rate is looked up on a fixed, published curve, which gives <strong>{estimate.predicted_score}</strong>.</p>
-              </div>
-            </li>
-          )}
-        </ol>
-      ) : (
-        <p className="mt-2 text-sm text-slate-600">
-          What the course demands ÷ how fast you covered it, mapped through a fixed, published curve.
-        </p>
-      )}
+              </>
+            ) : (
+              <ExplanationStep n="01" title="Course demand ÷ your rate">
+                What the course demands ÷ how fast you covered it, mapped through a fixed, published curve.
+              </ExplanationStep>
+            )}
+          </div>
+        </div>
 
-      <p className="mt-4 text-xs text-slate-500">
-        Only the course and your time go in — never who else raced. Sustainable pace naturally drops as races get
-        longer, so the yardstick drops with it: a long mountain race is never scored worse than a short one just for
-        being long.
-      </p>
-
-      <MeasurementTrust estimate={estimate} />
-
-      <details className="group mt-4 rounded-xl border border-slate-200 bg-slate-50/60">
-        <summary className="cursor-pointer select-none px-4 py-2.5 font-mono text-[10px] uppercase tracking-[.08em] text-slate-500 hover:text-slate-700">
-          <span className="inline-block transition-transform group-open:rotate-90">▸</span> Show the maths
-        </summary>
-        <div className="border-t border-slate-200 px-4 py-4">
-          {b && (
-            <pre className="overflow-x-auto rounded-lg bg-[#0b1220] p-3 font-mono text-[11px] leading-relaxed text-slate-100">
+        <details className="group mt-10 rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+          <summary className="cursor-pointer select-none px-5 py-3.5 font-mono text-[10px] uppercase tracking-[.08em] text-slate-500 hover:text-slate-700">
+            <span className="inline-block transition-transform group-open:rotate-90">▸</span> Show the maths
+          </summary>
+          <div className="border-t border-slate-200 px-5 py-5">
+            {b && (
+              <pre className="overflow-x-auto rounded-xl bg-[#0b1220] p-4 font-mono text-[11px] leading-relaxed text-slate-100">
 {`demand   = Σ segment_km × Minetti(grade)      = ${b.course_demand_km} demand-km
 terrain  = 1 + 0.5951·steep + 0.07·alt/1000    = ${b.terrain_factor}   (steep ${(b.steep_distance_fraction * 100).toFixed(1)}%, alt +${Math.round(b.altitude_excess_m)} m)
 D        = demand × terrain                    = ${b.adjusted_demand_km} demand-km
@@ -230,98 +319,290 @@ Q_lookup = Q × factor                          = ${b.lookup_rate} demand-km/h`
 score    = 1000 × (Q_lookup / Q_1000)^0.85     = ${estimate.otri_raw}  →  ${estimate.predicted_score}`
   : `
 score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${estimate.predicted_score}`}
-            </pre>
-          )}
+              </pre>
+            )}
 
-          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-            <Stat label="Physical distance" value={`${b?.physical_distance_km ?? features.distance_km} km`} />
-            <Stat label="Course demand (gradient integral)" value={`${b?.course_demand_km ?? estimate.equivalent_distance_km} demand-km`} />
-            {b && <Stat label="Terrain factor" value={`× ${b.terrain_factor}`} />}
-            {b && <Stat label="Adjusted demand (scored)" value={`${b.adjusted_demand_km} demand-km`} />}
-            <Stat label="Performance rate Q" value={`${estimate.performance_rate} demand-km/h`} />
-            {b?.reference_rate != null && <Stat label="Human ceiling at this demand" value={`${b.reference_rate} demand-km/h`} />}
-            {b?.fraction_of_ceiling != null && <Stat label="Fraction of ceiling" value={`${(b.fraction_of_ceiling * 100).toFixed(2)}%`} />}
-            {b?.lookup_rate != null && <Stat label="Rate looked up in table" value={`${b.lookup_rate} demand-km/h`} />}
-            <Stat label="Raw score (unrounded)" value={estimate.otri_raw} />
-            <Stat label="Score version" value={estimate.scoring_version} />
-          </dl>
+            <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 text-xs sm:grid-cols-3">
+              <Stat label="Physical distance" value={`${b?.physical_distance_km ?? features.distance_km} km`} />
+              <Stat label="Course demand (gradient integral)" value={`${b?.course_demand_km ?? estimate.equivalent_distance_km} demand-km`} />
+              {b && <Stat label="Terrain factor" value={`× ${b.terrain_factor}`} />}
+              {b && <Stat label="Adjusted demand (scored)" value={`${b.adjusted_demand_km} demand-km`} />}
+              <Stat label="Performance rate Q" value={`${estimate.performance_rate} demand-km/h`} />
+              {b?.reference_rate != null && <Stat label="Human ceiling at this demand" value={`${b.reference_rate} demand-km/h`} />}
+              {b?.fraction_of_ceiling != null && <Stat label="Fraction of ceiling" value={`${(b.fraction_of_ceiling * 100).toFixed(2)}%`} />}
+              {b?.lookup_rate != null && <Stat label="Rate looked up in table" value={`${b.lookup_rate} demand-km/h`} />}
+              <Stat label="Raw score (unrounded)" value={estimate.otri_raw} />
+              <Stat label="Score version" value={estimate.scoring_version} />
+            </dl>
 
-          {publishedAnchors.length > 0 ? (
-            <>
-              <p className="mt-4 font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">
-                Published anchor table{scaledVersion ? ' (Q_lookup → score, at the reference course size)' : ''}
-              </p>
-              <table className="mt-1 w-full text-left text-xs">
-                <tbody>
-                  {publishedAnchors.map((anchor) => (
-                    <tr key={anchor.score}>
-                      <td className="py-0.5 pr-4 font-mono">{anchor.score}</td>
-                      <td className="py-0.5 font-mono">{anchor.q.toFixed(3)} demand-km/h</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p className="mt-1 text-[11px] text-slate-500">
-                Piecewise power law between anchors; one exponent from 544 to 1000. "demand-km" is a kilometre of flat
+            {publishedAnchors.length > 0 ? (
+              <>
+                <p className="mt-5 font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">
+                  Published anchor table{scaledVersion ? ' (Q_lookup → score, at the reference course size)' : ''}
+                </p>
+                <table className="mt-1 w-full text-left text-xs">
+                  <tbody>
+                    {publishedAnchors.map((anchor) => (
+                      <tr key={anchor.score}>
+                        <td className="py-0.5 pr-4 font-mono">{anchor.score}</td>
+                        <td className="py-0.5 font-mono">{anchor.q.toFixed(3)} demand-km/h</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Piecewise power law between anchors; one exponent from 544 to 1000. "demand-km" is a kilometre of flat
+                  road at Minetti's metabolic cost — the unit called "flat km" above.
+                </p>
+              </>
+            ) : (
+              <p className="mt-5 text-[11px] text-slate-500">
+                One published curve, no anchor table: score = 1000 × (fraction of the human-ceiling rate)^0.85, with Q_1000
+                = {ANCHOR_1000.q.toFixed(3)} demand-km/h at the reference course size. "demand-km" is a kilometre of flat
                 road at Minetti's metabolic cost — the unit called "flat km" above.
               </p>
-            </>
-          ) : (
-            <p className="mt-4 text-[11px] text-slate-500">
-              One published curve, no anchor table: score = 1000 × (fraction of the human-ceiling rate)^0.85, with
-              Q_1000 = {ANCHOR_1000.q.toFixed(3)} demand-km/h at the reference course size. "demand-km" is a kilometre
-              of flat road at Minetti's metabolic cost — the unit called "flat km" above.
+            )}
+
+            {estimate.quality_flags?.length > 0 && (
+              <>
+                <p className="mt-5 font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">Quality flags</p>
+                <ul className="mt-1 space-y-1 text-[11px] text-slate-500">
+                  {estimate.quality_flags.map((flag) => (
+                    <li key={flag} className="break-words font-mono">{flag}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            <p className="mt-5 text-[11px] text-slate-500">
+              Methodology: <code>docs/methodology/v0.8/OTRI-POWER-CURVE.md</code> (curve),{' '}
+              <code>v0.7/OTRI-DEM-GATED-MEASUREMENT.md</code> (measurement & confidence),{' '}
+              <code>v0.6/OTRI-SMOOTHED-UPPER-CURVE.md</code> (curve), <code>v0.5/OTRI-TERRAIN-ADJUSTED-DEMAND.md</code>{' '}
+              (terrain), <code>v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md</code> (human ceiling),{' '}
+              <code>v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md</code> (course demand).
             </p>
-          )}
+          </div>
+        </details>
 
-          {estimate.quality_flags?.length > 0 && (
-            <>
-              <p className="mt-4 font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">Quality flags</p>
-              <ul className="mt-1 space-y-1 text-[11px] text-slate-500">
-                {estimate.quality_flags.map((flag) => (
-                  <li key={flag} className="font-mono break-words">{flag}</li>
-                ))}
-              </ul>
-            </>
-          )}
+        <p className="mt-4 text-xs text-slate-500">Model-based projection · {estimate.disclaimer}</p>
+      </div>
+    </section>
+  )
+}
 
-          <p className="mt-4 text-[11px] text-slate-500">
-            Methodology: <code>docs/methodology/v0.8/OTRI-POWER-CURVE.md</code> (curve),{' '}
-            <code>v0.7/OTRI-DEM-GATED-MEASUREMENT.md</code> (measurement & confidence),{' '}
-            <code>v0.6/OTRI-SMOOTHED-UPPER-CURVE.md</code> (curve),{' '}
-            <code>v0.5/OTRI-TERRAIN-ADJUSTED-DEMAND.md</code> (terrain),{' '}
-            <code>v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md</code> (human ceiling),{' '}
-            <code>v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md</code> (course demand).
+// ----------------------------------------------------------------------------- course picker
+
+function CoursePicker({ races, racesLoading, racesError, query, onQuery, onChooseRace, onUpload, loadingCourse, loadError }) {
+  return (
+    <section className="bg-white py-14 sm:py-20">
+      <div className={CONTAINER}>
+        <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
+          <div className="font-mono text-xs text-blue-600">01</div>
+          <div className="min-w-0">
+            <Eyebrow className="mb-3">COURSE</Eyebrow>
+            <h2 className="text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
+              Start with
+              <br />
+              <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">the course.</span>
+            </h2>
+          </div>
+          <p className="min-w-0 text-sm leading-7 text-slate-500">
+            Pick a race whose course has already been verified, or upload your own GPX. Either way the track is measured
+            on the server: distance along the ellipsoid, elevation from terrain data where it is installed.
           </p>
         </div>
-      </details>
 
-      <p className="mt-3 text-xs text-slate-500">Model-based projection · {estimate.disclaimer}</p>
+        <div className="mt-10 grid gap-4 lg:grid-cols-2">
+          <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] sm:p-6">
+            <div className="flex items-center gap-2">
+              <Search size={16} className="text-blue-600" />
+              <h3 className="text-base font-bold tracking-[-.02em] text-[#0b1220]">Search a verified race</h3>
+            </div>
+            <p className="mt-1 text-xs text-slate-500">Courses submitted by organizers and measured by OTRI.</p>
+            <input
+              type="text"
+              value={query}
+              onChange={(event) => onQuery(event.target.value)}
+              placeholder="Race or course name…"
+              aria-label="Search races"
+              className="mt-4 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-[#0b1220] outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+            {racesLoading && (
+              <p className="mt-3 flex items-center gap-2 text-xs text-slate-500">
+                <Spinner /> Loading races…
+              </p>
+            )}
+            {racesError && <p className="mt-3 text-xs text-red-600">{racesError}</p>}
+            {!racesLoading && !racesError && races.length === 0 && (
+              <p className="mt-3 text-xs text-slate-500">No races with a verified course match that search yet.</p>
+            )}
+            <div className="mt-3 max-h-[360px] space-y-2 overflow-y-auto pr-1">
+              {races.map((race) => (
+                <button
+                  key={race.race_id}
+                  onClick={() => onChooseRace(race)}
+                  disabled={loadingCourse}
+                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-blue-300 hover:bg-blue-50/40 disabled:opacity-50"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-[#0b1220]">
+                      {race.event_name} · {race.course_name}
+                    </span>
+                    <span className="mt-0.5 block font-mono text-[10px] text-slate-500">
+                      {race.event_date} · {race.distance_km} km · +{race.elevation_gain_m} m
+                    </span>
+                  </span>
+                  <span className="shrink-0 font-mono text-[8px] tracking-[.08em] text-blue-600">VERIFIED</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] sm:p-6">
+            <div className="flex items-center gap-2">
+              <Upload size={16} className="text-blue-600" />
+              <h3 className="text-base font-bold tracking-[-.02em] text-[#0b1220]">Upload a GPX</h3>
+            </div>
+            <p className="mt-1 text-xs text-slate-500">Any course, from your watch or the organizer's website.</p>
+            <label
+              htmlFor="calc-gpx-input"
+              className="mt-4 flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm transition hover:border-blue-400 hover:bg-blue-50/40"
+            >
+              {loadingCourse ? (
+                <>
+                  <Spinner className="h-8 w-8 border-4" />
+                  <span className="font-semibold text-[#0b1220]">Reading course…</span>
+                  <span className="text-xs text-slate-500">Measuring the track on the server.</span>
+                </>
+              ) : (
+                <>
+                  <Upload size={22} className="text-blue-600" />
+                  <span className="font-semibold text-[#0b1220]">Drop a .gpx file here, or browse</span>
+                  <span className="max-w-[320px] text-xs text-slate-500">
+                    The file is analysed for this calculation only and never stored. Dense recordings (a point at least
+                    every 30 m) give a trustworthy result.
+                  </span>
+                  <span className="mt-1 inline-flex min-h-10 items-center rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 px-4 text-[13px] font-semibold text-white shadow-[0_10px_28px_rgba(37,99,235,.2)]">
+                    Choose file
+                  </span>
+                </>
+              )}
+              <input id="calc-gpx-input" type="file" accept=".gpx" onChange={onUpload} disabled={loadingCourse} className="hidden" />
+            </label>
+            {loadError && <p className="mt-3 text-xs text-red-600">{loadError}</p>}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ----------------------------------------------------------------------------- loaded course
+
+function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCourse }) {
+  const tooSparse = measurement?.quality_flags?.includes('sparse_geometry_median_over_30m')
+  const stats = [
+    ['DISTANCE', `${fmt1(features.distance_km)} km`],
+    ['CLIMB', `+${Math.round(features.elevation_gain_m)} m`],
+    ['DESCENT', `-${Math.round(features.elevation_loss_m)} m`],
+    [
+      'STEEPEST 50 M',
+      features.max_climb_grade == null ? 'n/a' : `+${(features.max_climb_grade * 100).toFixed(0)}% / -${(features.max_descent_grade * 100).toFixed(0)}%`,
+    ],
+  ]
+
+  return (
+    <section className="bg-white py-14 sm:py-20">
+      <div className={CONTAINER}>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0">
+            <Eyebrow>01 / COURSE</Eyebrow>
+            <h2 className="mt-3 text-[clamp(28px,4vw,44px)] font-bold leading-[1] tracking-[-.05em] text-[#0b1220]">{courseLabel.name}</h2>
+            <p className="mt-2 text-sm text-slate-500">
+              {courseLabel.meta ? `${courseLabel.meta} · ` : ''}
+              <span className={courseLabel.verified ? 'font-semibold text-blue-600' : 'font-semibold text-amber-600'}>
+                {courseLabel.verified ? 'Verified course' : 'Your upload'}
+              </span>
+            </p>
+          </div>
+          <button
+            onClick={onChangeCourse}
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-[13px] font-semibold text-[#0b1220] hover:border-blue-300"
+          >
+            <RefreshCw size={14} /> Change course
+          </button>
+        </div>
+
+        <div className="mt-8 grid grid-cols-2 border-y border-slate-200 sm:grid-cols-4">
+          {stats.map(([label, value], index) => (
+            <div key={label} className={`min-w-0 px-2 py-5 sm:px-5 ${index > 0 ? 'sm:border-l sm:border-slate-200' : ''} ${index % 2 === 1 ? 'border-l border-slate-200 sm:border-l' : ''}`}>
+              <small className="font-mono text-[9px] tracking-[.08em] text-blue-600">{label}</small>
+              <b className="mt-2 block text-2xl font-bold tracking-[-.05em] text-[#0b1220] sm:text-3xl">{value}</b>
+            </div>
+          ))}
+        </div>
+
+        {gpxText && (
+          <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+            <CourseMap gpxText={gpxText} measurement={measurement} className="p-3" />
+          </div>
+        )}
+
+        {tooSparse && (
+          <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            This track has a point only every {measurement.median_edge_m} m. Sparse recordings cut switchbacks short, so
+            the course measures shorter and easier than it is. For a trustworthy score, upload a track recorded at
+            least every 30 m (1–5 s on most watches).
+          </p>
+        )}
+      </div>
+    </section>
+  )
+}
+
+// ----------------------------------------------------------------------------- hero
+
+function TargetTimeControls({ targetSeconds, timeInput, onSlider, onInput, distanceKm, analysisError }) {
+  return (
+    <div className="mt-8 rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] backdrop-blur">
+      <label htmlFor="calc-time-input" className="font-mono text-[9px] tracking-[.08em] text-blue-600">
+        YOUR TARGET FINISH TIME
+      </label>
+      <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2">
+        <p className="font-mono text-[44px] font-bold leading-none tracking-[-.04em] text-[#0b1220]">{formatHms(targetSeconds)}</p>
+        <input
+          id="calc-time-input"
+          type="text"
+          value={timeInput}
+          onChange={(event) => onInput(event.target.value)}
+          placeholder="HH:MM:SS"
+          className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-center font-mono text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+        />
+        <p className="font-mono text-xs text-slate-400">{formatPace(targetSeconds, distanceKm)}</p>
+      </div>
+      <input
+        type="range"
+        min={600}
+        max={86400}
+        step={30}
+        value={targetSeconds}
+        onChange={(event) => onSlider(Number(event.target.value))}
+        aria-label="Target finish time"
+        className="mt-4 w-full accent-blue-600"
+      />
+      <div className="mt-1 flex justify-between font-mono text-[8px] tracking-[.08em] text-slate-400">
+        <span>10 MIN</span>
+        <span>24 H</span>
+      </div>
+      {analysisError && <p className="mt-2 text-xs text-red-600">{analysisError}</p>}
     </div>
   )
 }
 
-function ContextBar({ courseLabel }) {
-  if (!courseLabel) return null
-  return (
-    <p className="mt-2 text-xs text-slate-500">
-      Course: <span className="font-semibold text-[#0b1220]">{courseLabel.name}</span>
-      {courseLabel.meta ? ` · ${courseLabel.meta}` : ''}
-      {' · '}
-      <span className={courseLabel.verified ? 'text-blue-600' : 'text-amber-600'}>
-        {courseLabel.verified ? 'Verified course' : 'User supplied'}
-      </span>
-    </p>
-  )
-}
-
 export default function ScoreCalculator() {
-  const [step, setStep] = useState('source')
-  const [sourceMode, setSourceMode] = useState(null)
   const [query, setQuery] = useState('')
   const [races, setRaces] = useState([])
-  const [racesFetched, setRacesFetched] = useState(false)
-  const [racesLoading, setRacesLoading] = useState(false)
+  const [racesLoading, setRacesLoading] = useState(true)
   const [racesError, setRacesError] = useState(null)
 
   const [courseFile, setCourseFile] = useState(null)
@@ -342,17 +623,21 @@ export default function ScoreCalculator() {
   const analysisRunId = useRef(0)
 
   useEffect(() => {
-    if (sourceMode !== 'search' || racesFetched || racesLoading) return
-    setRacesLoading(true)
-    setRacesError(null)
+    let cancelled = false
     listRaces()
-      .then((all) => setRaces(all.filter((race) => race.has_gpx)))
-      .catch((err) => setRacesError(err.message))
-      .finally(() => {
-        setRacesLoading(false)
-        setRacesFetched(true)
+      .then((all) => {
+        if (!cancelled) setRaces(all.filter((race) => race.has_gpx))
       })
-  }, [sourceMode, racesFetched, racesLoading])
+      .catch((err) => {
+        if (!cancelled) setRacesError(err.message)
+      })
+      .finally(() => {
+        if (!cancelled) setRacesLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const filteredRaces = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -364,7 +649,7 @@ export default function ScoreCalculator() {
   // slider) — debounced so scrubbing the slider doesn't fire an API call per pixel, but no
   // "Analyse" button to click: the result is always live for whatever time is currently set.
   useEffect(() => {
-    if (step !== 'target' || !courseFile || targetSeconds <= 0) return undefined
+    if (!courseFile || targetSeconds <= 0) return undefined
     const runId = ++analysisRunId.current
     const timer = setTimeout(() => {
       setScoring(true)
@@ -385,7 +670,7 @@ export default function ScoreCalculator() {
         })
     }, 400)
     return () => clearTimeout(timer)
-  }, [targetSeconds, courseFile, step])
+  }, [targetSeconds, courseFile])
 
   async function loadCourse(loader, label) {
     setLoadError(null)
@@ -405,7 +690,7 @@ export default function ScoreCalculator() {
       const clamped = Math.min(86400, Math.max(600, suggested))
       setTargetSeconds(clamped)
       setTimeInput(formatHms(clamped))
-      setStep('target')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (err) {
       setLoadError(err.message)
     } finally {
@@ -424,18 +709,21 @@ export default function ScoreCalculator() {
   function handleUpload(event) {
     const selected = event.target.files?.[0]
     if (!selected) return
-    loadCourse(() => Promise.resolve(selected), { name: selected.name, meta: 'Uploaded GPX', verified: false })
+    loadCourse(() => Promise.resolve(selected), { name: selected.name.replace(/\.gpx$/i, ''), meta: 'Uploaded GPX', verified: false })
+    event.target.value = ''
   }
 
   function startOver() {
-    setStep('source')
-    setSourceMode(null)
+    analysisRunId.current += 1
     setCourseFile(null)
     setGpxText('')
     setCourseLabel(null)
     setFeatures(null)
     setMeasurement(null)
     setEstimate(null)
+    setScoring(false)
+    setAnalysisError(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function updateTargetSeconds(seconds) {
@@ -451,9 +739,7 @@ export default function ScoreCalculator() {
     }
   }
 
-  const tooSparse = measurement?.quality_flags?.includes('sparse_geometry_median_over_30m')
-
-  // Which curve produced this estimate: V0.4 scales by the endurance reference, V0.3 by the
+  // Which curve produced this estimate: V0.4+ scale by the endurance reference, V0.3 by the
   // Riegel exponent, and everything older looks the observed rate up directly.
   const scoringVersion = estimate?.scoring_version ?? ''
   const scaledVersion =
@@ -464,167 +750,100 @@ export default function ScoreCalculator() {
     scoringVersion.includes('-power') ||
     scoringVersion.includes('duration-scaled')
   const publishedAnchors = publishedAnchorsFor(scoringVersion)
+  const hasCourse = Boolean(courseFile && features)
 
   return (
-    <section className="mt-10">
-      <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">CALCULATE SCORE</p>
-      <h2 className="mt-2 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">
-        Know your OTRI score before you race.
-      </h2>
-      <p className="mt-2 max-w-[680px] text-sm text-slate-500">
-        Choose a course, then drag to your target finish time — the real OTRI score updates live. Course + time +
-        scoring version determine the score — nothing about who else is racing.
-      </p>
-
-      <ContextBar courseLabel={courseLabel} />
-
-      {step === 'source' && (
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="font-mono text-[9px] tracking-[.08em] text-slate-400">HOW DO YOU WANT TO GET THE COURSE?</p>
-          <div className="mt-3 flex flex-wrap gap-3">
-            <button
-              onClick={() => setSourceMode('search')}
-              className={`rounded-lg border px-4 py-2 text-sm font-semibold ${sourceMode === 'search' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-300 text-slate-600 hover:border-blue-300'}`}
-            >
-              Search existing race
-            </button>
-            <button
-              onClick={() => setSourceMode('upload')}
-              className={`rounded-lg border px-4 py-2 text-sm font-semibold ${sourceMode === 'upload' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-300 text-slate-600 hover:border-blue-300'}`}
-            >
-              Upload GPX
-            </button>
-          </div>
-
-          {sourceMode === 'search' && (
-            <div className="mt-4">
-              <input
-                type="text"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search by race or course name…"
-                className="w-full max-w-sm rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-              {racesLoading && <p className="mt-3 text-xs text-slate-500">Loading races…</p>}
-              {racesError && <p className="mt-3 text-xs text-red-600">{racesError}</p>}
-              {!racesLoading && !racesError && filteredRaces.length === 0 && (
-                <p className="mt-3 text-xs text-slate-500">No races with a verified course match that search yet.</p>
-              )}
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {filteredRaces.map((race) => (
-                  <button
-                    key={race.race_id}
-                    onClick={() => chooseExistingRace(race)}
-                    disabled={loadingCourse}
-                    className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-left hover:border-blue-300 hover:bg-blue-50/40 disabled:opacity-50"
-                  >
-                    <p className="text-sm font-semibold text-[#0b1220]">{race.event_name} · {race.course_name}</p>
-                    <p className="mt-1 font-mono text-[10px] text-slate-500">
-                      {race.event_date} · {race.distance_km} km · +{race.elevation_gain_m} m · Verified course
-                    </p>
-                  </button>
-                ))}
-              </div>
+    <>
+      <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
+        <div className={`${CONTAINER} grid min-w-0 items-center gap-12 py-14 sm:py-16 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-20 lg:py-20`}>
+          <div className="min-w-0">
+            <div className="font-mono text-[10px] font-medium tracking-[.1em] text-blue-600">
+              OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> SCORE CALCULATOR
             </div>
-          )}
-
-          {sourceMode === 'upload' && (
-            <div className="mt-4">
-              <label
-                htmlFor="calc-gpx-input"
-                className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-4 text-sm hover:border-blue-400 hover:bg-blue-50/40"
-              >
-                <span className="text-slate-600">
-                  Drop or click to choose a .gpx file. We'll analyse the track and build a temporary course model for
-                  your calculation.
-                </span>
-                <span className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white">Browse</span>
-                <input id="calc-gpx-input" type="file" accept=".gpx" onChange={handleUpload} className="hidden" />
-              </label>
-              {loadingCourse && <p className="mt-3 text-xs text-slate-500">Reading course…</p>}
-            </div>
-          )}
-
-          {loadError && <p className="mt-3 text-xs text-red-600">{loadError}</p>}
-        </div>
-      )}
-
-      {step === 'target' && features && (
-        <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            {gpxText && <CourseMap gpxText={gpxText} measurement={measurement} className="mt-1" />}
-            <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {[
-                ['Distance', `${features.distance_km} km`],
-                ['Elevation gain', `+${features.elevation_gain_m} m`],
-                ['Elevation loss', `-${features.elevation_loss_m} m`],
-                [
-                  'Steepest 50 m grade',
-                  features.max_climb_grade == null ? 'Unavailable (short track)' : `+${(features.max_climb_grade * 100).toFixed(1)}% / -${(features.max_descent_grade * 100).toFixed(1)}%`,
-                ],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-lg bg-slate-50 px-3 py-2">
-                  <dt className="font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">{label}</dt>
-                  <dd className="mt-0.5 text-sm font-semibold text-[#0b1220]">{value}</dd>
-                </div>
-              ))}
-            </dl>
-            {tooSparse && (
-              <p className="mt-3 text-sm text-amber-700">
-                This track has a point only every {measurement.median_edge_m} m. Sparse recordings cut switchbacks short,
-                so the course measures shorter and easier than it is. For a trustworthy score, upload a track recorded
-                at least every 30 m (1–5 s on most watches).
-              </p>
-            )}
-
-            <div className="mt-5 border-t border-slate-100 pt-4">
-              <label className="font-mono text-[9px] tracking-[.08em] text-slate-400">YOUR TARGET FINISH TIME</label>
-              <div className="mt-2 flex flex-wrap items-center gap-4">
-                <p className="font-mono text-4xl font-bold tracking-[-.02em] text-[#0b1220]">{formatHms(targetSeconds)}</p>
-                <input
-                  type="text"
-                  value={timeInput}
-                  onChange={(event) => updateTimeInput(event.target.value)}
-                  placeholder="HH:MM:SS"
-                  className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-center font-mono text-sm"
-                />
-                <p className="font-mono text-xs text-slate-400">{formatPace(targetSeconds, features.distance_km)}</p>
-              </div>
-              <input
-                type="range"
-                min={600}
-                max={86400}
-                step={30}
-                value={targetSeconds}
-                onChange={(event) => updateTargetSeconds(Number(event.target.value))}
-                className="mt-3 w-full accent-blue-600"
-              />
-              {analysisError && <p className="mt-2 text-xs text-red-600">{analysisError}</p>}
-            </div>
-
-            <button onClick={startOver} className="mt-4 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600">
-              Change course
-            </button>
-          </div>
-
-          {(estimate || scoring) && (
-            <div className="space-y-4">
-              <ScoreCard estimate={estimate} scoring={scoring} targetSeconds={targetSeconds} />
-              {estimate && (
-                <ScoreExplanation
-                  estimate={estimate}
-                  features={features}
+            {hasCourse ? (
+              <>
+                <h1 className="mt-5 max-w-[760px] text-[clamp(34px,5vw,56px)] font-bold leading-[1.02] tracking-[-.06em] text-[#0b1220]">
+                  Your score on
+                  <br />
+                  <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">{courseLabel.name}</em>
+                </h1>
+                <p className="mt-4 max-w-[620px] text-[15px] leading-7 text-slate-500">
+                  Drag to your target finish time. The score is calculated by the same code that scores official results.
+                </p>
+                <TargetTimeControls
                   targetSeconds={targetSeconds}
-                  publishedAnchors={publishedAnchors}
-                  scaledVersion={scaledVersion}
-                  measurement={measurement}
+                  timeInput={timeInput}
+                  onSlider={updateTargetSeconds}
+                  onInput={updateTimeInput}
+                  distanceKm={features.distance_km}
+                  analysisError={analysisError}
                 />
-              )}
-            </div>
-          )}
+              </>
+            ) : (
+              <>
+                <h1 className="mt-5 max-w-[760px] text-[clamp(40px,6.5vw,76px)] font-bold leading-[1.06] tracking-[-.065em] text-[#0b1220]">
+                  Know your score
+                  <br />
+                  <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">before you race.</em>
+                </h1>
+                <p className="mt-6 max-w-[620px] text-[15px] leading-7 text-slate-500 sm:text-[17px]">
+                  Choose a course and a target finish time. OTRI measures the course, works out how hard it is, and tells
+                  you how close that time would be to the best a human has ever run over that much ground.
+                </p>
+                <div className="mt-7 flex flex-col gap-2 sm:flex-row">
+                  <a
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 px-4 text-[13px] font-semibold text-white no-underline shadow-[0_10px_28px_rgba(37,99,235,.2)] hover:from-blue-800 hover:to-blue-600"
+                    href="#calculator-course"
+                  >
+                    Choose a course <Mountain size={15} />
+                  </a>
+                  <a
+                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white/90 px-4 text-[13px] font-semibold text-[#0b1220] no-underline hover:border-blue-300"
+                    href={METHODOLOGY_URL}
+                  >
+                    How it's calculated <ArrowUpRight size={15} />
+                  </a>
+                </div>
+                <div className="mt-7 flex flex-wrap gap-x-4 gap-y-2 font-mono text-[8px] tracking-[.08em] text-slate-500 sm:text-[9px]">
+                  <span className="text-blue-600">COURSE</span>
+                  <span>+ TIME</span>
+                  <span>+ VERSION</span>
+                  <span>= SCORE</span>
+                </div>
+              </>
+            )}
+          </div>
+          <ScorePanel estimate={estimate} scoring={scoring} targetSeconds={targetSeconds} features={features} courseLabel={courseLabel} />
         </div>
+      </section>
+
+      <div id="calculator-course" className="scroll-mt-[68px]">
+        {hasCourse ? (
+          <CourseDetails gpxText={gpxText} measurement={measurement} features={features} courseLabel={courseLabel} onChangeCourse={startOver} />
+        ) : (
+          <CoursePicker
+            races={filteredRaces}
+            racesLoading={racesLoading}
+            racesError={racesError}
+            query={query}
+            onQuery={setQuery}
+            onChooseRace={chooseExistingRace}
+            onUpload={handleUpload}
+            loadingCourse={loadingCourse}
+            loadError={loadError}
+          />
+        )}
+      </div>
+
+      {hasCourse && estimate && (
+        <ScoreExplanation
+          estimate={estimate}
+          features={features}
+          targetSeconds={targetSeconds}
+          publishedAnchors={publishedAnchors}
+          scaledVersion={scaledVersion}
+        />
       )}
-    </section>
+    </>
   )
 }
-
