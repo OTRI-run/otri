@@ -35,6 +35,7 @@ export default defineConfig({
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
         prototype: resolve(import.meta.dirname, 'prototype/index.html'),
+        organizer: resolve(import.meta.dirname, 'prototype/organizer/index.html'),
       },
     },
   },

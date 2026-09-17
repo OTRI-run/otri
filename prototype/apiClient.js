@@ -169,6 +169,23 @@ export function analyzeGpx(file, finishTimeSeconds) {
   return request('/gpx/analyze', { method: 'POST', body: formData })
 }
 
+export function getRace(raceId) {
+  return request(`/races/${encodeURIComponent(raceId)}`)
+}
+
+/** The stored, versioned measurement for a race with an attached GPX (404 if none). */
+export function getRaceMeasurement(raceId) {
+  return request(`/races/${encodeURIComponent(raceId)}/measurement`)
+}
+
+/** Scored results for a race; resolves to [] when none have been submitted yet. */
+export async function getRaceResults(raceId) {
+  const response = await fetch(`${API_BASE_URL}/races/${encodeURIComponent(raceId)}/results`)
+  if (response.status === 404) return []
+  if (!response.ok) throw new Error(response.statusText)
+  return response.json()
+}
+
 export function listRaces() {
   return request('/races')
 }

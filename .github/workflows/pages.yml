@@ -35,6 +35,8 @@ jobs:
           ! grep -Eq '(^|["'\''(=])/(assets|src)/' dist/index.html
           test -s dist/prototype/index.html
           ! grep -Eq '(^|["'\''(=])/(assets|src)/' dist/prototype/index.html
+          test -s dist/prototype/organizer/index.html
+          ! grep -Eq '(^|["'\''(=])/(assets|src)/' dist/prototype/organizer/index.html
           echo "Pages artifact looks valid and uses relative asset paths."
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

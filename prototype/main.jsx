@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client'
 import { ArrowLeft, Mountain, TrendingUp } from 'lucide-react'
 import CourseMap from '../src/components/CourseMap'
 import ScoreCalculator from './ScoreCalculator'
-import OrganizerUpload from './OrganizerUpload'
 import { getApiStatus } from './apiClient'
 import racesData from './data/races.json'
 import '../src/styles.css'
@@ -204,12 +203,11 @@ function SampleCourseSection({ sampleCourse }) {
 const TABS = [
   { id: 'races', label: 'Races' },
   { id: 'calculator', label: 'Calculate score' },
-  { id: 'organizer', label: 'Organizer upload' },
 ]
 
 function TabNav({ active, onChange }) {
   return (
-    <nav className="mt-6 flex flex-wrap gap-2 border-b border-slate-200">
+    <nav className="mt-6 flex flex-wrap items-center gap-2 border-b border-slate-200">
       {TABS.map((tab) => (
         <button
           key={tab.id}
@@ -221,9 +219,23 @@ function TabNav({ active, onChange }) {
           {tab.label}
         </button>
       ))}
+      <a href="organizer/" className="ml-auto px-3 py-2 text-sm font-semibold text-blue-600 no-underline">
+        For organizers →
+      </a>
     </nav>
   )
 }
+
+// The API's verification and password-reset emails link to this page with a query parameter
+// (see api/email.py). Hand those straight to the organizer app's routes.
+function redirectAuthLinks() {
+  const params = new URLSearchParams(window.location.search)
+  const verify = params.get('verify_email')
+  const reset = params.get('reset_token')
+  if (verify) window.location.replace(`organizer/#/verify?token=${encodeURIComponent(verify)}`)
+  else if (reset) window.location.replace(`organizer/#/reset?token=${encodeURIComponent(reset)}`)
+}
+redirectAuthLinks()
 
 function App() {
   const [activeTab, setActiveTab] = useState('races')
@@ -261,7 +273,6 @@ function App() {
         )}
 
         {activeTab === 'calculator' && <ScoreCalculator />}
-        {activeTab === 'organizer' && <OrganizerUpload />}
       </main>
     </div>
   )
