@@ -6,9 +6,12 @@ Run with: pytest tests/unit
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+import pytest
 
 from api import app
 from api import db
+
+pytestmark = pytest.mark.usefixtures("clean_state")
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEMO_RESULT_001 = REPO_ROOT / "data" / "demo" / "results" / "OTRI-DEMO-001.csv"

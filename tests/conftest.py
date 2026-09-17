@@ -14,19 +14,34 @@ from pathlib import Path
 os.environ.setdefault("DATABASE_URL", "postgresql://postgres:otri_dev_password@localhost:5432/otri_test")
 os.environ.setdefault("OTRI_API_JWT_SECRET", "test-secret-not-for-production-use-only-1234")
 
+import bcrypt  # noqa: E402
 import pytest  # noqa: E402
 
 from api import db, rate_limit  # noqa: E402
 from ingestion import race_records, result_records  # noqa: E402
+
+# api/auth.py's bcrypt.gensalt() defaults to cost factor 12 (~250ms/hash), which is
+# appropriate for production but makes a test suite that registers/logs in dozens of
+# organizers dominated by hashing time rather than actual test logic. Patch the shared
+# `bcrypt` module's gensalt to a much cheaper cost factor for the whole test run only —
+# production code (api/auth.py) is untouched and still asks for the default at runtime.
+_real_gensalt = bcrypt.gensalt
+bcrypt.gensalt = lambda rounds=4, prefix=b"2b": _real_gensalt(rounds=4, prefix=prefix)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RACES_FILE = REPO_ROOT / "data" / "demo" / "races.csv"
 RESULTS_DIR = REPO_ROOT / "data" / "demo" / "results"
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def clean_state():
-    """Reset the test database to just the demo dataset, and clear the in-memory rate limiter, before every test."""
+    """Reset the test database to just the demo dataset, and clear the in-memory rate limiter, before every test.
+
+    Not autouse: only tests/unit/test_api.py and tests/unit/test_auth.py actually hit the
+    database, so they opt in via `pytestmark = pytest.mark.usefixtures("clean_state")`. Running
+    this TRUNCATE+reseed before every one of the ~140 tests (including pure-math scoring/course
+    tests that never touch the DB) was the dominant cost of the whole suite.
+    """
     db.init_db()
     with db.get_connection() as connection:
         connection.execute(

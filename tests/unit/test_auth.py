@@ -7,6 +7,8 @@ import pytest
 
 import api.auth as auth_module
 
+pytestmark = pytest.mark.usefixtures("clean_state")
+
 
 def _verify(organizer: auth_module.Organizer) -> None:
     token = auth_module.create_email_verification_token(organizer)
