@@ -23,7 +23,12 @@ const DEFAULT_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
 
 // Open, keyless elevation tiles (AWS Open Data "Terrain Tiles", Terrarium
 // encoding) used to render real 3D terrain + hillshading under the route.
+// This is the direct continuation of Mapzen's joerd elevation project (Mapzen
+// itself shut down in 2017); its data-source license requires attribution —
+// see https://github.com/tilezen/joerd/blob/master/docs/attribution.md.
 const TERRAIN_TILES_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'
+const TERRAIN_ATTRIBUTION =
+  'Terrain data: SRTM, GMTED2010, ETOPO1, 3DEP (USGS, NOAA) via <a href="https://github.com/tilezen/joerd">Joerd</a>'
 
 // Free, keyless satellite imagery (Esri World Imagery), used only when the
 // user switches to satellite view via this component's own toggle.
@@ -48,6 +53,7 @@ function addCourseLayers(map, line, { includeHillshade }) {
       tileSize: 256,
       encoding: 'terrarium',
       maxzoom: 15,
+      attribution: TERRAIN_ATTRIBUTION,
     })
   }
   if (includeHillshade && !map.getLayer('hillshade')) {
