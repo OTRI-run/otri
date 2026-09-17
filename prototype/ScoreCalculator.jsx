@@ -32,6 +32,23 @@ function publishedAnchorsFor(scoringVersion) {
   return [ANCHOR_0, ANCHOR_349, ANCHOR_544, ANCHOR_692, ANCHOR_1000_LEGACY]
 }
 
+// Where the slider starts for a freshly chosen course: the finish time that scores this.
+const DEFAULT_TARGET_SCORE = 500
+const POWER_EXPONENT = 0.85 // V0.8: score = 1000 × (rate / ceiling rate)^0.85
+
+function clampSeconds(seconds) {
+  return Math.min(86400, Math.max(600, Math.round(seconds / 30) * 30))
+}
+
+// The finish time that would score `score` on the course an estimate was made for. Uses the
+// ceiling time the API reports; only defined for the power curve, null otherwise.
+function timeForScore(estimate, score) {
+  const best = estimate?.breakdown?.world_best_time_seconds
+  if (!best || !estimate.scoring_version?.includes('-power')) return null
+  const fraction = Math.pow(score / 1000, 1 / POWER_EXPONENT)
+  return best / fraction
+}
+
 function parseHmsToSeconds(value) {
   const parts = value.trim().split(':').map(Number)
   if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) return null
@@ -874,9 +891,20 @@ export default function ScoreCalculator() {
       setMeasurement(analysis.measurement)
       setCourseLabel(label)
       setEstimate(null)
-      // Default target time: a 6 min/km pace on this course, clamped to the slider's range.
-      const suggested = analysis.features?.distance_km ? Math.round((analysis.features.distance_km * 360) / 30) * 30 : 17700
-      const clamped = initialSeconds ?? Math.min(86400, Math.max(600, suggested))
+      // Default target time: the time that scores DEFAULT_TARGET_SCORE on this course (a share
+      // link carries its own time). Found from the model's ceiling for this course, so it needs
+      // one scored estimate first; a 6 min/km guess stands in if that is unavailable.
+      const guess = analysis.features?.distance_km ? Math.round((analysis.features.distance_km * 360) / 30) * 30 : 17700
+      let suggested = initialSeconds ?? null
+      if (suggested == null) {
+        try {
+          const scored = await analyzeGpx(file, clampSeconds(guess))
+          suggested = timeForScore(scored.estimate, DEFAULT_TARGET_SCORE)
+        } catch {
+          suggested = null
+        }
+      }
+      const clamped = clampSeconds(suggested ?? guess)
       setTargetSeconds(clamped)
       setTimeInput(formatHms(clamped))
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -989,7 +1017,8 @@ export default function ScoreCalculator() {
                   <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">{courseLabel.name}</em>
                 </h1>
                 <p className="mt-4 max-w-[620px] text-[15px] leading-7 text-slate-500">
-                  Drag to your target finish time. The score is calculated by the same code that scores official results.
+                  The slider starts at the time that scores {DEFAULT_TARGET_SCORE} here. Drag to your target finish time; the score
+                  is calculated by the same code that scores official results.
                 </p>
                 <TargetTimeControls
                   targetSeconds={targetSeconds}
