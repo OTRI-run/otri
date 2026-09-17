@@ -17,7 +17,7 @@ The organizer should always know:
 5. whether the race is ready for review;
 6. what OTRI will calculate automatically.
 
-The design should borrow proven structural ideas from ITRA and UTMB without copying their branding, proprietary data model, scoring methodology, or UI. ITRA currently uses an organizer account, then an event containing one or more races, and supports renewing/duplicating previous events. ITRA also requires defined race details and structured individual results for scoring. UTMB similarly uses an organizer account, an Organizer Space, then events and races; its current organizer information asks for event location/website and race date, start/finish, distance, elevation gain/loss and race type. UTMB states GPS is not required merely to list a race. citehttps://itra.run/Info/Contact citehttps://itra.run/FAQ/Organizers citehttps://utmb.world/index-organiser-info
+The design should use proven general patterns for organizer onboarding, including an organizer account, organization, event containing one or more races, structured results, renewal/duplication of previous editions, and explicit publication states. OTRI must independently define its own branding, data model, scoring methodology, terminology and UI.
 
 OTRI should improve the experience by making the workflow explicitly progressive and by validating the data before submission.
 
@@ -192,7 +192,7 @@ Recommended fields:
 - technicality information where OTRI can support it;
 - race capacity.
 
-UTMB currently asks organizers for date, start/finish location, distance, elevation gain/loss and race type, while explicitly saying GPS is not required to list a race. OTRI should follow the same principle: GPX should be strongly encouraged for a high-quality course model but not make basic race listing impossible. citehttps://utmb.world/index-organiser-info
+OTRI should not make a GPX mandatory for basic race listing. GPX should be strongly encouraged for a high-quality course model.
 
 ### Step 5 — Course upload
 
@@ -205,7 +205,7 @@ If GPX is supplied:
 5. compare organizer-entered values with GPX-derived values;
 6. flag meaningful differences;
 7. let organizer confirm which official values apply;
-8. store the raw file immutably with provenance.
+8. store the raw file immutably with provenance and rights status.
 
 Example UI:
 
@@ -278,8 +278,6 @@ Additional fields may be accepted:
 
 Never require a field merely because another index requires it. OTRI should collect the minimum data necessary for its own product.
 
-ITRA currently uses a structured XLSX template and requires fields such as time, ranking, name, gender, birthdate and nationality; OTRI should learn from the structured-template approach while independently defining its own minimum schema and privacy rules. citehttps://itra.run/FAQ/Organizers
-
 ### Step 8 — Automatic validation
 
 Run validation immediately after upload.
@@ -337,9 +335,10 @@ Capture:
 - source filename;
 - file hash;
 - original immutable file;
+- rights status;
 - notes.
 
-Existing OTRI documentation already prioritizes organizer-provided and licensed data, requires provenance, and warns against copying ITRA/UTMB proprietary databases. fileciteturn297file3L691-L714
+OTRI should prioritize organizer-provided or explicitly licensed data, require provenance, and avoid copying third-party proprietary databases.
 
 ### Step 10 — Review screen
 
@@ -411,7 +410,7 @@ Once approved, organizer sees:
 - result correction workflow;
 - history.
 
-Give organizers something useful back. Existing OTRI planning emphasizes that organizers should be treated as partners and receive race profiles, validated results, rankings/analytics, downloadable reports and future API access. fileciteturn297file8L1474-L1499
+Give organizers something useful back: race profiles, validated results, rankings/analytics, downloadable reports and future API access.
 
 ## 4. Post-race result workflow
 
@@ -465,7 +464,7 @@ What changed this year?
 ○ New race added
 ```
 
-This is a major usability win for repeat organizers and mirrors ITRA's current emphasis on renewing/duplicating prior events instead of starting over. citehttps://itra.run/Info/Contact
+Repeat organizers should be able to renew/duplicate an edition instead of rebuilding the event from scratch.
 
 ## 6. UX rules for the implementing AI
 
