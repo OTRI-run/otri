@@ -46,4 +46,5 @@ crontab -e
 - Get a `RESEND_API_KEY` from [resend.com](https://resend.com) — without it, organizer verification/password-reset emails are logged instead of sent (see `api/README.md`).
 
 - All are idempotent enough to re-run safely.
+- The API writes a bounded measurement cache to `/opt/otri/data/cache/measurements/` (one JSON per GPX content hash + terrain manifest, at most 64). It is content-addressed and safe to delete at any time; the next request just measures again.
 - `*.sh` files are forced to LF line endings via `.gitattributes` — a CRLF shell script fails on Linux.
