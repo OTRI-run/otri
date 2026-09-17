@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUpRight, GitBranch, Mountain, RefreshCw, Search, Timer, Upload } from 'lucide-react'
 import CourseMap from '../src/components/CourseMap'
 import { analyzeGpx, listRaces, fetchRaceGpxFile } from './apiClient'
+import NextSteps from './NextSteps'
 
 // Published anchor tables, shown for context in the "why this score" breakdown. The actual
 // score always comes from the API. Scores 0-544 are V0.1's real demo/test anchors in every
@@ -385,6 +386,13 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
         </details>
 
         <p className="mt-4 text-xs text-slate-500">Model-based projection · {estimate.disclaimer}</p>
+        <NextSteps
+          items={[
+            ['See how others scored', 'Leaderboards for races scored under the same model.', 'Browse scored races', '#races'],
+            ['Organize a race?', 'Upload official results and the course file; every finisher gets a score like this one.', 'For organizers', 'organizer/'],
+            ['Question the model', 'Every constant, where it comes from, and what it does not know.', 'How a score is made', METHODOLOGY_URL],
+          ]}
+        />
       </div>
     </section>
   )
@@ -810,6 +818,12 @@ export default function ScoreCalculator() {
                   <span>+ VERSION</span>
                   <span>= SCORE</span>
                 </div>
+                <p className="mt-5 text-sm text-slate-500">
+                  Just want to look around?{' '}
+                  <a href="#races" className="font-semibold text-blue-600 no-underline hover:underline">
+                    Browse scored races →
+                  </a>
+                </p>
               </>
             )}
           </div>

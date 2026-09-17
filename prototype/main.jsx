@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowLeft, ArrowUpRight, Mail, Mountain, TrendingUp } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, Mail } from 'lucide-react'
 import Logo from '../src/components/Logo'
+import Home from './Home'
+import NextSteps from './NextSteps'
+import RaceCard from './RaceCard'
 import ScoreCalculator from './ScoreCalculator'
 import { getApiStatus } from './apiClient'
 import racesData from './data/races.json'
@@ -82,13 +85,15 @@ function BuildBanner() {
 }
 
 // ------------------------------------------------------------------------------------ routing
-// Hash routes so every screen has a URL: #races, #races/<race_id>, #calculator.
+// Hash routes so every screen has a URL: #home (default), #races, #races/<race_id>, #calculator.
 
 function parseHash(hash) {
   const path = hash.replace(/^#\/?/, '')
   if (path.startsWith('calculator')) return { tab: 'calculator', raceId: null }
   const raceMatch = path.match(/^races\/(.+)$/)
-  return { tab: 'races', raceId: raceMatch ? decodeURIComponent(raceMatch[1]) : null }
+  if (raceMatch) return { tab: 'races', raceId: decodeURIComponent(raceMatch[1]) }
+  if (path.startsWith('races')) return { tab: 'races', raceId: null }
+  return { tab: 'home', raceId: null }
 }
 
 function useRoute() {
@@ -109,8 +114,8 @@ function navigate(hash) {
 // ------------------------------------------------------------------------------------- shell
 
 const NAV = [
-  { id: 'races', label: 'Races', href: '#races' },
   { id: 'calculator', label: 'Calculate score', href: '#calculator' },
+  { id: 'races', label: 'Races', href: '#races' },
 ]
 
 function NavLink({ item, active, className = '' }) {
@@ -130,7 +135,7 @@ function Header({ tab }) {
     <>
       <header className="sticky top-0 z-50 h-[68px] border-b border-slate-200/90 bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-full min-w-0 w-[min(1120px,calc(100%-28px))] items-center">
-          <Logo href="../" />
+          <Logo href="#home" />
           <div className="ml-auto mr-6 hidden shrink-0 items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 font-mono text-[9px] font-medium tracking-[.08em] text-blue-600 sm:flex">
             <i className="h-1.5 w-1.5 rounded-full bg-blue-600 shadow-[0_0_0_3px_#dbeafe]" />
             PROTOTYPE <span className="text-slate-400">v0.x</span>
@@ -192,33 +197,6 @@ function Footer() {
 
 // ------------------------------------------------------------------------------------- races
 
-function RaceCard({ race, onSelect }) {
-  return (
-    <button
-      onClick={() => onSelect(race.race_id)}
-      className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 text-left shadow-[0_10px_28px_rgba(15,23,42,.04)] transition hover:border-blue-300 hover:shadow-[0_14px_34px_rgba(37,99,235,.12)]"
-    >
-      <p className="font-mono text-[9px] tracking-[.08em] text-blue-600">{race.race_id}</p>
-      <h3 className="mt-2 text-xl font-bold tracking-[-.03em] text-[#0b1220]">{race.race_name}</h3>
-      <p className="mt-1 text-xs text-slate-500">
-        {race.course_name} · {race.event_date}
-      </p>
-      <div className="mt-4 flex gap-4 font-mono text-[10px] text-slate-500">
-        <span className="flex items-center gap-1">
-          <TrendingUp size={12} className="text-blue-600" />
-          {race.distance_km} km
-        </span>
-        <span className="flex items-center gap-1">
-          <Mountain size={12} className="text-blue-600" />+{race.elevation_gain_m} m
-        </span>
-      </div>
-      <div className="mt-4 text-xs font-semibold text-blue-600">
-        {race.leaderboard.length} scored{race.non_finishers > 0 ? ` · ${race.non_finishers} DNF` : ''}
-      </div>
-    </button>
-  )
-}
-
 function Leaderboard({ race, onBack }) {
   return (
     <div>
@@ -263,6 +241,13 @@ function Leaderboard({ race, onBack }) {
         scoring_version {race.leaderboard[0]?.scoring_version ?? 'n/a'} · Course Standard model — depends only on the course and
         each runner's own finish time, never the field
       </p>
+      <NextSteps
+        items={[
+          ['Where would you land?', 'Pick a course and a target time. The score updates live.', 'Calculate your score', '#calculator'],
+          ['Organize a race like this?', 'Upload official results and the course file; every finisher gets a score.', 'For organizers', 'organizer/'],
+          ['Why these numbers?', 'The plain-language explainer, then every constant in the model.', 'How a score is made', 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/HOW-OTRI-SCORES.md'],
+        ]}
+      />
     </div>
   )
 }
@@ -294,15 +279,16 @@ function RacesPage({ raceId }) {
             </div>
             <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {racesData.races.map((race) => (
-                <RaceCard key={race.race_id} race={race} onSelect={(id) => navigate(`#races/${encodeURIComponent(id)}`)} />
+                <RaceCard key={race.race_id} race={race} />
               ))}
             </div>
-            <p className="mt-8 text-sm text-slate-500">
-              Want a number for your own race?{' '}
-              <a href="#calculator" className="font-semibold text-blue-600 no-underline">
-                Calculate a score →
-              </a>
-            </p>
+            <NextSteps
+              items={[
+                ['Your race is not here?', 'Score any course yourself: pick a verified one or upload a GPX.', 'Calculate your score', '#calculator'],
+                ['Organize a race?', 'Upload official results and the course file; every finisher gets a score.', 'For organizers', 'organizer/'],
+                ['Why these numbers?', 'The plain-language explainer, then every constant in the model.', 'How a score is made', 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/HOW-OTRI-SCORES.md'],
+              ]}
+            />
           </>
         )}
       </div>
@@ -329,6 +315,7 @@ function App() {
       <BuildBanner />
       <Header tab={route.tab} />
       <main>
+        {route.tab === 'home' && <Home />}
         {route.tab === 'races' && <RacesPage raceId={route.raceId} />}
         {route.tab === 'calculator' && <ScoreCalculator />}
       </main>
