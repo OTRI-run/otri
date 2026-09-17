@@ -692,3 +692,59 @@ def test_share_gpx_rejects_invalid_files_and_unknown_ids(tmp_path, monkeypatch):
     assert client.get("/gpx/shared/0123456789abcdef").status_code == 404
     assert client.get("/gpx/shared/../../etc/passwd").status_code == 404
     assert client.get("/gpx/shared/not-hex!").status_code == 404
+
+
+def test_share_gpx_is_gzipped_on_disk_and_evicts_the_oldest_when_over_budget(tmp_path, monkeypatch):
+    """Worst case is bounded: the folder never exceeds the budget, the newest file always survives."""
+    import gzip
+    import importlib
+    import os
+    import time
+
+    api_module = importlib.import_module("api.app")
+    monkeypatch.setattr(api_module, "_SHARED_COURSE_DIR", tmp_path / "shared")
+    real_course = Path(__file__).resolve().parents[1] / "fixtures" / "gpx" / "phuket-trail-2026-pkt15.gpx"
+    real_raw = real_course.read_bytes()
+    assert len(gzip.compress(real_raw, compresslevel=6)) < len(real_raw) / 3, "gzip should shrink a real GPX several-fold"
+    raw = FLAT_LOOP_GPX.read_bytes()
+    packed_size = len(gzip.compress(raw, compresslevel=6))
+    # Budget for two compressed files (with generous slack for size differences between variants).
+    monkeypatch.setattr(api_module, "_SHARED_COURSE_MAX_TOTAL_BYTES", int(packed_size * 2.5))
+
+    ids = []
+    for i in range(3):
+        variant = raw.replace(b"<gpx", f"<!-- v{i} --><gpx".encode(), 1)  # distinct content, still valid GPX
+        response = client.post("/gpx/share", files={"file": (f"v{i}.gpx", variant, "application/gpx+xml")})
+        assert response.status_code == 200, response.text
+        ids.append(response.json()["share_id"])
+        # mtime resolution on some filesystems is coarse; make the ordering unambiguous
+        os.utime(tmp_path / "shared" / f"{ids[-1]}.gpx.gz", (time.time() + i, time.time() + i))
+
+    on_disk = sorted(path.name for path in (tmp_path / "shared").glob("*.gpx.gz"))
+    assert f"{ids[0]}.gpx.gz" not in on_disk, "the oldest course is evicted"
+    assert f"{ids[1]}.gpx.gz" in on_disk and f"{ids[2]}.gpx.gz" in on_disk
+    assert not (tmp_path / "shared" / f"{ids[0]}.json").exists(), "its sidecar goes too"
+    assert client.get(f"/gpx/shared/{ids[0]}").status_code == 404
+    served = client.get(f"/gpx/shared/{ids[2]}")
+    assert served.status_code == 200 and served.content.startswith(b"<!-- v2 -->") or b"<!-- v2 -->" in served.content
+
+
+def test_share_gpx_caps_file_size_and_rate_limits(tmp_path, monkeypatch):
+    import importlib
+
+    api_module = importlib.import_module("api.app")
+    monkeypatch.setattr(api_module, "_SHARED_COURSE_DIR", tmp_path / "shared")
+    monkeypatch.setattr(api_module, "_SHARED_COURSE_MAX_FILE_BYTES", 1_000)
+    raw = FLAT_LOOP_GPX.read_bytes()
+    padded = raw.replace(b"<gpx", b"<!-- " + b"x" * 2_000 + b" --><gpx", 1)
+    response = client.post("/gpx/share", files={"file": ("big.gpx", padded, "application/gpx+xml")})
+    assert response.status_code == 413
+
+    rate_limit = importlib.import_module("api.rate_limit")
+    rate_limit._hits.clear()
+    statuses = []
+    for i in range(12):
+        variant = raw.replace(b"<gpx", f"<!-- r{i} --><gpx".encode(), 1)
+        statuses.append(client.post("/gpx/share", files={"file": ("f.gpx", variant, "application/gpx+xml")}).status_code)
+    assert statuses[:10] == [200] * 10 and statuses[10:] == [429, 429]
+    rate_limit._hits.clear()

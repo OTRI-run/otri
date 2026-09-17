@@ -109,4 +109,6 @@ These are necessary before any real public deployment and are tracked as future 
 
 The additive startup migration creates `races.measurement JSONB`. GPX attachment saves an immutable measurement snapshot for that attachment; V0.2 scoring reuses it. Existing GPX content is not automatically recalculated. PATCH cannot replace measured totals on a GPX race. The predictor and stored-race scoring agree when they share the same measurement and model version; legacy models intentionally preserve their previous processing.
 
+`POST /gpx/share` stores a calculator upload (with the user's consent) so a share link can reopen it: rate limited per IP, 10 MB per file, gzip on disk under `data/cache/shared-courses/`, and capped in total by `OTRI_SHARED_COURSES_MAX_MB` (default 2048) with oldest-first eviction. `GET /gpx/shared/{id}` serves it back.
+
 Without `OTRI_DEM_MANIFEST`, elevations come from the cleaned uploaded GPX and remain provisional. To enable checksum-pinned local raster terrain correction, follow [course setup](../course/README.md). No remote DEM service or third-party upload is performed by default.

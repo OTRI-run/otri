@@ -16,6 +16,7 @@ Run locally with: ``uvicorn api.app:app --reload``
 
 from __future__ import annotations
 
+import gzip
 import json
 import os
 from dataclasses import asdict
@@ -660,20 +661,53 @@ async def analyze_gpx(file: UploadFile, finish_time_seconds: int | None = Form(d
 # A calculator share link needs the course file to still exist when someone opens the link.
 # Verified races are referenced by race id; an uploaded GPX is stored here only when the user
 # explicitly clicks "Share", under an id derived from its content (the same file shares one id).
+# Guardrails, because the route is public: a per-IP rate limit, a per-file size cap (real GPX
+# files are 0.1-3 MB), gzip on disk (~10x smaller), and a total cap with oldest-first eviction
+# so worst-case growth is bounded — an abuser can push out old links, never fill the disk.
 _SHARED_COURSE_DIR = Path(__file__).resolve().parents[1] / "data" / "cache" / "shared-courses"
 _SHARE_ID_RE = re.compile(r"^[0-9a-f]{16}$")
+_SHARED_COURSE_MAX_FILE_BYTES = 10_000_000
+_SHARED_COURSE_MAX_TOTAL_BYTES = int(float(os.environ.get("OTRI_SHARED_COURSES_MAX_MB", "2048")) * 1_000_000)
 
 
 def _shared_course_path(share_id: str) -> Path:
-    return _SHARED_COURSE_DIR / f"{share_id}.gpx"
+    return _SHARED_COURSE_DIR / f"{share_id}.gpx.gz"
+
+
+def _shared_course_meta_path(share_id: str) -> Path:
+    return _SHARED_COURSE_DIR / f"{share_id}.json"
+
+
+def _shared_course_meta(share_id: str) -> dict:
+    try:
+        return json.loads(_shared_course_meta_path(share_id).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _evict_shared_courses(budget_bytes: int) -> None:
+    """Delete the oldest shared courses until the folder fits the budget."""
+    try:
+        entries = sorted(_SHARED_COURSE_DIR.glob("*.gpx.gz"), key=lambda path: path.stat().st_mtime)
+        total = sum(path.stat().st_size for path in entries)
+        for path in entries:
+            if total <= budget_bytes:
+                break
+            size = path.stat().st_size
+            path.unlink(missing_ok=True)
+            _shared_course_meta_path(path.name[: -len(".gpx.gz")]).unlink(missing_ok=True)
+            total -= size
+    except OSError:
+        pass
 
 
 @app.post("/gpx/share", response_model=SharedCourseOut)
-async def share_gpx(file: UploadFile, name: str | None = Form(default=None)) -> SharedCourseOut:
+async def share_gpx(request: Request, file: UploadFile, name: str | None = Form(default=None)) -> SharedCourseOut:
     """Store an uploaded GPX so a calculator link can reopen it. The uploader consents by sharing."""
-    contents = await file.read(20_000_001)
-    if len(contents) > 20_000_000:
-        raise HTTPException(status_code=413, detail="Upload exceeds 20 MB")
+    enforce_rate_limit(request, max_requests=10)
+    contents = await file.read(_SHARED_COURSE_MAX_FILE_BYTES + 1)
+    if len(contents) > _SHARED_COURSE_MAX_FILE_BYTES:
+        raise HTTPException(status_code=413, detail=f"A shared course may be at most {_SHARED_COURSE_MAX_FILE_BYTES // 1_000_000} MB")
     try:
         points = parse_track_points(contents.decode("utf-8"))
     except (GpxParseError, ValueError, UnicodeError) as error:
@@ -686,21 +720,23 @@ async def share_gpx(file: UploadFile, name: str | None = Form(default=None)) -> 
     created = not path.exists()
     if created:
         _SHARED_COURSE_DIR.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(contents)
+        packed = gzip.compress(contents, compresslevel=6)
+        # Make room first so the new file is never the one evicted.
+        _evict_shared_courses(max(0, _SHARED_COURSE_MAX_TOTAL_BYTES - len(packed)))
+        path.write_bytes(packed)
         clean_name = (name or Path(file.filename or "").stem or "").strip()[:120] or None
-        path.with_suffix(".json").write_text(
+        _shared_course_meta_path(share_id).write_text(
             json.dumps({"name": clean_name, "filename": file.filename, "created_at": datetime.now(timezone.utc).isoformat()}),
             encoding="utf-8",
         )
+    else:
+        # Touch, so an actively shared course is evicted after the ones nobody reshares.
+        try:
+            path.touch()
+        except OSError:
+            pass
     meta = _shared_course_meta(share_id)
     return SharedCourseOut(share_id=share_id, name=meta.get("name"), created=created)
-
-
-def _shared_course_meta(share_id: str) -> dict:
-    try:
-        return json.loads(_shared_course_path(share_id).with_suffix(".json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
 
 
 @app.get("/gpx/shared/{share_id}")
@@ -711,4 +747,8 @@ def get_shared_gpx(share_id: str) -> Response:
     path = _shared_course_path(share_id)
     if not path.exists():
         raise HTTPException(status_code=404, detail="No shared course with that id")
-    return Response(content=path.read_bytes(), media_type="application/gpx+xml")
+    try:
+        contents = gzip.decompress(path.read_bytes())
+    except (OSError, EOFError, gzip.BadGzipFile) as error:
+        raise HTTPException(status_code=404, detail="No shared course with that id") from error
+    return Response(content=contents, media_type="application/gpx+xml")
