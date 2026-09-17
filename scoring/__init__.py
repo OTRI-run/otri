@@ -20,7 +20,7 @@ from .course_standard import (
     ScoreCurve,
 )
 from .course_standard import score_race_course_standard, score_for_time, target_time_seconds
-from .estimator import DISCLAIMER, ScoreEstimate, estimate_score
+from .estimator import DISCLAIMER, EstimateBreakdown, ScoreEstimate, estimate_score
 from .terrain import TERRAIN_MODEL, TerrainModel
 from .model import SCORING_VERSION as FIELD_RELATIVE_VERSION
 from .model import RunnerScore, ScoreBreakdown, equivalent_distance_km, score_race_field_relative
@@ -78,6 +78,7 @@ __all__ = [
     "available_scoring_models",
     "get_scoring_model_info",
     "ScoreEstimate",
+    "EstimateBreakdown",
     "estimate_score",
     "DISCLAIMER",
 ]

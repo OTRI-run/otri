@@ -90,6 +90,24 @@ class SubmissionResult(BaseModel):
     scores: list[RunnerScoreOut] = []
 
 
+class EstimateBreakdownOut(BaseModel):
+    """Intermediates of one score, for explaining it (see scoring.estimator.EstimateBreakdown)."""
+
+    physical_distance_km: float
+    course_demand_km: float
+    terrain_factor: float
+    steep_distance_fraction: float
+    altitude_excess_m: float
+    adjusted_demand_km: float
+    performance_rate: float
+    reference_rate: float | None = None
+    fraction_of_ceiling: float | None = None
+    reference_factor: float | None = None
+    lookup_rate: float | None = None
+    riegel_exponent: float | None = None
+    world_best_time_seconds: float
+
+
 class IllustrativeEstimateOut(BaseModel):
     equivalent_distance_km: float
     performance_rate: float
@@ -98,6 +116,7 @@ class IllustrativeEstimateOut(BaseModel):
     scoring_version: str
     disclaimer: str
     quality_flags: list[str] = []
+    breakdown: EstimateBreakdownOut | None = None
 
 
 class GpxAnalysis(BaseModel):

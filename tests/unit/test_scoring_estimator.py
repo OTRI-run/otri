@@ -72,3 +72,48 @@ def test_estimate_matches_real_score_race_formula():
 
     estimate = estimate_score(finish_time, distance_km=10, elevation_gain_m=0)
     assert estimate.predicted_score == real_score
+
+
+# ---------------------------------------------------------------------------------- breakdown
+
+
+def test_breakdown_is_internally_consistent_on_the_totals_path():
+    """No GPX means no segment profile, so the terrain factor must be exactly 1 and every
+    intermediate must reproduce the headline numbers."""
+    estimate = estimate_score(3600, distance_km=10, elevation_gain_m=0)
+    b = estimate.breakdown
+    assert b is not None
+    assert b.physical_distance_km == 10.0
+    assert b.terrain_factor == 1.0
+    assert b.steep_distance_fraction == 0.0 and b.altitude_excess_m == 0.0
+    assert b.course_demand_km == b.adjusted_demand_km == estimate.equivalent_distance_km
+    assert b.performance_rate == estimate.performance_rate
+    # Each field is rounded independently (3 dp), so recomputing one from two others carries
+    # rounding of its own: compare at the rounding resolution, not tighter.
+    assert b.fraction_of_ceiling == pytest.approx(b.performance_rate / b.reference_rate, abs=1e-4)
+    assert b.lookup_rate == pytest.approx(b.performance_rate * b.reference_factor, abs=1e-3)
+
+
+def test_breakdown_world_best_time_scores_exactly_1000():
+    estimate = estimate_score(3600, distance_km=10, elevation_gain_m=0)
+    world_best = estimate_score(int(round(estimate.breakdown.world_best_time_seconds)), distance_km=10, elevation_gain_m=0)
+    assert world_best.predicted_score == 1000
+
+
+def test_breakdown_from_gpx_reports_terrain_inputs_and_adjusted_demand():
+    points = read_track_points(FIXTURES / "phuket-trail-2026-pkt15.gpx")
+    estimate = estimate_score(7200, gpx_points=points)
+    b = estimate.breakdown
+    assert b.terrain_factor > 1.0
+    assert 0.0 < b.steep_distance_fraction < 1.0
+    assert b.adjusted_demand_km == pytest.approx(b.course_demand_km * b.terrain_factor, abs=0.002)
+    assert b.adjusted_demand_km == estimate.equivalent_distance_km
+    assert 0.0 < b.fraction_of_ceiling < 1.5
+
+
+def test_breakdown_is_serialised_alongside_the_estimate():
+    payload = estimate_score(3600, distance_km=10, elevation_gain_m=0).to_dict()
+    assert set(payload["breakdown"]) >= {
+        "physical_distance_km", "course_demand_km", "terrain_factor", "adjusted_demand_km",
+        "performance_rate", "reference_rate", "fraction_of_ceiling", "world_best_time_seconds",
+    }

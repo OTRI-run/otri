@@ -534,6 +534,12 @@ def test_analyze_gpx_with_finish_time_returns_predicted_score():
     assert "predicted_score" in estimate
     assert estimate["predicted_score"] < 1000
     assert estimate["scoring_version"] == "0.6.0-course-standard-smoothed-upper"
+    # The explanation the prototype renders comes from the API, not from client-side maths.
+    breakdown = estimate["breakdown"]
+    assert breakdown["adjusted_demand_km"] == estimate["equivalent_distance_km"]
+    assert breakdown["terrain_factor"] >= 1.0
+    assert 0.0 < breakdown["fraction_of_ceiling"] < 1.5
+    assert breakdown["world_best_time_seconds"] > 0
 
 
 def test_analyze_gpx_prediction_matches_real_score_for_same_course_and_time():

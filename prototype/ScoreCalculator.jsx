@@ -46,6 +46,227 @@ function formatPace(totalSeconds, distanceKm) {
   return `${m}:${String(s).padStart(2, '0')} / km`
 }
 
+function Spinner({ className = '' }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`inline-block h-4 w-4 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600 ${className}`}
+    />
+  )
+}
+
+// The score itself. Rendered as soon as a calculation is in flight — not only once a result
+// exists — so a long course never shows an empty column while the API integrates 13,000 points.
+function ScoreCard({ estimate, scoring, targetSeconds }) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-busy={scoring}
+      className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-5 text-center"
+    >
+      <p className="font-mono text-[9px] tracking-[.08em] text-blue-600">OTRI</p>
+      {estimate ? (
+        <>
+          <p className={`mt-2 text-6xl font-bold tracking-[-.03em] text-blue-600 transition-opacity ${scoring ? 'opacity-40' : ''}`}>
+            {estimate.predicted_score}
+          </p>
+          <p className="mt-2 font-mono text-sm text-slate-500">{formatHms(targetSeconds)}</p>
+          {scoring && (
+            <p className="mt-2 flex items-center justify-center gap-2 text-xs text-slate-500">
+              <Spinner /> Updating…
+            </p>
+          )}
+        </>
+      ) : (
+        <div className="py-4">
+          <Spinner className="h-8 w-8 border-4" />
+          <p className="mt-3 text-sm font-semibold text-[#0b1220]">Calculating your score…</p>
+          <p className="mt-1 text-xs text-slate-500">
+            Every 50 m of the course is measured and costed. Longer and hillier courses take a few seconds.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Plain-language numbers are shown to one decimal; the maths section keeps full precision.
+function fmt1(value) {
+  return Number(value).toFixed(1)
+}
+
+function Stat({ label, value, mono = true }) {
+  return (
+    <div>
+      <dt className="font-mono text-[9px] uppercase text-slate-400">{label}</dt>
+      <dd className={`font-semibold text-[#0b1220] ${mono ? 'font-mono' : ''}`}>{value}</dd>
+    </div>
+  )
+}
+
+// Two audiences, one panel. The plain-language story on top reads the API's own breakdown of
+// the score — nothing is recomputed here — and the maths lives behind a native <details>, so
+// it costs nothing to ignore and needs no state.
+function ScoreExplanation({ estimate, features, targetSeconds, publishedAnchors, scaledVersion }) {
+  const b = estimate.breakdown
+  const pct = b?.fraction_of_ceiling != null ? Math.round(b.fraction_of_ceiling * 100) : null
+  const terrainPct = b ? Math.round((b.terrain_factor - 1) * 1000) / 10 : 0
+  const hasTerrain = terrainPct > 0
+  const hours = targetSeconds / 3600
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <p className="font-mono text-[9px] tracking-[.08em] text-slate-400">HOW YOUR SCORE IS CALCULATED</p>
+
+      {b ? (
+        <ol className="mt-3 space-y-3 text-sm text-slate-600">
+          <li className="flex gap-3">
+            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 font-mono text-[10px] font-bold text-slate-600">1</span>
+            <div>
+              <p className="font-semibold text-[#0b1220]">How hard is the course?</p>
+              <p>
+                {fmt1(b.physical_distance_km)} km with +{Math.round(features.elevation_gain_m)} m of climbing. Counting
+                every climb and descent, it's as hard as running <strong>{fmt1(b.course_demand_km)} km on flat road</strong>.
+                {hasTerrain && (
+                  <>
+                    {' '}Sustained steep ground{b.altitude_excess_m > 0 ? ' and altitude' : ''} push that up
+                    another <strong>{terrainPct}%</strong>, to <strong>{fmt1(b.adjusted_demand_km)} flat km</strong>.
+                  </>
+                )}
+              </p>
+            </div>
+          </li>
+          <li className="flex gap-3">
+            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 font-mono text-[10px] font-bold text-slate-600">2</span>
+            <div>
+              <p className="font-semibold text-[#0b1220]">How fast would you cover it?</p>
+              <p>
+                Finishing in {formatHms(targetSeconds)} means covering those {fmt1(b.adjusted_demand_km)} flat km in{' '}
+                {hours.toFixed(2)} hours — <strong>{fmt1(b.performance_rate)} flat km per hour</strong>.
+              </p>
+            </div>
+          </li>
+          {b.reference_rate != null ? (
+            <li className="flex gap-3">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 font-mono text-[10px] font-bold text-slate-600">3</span>
+              <div>
+                <p className="font-semibold text-[#0b1220]">How close is that to the best ever?</p>
+                <p>
+                  The fastest anyone has ever covered a course this hard is about{' '}
+                  <strong>{fmt1(b.reference_rate)} flat km per hour</strong> — a{' '}
+                  <strong>{formatHms(b.world_best_time_seconds)}</strong> finish here. You'd be at{' '}
+                  <strong>{pct}%</strong> of that, which scores <strong>{estimate.predicted_score}</strong>.
+                </p>
+                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+                  <div className="h-full rounded-full bg-blue-600" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
+                </div>
+                <p className="mt-1 flex justify-between font-mono text-[9px] text-slate-400">
+                  <span>0</span>
+                  <span>1000 = world best</span>
+                </p>
+              </div>
+            </li>
+          ) : (
+            <li className="flex gap-3">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 font-mono text-[10px] font-bold text-slate-600">3</span>
+              <div>
+                <p className="font-semibold text-[#0b1220]">Turn that into a score</p>
+                <p>That rate is looked up on a fixed, published curve, which gives <strong>{estimate.predicted_score}</strong>.</p>
+              </div>
+            </li>
+          )}
+        </ol>
+      ) : (
+        <p className="mt-2 text-sm text-slate-600">
+          What the course demands ÷ how fast you covered it, mapped through a fixed, published curve.
+        </p>
+      )}
+
+      <p className="mt-4 text-xs text-slate-500">
+        Only the course and your time go in — never who else raced. Sustainable pace naturally drops as races get
+        longer, so the yardstick drops with it: a long mountain race is never scored worse than a short one just for
+        being long.
+      </p>
+
+      <details className="group mt-4 rounded-xl border border-slate-200 bg-slate-50/60">
+        <summary className="cursor-pointer select-none px-4 py-2.5 font-mono text-[10px] uppercase tracking-[.08em] text-slate-500 hover:text-slate-700">
+          <span className="inline-block transition-transform group-open:rotate-90">▸</span> Show the maths
+        </summary>
+        <div className="border-t border-slate-200 px-4 py-4">
+          {b && (
+            <pre className="overflow-x-auto rounded-lg bg-[#0b1220] p-3 font-mono text-[11px] leading-relaxed text-slate-100">
+{`demand   = Σ segment_km × Minetti(grade)      = ${b.course_demand_km} demand-km
+terrain  = 1 + 0.5951·steep + 0.07·alt/1000    = ${b.terrain_factor}   (steep ${(b.steep_distance_fraction * 100).toFixed(1)}%, alt +${Math.round(b.altitude_excess_m)} m)
+D        = demand × terrain                    = ${b.adjusted_demand_km} demand-km
+Q        = D / T_hours                         = ${b.performance_rate} demand-km/h`}
+{b.reference_rate != null
+  ? `
+rate(D)  = world-best rate at D  (b = ${b.riegel_exponent})  = ${b.reference_rate} demand-km/h
+factor   = rate(D_ref) / rate(D)               = ${b.reference_factor}
+Q_lookup = Q × factor                          = ${b.lookup_rate} demand-km/h`
+  : ''}
+{`
+score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${estimate.predicted_score}`}
+            </pre>
+          )}
+
+          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+            <Stat label="Physical distance" value={`${b?.physical_distance_km ?? features.distance_km} km`} />
+            <Stat label="Course demand (gradient integral)" value={`${b?.course_demand_km ?? estimate.equivalent_distance_km} demand-km`} />
+            {b && <Stat label="Terrain factor" value={`× ${b.terrain_factor}`} />}
+            {b && <Stat label="Adjusted demand (scored)" value={`${b.adjusted_demand_km} demand-km`} />}
+            <Stat label="Performance rate Q" value={`${estimate.performance_rate} demand-km/h`} />
+            {b?.reference_rate != null && <Stat label="Human ceiling at this demand" value={`${b.reference_rate} demand-km/h`} />}
+            {b?.fraction_of_ceiling != null && <Stat label="Fraction of ceiling" value={`${(b.fraction_of_ceiling * 100).toFixed(2)}%`} />}
+            {b?.lookup_rate != null && <Stat label="Rate looked up in table" value={`${b.lookup_rate} demand-km/h`} />}
+            <Stat label="Raw score (unrounded)" value={estimate.otri_raw} />
+            <Stat label="Score version" value={estimate.scoring_version} />
+          </dl>
+
+          <p className="mt-4 font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">
+            Published anchor table{scaledVersion ? ' (Q_lookup → score, at the reference course size)' : ''}
+          </p>
+          <table className="mt-1 w-full text-left text-xs">
+            <tbody>
+              {publishedAnchors.map((anchor) => (
+                <tr key={anchor.score}>
+                  <td className="py-0.5 pr-4 font-mono">{anchor.score}</td>
+                  <td className="py-0.5 font-mono">{anchor.q.toFixed(3)} demand-km/h</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-1 text-[11px] text-slate-500">
+            Piecewise power law between anchors; one exponent from 544 to 1000. "demand-km" is a kilometre of flat
+            road at Minetti's metabolic cost — the unit called "flat km" above.
+          </p>
+
+          {estimate.quality_flags?.length > 0 && (
+            <>
+              <p className="mt-4 font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">Quality flags</p>
+              <ul className="mt-1 space-y-1 text-[11px] text-slate-500">
+                {estimate.quality_flags.map((flag) => (
+                  <li key={flag} className="font-mono break-words">{flag}</li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          <p className="mt-4 text-[11px] text-slate-500">
+            Methodology: <code>docs/methodology/v0.6/OTRI-SMOOTHED-UPPER-CURVE.md</code> (curve),{' '}
+            <code>v0.5/OTRI-TERRAIN-ADJUSTED-DEMAND.md</code> (terrain),{' '}
+            <code>v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md</code> (human ceiling),{' '}
+            <code>v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md</code> (course demand).
+          </p>
+        </div>
+      </details>
+
+      <p className="mt-3 text-xs text-slate-500">Model-based projection · {estimate.disclaimer}</p>
+    </div>
+  )
+}
+
 function ContextBar({ courseLabel }) {
   if (!courseLabel) return null
   return (
@@ -347,86 +568,18 @@ export default function ScoreCalculator() {
             </button>
           </div>
 
-          {estimate && (
+          {(estimate || scoring) && (
             <div className="space-y-4">
-              <div className={`rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-5 text-center transition-opacity ${scoring ? 'opacity-60' : ''}`}>
-                <p className="font-mono text-[9px] tracking-[.08em] text-blue-600">OTRI</p>
-                <p className="mt-2 text-6xl font-bold tracking-[-.03em] text-blue-600">{estimate.predicted_score}</p>
-                <p className="mt-2 font-mono text-sm text-slate-500">{formatHms(targetSeconds)}</p>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-5">
-                <p className="font-mono text-[9px] tracking-[.08em] text-slate-400">WHY THIS SCORE</p>
-                <p className="mt-2 text-sm text-slate-600">
-                  What the <strong>course</strong> demands (distance and gradient, integrated segment by segment) ÷ how
-                  fast you covered that demand (your <strong>performance</strong>) → mapped through a fixed, published
-                  curve. Never anyone else's result.
-                </p>
-                <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <dt className="font-mono text-[9px] uppercase text-slate-400">Physical distance</dt>
-                    <dd className="font-semibold text-[#0b1220]">{features.distance_km} km</dd>
-                  </div>
-                  <div>
-                    <dt className="font-mono text-[9px] uppercase text-slate-400">Flat-equivalent distance (course demand)</dt>
-                    <dd className="font-semibold text-[#0b1220]">{estimate.equivalent_distance_km} demand-km</dd>
-                  </div>
-                  <div>
-                    <dt className="font-mono text-[9px] uppercase text-slate-400">Performance rate</dt>
-                    <dd className="font-semibold text-[#0b1220]">{estimate.performance_rate} demand-km/h</dd>
-                  </div>
-                  <div>
-                    <dt className="font-mono text-[9px] uppercase text-slate-400">Raw score (unrounded)</dt>
-                    <dd className="font-semibold text-[#0b1220]">{estimate.otri_raw}</dd>
-                  </div>
-                  <div className="col-span-2">
-                    <dt className="font-mono text-[9px] uppercase text-slate-400">Score version</dt>
-                    <dd className="font-mono font-semibold text-[#0b1220]">{estimate.scoring_version}</dd>
-                  </div>
-                </dl>
-                {(estimate.scoring_version?.includes('terrain-adjusted') ||
-                  estimate.scoring_version?.includes('smoothed-upper')) && (
-                  <p className="mt-3 text-xs text-slate-500">
-                    This course's demand is first adjusted for what gradient alone does not capture — sustained
-                    steep terrain and altitude, both measured from your GPX (see{' '}
-                    <code>docs/methodology/v0.5/OTRI-TERRAIN-ADJUSTED-DEMAND.md</code>) — and then compared against
-                    the best rate a human has achieved on a course of that demand. Flat road courses are unchanged.
-                    A score of 1000 means world-best at any course size.
-                  </p>
-                )}
-                {estimate.scoring_version?.includes('endurance-referenced') && (
-                  <p className="mt-3 text-xs text-slate-500">
-                    Your performance rate is compared against the best rate a human has achieved on a course of this
-                    demand, then looked up in the table below (see{' '}
-                    <code>docs/methodology/v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md</code>). That is why a long race
-                    is not scored worse than a short one: sustainable rate naturally drops as an event gets longer,
-                    so the scale drops with it. A score of 1000 means world-best at any course size.
-                  </p>
-                )}
-                {estimate.scoring_version?.includes('duration-scaled') && (
-                  <p className="mt-3 text-xs text-slate-500">
-                    This course's demand is duration-scaled (Riegel exponent, see{' '}
-                    <code>docs/methodology/v0.3/OTRI-DURATION-SCALED-CURVE.md</code>) before being looked up in the
-                    table below, since sustainable performance rate naturally drops on much longer/harder courses.
-                    Superseded by V0.4.
-                  </p>
-                )}
-                <p className="mt-3 font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">
-                  Published reference-course curve anchors
-                  {scaledVersion ? ' (before course-size scaling)' : ''}
-                </p>
-                <table className="mt-1 w-full text-left text-xs">
-                  <tbody>
-                    {publishedAnchors.map((anchor) => (
-                      <tr key={anchor.score}>
-                        <td className="py-0.5 pr-4 font-mono">{anchor.score}</td>
-                        <td className="py-0.5 font-mono">{anchor.q.toFixed(3)} demand-km/h</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className="mt-3 text-xs text-slate-500">Model-based projection · {estimate.disclaimer}</p>
-              </div>
+              <ScoreCard estimate={estimate} scoring={scoring} targetSeconds={targetSeconds} />
+              {estimate && (
+                <ScoreExplanation
+                  estimate={estimate}
+                  features={features}
+                  targetSeconds={targetSeconds}
+                  publishedAnchors={publishedAnchors}
+                  scaledVersion={scaledVersion}
+                />
+              )}
             </div>
           )}
         </div>
