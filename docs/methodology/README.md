@@ -6,7 +6,10 @@ Draft work should remain clearly marked as research until adopted into a publish
 
 ## Start here
 
-- **New to OTRI scoring?** Read [`OTRI-SCORING-ELI5.md`](OTRI-SCORING-ELI5.md) first — a plain-language explanation of the model actually implemented in `scoring/`.
-- **Implementing or reviewing the scoring engine?** [`OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md`](OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md) is the exact, versioned specification and the source of truth for `scoring/course_standard.py` + `scoring/course_demand.py`.
+- **New to OTRI scoring?** Read [`v0.1/OTRI-SCORING-ELI5.md`](v0.1/OTRI-SCORING-ELI5.md) first — a plain-language explanation of the model actually implemented in `scoring/`.
+- **Want the math without the full spec?** [`v0.1/OTRI-SCORING-MATH-EXPLAINED.md`](v0.1/OTRI-SCORING-MATH-EXPLAINED.md) walks through the actual equations (course demand, performance rate, score curve) in plain terms.
+- **Implementing or reviewing the scoring engine?** [`v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md`](v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md) is the exact, versioned specification and the source of truth for `scoring/course_standard.py` + `scoring/course_demand.py`.
+
+Each scoring-model version's spec lives in its own `docs/methodology/v<major>.<minor>/` folder so historical specs stay intact when a new version is published.
 
 Earlier research drafts that led up to this spec (foundational-formula proposals, standalone course-demand and score-scale papers, and the original course-based candidate designs) have been retired now that the code spec above supersedes them; see git history if you need that research trail.

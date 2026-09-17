@@ -1,10 +1,10 @@
 """Pluggable scoring-model registry.
 
 OTRI supports multiple versioned scoring models so historical scores remain
-reproducible. The current default is the official Course Standard V0.5
-model (`0.5.0-course-standard-calibrated`): 50 m GPX course demand plus the
+reproducible. The current default is the official Course Standard V0.1
+model (`0.1.0-course-standard-calibrated`): 50 m GPX course demand plus the
 piecewise power-law score curve from
-`docs/methodology/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md`.
+`docs/methodology/v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md`.
 """
 
 from __future__ import annotations
@@ -37,12 +37,12 @@ class ScoringModelInfo:
 _MODEL_INFO: dict[str, ScoringModelInfo] = {
     COURSE_STANDARD_VERSION: ScoringModelInfo(
         version=COURSE_STANDARD_VERSION,
-        name="Course Standard V0.5 (official)",
+        name="Course Standard V0.1 (official)",
         description=(
             "Score depends only on the course (50 m Minetti gradient-cost course demand) and "
             "the runner's own finish time. Uses a piecewise power-law score curve calibrated "
-            "from real CM6 trail-score anchors: 6:29:58=349, 3:05:04=544, 2:20:30=692 "
-            "(docs/methodology/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md). No competitors are used."
+            "from demo/test race anchors: 6:29:58=349, 3:05:04=544, 2:20:30=692 "
+            "(docs/methodology/v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md). No competitors are used."
         ),
         uses_competitors=False,
     ),

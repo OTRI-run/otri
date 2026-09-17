@@ -1,13 +1,13 @@
 # OTRI Scoring System V0 — AI Implementation Specification
 
 **Status:** Development / research implementation candidate  
-**Version:** 0.5.0  
+**Version:** 0.1.0  
 **Audience:** Developers, coding agents, AI implementation agents, reviewers  
 **Principle:** Course-relative, deterministic, competitor-independent
 
 > **Implement this specification exactly. Do not invent hidden scoring variables.**
 >
-> **V0.5 is the current scoring candidate.** Older curves remain historical and must not be substituted for V0.5 unless a caller explicitly selects an older model version.
+> **V0.1 is the current scoring candidate.** Older curves remain historical and must not be substituted for V0.1 unless a caller explicitly selects an older model version.
 
 ## 1. Goal
 
@@ -50,11 +50,11 @@ The fundamental score MUST NOT use:
 - subjective difficulty
 - AI/ML correction
 
-Real-world race results are permitted only in a separate validation/calibration research process. Once V0.5 constants are published, the production score calculation uses only the course inputs, finish time, and the published V0.5 curve.
+Real-world race results are permitted only in a separate validation/calibration research process. Once V0.1 constants are published, the production score calculation uses only the course inputs, finish time, and the published V0.1 curve.
 
 ---
 
-## 3. V0.5 pipeline
+## 3. V0.1 pipeline
 
 ```text
 Official GPX
@@ -73,7 +73,7 @@ Finish time T
     ↓
 Performance Rate Q = D / T
     ↓
-V0.5 piecewise power score transformation
+V0.1 piecewise power score transformation
     ↓
 OTRI 0–1000
 ```
@@ -83,7 +83,7 @@ Reverse direction:
 ```text
 Desired OTRI score S
     ↓
-V0.5 required performance rate Q(S)
+V0.1 required performance rate Q(S)
     ↓
 Course Demand D
     ↓
@@ -237,7 +237,7 @@ Build segment boundaries by starting at 0 and stepping by `SEGMENT_LENGTH_M` unt
 
 For each segment boundary, the cleaned elevation value is **linearly interpolated** along the cumulative-distance polyline (not snapped to the nearest raw track point) — see `_interpolate_at` in the canonical implementation.
 
-The 50 m production resolution is the current deterministic compromise between local gradient representation and stability. Shorter resolutions may be used for research comparisons but are not the V0.5 production definition.
+The 50 m production resolution is the current deterministic compromise between local gradient representation and stability. Shorter resolutions may be used for research comparisons but are not the V0.1 production definition.
 
 Canonical implementation: `scoring/course_demand.py`'s `_segment_boundaries` and `_interpolate_at`.
 
@@ -297,7 +297,7 @@ The sign MUST be preserved.
 
 ## 9. Gradient-cost function
 
-V0.5 uses the published Minetti et al. running-cost polynomial:
+V0.1 uses the published Minetti et al. running-cost polynomial:
 
 ```text
 C(g) = 155.4g^5
@@ -328,7 +328,7 @@ R(+0.10) ≠ R(-0.10)
 
 ### 9.1 Supported gradient domain
 
-V0.5 supports:
+V0.1 supports:
 
 ```text
 MIN_GRADE = -0.45
@@ -414,9 +414,9 @@ Q ≈ 8.9351585014 demand-km/hour
 
 ---
 
-# 12. OTRI V0.5 score curve
+# 12. OTRI V0.1 score curve
 
-V0.5 uses a **piecewise power-law transformation** from performance rate `Q` to public score `S`.
+V0.1 uses a **piecewise power-law transformation** from performance rate `Q` to public score `S`.
 
 The curve is deterministic, public, monotonic, and invertible over the defined domain.
 
@@ -432,7 +432,7 @@ The authoritative anchor table is:
 
 ### 12.1 Demo/test calibration observations
 
-The three demo/test race observations used to shape V0.5 came from a single non-production reference race (internally nicknamed "CM6") used only as illustrative calibration data, not a claim about any specific real-world event:
+The three demo/test race observations used to shape V0.1 came from a single non-production reference race (internally nicknamed "CM6") used only as illustrative calibration data, not a claim about any specific real-world event:
 
 ```text
 6:29:58 → score 349
@@ -454,11 +454,11 @@ Therefore:
 2:20:30 → Q ≈ 11.7693950178
 ```
 
-These observations are **calibration evidence only**, drawn from demo/test data. A production scorer MUST NOT inspect other runners or race results when calculating an individual's V0.5 score.
+These observations are **calibration evidence only**, drawn from demo/test data. A production scorer MUST NOT inspect other runners or race results when calculating an individual's V0.1 score.
 
 ---
 
-## 13. Exact V0.5 mathematical definition
+## 13. Exact V0.1 mathematical definition
 
 The authoritative constants are:
 
@@ -627,7 +627,7 @@ Q_target = 11.7693950178
 T ≈ 2:20:30
 ```
 
-The target-time calculation MUST use the same exact V0.5 curve as forward scoring.
+The target-time calculation MUST use the same exact V0.1 curve as forward scoring.
 
 It MUST NOT use competitor times, expected winner times, field strength, or a race database.
 
@@ -798,7 +798,7 @@ same GPX
 
 ### Competitor independence
 
-Adding, removing, or changing other runners MUST NOT change one runner's V0.5 score.
+Adding, removing, or changing other runners MUST NOT change one runner's V0.1 score.
 
 ### Flat-course identity
 
@@ -824,7 +824,7 @@ A scored result should expose at least:
 {
   "course_id": "COURSE-123",
   "course_version": "1",
-  "model_version": "0.5.0-course-standard-calibrated",
+  "model_version": "0.1.0-course-standard-calibrated",
   "physical_distance_km": 21.959,
   "elevation_gain_m": 1120.0,
   "elevation_loss_m": 1120.0,
@@ -872,10 +872,10 @@ This makes the score transformation visible rather than presenting a black-box n
 
 ## 21. Versioning and reproducibility
 
-The V0.5 model identifier is:
+The V0.1 model identifier is:
 
 ```text
-0.5.0-course-standard-calibrated
+0.1.0-course-standard-calibrated
 ```
 
 Older models MUST remain available for historical reproducibility.
@@ -894,7 +894,7 @@ Changing any published course-processing parameter or score-curve constant creat
 
 ## 22. Calibration policy
 
-V0.5 is a **calibration candidate**, not a claim that three demo/test race observations define the final universal OTRI scale.
+V0.1 is a **calibration candidate**, not a claim that three demo/test race observations define the final universal OTRI scale.
 
 The calibration procedure is:
 
@@ -915,10 +915,10 @@ Do not use the live race field to calculate that race's production score.
 Future curve revisions MUST create a new model version, for example:
 
 ```text
-0.6.0-course-standard-calibrated
+0.2.0-course-standard-calibrated
 ```
 
-and MUST NOT silently alter V0.5 outputs.
+and MUST NOT silently alter V0.1 outputs.
 
 ---
 
@@ -929,10 +929,10 @@ Before an AI coding agent declares the implementation complete, it MUST verify:
 ```text
 [ ] Read this specification completely.
 [ ] Read the canonical course-demand implementation.
-[ ] Read the canonical V0.5 scoring implementation.
+[ ] Read the canonical V0.1 scoring implementation.
 [ ] Do not duplicate score constants across files.
 [ ] Use the canonical score function from API/UI/batch/predictor code.
-[ ] Verify all published V0.5 anchors.
+[ ] Verify all published V0.1 anchors.
 [ ] Verify score/time inverse symmetry.
 [ ] Verify faster time means higher score.
 [ ] Verify competitor independence.

@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS races (
     elevation_gain_m DOUBLE PRECISION NOT NULL,
     gpx_filename TEXT,
     gpx_content TEXT,
-    scoring_version TEXT NOT NULL DEFAULT '0.5.0-course-standard-calibrated',
+    scoring_version TEXT NOT NULL DEFAULT '0.1.0-course-standard-calibrated',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

@@ -1,9 +1,9 @@
 """Course Standard scoring models — course + finish time only, no competitors.
 
-The official model (`OFFICIAL_CURVE`, `0.5.0-course-standard-calibrated`)
-implements `docs/methodology/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md` exactly:
+The official model (`OFFICIAL_CURVE`, `0.1.0-course-standard-calibrated`)
+implements `docs/methodology/v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md` exactly:
 the 50 m GPX course-demand integral plus its piecewise power-law score-to-Q
-curve, calibrated from real CM6 trail-score anchors. The score remains
+curve, calibrated from demo/test race anchors. The score remains
 course + own finish time only. Legacy logarithmic curves (`SPEC_CURVE`,
 `CALIBRATED_CURVE`) remain selectable for historical reproducibility.
 """
@@ -97,12 +97,12 @@ class ScoreCurve:
 SPEC_CURVE = ScoreCurve(version="1.0.0-course-standard", q_500=15.0, q_1000=22.5)
 CALIBRATED_CURVE = ScoreCurve(version="1.1.0-course-standard", q_500=3.5, q_1000=10.5)
 
-# Official V0.5 model — docs/methodology/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md section 13.
-# Piecewise power law through real CM6 reference anchors:
+# Official V0.1 model — docs/methodology/v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md section 13.
+# Piecewise power law through demo/test race reference anchors:
 #   6:29:58 -> 349, 3:05:04 -> 544, 2:20:30 -> 692 (course demand ~27.560 demand-km).
 # The final segment continues the same exponent up to Q~17.94 at score 1000.
 OFFICIAL_CURVE = ScoreCurve(
-    version="0.5.0-course-standard-calibrated",
+    version="0.1.0-course-standard-calibrated",
     q_500=7.755256,
     q_1000=17.93986234619293,
     curve_type="piecewise_power",

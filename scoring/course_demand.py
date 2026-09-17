@@ -1,4 +1,4 @@
-"""Course-demand engine — implements OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md exactly.
+"""Course-demand engine — implements docs/methodology/v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md exactly.
 
 Converts a GPX course into a single "course demand" coordinate (an OTRI
 modeled demand-equivalent distance, not a literal energy measurement — see

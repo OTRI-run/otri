@@ -1,4 +1,4 @@
-"""Unit tests for the spec-compliant course-demand engine (OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md).
+"""Unit tests for the spec-compliant course-demand engine (docs/methodology/v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md).
 
 Run with: pytest tests/unit
 """

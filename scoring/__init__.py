@@ -1,7 +1,7 @@
 """OTRI scoring engine — pluggable, versioned scoring models.
 
-The current default is the official Course Standard V0.5 curved model
-(`0.5.0-course-standard-calibrated`, no competitor dependency). Older
+The current default is the official Course Standard V0.1 curved model
+(`0.1.0-course-standard-calibrated`, no competitor dependency). Older
 scoring curves remain selectable for historical reproducibility.
 """
 
