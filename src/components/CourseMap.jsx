@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Map as MapLibreMap, LngLatBounds, setWorkerUrl } from 'maplibre-gl'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { buildElevationProfile, parseGpxTrackPoints, toGeoJsonLine } from '../lib/gpx'
+import { parseGpxTrackPoints, toGeoJsonLine } from '../lib/gpx'
 
 // MapLibre's default worker-URL auto-detection breaks under Vite's
 // production build (the worker chunk gets content-hashed, but MapLibre's
@@ -69,7 +69,7 @@ function addCourseLayers(map, line, { includeHillshade }) {
  *
  * @param {{ gpxText?: string, styleUrl?: string, className?: string }} props
  */
-export default function CourseMap({ gpxText, styleUrl = DEFAULT_STYLE_URL, className = '' }) {
+export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STYLE_URL, className = '' }) {
   const mapContainerRef = useRef(null)
   const mapRef = useRef(null)
   const is3DRef = useRef(false)
@@ -88,7 +88,7 @@ export default function CourseMap({ gpxText, styleUrl = DEFAULT_STYLE_URL, class
     }
   }, [gpxText])
 
-  const profile = useMemo(() => buildElevationProfile(points), [points])
+  const profile = measurement?.profile ?? []
   const line = useMemo(() => (points.length > 1 ? toGeoJsonLine(points) : null), [points])
 
   useEffect(() => {
@@ -115,7 +115,7 @@ export default function CourseMap({ gpxText, styleUrl = DEFAULT_STYLE_URL, class
       addCourseLayers(map, line, { includeHillshade: !isSatelliteRef.current })
       map.setTerrain(is3DRef.current ? { source: 'terrain-dem', exaggeration: 1.3 } : null)
 
-      const [first, ...rest] = line.geometry.coordinates
+      const [first, ...rest] = line.geometry.coordinates.flat()
       const bounds = rest.reduce(
         (box, coord) => box.extend(coord),
         new LngLatBounds(first, first),
@@ -195,6 +195,7 @@ export default function CourseMap({ gpxText, styleUrl = DEFAULT_STYLE_URL, class
         </div>
       </div>
       <ElevationProfile profile={profile} />
+      <p className="mt-2 text-xs text-slate-500">{measurement ? `Estimated elevation · ${measurement.source.dataset} · ${measurement.version}` : "Route preview. Analyze the GPX to calculate its elevation profile."}</p>
     </div>
   )
 }
@@ -220,13 +221,17 @@ function ElevationProfile({ profile }) {
   const toY = (elevation) => padding.top + chartHeight - ((elevation - minElevation) / elevationRange) * chartHeight
   const baselineY = padding.top + chartHeight
 
-  const linePoints = profile
-    .filter((point) => point.elevation != null)
-    .map((point) => `${toX(point.distanceKm).toFixed(1)},${toY(point.elevation).toFixed(1)}`)
-
-  const areaPoints = [`${toX(0).toFixed(1)},${baselineY.toFixed(1)}`, ...linePoints, `${toX(maxDistance).toFixed(1)},${baselineY.toFixed(1)}`].join(
-    ' ',
-  )
+  const groups = []
+  for (const point of profile) {
+    if (point.elevation == null) continue
+    if (!groups.length || groups[groups.length - 1].id !== point.segmentId) groups.push({ id: point.segmentId, points: [] })
+    groups[groups.length - 1].points.push(point)
+  }
+  const paths = groups.map(group => {
+    const points = group.points
+    const line = points.map(point => `${toX(point.distanceKm).toFixed(1)},${toY(point.elevation).toFixed(1)}`)
+    return { line: line.join(' '), area: [`${toX(points[0].distanceKm)},${baselineY}`, ...line, `${toX(points[points.length-1].distanceKm)},${baselineY}`].join(' ') }
+  })
 
   const horizontalGridLines = Array.from({ length: 5 }, (_, index) => {
     const elevation = minElevation + (elevationRange * index) / 4
@@ -266,8 +271,10 @@ function ElevationProfile({ profile }) {
           </g>
         ))}
 
-        <polygon points={areaPoints} fill="url(#elevation-fill)" />
-        <polyline points={linePoints.join(' ')} fill="none" stroke="#2563eb" strokeWidth="2" />
+        {paths.map((path, index) => <g key={index}>
+          <polygon points={path.area} fill="url(#elevation-fill)" />
+          <polyline points={path.line} fill="none" stroke="#2563eb" strokeWidth="2" />
+        </g>)}
       </svg>
     </div>
   )

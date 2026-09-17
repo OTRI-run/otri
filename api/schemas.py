@@ -38,6 +38,8 @@ class RaceSummary(BaseModel):
     elevation_gain_m: float
     has_gpx: bool = False
     scoring_version: str
+    measurement_version: str | None = None
+    measurement_status: str | None = None
 
 
 class EventDetail(EventSummary):
@@ -99,6 +101,7 @@ class IllustrativeEstimateOut(BaseModel):
 
 
 class GpxAnalysis(BaseModel):
+    measurement: dict = {}
     features: dict
     estimate: IllustrativeEstimateOut | None = None
 

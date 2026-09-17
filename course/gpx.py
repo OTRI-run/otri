@@ -10,6 +10,7 @@ without touching ``features.py``.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from datetime import datetime
 from pathlib import Path
 from xml.etree import ElementTree
@@ -25,6 +26,7 @@ class TrackPoint:
     lon: float
     elevation_m: float | None
     time: datetime | None
+    segment_id: int = 0
 
 
 def read_track_points(path: str | Path) -> list[TrackPoint]:
@@ -47,13 +49,34 @@ def parse_track_points(gpx_text: str) -> list[TrackPoint]:
     without round-tripping through a temp file — see ``read_track_points`` for
     the file-based equivalent.
     """
+    if len(gpx_text.encode('utf-8')) > 20_000_000:
+        raise GpxParseError('GPX exceeds the 20 MB limit')
+    if '<!DOCTYPE' in gpx_text.upper() or '<!ENTITY' in gpx_text.upper():
+        raise GpxParseError('GPX must not contain DTD or entity declarations')
     try:
         root = ElementTree.fromstring(gpx_text)
     except ElementTree.ParseError as error:
         raise GpxParseError(f"not well-formed XML: {error}") from error
 
     ns = _tag_namespace(root.tag)
-    points = [_parse_trkpt(trkpt, ns) for trkpt in root.iter(f"{ns}trkpt")]
+    if root.tag != f'{ns}gpx':
+        raise GpxParseError('document root must be gpx')
+    tracks = list(root.findall(f'{ns}trk'))
+    if len(tracks) > 1:
+        raise GpxParseError('select a single track before uploading')
+    segments = list(root.iter(f'{ns}trkseg'))
+    if not segments:
+        segments = [root]
+    points = []
+    try:
+        for segment_id, segment in enumerate(segments):
+            for element in segment.iter(f'{ns}trkpt'):
+                point = _parse_trkpt(element, ns)
+                points.append(TrackPoint(point.lat, point.lon, point.elevation_m, point.time, segment_id))
+                if len(points) > 100_000:
+                    raise GpxParseError('GPX exceeds the 100,000 point limit')
+    except (ValueError, OverflowError) as error:
+        raise GpxParseError(f'invalid track point: {error}') from error
 
     if not points:
         raise GpxParseError("contains no <trkpt> points")
@@ -80,7 +103,12 @@ def _parse_trkpt(element: ElementTree.Element, ns: str) -> TrackPoint:
     time_element = element.find(f"{ns}time")
     time_value = _parse_time(time_element.text) if time_element is not None and time_element.text else None
 
-    return TrackPoint(lat=float(lat_raw), lon=float(lon_raw), elevation_m=elevation_m, time=time_value)
+    lat, lon = float(lat_raw), float(lon_raw)
+    if not math.isfinite(lat) or not math.isfinite(lon) or not -90 <= lat <= 90 or not -180 <= lon <= 180:
+        raise GpxParseError('latitude/longitude must be finite and in range')
+    if elevation_m is not None and not math.isfinite(elevation_m):
+        raise GpxParseError('elevation must be finite or omitted')
+    return TrackPoint(lat=lat, lon=lon, elevation_m=elevation_m, time=time_value)
 
 
 def _parse_time(value: str) -> datetime:

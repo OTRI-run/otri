@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from course import read_track_points
-from scoring import COURSE_STANDARD_VERSION, estimate_score
+from scoring import DEFAULT_SCORING_VERSION, estimate_score
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "gpx"
@@ -18,7 +18,7 @@ FIXTURES = REPO_ROOT / "tests" / "fixtures" / "gpx"
 def test_estimate_from_totals_matches_totals_based_equivalent_distance():
     estimate = estimate_score(3600, distance_km=10, elevation_gain_m=0)
     assert estimate.equivalent_distance_km == 10.0
-    assert estimate.scoring_version == COURSE_STANDARD_VERSION
+    assert estimate.scoring_version == DEFAULT_SCORING_VERSION
 
 
 def test_estimate_score_clips_at_1000_for_extremely_fast_times():

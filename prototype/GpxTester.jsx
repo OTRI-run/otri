@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import CourseMap from '../src/components/CourseMap'
 import { analyzeGpx } from './apiClient'
 
@@ -12,6 +12,7 @@ function parseHmsToSeconds(value) {
 const timeInputClass = 'w-28 rounded-lg border border-slate-300 px-3 py-2 text-center font-mono text-sm'
 
 export default function GpxTester() {
+  const requestId = useRef(0)
   const [file, setFile] = useState(null)
   const [fileName, setFileName] = useState('')
   const [gpxText, setGpxText] = useState('')
@@ -21,12 +22,28 @@ export default function GpxTester() {
   const [loading, setLoading] = useState(false)
 
   async function handleFileChange(event) {
+    requestId.current += 1
+    const id = requestId.current
+    setLoading(false)
     const selected = event.target.files?.[0] ?? null
     setFile(selected)
     setFileName(selected?.name ?? '')
     setResult(null)
     setError(null)
-    setGpxText(selected ? await selected.text() : '')
+    setGpxText('')
+    if (!selected) return
+    setLoading(true)
+    try {
+      const text = await selected.text()
+      if (requestId.current !== id) return
+      setGpxText(text)
+      const response = await analyzeGpx(selected)
+      if (requestId.current === id) setResult(response)
+    } catch (err) {
+      if (requestId.current === id) setError(err.message)
+    } finally {
+      if (requestId.current === id) setLoading(false)
+    }
   }
 
   async function runAnalysis() {
@@ -37,14 +54,16 @@ export default function GpxTester() {
       return
     }
 
+    const id = ++requestId.current
     setLoading(true)
     setError(null)
     try {
-      setResult(await analyzeGpx(file, seconds))
+      const response = await analyzeGpx(file, seconds)
+      if (requestId.current === id) setResult(response)
     } catch (err) {
-      setError(err.message)
+      if (requestId.current === id) setError(err.message)
     } finally {
-      setLoading(false)
+      if (requestId.current === id) setLoading(false)
     }
   }
 
@@ -57,12 +76,9 @@ export default function GpxTester() {
         Get your predicted OTRI score before you even race.
       </h2>
       <p className="mt-2 max-w-[680px] text-sm text-slate-500">
-        Uses the Course Standard model: a Minetti gradient-cost course-demand engine plus your own finish time — never
-        another runner's result. The scale is curved and anchored at three published reference points (200 at 11.0
-        demand-km/h, 500 at 15.0 demand-km/h, 1000 at 30.0 demand-km/h) and clipped to 0-1000 — the top half of the
-        scale is deliberately much harder to climb than the bottom half. Because nothing here depends on
-        competitors, this predictor and the real post-race scorer share one formula and always agree exactly for the
-        same course and time.
+        Uses your course's cleaned elevation profile and finish time. The result is provisional:
+        GPS elevation can be noisy, and terrain estimates are not field surveys. Prediction and race
+        scoring agree only with the same measurement and scoring version.
       </p>
 
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -84,8 +100,12 @@ export default function GpxTester() {
           <input id="gpx-file-input" type="file" accept=".gpx" onChange={handleFileChange} className="hidden" />
         </label>
 
-        {gpxText && <CourseMap gpxText={gpxText} className="mt-4" />}
+        {gpxText && <CourseMap gpxText={gpxText} measurement={result?.measurement} className="mt-4" />}
 
+        {result?.measurement && <p className="mt-3 text-sm text-slate-600">
+          Estimated course measurements. {result.measurement.source.dataset === 'uploaded-gpx' ? 'Based on cleaned GPX elevations; ground elevation has not been independently verified.' : 'Based on the configured terrain dataset; local accuracy has not been field-verified.'}
+        </p>}
+        {result?.measurement?.quality_flags?.some(flag => ['implausible_local_elevation_change', 'conflicting_duplicate_elevations', 'sustained_grade_outside_scoring_domain'].includes(flag)) && <p className="mt-2 text-sm text-amber-700">Elevation anomalies detected. Review the course profile before using this estimate for a race.</p>}
         {result && (
           <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
@@ -93,8 +113,8 @@ export default function GpxTester() {
               ['Elevation gain', `+${result.features.elevation_gain_m} m`],
               ['Elevation loss', `-${result.features.elevation_loss_m} m`],
               [
-                'Steep grade',
-                `+${(result.features.max_climb_grade * 100).toFixed(1)}% / -${(result.features.max_descent_grade * 100).toFixed(1)}%`,
+                'Steepest 50 m grade',
+                result.features.max_climb_grade == null ? 'Unavailable (short track)' : `+${(result.features.max_climb_grade * 100).toFixed(1)}% / -${(result.features.max_descent_grade * 100).toFixed(1)}%`,
               ],
             ].map(([label, value]) => (
               <div key={label} className="rounded-lg bg-slate-50 px-3 py-2">

@@ -14,14 +14,15 @@
           "bib_number": "101",
           "family_name": "Martin",
           "first_name": "Alex",
-          "otri_score": 1000,
-          "base_performance": 1060.55,
+          "otri_score": 704,
+          "base_performance": 703.52,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 11.994,
+          "quality_flags": [],
           "finish_time": "05:42:18"
         },
         {
@@ -29,14 +30,15 @@
           "bib_number": "102",
           "family_name": "Wong",
           "first_name": "Daniel",
-          "otri_score": 1000,
-          "base_performance": 1043.09,
+          "otri_score": 680,
+          "base_performance": 680.35,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 11.543,
+          "quality_flags": [],
           "finish_time": "05:55:41"
         },
         {
@@ -44,14 +46,15 @@
           "bib_number": "103",
           "family_name": "Jones",
           "first_name": "Peter",
-          "otri_score": 1000,
-          "base_performance": 1022.54,
+          "otri_score": 654,
+          "base_performance": 654.03,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 11.033,
+          "quality_flags": [],
           "finish_time": "06:12:07"
         },
         {
@@ -59,14 +62,15 @@
           "bib_number": "104",
           "family_name": "Chen",
           "first_name": "Liam",
-          "otri_score": 1000,
-          "base_performance": 1002.89,
+          "otri_score": 630,
+          "base_performance": 629.83,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 10.567,
+          "quality_flags": [],
           "finish_time": "06:28:32"
         },
         {
@@ -74,14 +78,15 @@
           "bib_number": "105",
           "family_name": "Rossi",
           "first_name": "Marco",
-          "otri_score": 988,
-          "base_performance": 988.32,
+          "otri_score": 612,
+          "base_performance": 612.47,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 10.234,
+          "quality_flags": [],
           "finish_time": "06:41:10"
         },
         {
@@ -89,14 +94,15 @@
           "bib_number": "106",
           "family_name": "Sato",
           "first_name": "Kenji",
-          "otri_score": 969,
-          "base_performance": 968.8,
+          "otri_score": 590,
+          "base_performance": 589.94,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 9.804,
+          "quality_flags": [],
           "finish_time": "06:58:45"
         },
         {
@@ -104,14 +110,15 @@
           "bib_number": "107",
           "family_name": "Brown",
           "first_name": "Tom",
-          "otri_score": 945,
-          "base_performance": 945.08,
+          "otri_score": 564,
+          "base_performance": 563.7,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 9.306,
+          "quality_flags": [],
           "finish_time": "07:21:09"
         },
         {
@@ -119,14 +126,15 @@
           "bib_number": "108",
           "family_name": "Tan",
           "first_name": "Michael",
-          "otri_score": 921,
-          "base_performance": 921.28,
+          "otri_score": 540,
+          "base_performance": 540.26,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 8.832,
+          "quality_flags": [],
           "finish_time": "07:44:50"
         },
         {
@@ -134,14 +142,15 @@
           "bib_number": "109",
           "family_name": "Keller",
           "first_name": "Nina",
-          "otri_score": 905,
-          "base_performance": 904.56,
+          "otri_score": 529,
+          "base_performance": 528.57,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 8.514,
+          "quality_flags": [],
           "finish_time": "08:02:14"
         },
         {
@@ -149,14 +158,15 @@
           "bib_number": "110",
           "family_name": "Wilson",
           "first_name": "Sarah",
-          "otri_score": 891,
-          "base_performance": 891.27,
+          "otri_score": 519,
+          "base_performance": 519.46,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 8.269,
+          "quality_flags": [],
           "finish_time": "08:16:31"
         },
         {
@@ -164,14 +174,15 @@
           "bib_number": "111",
           "family_name": "Lee",
           "first_name": "Emma",
-          "otri_score": 875,
-          "base_performance": 875.35,
+          "otri_score": 509,
+          "base_performance": 508.74,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 7.984,
+          "quality_flags": [],
           "finish_time": "08:34:12"
         },
         {
@@ -179,14 +190,15 @@
           "bib_number": "112",
           "family_name": "Dubois",
           "first_name": "Sophie",
-          "otri_score": 852,
-          "base_performance": 851.61,
+          "otri_score": 493,
+          "base_performance": 493.18,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 7.579,
+          "quality_flags": [],
           "finish_time": "09:01:44"
         }
       ],
@@ -205,14 +217,15 @@
           "bib_number": "101",
           "family_name": "Martin",
           "first_name": "Alex",
-          "otri_score": 1000,
-          "base_performance": 1173.18,
+          "otri_score": 873,
+          "base_performance": 873.27,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 15.362,
+          "quality_flags": [],
           "finish_time": "02:43:12"
         },
         {
@@ -220,14 +233,15 @@
           "bib_number": "102",
           "family_name": "Wong",
           "first_name": "Daniel",
-          "otri_score": 1000,
-          "base_performance": 1149.8,
+          "otri_score": 835,
+          "base_performance": 834.97,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 14.593,
+          "quality_flags": [],
           "finish_time": "02:51:48"
         },
         {
@@ -235,14 +249,15 @@
           "bib_number": "103",
           "family_name": "Jones",
           "first_name": "Peter",
-          "otri_score": 1000,
-          "base_performance": 1117.51,
+          "otri_score": 785,
+          "base_performance": 784.79,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 13.593,
+          "quality_flags": [],
           "finish_time": "03:04:26"
         },
         {
@@ -250,14 +265,15 @@
           "bib_number": "104",
           "family_name": "Chen",
           "first_name": "Liam",
-          "otri_score": 1000,
-          "base_performance": 1085.4,
+          "otri_score": 738,
+          "base_performance": 737.89,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 12.667,
+          "quality_flags": [],
           "finish_time": "03:17:55"
         },
         {
@@ -265,14 +281,15 @@
           "bib_number": "105",
           "family_name": "Rossi",
           "first_name": "Marco",
-          "otri_score": 1000,
-          "base_performance": 1060.31,
+          "otri_score": 703,
+          "base_performance": 703.2,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 11.988,
+          "quality_flags": [],
           "finish_time": "03:29:08"
         },
         {
@@ -280,14 +297,15 @@
           "bib_number": "106",
           "family_name": "Sato",
           "first_name": "Kenji",
-          "otri_score": 1000,
-          "base_performance": 1034.5,
+          "otri_score": 669,
+          "base_performance": 669.23,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 11.327,
+          "quality_flags": [],
           "finish_time": "03:41:20"
         },
         {
@@ -295,14 +313,15 @@
           "bib_number": "107",
           "family_name": "Brown",
           "first_name": "Tom",
-          "otri_score": 1000,
-          "base_performance": 1005.82,
+          "otri_score": 633,
+          "base_performance": 633.38,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 10.635,
+          "quality_flags": [],
           "finish_time": "03:55:44"
         },
         {
@@ -310,14 +329,15 @@
           "bib_number": "108",
           "family_name": "Tan",
           "first_name": "Michael",
-          "otri_score": 984,
-          "base_performance": 984.23,
+          "otri_score": 608,
+          "base_performance": 607.68,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 10.142,
+          "quality_flags": [],
           "finish_time": "04:07:11"
         },
         {
@@ -325,14 +345,15 @@
           "bib_number": "109",
           "family_name": "Keller",
           "first_name": "Nina",
-          "otri_score": 958,
-          "base_performance": 958.43,
+          "otri_score": 578,
+          "base_performance": 578.32,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 9.583,
+          "quality_flags": [],
           "finish_time": "04:21:36"
         },
         {
@@ -340,14 +361,15 @@
           "bib_number": "110",
           "family_name": "Wilson",
           "first_name": "Sarah",
-          "otri_score": 930,
-          "base_performance": 930.24,
+          "otri_score": 548,
+          "base_performance": 547.86,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 9.008,
+          "quality_flags": [],
           "finish_time": "04:38:19"
         },
         {
@@ -355,14 +377,15 @@
           "bib_number": "111",
           "family_name": "Lee",
           "first_name": "Emma",
-          "otri_score": 913,
-          "base_performance": 913.05,
+          "otri_score": 534,
+          "base_performance": 534.47,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 8.674,
+          "quality_flags": [],
           "finish_time": "04:49:02"
         },
         {
@@ -370,14 +393,15 @@
           "bib_number": "112",
           "family_name": "Dubois",
           "first_name": "Sophie",
-          "otri_score": 891,
-          "base_performance": 890.89,
+          "otri_score": 519,
+          "base_performance": 519.2,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 8.262,
+          "quality_flags": [],
           "finish_time": "05:03:27"
         }
       ],
@@ -396,14 +420,15 @@
           "bib_number": "101",
           "family_name": "Martin",
           "first_name": "Alex",
-          "otri_score": 1000,
-          "base_performance": 1032.71,
+          "otri_score": 667,
+          "base_performance": 666.93,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 11.283,
+          "quality_flags": [],
           "finish_time": "09:18:41"
         },
         {
@@ -411,14 +436,15 @@
           "bib_number": "102",
           "family_name": "Wong",
           "first_name": "Daniel",
-          "otri_score": 1000,
-          "base_performance": 1010.04,
+          "otri_score": 639,
+          "base_performance": 638.54,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 10.734,
+          "quality_flags": [],
           "finish_time": "09:47:13"
         },
         {
@@ -426,14 +452,15 @@
           "bib_number": "103",
           "family_name": "Jones",
           "first_name": "Peter",
-          "otri_score": 991,
-          "base_performance": 990.8,
+          "otri_score": 615,
+          "base_performance": 615.38,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 10.29,
+          "quality_flags": [],
           "finish_time": "10:12:35"
         },
         {
@@ -441,14 +468,15 @@
           "bib_number": "104",
           "family_name": "Chen",
           "first_name": "Liam",
-          "otri_score": 970,
-          "base_performance": 970.06,
+          "otri_score": 591,
+          "base_performance": 591.38,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 9.832,
+          "quality_flags": [],
           "finish_time": "10:41:08"
         },
         {
@@ -456,14 +484,15 @@
           "bib_number": "105",
           "family_name": "Rossi",
           "first_name": "Marco",
-          "otri_score": 954,
-          "base_performance": 954.18,
+          "otri_score": 574,
+          "base_performance": 573.63,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 9.494,
+          "quality_flags": [],
           "finish_time": "11:03:54"
         },
         {
@@ -471,14 +500,15 @@
           "bib_number": "106",
           "family_name": "Sato",
           "first_name": "Kenji",
-          "otri_score": 938,
-          "base_performance": 937.72,
+          "otri_score": 556,
+          "base_performance": 555.79,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 9.157,
+          "quality_flags": [],
           "finish_time": "11:28:21"
         },
         {
@@ -486,14 +516,15 @@
           "bib_number": "107",
           "family_name": "Brown",
           "first_name": "Tom",
-          "otri_score": 919,
-          "base_performance": 919.33,
+          "otri_score": 539,
+          "base_performance": 538.89,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 8.795,
+          "quality_flags": [],
           "finish_time": "11:56:44"
         },
         {
@@ -501,14 +532,15 @@
           "bib_number": "108",
           "family_name": "Tan",
           "first_name": "Michael",
-          "otri_score": 906,
-          "base_performance": 905.85,
+          "otri_score": 529,
+          "base_performance": 529.46,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 8.538,
+          "quality_flags": [],
           "finish_time": "12:18:17"
         },
         {
@@ -516,14 +548,15 @@
           "bib_number": "109",
           "family_name": "Keller",
           "first_name": "Nina",
-          "otri_score": 888,
-          "base_performance": 887.97,
+          "otri_score": 517,
+          "base_performance": 517.22,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 8.209,
+          "quality_flags": [],
           "finish_time": "12:47:52"
         },
         {
@@ -531,14 +564,15 @@
           "bib_number": "110",
           "family_name": "Wilson",
           "first_name": "Sarah",
-          "otri_score": 875,
-          "base_performance": 875.32,
+          "otri_score": 509,
+          "base_performance": 508.72,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 7.984,
+          "quality_flags": [],
           "finish_time": "13:09:31"
         },
         {
@@ -546,14 +580,15 @@
           "bib_number": "112",
           "family_name": "Dubois",
           "first_name": "Sophie",
-          "otri_score": 851,
-          "base_performance": 851.37,
+          "otri_score": 493,
+          "base_performance": 493.03,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 7.575,
+          "quality_flags": [],
           "finish_time": "13:52:10"
         }
       ],
@@ -573,13 +608,14 @@
           "family_name": "Silva",
           "first_name": "Ana",
           "otri_score": 1000,
-          "base_performance": 1313.71,
+          "base_performance": 1143.61,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 20.919,
+          "quality_flags": [],
           "finish_time": "00:32:10"
         },
         {
@@ -588,13 +624,14 @@
           "family_name": "Nakamura",
           "first_name": "Ren",
           "otri_score": 1000,
-          "base_performance": 1291.84,
+          "base_performance": 1096.61,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 19.938,
+          "quality_flags": [],
           "finish_time": "00:33:45"
         },
         {
@@ -603,13 +640,14 @@
           "family_name": "Okafor",
           "first_name": "Chidi",
           "otri_score": 1000,
-          "base_performance": 1275.72,
+          "base_performance": 1063.21,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 19.244,
+          "quality_flags": [],
           "finish_time": "00:34:58"
         },
         {
@@ -618,13 +656,14 @@
           "family_name": "Andersen",
           "first_name": "Freya",
           "otri_score": 1000,
-          "base_performance": 1266.7,
+          "base_performance": 1044.96,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 18.866,
+          "quality_flags": [],
           "finish_time": "00:35:40"
         },
         {
@@ -633,13 +672,14 @@
           "family_name": "Ibrahim",
           "first_name": "Yusuf",
           "otri_score": 1000,
-          "base_performance": 1257.86,
+          "base_performance": 1027.37,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 18.503,
+          "quality_flags": [],
           "finish_time": "00:36:22"
         },
         {
@@ -648,13 +688,14 @@
           "family_name": "Kowalski",
           "first_name": "Olga",
           "otri_score": 1000,
-          "base_performance": 1248.97,
+          "base_performance": 1010.01,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 18.146,
+          "quality_flags": [],
           "finish_time": "00:37:05"
         },
         {
@@ -662,14 +703,15 @@
           "bib_number": "207",
           "family_name": "Martins",
           "first_name": "Diego",
-          "otri_score": 1000,
-          "base_performance": 1235.47,
+          "otri_score": 984,
+          "base_performance": 984.17,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 17.615,
+          "quality_flags": [],
           "finish_time": "00:38:12"
         },
         {
@@ -677,14 +719,15 @@
           "bib_number": "208",
           "family_name": "Haddad",
           "first_name": "Layla",
-          "otri_score": 1000,
-          "base_performance": 1216.99,
+          "otri_score": 950,
+          "base_performance": 949.88,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 16.914,
+          "quality_flags": [],
           "finish_time": "00:39:47"
         }
       ],
@@ -704,13 +747,14 @@
           "family_name": "Torres",
           "first_name": "Marisol",
           "otri_score": 1000,
-          "base_performance": 1257.07,
+          "base_performance": 1025.82,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 18.471,
+          "quality_flags": [],
           "finish_time": "01:28:14"
         },
         {
@@ -718,14 +762,15 @@
           "bib_number": "302",
           "family_name": "Kim",
           "first_name": "Joon",
-          "otri_score": 1000,
-          "base_performance": 1238.7,
+          "otri_score": 990,
+          "base_performance": 990.3,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 17.741,
+          "quality_flags": [],
           "finish_time": "01:31:52"
         },
         {
@@ -733,14 +778,15 @@
           "bib_number": "303",
           "family_name": "Fischer",
           "first_name": "Lena",
-          "otri_score": 1000,
-          "base_performance": 1227.53,
+          "otri_score": 969,
+          "base_performance": 969.29,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 17.31,
+          "quality_flags": [],
           "finish_time": "01:34:09"
         },
         {
@@ -748,14 +794,15 @@
           "bib_number": "304",
           "family_name": "Costa",
           "first_name": "Rafael",
-          "otri_score": 1000,
-          "base_performance": 1214.98,
+          "otri_score": 946,
+          "base_performance": 946.21,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 16.839,
+          "quality_flags": [],
           "finish_time": "01:36:47"
         },
         {
@@ -763,14 +810,15 @@
           "bib_number": "305",
           "family_name": "Nilsson",
           "first_name": "Elin",
-          "otri_score": 1000,
-          "base_performance": 1203.14,
+          "otri_score": 925,
+          "base_performance": 924.96,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 16.407,
+          "quality_flags": [],
           "finish_time": "01:39:20"
         },
         {
@@ -778,14 +826,15 @@
           "bib_number": "306",
           "family_name": "Dubois",
           "first_name": "Marc",
-          "otri_score": 1000,
-          "base_performance": 1190.71,
+          "otri_score": 903,
+          "base_performance": 903.16,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 15.965,
+          "quality_flags": [],
           "finish_time": "01:42:05"
         },
         {
@@ -793,14 +842,15 @@
           "bib_number": "307",
           "family_name": "Petrov",
           "first_name": "Ivan",
-          "otri_score": 1000,
-          "base_performance": 1175.51,
+          "otri_score": 877,
+          "base_performance": 877.2,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 15.441,
+          "quality_flags": [],
           "finish_time": "01:45:33"
         },
         {
@@ -808,14 +858,15 @@
           "bib_number": "308",
           "family_name": "Yamada",
           "first_name": "Sora",
-          "otri_score": 1000,
-          "base_performance": 1161.01,
+          "otri_score": 853,
+          "base_performance": 853.13,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 14.957,
+          "quality_flags": [],
           "finish_time": "01:48:58"
         },
         {
@@ -823,14 +874,15 @@
           "bib_number": "309",
           "family_name": "Alvarez",
           "first_name": "Camila",
-          "otri_score": 1000,
-          "base_performance": 1145.75,
+          "otri_score": 828,
+          "base_performance": 828.5,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 14.463,
+          "quality_flags": [],
           "finish_time": "01:52:41"
         },
         {
@@ -838,14 +890,15 @@
           "bib_number": "310",
           "family_name": "Hassan",
           "first_name": "Omar",
-          "otri_score": 1000,
-          "base_performance": 1131.31,
+          "otri_score": 806,
+          "base_performance": 805.85,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 14.012,
+          "quality_flags": [],
           "finish_time": "01:56:19"
         }
       ],
@@ -864,14 +917,15 @@
           "bib_number": "401",
           "family_name": "Sherpa",
           "first_name": "Pemba",
-          "otri_score": 958,
-          "base_performance": 957.64,
+          "otri_score": 577,
+          "base_performance": 577.44,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 9.567,
+          "quality_flags": [],
           "finish_time": "22:14:05"
         },
         {
@@ -879,14 +933,15 @@
           "bib_number": "402",
           "family_name": "Gurung",
           "first_name": "Anita",
-          "otri_score": 940,
-          "base_performance": 940.37,
+          "otri_score": 559,
+          "base_performance": 558.61,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 9.211,
+          "quality_flags": [],
           "finish_time": "23:05:41"
         },
         {
@@ -894,14 +949,15 @@
           "bib_number": "403",
           "family_name": "Meyer",
           "first_name": "Lukas",
-          "otri_score": 927,
-          "base_performance": 926.57,
+          "otri_score": 544,
+          "base_performance": 544.02,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 8.936,
+          "quality_flags": [],
           "finish_time": "23:48:19"
         },
         {
@@ -909,14 +965,15 @@
           "bib_number": "404",
           "family_name": "Chand",
           "first_name": "Bikash",
-          "otri_score": 916,
-          "base_performance": 915.67,
+          "otri_score": 536,
+          "base_performance": 536.31,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 8.724,
+          "quality_flags": [],
           "finish_time": "24:22:56"
         },
         {
@@ -924,14 +981,15 @@
           "bib_number": "405",
           "family_name": "Roux",
           "first_name": "Camille",
-          "otri_score": 901,
-          "base_performance": 901.1,
+          "otri_score": 526,
+          "base_performance": 526.18,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 8.449,
+          "quality_flags": [],
           "finish_time": "25:10:33"
         },
         {
@@ -939,14 +997,15 @@
           "bib_number": "407",
           "family_name": "Tamang",
           "first_name": "Sunita",
-          "otri_score": 874,
-          "base_performance": 873.72,
+          "otri_score": 508,
+          "base_performance": 507.66,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 7.956,
+          "quality_flags": [],
           "finish_time": "26:44:12"
         },
         {
@@ -954,14 +1013,15 @@
           "bib_number": "409",
           "family_name": "Bishop",
           "first_name": "Grace",
-          "otri_score": 853,
-          "base_performance": 853.07,
+          "otri_score": 494,
+          "base_performance": 494.13,
           "course_adjustment": 0.0,
           "field_adjustment": 0.0,
           "environmental_factor": 0.0,
           "confidence": "Low",
-          "scoring_version": "1.1.0-course-standard",
+          "scoring_version": "0.2.0-course-standard-measured",
           "performance_rate": 7.603,
+          "quality_flags": [],
           "finish_time": "27:58:39"
         }
       ],
@@ -973,15 +1033,3869 @@
     "note": "Synthetic profile for demonstrating the map/elevation-profile viewer. Not the real course of any listed race.",
     "gpx_text": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<gpx version=\"1.1\" creator=\"OTRI prototype fixture\" xmlns=\"http://www.topografix.com/GPX/1/1\">\n<trk><name>Sample illustrative course (synthetic, not an official race course)</name><trkseg>\n<trkpt lat=\"13.60000\" lon=\"100.50000\"><ele>150.0</ele></trkpt>\n<trkpt lat=\"13.60300\" lon=\"100.50013\"><ele>189.5</ele></trkpt>\n<trkpt lat=\"13.60600\" lon=\"100.50025\"><ele>217.2</ele></trkpt>\n<trkpt lat=\"13.60900\" lon=\"100.50034\"><ele>228.6</ele></trkpt>\n<trkpt lat=\"13.61200\" lon=\"100.50039\"><ele>228.3</ele></trkpt>\n<trkpt lat=\"13.61500\" lon=\"100.50040\"><ele>225.2</ele></trkpt>\n<trkpt lat=\"13.61800\" lon=\"100.50036\"><ele>224.8</ele></trkpt>\n<trkpt lat=\"13.62100\" lon=\"100.50029\"><ele>224.6</ele></trkpt>\n<trkpt lat=\"13.62400\" lon=\"100.50018\"><ele>216.4</ele></trkpt>\n<trkpt lat=\"13.62700\" lon=\"100.50006\"><ele>193.3</ele></trkpt>\n<trkpt lat=\"13.63000\" lon=\"100.49992\"><ele>156.4</ele></trkpt>\n<trkpt lat=\"13.63300\" lon=\"100.49980\"><ele>115.6</ele></trkpt>\n<trkpt lat=\"13.63600\" lon=\"100.49970\"><ele>83.6</ele></trkpt>\n<trkpt lat=\"13.63900\" lon=\"100.49963\"><ele>68.1</ele></trkpt>\n<trkpt lat=\"13.64200\" lon=\"100.49960\"><ele>67.5</ele></trkpt>\n<trkpt lat=\"13.64500\" lon=\"100.49962\"><ele>73.2</ele></trkpt>\n<trkpt lat=\"13.64800\" lon=\"100.49967\"><ele>77.5</ele></trkpt>\n<trkpt lat=\"13.65100\" lon=\"100.49977\"><ele>79.5</ele></trkpt>\n<trkpt lat=\"13.65400\" lon=\"100.49989\"><ele>85.8</ele></trkpt>\n<trkpt lat=\"13.65700\" lon=\"100.50002\"><ele>104.5</ele></trkpt>\n<trkpt lat=\"13.66000\" lon=\"100.50015\"><ele>137.7</ele></trkpt>\n<trkpt lat=\"13.66300\" lon=\"100.50026\"><ele>178.4</ele></trkpt>\n<trkpt lat=\"13.66600\" lon=\"100.50035\"><ele>213.9</ele></trkpt>\n<trkpt lat=\"13.66900\" lon=\"100.50039\"><ele>234.0</ele></trkpt>\n</trkseg></trk>\n</gpx>\n",
     "features": {
-      "distance_km": 7.676,
+      "distance_km": 7.638,
       "elevation_gain_m": 245.1,
       "elevation_loss_m": 161.1,
       "steep_climb_distance_km": 0.0,
       "steep_descent_distance_km": 0.0,
-      "max_climb_grade": 0.0785,
-      "max_descent_grade": 0.0439,
+      "max_climb_grade": 0.1225,
+      "max_descent_grade": 0.1228,
       "min_elevation_m": 67.5,
       "max_elevation_m": 234.0
+    },
+    "measurement": {
+      "version": "course-measurement-v1",
+      "parameters": {
+        "spacing_m": 10.0,
+        "median_radius_m": 10.0,
+        "mean_radius_m": 10.0,
+        "reversal_m": 8.0,
+        "grade_window_m": 50.0,
+        "max_missing_gap_m": 30.0,
+        "smoothing_policy": "terrain-or-implausible-local-elevation"
+      },
+      "distance_method": "WGS84 horizontal",
+      "geometry_hash": "39eb9ae776449fd465ddb393ffdef55e02a60049a38fe7834f480695a011270d",
+      "source": {
+        "dataset": "uploaded-gpx",
+        "datum": "unknown",
+        "sensor": "unknown"
+      },
+      "status": "provisional",
+      "quality_flags": [
+        "elevation_estimate_not_field_validated",
+        "sparse_geometry_over_100m",
+        "unknown_elevation_provenance"
+      ],
+      "coverage_fraction": 1.0,
+      "profile": [
+        {
+          "distanceKm": 0.0,
+          "elevation": 150.0,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.01,
+          "elevation": 151.18902432172175,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.02,
+          "elevation": 152.37804864344352,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.03,
+          "elevation": 153.56707296516527,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.04,
+          "elevation": 154.75609728688704,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.05,
+          "elevation": 155.9451216086088,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.06,
+          "elevation": 157.13414593033053,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.07,
+          "elevation": 158.3231702520523,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.08,
+          "elevation": 159.51219457377405,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.09,
+          "elevation": 160.70121889549583,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.1,
+          "elevation": 161.89024321721757,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.11,
+          "elevation": 163.07926753893935,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.12,
+          "elevation": 164.2682918606611,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.13,
+          "elevation": 165.45731618238284,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.14,
+          "elevation": 166.64634050410461,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.15,
+          "elevation": 167.83536482582636,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.16,
+          "elevation": 169.0243891475481,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.17,
+          "elevation": 170.21341346926988,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.18,
+          "elevation": 171.40243779099163,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.19,
+          "elevation": 172.5914621127134,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.2,
+          "elevation": 173.78048643443515,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.21,
+          "elevation": 174.96951075615692,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.22,
+          "elevation": 176.15853507787867,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.23,
+          "elevation": 177.3475593996004,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.24,
+          "elevation": 178.5365837213222,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.25,
+          "elevation": 179.72560804304393,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.26,
+          "elevation": 180.9146323647657,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.27,
+          "elevation": 182.10365668648745,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.28,
+          "elevation": 183.29268100820923,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.29,
+          "elevation": 184.48170532993097,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.3,
+          "elevation": 185.67072965165272,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.31,
+          "elevation": 186.8597539733745,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.32,
+          "elevation": 188.04877829509624,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.33,
+          "elevation": 189.237802616818,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.34,
+          "elevation": 190.15003814247987,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.35,
+          "elevation": 190.98397070239565,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.36,
+          "elevation": 191.81790326231146,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.37,
+          "elevation": 192.65183582222727,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.38,
+          "elevation": 193.48576838214308,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.39,
+          "elevation": 194.3197009420589,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.4,
+          "elevation": 195.1536335019747,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.41,
+          "elevation": 195.98756606189048,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.42,
+          "elevation": 196.82149862180628,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.43,
+          "elevation": 197.6554311817221,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.44,
+          "elevation": 198.4893637416379,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.45,
+          "elevation": 199.3232963015537,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.46,
+          "elevation": 200.15722886146952,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.47,
+          "elevation": 200.9911614213853,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.48,
+          "elevation": 201.8250939813011,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.49,
+          "elevation": 202.65902654121692,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.5,
+          "elevation": 203.49295910113273,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.51,
+          "elevation": 204.32689166104853,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.52,
+          "elevation": 205.16082422096434,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.53,
+          "elevation": 205.99475678088012,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.54,
+          "elevation": 206.82868934079593,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.55,
+          "elevation": 207.66262190071174,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.56,
+          "elevation": 208.49655446062755,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.57,
+          "elevation": 209.33048702054336,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.58,
+          "elevation": 210.16441958045914,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.59,
+          "elevation": 210.99835214037495,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.6,
+          "elevation": 211.83228470029076,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.61,
+          "elevation": 212.66621726020657,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.62,
+          "elevation": 213.50014982012237,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.63,
+          "elevation": 214.33408238003818,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.64,
+          "elevation": 215.168014939954,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.65,
+          "elevation": 216.00194749986977,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.66,
+          "elevation": 216.83588005978558,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.67,
+          "elevation": 217.39341712095387,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.68,
+          "elevation": 217.7367387518439,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.69,
+          "elevation": 218.08006038273393,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.7,
+          "elevation": 218.42338201362395,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.71,
+          "elevation": 218.766703644514,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.72,
+          "elevation": 219.11002527540404,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.73,
+          "elevation": 219.45334690629406,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.74,
+          "elevation": 219.7966685371841,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.75,
+          "elevation": 220.13999016807412,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.76,
+          "elevation": 220.48331179896417,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.77,
+          "elevation": 220.8266334298542,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.78,
+          "elevation": 221.16995506074423,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.79,
+          "elevation": 221.51327669163427,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.8,
+          "elevation": 221.8565983225243,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.81,
+          "elevation": 222.19991995341434,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.82,
+          "elevation": 222.54324158430438,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.83,
+          "elevation": 222.8865632151944,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.84,
+          "elevation": 223.22988484608445,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.85,
+          "elevation": 223.5732064769745,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.86,
+          "elevation": 223.9165281078645,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.87,
+          "elevation": 224.25984973875455,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.88,
+          "elevation": 224.60317136964457,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.89,
+          "elevation": 224.94649300053462,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.9,
+          "elevation": 225.28981463142466,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.91,
+          "elevation": 225.63313626231468,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.92,
+          "elevation": 225.97645789320472,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.93,
+          "elevation": 226.31977952409474,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.94,
+          "elevation": 226.6631011549848,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.95,
+          "elevation": 227.00642278587483,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.96,
+          "elevation": 227.34974441676485,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.97,
+          "elevation": 227.6930660476549,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.98,
+          "elevation": 228.0363876785449,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 0.99,
+          "elevation": 228.37970930943496,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.0,
+          "elevation": 228.59676138117217,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.01,
+          "elevation": 228.58772391551625,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.02,
+          "elevation": 228.5786864498603,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.03,
+          "elevation": 228.56964898420438,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.04,
+          "elevation": 228.56061151854846,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.05,
+          "elevation": 228.55157405289253,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.06,
+          "elevation": 228.5425365872366,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.07,
+          "elevation": 228.5334991215807,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.08,
+          "elevation": 228.52446165592477,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.09,
+          "elevation": 228.51542419026885,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.1,
+          "elevation": 228.50638672461292,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.11,
+          "elevation": 228.497349258957,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.12,
+          "elevation": 228.48831179330108,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.13,
+          "elevation": 228.47927432764516,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.14,
+          "elevation": 228.47023686198924,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.15,
+          "elevation": 228.4611993963333,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.16,
+          "elevation": 228.45216193067736,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.17,
+          "elevation": 228.44312446502144,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.18,
+          "elevation": 228.43408699936552,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.19,
+          "elevation": 228.4250495337096,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.2,
+          "elevation": 228.41601206805367,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.21,
+          "elevation": 228.40697460239775,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.22,
+          "elevation": 228.39793713674183,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.23,
+          "elevation": 228.3888996710859,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.24,
+          "elevation": 228.37986220543,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.25,
+          "elevation": 228.37082473977406,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.26,
+          "elevation": 228.36178727411814,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.27,
+          "elevation": 228.35274980846222,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.28,
+          "elevation": 228.3437123428063,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.29,
+          "elevation": 228.33467487715038,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.3,
+          "elevation": 228.32563741149445,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.31,
+          "elevation": 228.3165999458385,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.32,
+          "elevation": 228.30756248018258,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.33,
+          "elevation": 228.2847565430646,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.34,
+          "elevation": 228.19135750895805,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.35,
+          "elevation": 228.0979584748515,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.36,
+          "elevation": 228.00455944074494,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.37,
+          "elevation": 227.9111604066384,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.38,
+          "elevation": 227.81776137253183,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.39,
+          "elevation": 227.7243623384253,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.4,
+          "elevation": 227.63096330431873,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.41,
+          "elevation": 227.5375642702122,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.42,
+          "elevation": 227.44416523610565,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.43,
+          "elevation": 227.35076620199908,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.44,
+          "elevation": 227.25736716789254,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.45,
+          "elevation": 227.16396813378597,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.46,
+          "elevation": 227.07056909967943,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.47,
+          "elevation": 226.9771700655729,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.48,
+          "elevation": 226.88377103146632,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.49,
+          "elevation": 226.79037199735978,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.5,
+          "elevation": 226.69697296325322,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.51,
+          "elevation": 226.60357392914668,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.52,
+          "elevation": 226.51017489504014,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.53,
+          "elevation": 226.41677586093357,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.54,
+          "elevation": 226.32337682682703,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.55,
+          "elevation": 226.22997779272046,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.56,
+          "elevation": 226.13657875861392,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.57,
+          "elevation": 226.04317972450735,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.58,
+          "elevation": 225.94978069040081,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.59,
+          "elevation": 225.85638165629427,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.6,
+          "elevation": 225.7629826221877,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.61,
+          "elevation": 225.66958358808117,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.62,
+          "elevation": 225.5761845539746,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.63,
+          "elevation": 225.48278551986806,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.64,
+          "elevation": 225.38938648576152,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.65,
+          "elevation": 225.29598745165495,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.66,
+          "elevation": 225.2025884175484,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.67,
+          "elevation": 225.18828343790585,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.68,
+          "elevation": 225.17623291315317,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.69,
+          "elevation": 225.16418238840046,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.7,
+          "elevation": 225.15213186364778,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.71,
+          "elevation": 225.14008133889507,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.72,
+          "elevation": 225.1280308141424,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.73,
+          "elevation": 225.11598028938968,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.74,
+          "elevation": 225.10392976463697,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.75,
+          "elevation": 225.0918792398843,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.76,
+          "elevation": 225.07982871513158,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.77,
+          "elevation": 225.0677781903789,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.78,
+          "elevation": 225.0557276656262,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.79,
+          "elevation": 225.0436771408735,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.8,
+          "elevation": 225.0316266161208,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.81,
+          "elevation": 225.01957609136812,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.82,
+          "elevation": 225.0075255666154,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.83,
+          "elevation": 224.99547504186273,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.84,
+          "elevation": 224.98342451711002,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.85,
+          "elevation": 224.97137399235734,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.86,
+          "elevation": 224.95932346760463,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.87,
+          "elevation": 224.94727294285195,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.88,
+          "elevation": 224.93522241809924,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.89,
+          "elevation": 224.92317189334656,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.9,
+          "elevation": 224.91112136859385,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.91,
+          "elevation": 224.89907084384114,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.92,
+          "elevation": 224.88702031908846,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.93,
+          "elevation": 224.87496979433575,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.94,
+          "elevation": 224.86291926958307,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.95,
+          "elevation": 224.85086874483036,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.96,
+          "elevation": 224.83881822007768,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.97,
+          "elevation": 224.82676769532497,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.98,
+          "elevation": 224.8147171705723,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 1.99,
+          "elevation": 224.80266664581958,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.0,
+          "elevation": 224.79530888416704,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.01,
+          "elevation": 224.78928467947878,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.02,
+          "elevation": 224.7832604747905,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.03,
+          "elevation": 224.77723627010224,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.04,
+          "elevation": 224.77121206541398,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.05,
+          "elevation": 224.76518786072572,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.06,
+          "elevation": 224.75916365603746,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.07,
+          "elevation": 224.75313945134917,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.08,
+          "elevation": 224.7471152466609,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.09,
+          "elevation": 224.74109104197265,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.1,
+          "elevation": 224.7350668372844,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.11,
+          "elevation": 224.7290426325961,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.12,
+          "elevation": 224.72301842790785,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.13,
+          "elevation": 224.7169942232196,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.14,
+          "elevation": 224.71097001853133,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.15,
+          "elevation": 224.70494581384307,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.16,
+          "elevation": 224.69892160915478,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.17,
+          "elevation": 224.69289740446652,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.18,
+          "elevation": 224.68687319977826,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.19,
+          "elevation": 224.68084899509,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.2,
+          "elevation": 224.67482479040171,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.21,
+          "elevation": 224.66880058571346,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.22,
+          "elevation": 224.6627763810252,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.23,
+          "elevation": 224.65675217633694,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.24,
+          "elevation": 224.65072797164868,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.25,
+          "elevation": 224.6447037669604,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.26,
+          "elevation": 224.63867956227213,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.27,
+          "elevation": 224.63265535758387,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.28,
+          "elevation": 224.6266311528956,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.29,
+          "elevation": 224.62060694820732,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.3,
+          "elevation": 224.61458274351907,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.31,
+          "elevation": 224.6085585388308,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.32,
+          "elevation": 224.60253433414255,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.33,
+          "elevation": 224.4569700306977,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.34,
+          "elevation": 224.21007210129181,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.35,
+          "elevation": 223.9631741718859,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.36,
+          "elevation": 223.71627624248,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.37,
+          "elevation": 223.46937831307412,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.38,
+          "elevation": 223.2224803836682,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.39,
+          "elevation": 222.9755824542623,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.4,
+          "elevation": 222.7286845248564,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.41,
+          "elevation": 222.4817865954505,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.42,
+          "elevation": 222.23488866604458,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.43,
+          "elevation": 221.9879907366387,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.44,
+          "elevation": 221.74109280723277,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.45,
+          "elevation": 221.49419487782689,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.46,
+          "elevation": 221.24729694842097,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.47,
+          "elevation": 221.00039901901508,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.48,
+          "elevation": 220.75350108960916,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.49,
+          "elevation": 220.50660316020327,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.5,
+          "elevation": 220.25970523079735,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.51,
+          "elevation": 220.01280730139146,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.52,
+          "elevation": 219.76590937198554,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.53,
+          "elevation": 219.51901144257965,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.54,
+          "elevation": 219.27211351317374,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.55,
+          "elevation": 219.02521558376785,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.56,
+          "elevation": 218.77831765436193,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.57,
+          "elevation": 218.53141972495604,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.58,
+          "elevation": 218.28452179555012,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.59,
+          "elevation": 218.03762386614423,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.6,
+          "elevation": 217.7907259367383,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.61,
+          "elevation": 217.54382800733242,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.62,
+          "elevation": 217.2969300779265,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.63,
+          "elevation": 217.05003214852061,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.64,
+          "elevation": 216.8031342191147,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.65,
+          "elevation": 216.5562362897088,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.66,
+          "elevation": 216.1446307557731,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.67,
+          "elevation": 215.44918626740716,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.68,
+          "elevation": 214.75374177904118,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.69,
+          "elevation": 214.05829729067523,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.7,
+          "elevation": 213.36285280230928,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.71,
+          "elevation": 212.6674083139433,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.72,
+          "elevation": 211.97196382557735,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.73,
+          "elevation": 211.27651933721137,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.74,
+          "elevation": 210.58107484884542,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.75,
+          "elevation": 209.88563036047947,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.76,
+          "elevation": 209.1901858721135,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.77,
+          "elevation": 208.49474138374754,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.78,
+          "elevation": 207.7992968953816,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.79,
+          "elevation": 207.1038524070156,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.8,
+          "elevation": 206.40840791864966,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.81,
+          "elevation": 205.7129634302837,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.82,
+          "elevation": 205.01751894191773,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.83,
+          "elevation": 204.32207445355178,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.84,
+          "elevation": 203.62662996518583,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.85,
+          "elevation": 202.93118547681985,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.86,
+          "elevation": 202.2357409884539,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.87,
+          "elevation": 201.54029650008795,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.88,
+          "elevation": 200.84485201172197,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.89,
+          "elevation": 200.14940752335602,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.9,
+          "elevation": 199.45396303499007,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.91,
+          "elevation": 198.7585185466241,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.92,
+          "elevation": 198.06307405825814,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.93,
+          "elevation": 197.3676295698922,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.94,
+          "elevation": 196.6721850815262,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.95,
+          "elevation": 195.97674059316026,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.96,
+          "elevation": 195.2812961047943,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.97,
+          "elevation": 194.58585161642833,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.98,
+          "elevation": 193.89040712806238,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 2.99,
+          "elevation": 193.13225936026492,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.0,
+          "elevation": 192.02166115938118,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.01,
+          "elevation": 190.91106295849744,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.02,
+          "elevation": 189.8004647576137,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.03,
+          "elevation": 188.68986655672995,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.04,
+          "elevation": 187.5792683558462,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.05,
+          "elevation": 186.4686701549625,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.06,
+          "elevation": 185.35807195407875,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.07,
+          "elevation": 184.247473753195,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.08,
+          "elevation": 183.13687555231127,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.09,
+          "elevation": 182.02627735142752,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.1,
+          "elevation": 180.9156791505438,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.11,
+          "elevation": 179.80508094966007,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.12,
+          "elevation": 178.69448274877632,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.13,
+          "elevation": 177.58388454789258,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.14,
+          "elevation": 176.47328634700884,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.15,
+          "elevation": 175.3626881461251,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.16,
+          "elevation": 174.25208994524138,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.17,
+          "elevation": 173.14149174435764,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.18,
+          "elevation": 172.0308935434739,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.19,
+          "elevation": 170.92029534259015,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.2,
+          "elevation": 169.8096971417064,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.21,
+          "elevation": 168.6990989408227,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.22,
+          "elevation": 167.58850073993895,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.23,
+          "elevation": 166.4779025390552,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.24,
+          "elevation": 165.36730433817146,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.25,
+          "elevation": 164.25670613728772,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.26,
+          "elevation": 163.146107936404,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.27,
+          "elevation": 162.03550973552026,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.28,
+          "elevation": 160.92491153463652,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.29,
+          "elevation": 159.81431333375278,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.3,
+          "elevation": 158.70371513286904,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.31,
+          "elevation": 157.59311693198532,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.32,
+          "elevation": 156.48251873110158,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.33,
+          "elevation": 155.26294837925232,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.34,
+          "elevation": 154.03463138486484,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.35,
+          "elevation": 152.80631439047738,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.36,
+          "elevation": 151.5779973960899,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.37,
+          "elevation": 150.34968040170241,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.38,
+          "elevation": 149.12136340731496,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.39,
+          "elevation": 147.89304641292748,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.4,
+          "elevation": 146.66472941854,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.41,
+          "elevation": 145.4364124241525,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.42,
+          "elevation": 144.20809542976505,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.43,
+          "elevation": 142.97977843537757,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.44,
+          "elevation": 141.75146144099008,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.45,
+          "elevation": 140.5231444466026,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.46,
+          "elevation": 139.29482745221515,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.47,
+          "elevation": 138.06651045782766,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.48,
+          "elevation": 136.83819346344018,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.49,
+          "elevation": 135.60987646905272,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.5,
+          "elevation": 134.38155947466524,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.51,
+          "elevation": 133.15324248027775,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.52,
+          "elevation": 131.9249254858903,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.53,
+          "elevation": 130.69660849150281,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.54,
+          "elevation": 129.46829149711533,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.55,
+          "elevation": 128.23997450272785,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.56,
+          "elevation": 127.01165750834038,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.57,
+          "elevation": 125.78334051395291,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.58,
+          "elevation": 124.55502351956542,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.59,
+          "elevation": 123.32670652517795,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.6,
+          "elevation": 122.09838953079048,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.61,
+          "elevation": 120.870072536403,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.62,
+          "elevation": 119.64175554201553,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.63,
+          "elevation": 118.41343854762805,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.64,
+          "elevation": 117.18512155324058,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.65,
+          "elevation": 115.9568045588531,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.66,
+          "elevation": 114.91630135652365,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.67,
+          "elevation": 113.95269070843607,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.68,
+          "elevation": 112.98908006034847,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.69,
+          "elevation": 112.02546941226089,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.7,
+          "elevation": 111.06185876417331,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.71,
+          "elevation": 110.09824811608573,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.72,
+          "elevation": 109.13463746799813,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.73,
+          "elevation": 108.17102681991055,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.74,
+          "elevation": 107.20741617182297,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.75,
+          "elevation": 106.24380552373539,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.76,
+          "elevation": 105.2801948756478,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.77,
+          "elevation": 104.31658422756021,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.78,
+          "elevation": 103.35297357947263,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.79,
+          "elevation": 102.38936293138505,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.8,
+          "elevation": 101.42575228329746,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.81,
+          "elevation": 100.46214163520987,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.82,
+          "elevation": 99.4985309871223,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.83,
+          "elevation": 98.5349203390347,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.84,
+          "elevation": 97.57130969094712,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.85,
+          "elevation": 96.60769904285954,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.86,
+          "elevation": 95.64408839477196,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.87,
+          "elevation": 94.68047774668437,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.88,
+          "elevation": 93.71686709859678,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.89,
+          "elevation": 92.7532564505092,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.9,
+          "elevation": 91.78964580242162,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.91,
+          "elevation": 90.82603515433402,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.92,
+          "elevation": 89.86242450624644,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.93,
+          "elevation": 88.89881385815886,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.94,
+          "elevation": 87.93520321007128,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.95,
+          "elevation": 86.9715925619837,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.96,
+          "elevation": 86.0079819138961,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.97,
+          "elevation": 85.04437126580852,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.98,
+          "elevation": 84.08076061772094,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 3.99,
+          "elevation": 83.36605622979484,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.0,
+          "elevation": 82.89918102249236,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.01,
+          "elevation": 82.43230581518986,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.02,
+          "elevation": 81.96543060788738,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.03,
+          "elevation": 81.49855540058489,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.04,
+          "elevation": 81.0316801932824,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.05,
+          "elevation": 80.56480498597992,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.06,
+          "elevation": 80.09792977867743,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.07,
+          "elevation": 79.63105457137493,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.08,
+          "elevation": 79.16417936407245,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.09,
+          "elevation": 78.69730415676996,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.1,
+          "elevation": 78.23042894946747,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.11,
+          "elevation": 77.76355374216499,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.12,
+          "elevation": 77.2966785348625,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.13,
+          "elevation": 76.82980332756001,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.14,
+          "elevation": 76.36292812025752,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.15,
+          "elevation": 75.89605291295503,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.16,
+          "elevation": 75.42917770565255,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.17,
+          "elevation": 74.96230249835006,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.18,
+          "elevation": 74.49542729104756,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.19,
+          "elevation": 74.02855208374508,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.2,
+          "elevation": 73.56167687644259,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.21,
+          "elevation": 73.0948016691401,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.22,
+          "elevation": 72.62792646183762,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.23,
+          "elevation": 72.16105125453512,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.24,
+          "elevation": 71.69417604723265,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.25,
+          "elevation": 71.22730083993015,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.26,
+          "elevation": 70.76042563262766,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.27,
+          "elevation": 70.29355042532518,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.28,
+          "elevation": 69.82667521802269,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.29,
+          "elevation": 69.35980001072019,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.3,
+          "elevation": 68.89292480341771,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.31,
+          "elevation": 68.42604959611522,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.32,
+          "elevation": 68.09454752889067,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.33,
+          "elevation": 68.07647110402722,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.34,
+          "elevation": 68.05839467916378,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.35,
+          "elevation": 68.04031825430033,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.36,
+          "elevation": 68.0222418294369,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.37,
+          "elevation": 68.00416540457344,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.38,
+          "elevation": 67.98608897971,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.39,
+          "elevation": 67.96801255484655,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.4,
+          "elevation": 67.9499361299831,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.41,
+          "elevation": 67.93185970511966,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.42,
+          "elevation": 67.91378328025621,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.43,
+          "elevation": 67.89570685539277,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.44,
+          "elevation": 67.87763043052932,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.45,
+          "elevation": 67.85955400566587,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.46,
+          "elevation": 67.84147758080243,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.47,
+          "elevation": 67.82340115593898,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.48,
+          "elevation": 67.80532473107554,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.49,
+          "elevation": 67.78724830621209,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.5,
+          "elevation": 67.76917188134865,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.51,
+          "elevation": 67.7510954564852,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.52,
+          "elevation": 67.73301903162175,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.53,
+          "elevation": 67.71494260675831,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.54,
+          "elevation": 67.69686618189486,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.55,
+          "elevation": 67.67878975703142,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.56,
+          "elevation": 67.66071333216797,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.57,
+          "elevation": 67.64263690730452,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.58,
+          "elevation": 67.62456048244108,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.59,
+          "elevation": 67.60648405757763,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.6,
+          "elevation": 67.5884076327142,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.61,
+          "elevation": 67.57033120785074,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.62,
+          "elevation": 67.5522547829873,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.63,
+          "elevation": 67.53417835812385,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.64,
+          "elevation": 67.5161019332604,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.65,
+          "elevation": 67.51875816404048,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.66,
+          "elevation": 67.69048872107705,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.67,
+          "elevation": 67.8622192781136,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.68,
+          "elevation": 68.03394983515017,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.69,
+          "elevation": 68.20568039218674,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.7,
+          "elevation": 68.37741094922329,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.71,
+          "elevation": 68.54914150625986,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.72,
+          "elevation": 68.72087206329643,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.73,
+          "elevation": 68.89260262033298,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.74,
+          "elevation": 69.06433317736955,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.75,
+          "elevation": 69.23606373440612,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.76,
+          "elevation": 69.40779429144267,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.77,
+          "elevation": 69.57952484847924,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.78,
+          "elevation": 69.7512554055158,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.79,
+          "elevation": 69.92298596255236,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.8,
+          "elevation": 70.09471651958893,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.81,
+          "elevation": 70.26644707662548,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.82,
+          "elevation": 70.43817763366205,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.83,
+          "elevation": 70.60990819069862,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.84,
+          "elevation": 70.78163874773517,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.85,
+          "elevation": 70.95336930477174,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.86,
+          "elevation": 71.12509986180831,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.87,
+          "elevation": 71.29683041884486,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.88,
+          "elevation": 71.46856097588143,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.89,
+          "elevation": 71.640291532918,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.9,
+          "elevation": 71.81202208995455,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.91,
+          "elevation": 71.98375264699112,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.92,
+          "elevation": 72.15548320402769,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.93,
+          "elevation": 72.32721376106424,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.94,
+          "elevation": 72.49894431810081,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.95,
+          "elevation": 72.67067487513737,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.96,
+          "elevation": 72.84240543217393,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.97,
+          "elevation": 73.0141359892105,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.98,
+          "elevation": 73.18586654624706,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 4.99,
+          "elevation": 73.31887575143799,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.0,
+          "elevation": 73.4484123900388,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.01,
+          "elevation": 73.57794902863961,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.02,
+          "elevation": 73.70748566724042,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.03,
+          "elevation": 73.83702230584123,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.04,
+          "elevation": 73.96655894444204,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.05,
+          "elevation": 74.09609558304285,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.06,
+          "elevation": 74.22563222164366,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.07,
+          "elevation": 74.35516886024448,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.08,
+          "elevation": 74.48470549884529,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.09,
+          "elevation": 74.6142421374461,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.1,
+          "elevation": 74.74377877604691,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.11,
+          "elevation": 74.87331541464772,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.12,
+          "elevation": 75.00285205324853,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.13,
+          "elevation": 75.13238869184936,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.14,
+          "elevation": 75.26192533045017,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.15,
+          "elevation": 75.39146196905098,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.16,
+          "elevation": 75.52099860765179,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.17,
+          "elevation": 75.6505352462526,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.18,
+          "elevation": 75.78007188485341,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.19,
+          "elevation": 75.90960852345422,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.2,
+          "elevation": 76.03914516205504,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.21,
+          "elevation": 76.16868180065585,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.22,
+          "elevation": 76.29821843925666,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.23,
+          "elevation": 76.42775507785747,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.24,
+          "elevation": 76.55729171645828,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.25,
+          "elevation": 76.68682835505909,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.26,
+          "elevation": 76.8163649936599,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.27,
+          "elevation": 76.94590163226071,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.28,
+          "elevation": 77.07543827086153,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.29,
+          "elevation": 77.20497490946234,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.3,
+          "elevation": 77.33451154806315,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.31,
+          "elevation": 77.46404818666396,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.32,
+          "elevation": 77.54351048501817,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.33,
+          "elevation": 77.6037360820335,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.34,
+          "elevation": 77.66396167904882,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.35,
+          "elevation": 77.72418727606416,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.36,
+          "elevation": 77.78441287307949,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.37,
+          "elevation": 77.84463847009481,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.38,
+          "elevation": 77.90486406711014,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.39,
+          "elevation": 77.96508966412546,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.4,
+          "elevation": 78.02531526114079,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.41,
+          "elevation": 78.08554085815612,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.42,
+          "elevation": 78.14576645517144,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.43,
+          "elevation": 78.20599205218677,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.44,
+          "elevation": 78.2662176492021,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.45,
+          "elevation": 78.32644324621742,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.46,
+          "elevation": 78.38666884323275,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.47,
+          "elevation": 78.44689444024807,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.48,
+          "elevation": 78.5071200372634,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.49,
+          "elevation": 78.56734563427874,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.5,
+          "elevation": 78.62757123129406,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.51,
+          "elevation": 78.68779682830939,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.52,
+          "elevation": 78.7480224253247,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.53,
+          "elevation": 78.80824802234004,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.54,
+          "elevation": 78.86847361935537,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.55,
+          "elevation": 78.92869921637069,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.56,
+          "elevation": 78.98892481338602,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.57,
+          "elevation": 79.04915041040134,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.58,
+          "elevation": 79.10937600741667,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.59,
+          "elevation": 79.169601604432,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.6,
+          "elevation": 79.22982720144732,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.61,
+          "elevation": 79.29005279846265,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.62,
+          "elevation": 79.35027839547797,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.63,
+          "elevation": 79.4105039924933,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.64,
+          "elevation": 79.47072958950864,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.65,
+          "elevation": 79.59748605255932,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.66,
+          "elevation": 79.7871523532779,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.67,
+          "elevation": 79.97681865399649,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.68,
+          "elevation": 80.16648495471509,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.69,
+          "elevation": 80.35615125543367,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.7,
+          "elevation": 80.54581755615226,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.71,
+          "elevation": 80.73548385687084,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.72,
+          "elevation": 80.92515015758943,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.73,
+          "elevation": 81.11481645830801,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.74,
+          "elevation": 81.3044827590266,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.75,
+          "elevation": 81.49414905974518,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.76,
+          "elevation": 81.68381536046377,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.77,
+          "elevation": 81.87348166118235,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.78,
+          "elevation": 82.06314796190095,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.79,
+          "elevation": 82.25281426261954,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.8,
+          "elevation": 82.44248056333812,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.81,
+          "elevation": 82.63214686405671,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.82,
+          "elevation": 82.82181316477529,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.83,
+          "elevation": 83.01147946549388,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.84,
+          "elevation": 83.20114576621246,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.85,
+          "elevation": 83.39081206693105,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.86,
+          "elevation": 83.58047836764963,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.87,
+          "elevation": 83.77014466836823,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.88,
+          "elevation": 83.95981096908682,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.89,
+          "elevation": 84.1494772698054,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.9,
+          "elevation": 84.33914357052399,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.91,
+          "elevation": 84.52880987124257,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.92,
+          "elevation": 84.71847617196116,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.93,
+          "elevation": 84.90814247267974,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.94,
+          "elevation": 85.09780877339833,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.95,
+          "elevation": 85.28747507411691,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.96,
+          "elevation": 85.4771413748355,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.97,
+          "elevation": 85.66680767555408,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.98,
+          "elevation": 85.96760684056865,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 5.99,
+          "elevation": 86.53050981861102,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.0,
+          "elevation": 87.0934127966534,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.01,
+          "elevation": 87.65631577469578,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.02,
+          "elevation": 88.21921875273816,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.03,
+          "elevation": 88.78212173078053,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.04,
+          "elevation": 89.3450247088229,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.05,
+          "elevation": 89.90792768686529,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.06,
+          "elevation": 90.47083066490767,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.07,
+          "elevation": 91.03373364295004,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.08,
+          "elevation": 91.59663662099243,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.09,
+          "elevation": 92.1595395990348,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.1,
+          "elevation": 92.72244257707717,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.11,
+          "elevation": 93.28534555511956,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.12,
+          "elevation": 93.84824853316194,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.13,
+          "elevation": 94.41115151120431,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.14,
+          "elevation": 94.97405448924668,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.15,
+          "elevation": 95.53695746728907,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.16,
+          "elevation": 96.09986044533144,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.17,
+          "elevation": 96.66276342337382,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.18,
+          "elevation": 97.22566640141619,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.19,
+          "elevation": 97.78856937945858,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.2,
+          "elevation": 98.35147235750095,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.21,
+          "elevation": 98.91437533554333,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.22,
+          "elevation": 99.47727831358571,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.23,
+          "elevation": 100.04018129162809,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.24,
+          "elevation": 100.60308426967046,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.25,
+          "elevation": 101.16598724771285,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.26,
+          "elevation": 101.72889022575522,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.27,
+          "elevation": 102.2917932037976,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.28,
+          "elevation": 102.85469618183998,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.29,
+          "elevation": 103.41759915988236,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.3,
+          "elevation": 103.98050213792473,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.31,
+          "elevation": 104.57706147249138,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.32,
+          "elevation": 105.57643980362177,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.33,
+          "elevation": 106.57581813475215,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.34,
+          "elevation": 107.57519646588256,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.35,
+          "elevation": 108.57457479701294,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.36,
+          "elevation": 109.57395312814333,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.37,
+          "elevation": 110.57333145927372,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.38,
+          "elevation": 111.5727097904041,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.39,
+          "elevation": 112.57208812153449,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.4,
+          "elevation": 113.57146645266488,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.41,
+          "elevation": 114.57084478379528,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.42,
+          "elevation": 115.57022311492567,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.43,
+          "elevation": 116.56960144605605,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.44,
+          "elevation": 117.56897977718644,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.45,
+          "elevation": 118.56835810831683,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.46,
+          "elevation": 119.56773643944722,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.47,
+          "elevation": 120.5671147705776,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.48,
+          "elevation": 121.566493101708,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.49,
+          "elevation": 122.56587143283839,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.5,
+          "elevation": 123.56524976396878,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.51,
+          "elevation": 124.56462809509917,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.52,
+          "elevation": 125.56400642622955,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.53,
+          "elevation": 126.56338475735994,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.54,
+          "elevation": 127.56276308849033,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.55,
+          "elevation": 128.56214141962073,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.56,
+          "elevation": 129.5615197507511,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.57,
+          "elevation": 130.5608980818815,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.58,
+          "elevation": 131.56027641301188,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.59,
+          "elevation": 132.55965474414228,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.6,
+          "elevation": 133.55903307527268,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.61,
+          "elevation": 134.55841140640305,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.62,
+          "elevation": 135.55778973753345,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.63,
+          "elevation": 136.55716806866383,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.64,
+          "elevation": 137.55654639979423,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.65,
+          "elevation": 138.74954818747676,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.66,
+          "elevation": 139.9750014056685,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.67,
+          "elevation": 141.20045462386022,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.68,
+          "elevation": 142.42590784205197,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.69,
+          "elevation": 143.6513610602437,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.7,
+          "elevation": 144.87681427843543,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.71,
+          "elevation": 146.10226749662715,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.72,
+          "elevation": 147.3277207148189,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.73,
+          "elevation": 148.5531739330106,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.74,
+          "elevation": 149.77862715120236,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.75,
+          "elevation": 151.00408036939407,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.76,
+          "elevation": 152.22953358758582,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.77,
+          "elevation": 153.45498680577754,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.78,
+          "elevation": 154.68044002396925,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.79,
+          "elevation": 155.905893242161,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.8,
+          "elevation": 157.13134646035272,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.81,
+          "elevation": 158.35679967854446,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.82,
+          "elevation": 159.58225289673618,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.83,
+          "elevation": 160.80770611492792,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.84,
+          "elevation": 162.03315933311964,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.85,
+          "elevation": 163.2586125513114,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.86,
+          "elevation": 164.4840657695031,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.87,
+          "elevation": 165.70951898769482,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.88,
+          "elevation": 166.93497220588657,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.89,
+          "elevation": 168.1604254240783,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.9,
+          "elevation": 169.38587864227003,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.91,
+          "elevation": 170.61133186046175,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.92,
+          "elevation": 171.8367850786535,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.93,
+          "elevation": 173.06223829684524,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.94,
+          "elevation": 174.28769151503695,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.95,
+          "elevation": 175.51314473322867,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.96,
+          "elevation": 176.73859795142042,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.97,
+          "elevation": 177.96405116961213,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.98,
+          "elevation": 179.0887800863883,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 6.99,
+          "elevation": 180.1578910204502,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.0,
+          "elevation": 181.22700195451205,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.01,
+          "elevation": 182.2961128885739,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.02,
+          "elevation": 183.36522382263578,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.03,
+          "elevation": 184.43433475669764,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.04,
+          "elevation": 185.50344569075952,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.05,
+          "elevation": 186.57255662482137,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.06,
+          "elevation": 187.64166755888326,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.07,
+          "elevation": 188.7107784929451,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.08,
+          "elevation": 189.779889427007,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.09,
+          "elevation": 190.84900036106885,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.1,
+          "elevation": 191.9181112951307,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.11,
+          "elevation": 192.98722222919258,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.12,
+          "elevation": 194.05633316325444,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.13,
+          "elevation": 195.12544409731632,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.14,
+          "elevation": 196.19455503137817,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.15,
+          "elevation": 197.26366596544005,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.16,
+          "elevation": 198.3327768995019,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.17,
+          "elevation": 199.40188783356376,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.18,
+          "elevation": 200.47099876762564,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.19,
+          "elevation": 201.5401097016875,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.2,
+          "elevation": 202.60922063574938,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.21,
+          "elevation": 203.67833156981123,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.22,
+          "elevation": 204.74744250387312,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.23,
+          "elevation": 205.81655343793497,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.24,
+          "elevation": 206.88566437199682,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.25,
+          "elevation": 207.9547753060587,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.26,
+          "elevation": 209.02388624012056,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.27,
+          "elevation": 210.09299717418244,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.28,
+          "elevation": 211.1621081082443,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.29,
+          "elevation": 212.23121904230618,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.3,
+          "elevation": 213.30032997636803,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.31,
+          "elevation": 214.16588780850918,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.32,
+          "elevation": 214.77142421787445,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.33,
+          "elevation": 215.37696062723975,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.34,
+          "elevation": 215.98249703660505,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.35,
+          "elevation": 216.58803344597032,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.36,
+          "elevation": 217.19356985533562,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.37,
+          "elevation": 217.79910626470092,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.38,
+          "elevation": 218.40464267406622,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.39,
+          "elevation": 219.0101790834315,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.4,
+          "elevation": 219.6157154927968,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.41,
+          "elevation": 220.2212519021621,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.42,
+          "elevation": 220.82678831152737,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.43,
+          "elevation": 221.43232472089267,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.44,
+          "elevation": 222.03786113025797,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.45,
+          "elevation": 222.64339753962324,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.46,
+          "elevation": 223.24893394898854,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.47,
+          "elevation": 223.85447035835384,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.48,
+          "elevation": 224.46000676771914,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.49,
+          "elevation": 225.0655431770844,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.5,
+          "elevation": 225.6710795864497,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.51,
+          "elevation": 226.276615995815,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.52,
+          "elevation": 226.8821524051803,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.53,
+          "elevation": 227.48768881454558,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.54,
+          "elevation": 228.09322522391088,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.55,
+          "elevation": 228.69876163327618,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.56,
+          "elevation": 229.30429804264145,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.57,
+          "elevation": 229.90983445200675,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.58,
+          "elevation": 230.51537086137205,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.59,
+          "elevation": 231.12090727073732,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.6,
+          "elevation": 231.72644368010262,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.61,
+          "elevation": 232.33198008946792,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.62,
+          "elevation": 232.9375164988332,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.63,
+          "elevation": 233.5430529081985,
+          "segmentId": 0
+        },
+        {
+          "distanceKm": 7.637546153868443,
+          "elevation": 234.0,
+          "segmentId": 0
+        }
+      ],
+      "profile_hash": "2d40933f5f375d2de6a0f10b44421ef19e65080054e0f392a2f957f6cc428d8b"
     }
   }
 }

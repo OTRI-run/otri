@@ -113,7 +113,7 @@ function SampleCourseSection({ sampleCourse }) {
       <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">SAMPLE COURSE / GPX VIEWER</p>
       <h3 className="mt-2 text-xl font-bold tracking-[-.03em] text-[#0b1220]">{sampleCourse.name}</h3>
       <p className="mt-1 text-xs text-slate-500">{sampleCourse.note}</p>
-      <CourseMap gpxText={sampleCourse.gpx_text} className="mt-4" />
+      <CourseMap gpxText={sampleCourse.gpx_text} measurement={sampleCourse.measurement} className="mt-4" />
       <div className="mt-3 flex flex-wrap gap-4 font-mono text-[10px] text-slate-500">
         <span>{sampleCourse.features.distance_km} km</span>
         <span>+{sampleCourse.features.elevation_gain_m} m</span>

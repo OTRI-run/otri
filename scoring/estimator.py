@@ -11,12 +11,11 @@ from dataclasses import dataclass
 from course.gpx import TrackPoint
 
 from .course_demand import compute_course_demand, equivalent_flat_distance_from_totals
-from .course_standard import OFFICIAL_CURVE, ScoreCurve, score_for_time
+from .course_standard import OFFICIAL_CURVE, MEASURED_CURVE, ScoreCurve, score_for_time
 
 DISCLAIMER = (
-    "Uses the exact same Course Standard formula as the real post-race scorer — no competitor "
-    "or 'assumed winner' guess involved. If this GPX matches the race's real course, this is "
-    "the exact score this finish time will earn, not just an estimate. See docs/gpx-predictor.md."
+    "Provisional course estimate. Scores match only when the race uses the same course measurement "
+    "and scoring version. Uploaded elevations are not independently verified terrain measurements."
 )
 
 
@@ -48,7 +47,8 @@ def estimate_score(
     gpx_points: list[TrackPoint] | None = None,
     distance_km: float | None = None,
     elevation_gain_m: float | None = None,
-    curve: ScoreCurve = OFFICIAL_CURVE,
+    curve: ScoreCurve = MEASURED_CURVE,
+    measurement=None,
 ) -> ScoreEstimate:
     """Predict the Course Standard score for `finish_time_seconds` on this course.
 
@@ -60,7 +60,11 @@ def estimate_score(
         raise ValueError("finish_time_seconds must be greater than 0")
 
     if gpx_points is not None:
-        demand = compute_course_demand(gpx_points)
+        if curve.version == MEASURED_CURVE.version:
+            from .measured_demand import compute_measured_demand
+            demand = compute_measured_demand(gpx_points, measurement=measurement)
+        else:
+            demand = compute_course_demand(gpx_points)
         equivalent_km = demand.course_demand_km
         quality_flags = demand.quality_flags
     elif distance_km is not None and elevation_gain_m is not None:

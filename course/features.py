@@ -42,8 +42,8 @@ class CourseFeatures:
     elevation_loss_m: float
     steep_climb_distance_km: float
     steep_descent_distance_km: float
-    max_climb_grade: float
-    max_descent_grade: float
+    max_climb_grade: float | None
+    max_descent_grade: float | None
     min_elevation_m: float | None
     max_elevation_m: float | None
 
@@ -70,7 +70,7 @@ def haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * _EARTH_RADIUS_M * math.asin(min(1.0, math.sqrt(a)))
 
 
-def extract_features(points: list[TrackPoint]) -> CourseFeatures:
+def extract_features_legacy(points: list[TrackPoint]) -> CourseFeatures:
     """Compute deterministic course-difficulty features from an ordered list of track points."""
     if len(points) < 2:
         raise ValueError("at least 2 track points are required to compute course features")
@@ -171,3 +171,22 @@ def extract_features(points: list[TrackPoint]) -> CourseFeatures:
         min_elevation_m=round(min(elevations), 1) if elevations else None,
         max_elevation_m=round(max(elevations), 1) if elevations else None,
     )
+
+
+def features_from_measurement(measurement) -> CourseFeatures:
+    m = measurement
+    return CourseFeatures(
+        distance_km=round(m.distance_m / 1000, 3),
+        elevation_gain_m=round(m.gain_m, 1), elevation_loss_m=round(m.loss_m, 1),
+        steep_climb_distance_km=round(m.steep_climb_m / 1000, 3),
+        steep_descent_distance_km=round(m.steep_descent_m / 1000, 3),
+        max_climb_grade=round(m.max_climb_grade, 4) if m.max_climb_grade is not None else None,
+        max_descent_grade=round(m.max_descent_grade, 4) if m.max_descent_grade is not None else None,
+        min_elevation_m=round(m.min_elevation_m, 1), max_elevation_m=round(m.max_elevation_m, 1),
+    )
+
+
+def extract_features(points: list[TrackPoint]) -> CourseFeatures:
+    from .measurement import measure_course
+    from .elevation import configured_provider
+    return features_from_measurement(measure_course(points, configured_provider()))

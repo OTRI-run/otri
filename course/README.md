@@ -1,37 +1,54 @@
-# Course
+# Course measurement
 
-GPX parsing and deterministic course-feature extraction — kept separate from `scoring/`, per `METHODOLOGY.md` §3: course difficulty and athlete performance are independent models that get combined later.
+`measure_course()` in `measurement.py` is the shared physical-course pipeline for new GPX statistics, API profiles and Course Standard V0.2 scoring. `extract_features()` delegates to it. The original `extract_features_legacy()` and V0.1 scoring integral remain available for reproducibility.
 
-- `gpx.py` — dependency-free reader for `<trkpt>` points (lat/lon/elevation/time) from GPX 1.0/1.1 files. Uses only the Python standard library (`xml.etree.ElementTree`); no external GPX package.
-- `features.py` — `extract_features()` turns an ordered list of track points into `CourseFeatures`: distance, elevation gain/loss, steep-climb/descent distance, max climb/descent grade, min/max elevation.
+## Current method: course-measurement-v1
 
-## Known limitations (intentional, for now)
+- Parse one track, preserving segment boundaries. Reject malformed/nonfinite coordinates and elevations, DTDs, excessive uploads and incomplete elevation coverage.
+- Aggregate consecutive duplicate locations using median elevation. Never connect separate segments or remove nonconsecutive revisits.
+- Measure horizontal distance using GeographicLib 2.1 on WGS84. Keep original polyline chainage when interpolating a 10 m elevation grid, so sampling does not cut corners.
+- Use uploaded elevations by default, explicitly marked as unknown provenance. A configured, checksum-pinned local terrain provider replaces those elevations and records its manifest. There are no hidden remote lookups.
+- Spatial median/mean smoothing uses 10 m radii on the uniform grid for terrain data or anomalous GPX segments. GPX anomalies are conflicting duplicate elevations or an adjacent height change greater than both 8 m and horizontal distance. Already smooth profiles retain their interpolated elevations, avoiding two successive noise filters that remove real undulations. This quality rule never reads filenames, creator names or reference race totals.
+- Count ascent/descent using an 8 m prominence reversal threshold, retaining the final extreme and actual endpoint. Gain minus loss equals the sum of segment endpoint changes. Tiny residual endpoint reversals are intentionally included.
+- Measure maximum sustained grades over full 50 m windows. Tracks shorter than that return null. Steep-distance bins use 15% grade and retain the final shorter bin. Grades outside the scoring model's range remain physical diagnostics; only scoring contributions are clamped.
 
-- **Elevation gain/loss uses a "prominence" state machine, not a real DEM.** It tracks the running extreme (peak while climbing, valley while descending) and only confirms a climb/descent once elevation reverses from that extreme by at least `ELEVATION_NOISE_THRESHOLD_M` (8 m — tuned against a real course file, see below). Every elevation reading eventually ends up in gain or loss — nothing is silently discarded — which guarantees `gain - loss` always equals the net elevation change end-to-end (important for out-and-back and loop courses, where that should be ~0). It still trusts the GPX file's own recorded elevation, though — it does not re-sample against a real digital elevation model (DEM), which is why totals can still differ noticeably from tools that do (see "Why elevation totals differ between tools" below).
-- **`max_climb_grade` / `max_descent_grade` are run-averaged, not per-segment.** Each is the net elevation change of a confirmed climb/descent run (see above) divided by the distance covered during that run — a steepest-sustained-grade figure. A single noisy pair of points can no longer produce an implausible spike (e.g. 40%) the way a per-segment calculation could.
-- **No gradient-distribution histogram yet** — only max climb/descent grade and a single steep-grade threshold (15%).
-- **No terrain/technicality signal** — GPX geometry alone cannot tell you about trail surface.
-- **Not calibrated against real results yet.** `CourseFeatures` are geometry only; turning them into course *difficulty* (relative to athlete performance) is Phase 4+ work and requires real race data (`docs/gpx-predictor.md`).
+All measurements are estimates. `provisional` indicates unvalidated source accuracy; `needs_review` identifies local anomalies, unsupported sustained grades or disconnected segments. Incomplete elevation coverage is rejected with an actionable error rather than reported as a flat course. Short missing intervals (at most 30 m between known heights) are interpolated by distance; missing endpoints are not extrapolated.
 
-## Why elevation totals differ between tools
+The default geometry is the supplied route: there is no road snapping, GPS-wander reconstruction or surface-distance inflation. Sparse geometry is flagged. It cannot recover missing switchbacks. Thresholds and source selection have not been independently field-calibrated.
 
-Feed the same GPX file into OTRI, Mapbox, Strava, and Garmin, and you'll likely get four different elevation gain/loss numbers. This is expected, not a bug in any one of them:
+## Optional terrain correction
 
-- Raw GPX elevation (from GPS or a barometric altimeter) is noisy by several meters even on a track that's smooth on the ground.
-- Most consumer platforms discard the file's own elevation values and re-sample against a DEM (e.g. SRTM-derived terrain tiles) instead — a different data source entirely — then apply their own smoothing on top.
-- OTRI currently trusts the GPX file's recorded elevation and only smooths noise via the prominence threshold above.
+Install core dependencies with `python -m pip install -r api/requirements.txt`. To use local DEMs, also install `python -m pip install -r course/requirements-terrain.txt`.
 
-There's no single universally "correct" number here, only different reasonable methodologies. OTRI's approach is deliberately simple, deterministic, and fully described in this file rather than delegated to an opaque third-party algorithm (`METHODOLOGY.md` §3's transparency principle) — but that means it won't always match Mapbox/Strava exactly.
+Set `OTRI_DEM_MANIFEST` to an absolute JSON manifest path. The provider supports north-up, single-resolution EPSG:4326 GeoTIFF tiles, pixel-center bilinear interpolation including adjacent tiles, and nodata masks. It verifies SHA-256 before reading. Bad coverage, configuration or checksums produce an error, never a silent GPX fallback. Install a halo of neighboring tiles around the route so interpolation near tile edges has coverage.
 
-`ELEVATION_NOISE_THRESHOLD_M` was tuned against a real 14.6 km course file: at 1 m it produced ~780/782 m gain/loss, while Garmin, Coros, and Mapbox all agreed on ~626-640 m for the same course; 8 m landed within a few meters of that consensus (and, as a loop course, correctly produced gain == loss).
+Example manifest structure (replace the placeholder values with the actual release and file hash):
 
-
-## Usage
-
-```python
-from course import read_track_points, extract_features
-
-points = read_track_points("path/to/course.gpx")
-features = extract_features(points)
-print(features.to_dict())
+```json
+{
+  "dataset": "Copernicus GLO-30",
+  "release": "REPLACE_WITH_ACTUAL_RELEASE",
+  "datum": "EGM2008",
+  "resolution_m": 30,
+  "tiles": [
+    {"path": "tiles/course-tile.tif", "sha256": "REPLACE_WITH_ACTUAL_SHA256"}
+  ]
+}
 ```
+
+Tile paths resolve relative to the manifest. Keep manifests and tiles immutable and record their licenses. Copernicus is a surface model; forest canopy can bias terrain estimates. Licensed FABDEM or locally surveyed bare-earth data can be supplied through the same adapter. Merely configuring a dataset does not establish local accuracy. No Phuket DEM or ground survey is bundled or enabled by this change.
+
+## API and reproducibility
+
+`POST /gpx/analyze` returns features and a `measurement` containing the cleaned profile, method/parameters, source, hashes and quality status. The browser renders this server profile. `POST /races/{id}/gpx` stores the raw GPX, feature totals and measurement snapshot atomically. `GET /races/{id}/measurement` returns public provenance and profile. Measured race totals cannot be overwritten using PATCH; replace the GPX explicitly.
+
+New races and the predictor use `0.2.0-course-standard-measured`. Existing races retain their stored scoring version. V0.2 reads the persisted snapshot when scoring stored results, independent of future provider configuration. Existing GPX races without a snapshot must reattach their GPX before selecting V0.2. Changing an existing race's GPX remains an explicit course replacement and can change its scores; no bulk migration runs automatically.
+
+## Diagnostics
+
+```sh
+python scripts/diagnose_course.py route.gpx --output measurement.json
+python -m pytest tests/unit/test_course_measurement.py tests/unit/test_elevation_provider.py
+```
+
+The diagnostic output includes raw-file identity, legacy/new features and demand, cleaned profile, provider metadata and flags. Terrain tests use tiny synthetic rasters, not live services. See [research and implementation specification](../docs/methodology/REAL-WORLD-COURSE-MEASUREMENT-SPEC.md) and [implementation validation](../docs/methodology/COURSE-MEASUREMENT-V1-VALIDATION.md).

@@ -5,3 +5,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 *.db
+
+# Local-only deploy helper (contains this machine's SSH key path/droplet address) — never push.
+redeploy.ps1
+redeploy.bat

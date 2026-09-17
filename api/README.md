@@ -2,6 +2,8 @@
 
 The OTRI public API — events, race distances, scored results, and the organizer workflow, built on `ingestion/`, `scoring/`, and `course/`.
 
+GPX analysis uses a shared, versioned course measurement with a server-generated elevation profile. See [measurement setup and limitations](../course/README.md) and the [research specification](../docs/methodology/REAL-WORLD-COURSE-MEASUREMENT-SPEC.md). New races use Course Standard V0.2; existing scoring versions are retained.
+
 **Persisted in PostgreSQL** (`api/db.py`). Events, race distances (with optional GPX), results, and organizer accounts survive a server restart. Uploaded result files are still always re-validated and re-scored from the raw file before being stored — an organizer can never supply a score directly (`HANDBOOK.md` "Validation and anti-gaming").
 
 ## Data model
@@ -32,6 +34,7 @@ Every event/race mutation (create/edit/delete, GPX attach, result submission) re
 | POST | `/events/{event_id}/races` | **Requires ownership of the event.** Add a race distance. Optional `scoring_version` (defaults to the Course Standard model), 422 if unknown, if `course_name` is blank, or if distance/elevation are invalid. |
 | PATCH | `/races/{race_id}` | **Requires ownership.** Partial update of `course_name`/`distance_km`/`elevation_gain_m`/`scoring_version`. 422 on an unknown `scoring_version`. |
 | DELETE | `/races/{race_id}` | **Requires ownership.** Deletes the race distance, cascading to its results. |
+| GET | `/races/{race_id}/measurement` | Saved cleaned profile, measurement version, source and quality status; 404 for legacy GPX attachments without a snapshot. |
 | POST | `/races/{race_id}/gpx` | **Requires ownership.** Attach/replace a GPX file for a race distance — recomputes `distance_km`/`elevation_gain_m` from the parsed course. 422 on an unparseable GPX. |
 | GET | `/races/{race_id}/gpx` | Raw GPX content for a race distance (`application/gpx+xml`), 404 if none attached. |
 | GET | `/races/{race_id}/results` | Scored results for a race already on file (scored with whichever model the race is configured for), 404 if unknown race or no results submitted yet. |
@@ -99,3 +102,11 @@ Then open `http://127.0.0.1:8000/docs` for interactive Swagger docs (generated a
 
 These are necessary before any real public deployment and are tracked as future roadmap work, not silently assumed solved.
 
+
+## Measurement response and optional terrain
+
+`POST /gpx/analyze` adds `measurement` with `version`, `parameters`, `profile` (distanceKm/elevation/segmentId), `source`, `raw_sha256`, `geometry_hash`, `profile_hash`, `coverage_fraction`, `status` and `quality_flags`. Race summaries add `measurement_version` and `measurement_status`. Missing endpoint elevations or missing intervals longer than 30 m return 422; uploads over 20 MB return 413. Short tracks return null for maximum 50 m grades.
+
+The additive startup migration creates `races.measurement JSONB`. GPX attachment saves an immutable measurement snapshot for that attachment; V0.2 scoring reuses it. Existing GPX content is not automatically recalculated. PATCH cannot replace measured totals on a GPX race. The predictor and stored-race scoring agree when they share the same measurement and model version; legacy models intentionally preserve their previous processing.
+
+Without `OTRI_DEM_MANIFEST`, elevations come from the cleaned uploaded GPX and remain provisional. To enable checksum-pinned local raster terrain correction, follow [course setup](../course/README.md). No remote DEM service or third-party upload is performed by default.

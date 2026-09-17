@@ -17,17 +17,23 @@ export function parseGpxTrackPoints(gpxText) {
     throw new Error('Invalid GPX: not well-formed XML')
   }
 
-  const trkpts = Array.from(doc.getElementsByTagName('trkpt'))
+  if (doc.documentElement.localName !== 'gpx' || /<!DOCTYPE|<!ENTITY/i.test(gpxText)) throw new Error('Invalid GPX document')
+  if (doc.getElementsByTagNameNS('*', 'trk').length > 1) throw new Error('Select a single track')
+  const segments = Array.from(doc.getElementsByTagNameNS('*', 'trkseg'))
+  const trkpts = Array.from(doc.getElementsByTagNameNS('*', 'trkpt'))
+  if (trkpts.length > 100000) throw new Error('GPX exceeds point limit')
   if (trkpts.length === 0) {
     throw new Error('Invalid GPX: no <trkpt> points found')
   }
 
   return trkpts.map((node) => {
-    const lat = parseFloat(node.getAttribute('lat'))
-    const lon = parseFloat(node.getAttribute('lon'))
-    const eleNode = node.getElementsByTagName('ele')[0]
-    const elevation = eleNode && eleNode.textContent ? parseFloat(eleNode.textContent) : null
-    return { lat, lon, elevation }
+    const lat = Number(node.getAttribute('lat'))
+    const lon = Number(node.getAttribute('lon'))
+    const eleNode = node.getElementsByTagNameNS('*', 'ele')[0]
+    if (eleNode?.textContent && !eleNode.textContent.trim()) throw new Error('Invalid elevation')
+    const elevation = eleNode && eleNode.textContent ? Number(eleNode.textContent) : null
+    if (!node.getAttribute('lat')?.trim() || !node.getAttribute('lon')?.trim() || !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180 || (elevation !== null && !Number.isFinite(elevation))) throw new Error('Invalid GPX coordinates/elevation')
+    return { lat, lon, elevation, segmentId: Math.max(0, segments.indexOf(node.parentNode)) }
   })
 }
 
@@ -47,20 +53,25 @@ function haversineMeters(a, b) {
 export function buildElevationProfile(points) {
   let cumulativeMeters = 0
   return points.map((point, index) => {
-    if (index > 0) {
+    if (index > 0 && points[index - 1].segmentId === point.segmentId) {
       cumulativeMeters += haversineMeters(points[index - 1], point)
     }
-    return { distanceKm: cumulativeMeters / 1000, elevation: point.elevation }
+    return { distanceKm: cumulativeMeters / 1000, elevation: point.elevation, segmentId: point.segmentId }
   })
 }
 
 /** Convert parsed points into a GeoJSON LineString feature for map rendering. */
 export function toGeoJsonLine(points) {
+  const segments = []
+  for (const point of points) {
+    if (!segments.length || segments[segments.length - 1].id !== point.segmentId) segments.push({ id: point.segmentId, coordinates: [] })
+    segments[segments.length - 1].coordinates.push([point.lon, point.lat])
+  }
   return {
     type: 'Feature',
     geometry: {
-      type: 'LineString',
-      coordinates: points.map((point) => [point.lon, point.lat]),
+      type: 'MultiLineString',
+      coordinates: segments.map(segment => segment.coordinates),
     },
     properties: {},
   }

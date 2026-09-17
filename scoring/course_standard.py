@@ -11,7 +11,7 @@ course + own finish time only. Legacy logarithmic curves (`SPEC_CURVE`,
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from course.gpx import TrackPoint
 from ingestion.records import RaceRecord, ResultRecord
@@ -111,6 +111,7 @@ OFFICIAL_CURVE = ScoreCurve(
 )
 
 SCORING_VERSION = OFFICIAL_CURVE.version
+MEASURED_CURVE = replace(OFFICIAL_CURVE, version='0.2.0-course-standard-measured')
 
 
 def performance_rate(equivalent_km: float, finish_time_seconds: float) -> float:
@@ -146,6 +147,7 @@ def score_race_course_standard(
     results: list[ResultRecord],
     gpx_points: list[TrackPoint] | None = None,
     curve: ScoreCurve = OFFICIAL_CURVE,
+    measurement=None,
 ) -> list[RunnerScore]:
     finishers = [
         result for result in results
@@ -155,7 +157,11 @@ def score_race_course_standard(
         return []
 
     if gpx_points is not None:
-        demand = compute_course_demand(gpx_points)
+        if curve.version == MEASURED_CURVE.version:
+            from .measured_demand import compute_measured_demand
+            demand = compute_measured_demand(gpx_points, measurement=measurement)
+        else:
+            demand = compute_course_demand(gpx_points)
         equivalent_km = demand.course_demand_km
         quality_flags = demand.quality_flags
     else:

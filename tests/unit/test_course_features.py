@@ -1,3 +1,4 @@
+"""Legacy feature regression values preserved while v1 has independent contract tests."""
 """Unit tests for GPX reading and course-feature extraction.
 
 Expected values for pure north-south fixtures (single-climb, out-and-back)
@@ -12,7 +13,8 @@ Run with: pytest tests/unit
 import math
 from pathlib import Path
 
-from course import extract_features, read_track_points
+from course import read_track_points
+from course.features import extract_features_legacy as extract_features
 from course.features import _EARTH_RADIUS_M
 
 REPO_ROOT = Path(__file__).resolve().parents[2]

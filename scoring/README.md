@@ -4,7 +4,7 @@ The OTRI scoring engine — pluggable and versioned (`METHODOLOGY.md` §13: pref
 
 ## Available models
 
-### Course Standard (`0.1.0-course-standard-calibrated`) — default
+### Course Standard V0.1 (`0.1.0-course-standard-calibrated`) — retained
 
 `scoring/course_standard.py` + `scoring/course_demand.py`. Implements [`docs/methodology/v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md`](../docs/methodology/v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md) exactly — that document is the source of truth for the mechanics of this model; this README only summarizes it.
 
@@ -45,3 +45,9 @@ print(scores[0].to_dict())
 for model in available_scoring_models():
     print(model.version, model.name, model.uses_competitors)
 ```
+
+## Course Standard V0.2 — default for new races and GPX prediction
+
+`0.2.0-course-standard-measured` uses the shared `course-measurement-v1` profile for physical features and the 50 m Minetti demand integral. Displayed ascent and demand diagnostics use the same prominence total; metabolic cost still integrates grades, not an ascent-only formula. It reuses the V0.1 score curve, with a new version because measured geometry and elevation change its inputs. The curve has not been recalibrated against new field evidence.
+
+Persisted races use their saved measurement snapshot. Existing V0.1/legacy races retain their previous scoring algorithm. Quality flags are propagated to estimates and scores. A scoring-domain clamp never changes the measured elevation profile. See [course measurement](../course/README.md).

@@ -66,7 +66,10 @@ def build_race_entry(race) -> dict:
 
 def build_sample_course() -> dict:
     points = read_track_points(SAMPLE_GPX)
-    features = extract_features(points)
+    from course.measurement import measure_course
+    from course.features import features_from_measurement
+    measurement = measure_course(points)
+    features = features_from_measurement(measurement)
     return {
         "name": "Sample illustrative course",
         "note": (
@@ -75,6 +78,7 @@ def build_sample_course() -> dict:
         ),
         "gpx_text": SAMPLE_GPX.read_text(encoding="utf-8"),
         "features": features.to_dict(),
+        "measurement": measurement.to_dict(),
     }
 
 

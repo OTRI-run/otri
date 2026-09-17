@@ -71,6 +71,7 @@ def test_list_scoring_models_includes_all_options():
     versions = {model["version"] for model in response.json()}
     assert versions == {
         "0.1.0-course-standard-calibrated",
+        "0.2.0-course-standard-measured",
         "1.1.0-course-standard",
         "1.0.0-course-standard",
         "0.1.0-field-relative",
@@ -81,7 +82,7 @@ def test_new_race_defaults_to_course_standard_scoring():
     headers = _organizer_auth_headers()
     _, race_id = _create_event_and_race(headers)
     response = client.get(f"/races/{race_id}")
-    assert response.json()["scoring_version"] == "0.1.0-course-standard-calibrated"
+    assert response.json()["scoring_version"] == "0.2.0-course-standard-measured"
 
 
 def test_race_can_be_created_with_explicit_scoring_version():
@@ -474,6 +475,43 @@ def test_analyze_gpx_returns_features():
     body = response.json()
     assert body["features"]["elevation_gain_m"] == 0.0
     assert body["estimate"] is None
+    assert body['measurement']['version'] == 'course-measurement-v1'
+    assert body['measurement']['profile'][-1]['distanceKm'] == pytest.approx(body['features']['distance_km'], abs=.0005)
+    assert body['measurement']['source']['dataset'] == 'uploaded-gpx'
+    assert len(body['measurement']['raw_sha256']) == 64
+
+
+def test_attached_measurement_is_persisted_and_totals_cannot_diverge(monkeypatch):
+    headers = _organizer_auth_headers()
+    _, race_id = _create_event_and_race(headers)
+    with FLAT_LOOP_GPX.open('rb') as handle:
+        attached = client.post(f'/races/{race_id}/gpx', files={'file': ('flat.gpx', handle, 'application/gpx+xml')}, headers=headers)
+    assert attached.status_code == 200
+    assert attached.json()['measurement_version'] == 'course-measurement-v1'
+    saved = client.get(f'/races/{race_id}/measurement')
+    assert saved.status_code == 200
+    assert 'snapshot' not in saved.json()
+    assert saved.json()['profile']
+    assert client.patch(f'/races/{race_id}', json={'elevation_gain_m': 999}, headers=headers).status_code == 422
+    def unavailable_provider():
+        raise AssertionError('saved measurement must not request current terrain')
+    monkeypatch.setattr('scoring.measured_demand.configured_provider', unavailable_provider)
+    csv = 'Ranking,Time,Family name,First Name,Gender\n1,01:00:00,Runner,Test,M\n'
+    submitted = client.post(f'/races/{race_id}/results', files={'file': ('results.csv', csv.encode(), 'text/csv')}, headers=headers)
+    assert submitted.status_code == 200
+    replay = client.get(f'/races/{race_id}/results')
+    assert replay.status_code == 200
+    assert replay.json() == submitted.json()['scores']
+
+
+@pytest.mark.parametrize('xml', [
+    '<gpx><trk><trkseg><trkpt lat="nan" lon="98"/><trkpt lat="8" lon="98"/></trkseg></trk></gpx>',
+    '<gpx><trk><trkseg><trkpt lat="8" lon="98"/><trkpt lat="8.01" lon="98"/></trkseg></trk></gpx>',
+])
+def test_gpx_invalid_or_missing_elevation_is_actionable_422(xml):
+    response = client.post('/gpx/analyze', files={'file': ('bad.gpx', xml.encode(), 'application/gpx+xml')})
+    assert response.status_code == 422
+    assert response.json()['detail']
 
 
 def test_analyze_gpx_with_finish_time_returns_predicted_score():
@@ -489,7 +527,7 @@ def test_analyze_gpx_with_finish_time_returns_predicted_score():
     assert estimate is not None
     assert "predicted_score" in estimate
     assert estimate["predicted_score"] < 1000
-    assert estimate["scoring_version"] == "0.1.0-course-standard-calibrated"
+    assert estimate["scoring_version"] == "0.2.0-course-standard-measured"
 
 
 def test_analyze_gpx_prediction_matches_real_score_for_same_course_and_time():

@@ -17,6 +17,9 @@ Run locally with: ``uvicorn api.app:app --reload``
 from __future__ import annotations
 
 import os
+from dataclasses import asdict
+from hashlib import sha256
+from datetime import datetime, timezone
 import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -24,8 +27,12 @@ from pathlib import Path
 from fastapi import FastAPI, Form, HTTPException, Request, Response, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from starlette.concurrency import run_in_threadpool
 
 from course import GpxParseError, extract_features, parse_track_points, read_track_points
+from course.measurement import Measurement, measure_course
+from course.features import features_from_measurement
+from course.elevation import configured_provider
 from ingestion import result_records, validate_result_file
 from scoring import available_scoring_models, estimate_score, get_scoring_model_info, score_race
 
@@ -224,6 +231,8 @@ def _race_summary(race: db.Race) -> RaceSummary:
         elevation_gain_m=race.elevation_gain_m,
         has_gpx=race.has_gpx,
         scoring_version=race.scoring_version,
+        measurement_version=race.measurement_version,
+        measurement_status=race.measurement_status,
     )
 
 
@@ -360,6 +369,9 @@ def edit_race(race_id: str, payload: RaceUpdate, organizer: Organizer = Depends(
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
 
+    if race.has_gpx and (payload.distance_km is not None or payload.elevation_gain_m is not None):
+        raise HTTPException(status_code=422, detail='Replace the GPX to change measured distance or elevation')
+
     if payload.distance_km is not None and payload.distance_km <= 0:
         raise HTTPException(status_code=422, detail="distance_km must be > 0")
     if payload.elevation_gain_m is not None and payload.elevation_gain_m < 0:
@@ -390,6 +402,11 @@ def remove_race(race_id: str, organizer: Organizer = Depends(require_organizer))
 # --- GPX attachment ----------------------------------------------------------
 
 
+def _measure_gpx_path(path):
+    points = read_track_points(path)
+    return points, measure_course(points, configured_provider())
+
+
 @app.post("/races/{race_id}/gpx", response_model=RaceSummary)
 async def attach_race_gpx(
     race_id: str, file: UploadFile, organizer: Organizer = Depends(require_organizer)
@@ -402,15 +419,17 @@ async def attach_race_gpx(
     _require_race_owner(race, organizer)
 
     suffix = Path(file.filename or "").suffix or ".gpx"
-    contents = await file.read()
+    contents = await file.read(20_000_001)
+    if len(contents) > 20_000_000:
+        raise HTTPException(status_code=413, detail="Upload exceeds 20 MB")
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp_file:
         temp_file.write(contents)
         temp_path = Path(temp_file.name)
 
     try:
-        points = read_track_points(temp_path)
-        features = extract_features(points)
-    except GpxParseError as error:
+        points, measurement = await run_in_threadpool(_measure_gpx_path, temp_path)
+        features = features_from_measurement(measurement)
+    except (GpxParseError, ValueError, UnicodeError) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     finally:
         temp_path.unlink(missing_ok=True)
@@ -421,8 +440,17 @@ async def attach_race_gpx(
         content=contents.decode("utf-8", errors="replace"),
         distance_km=features.distance_km,
         elevation_gain_m=features.elevation_gain_m,
+        measurement={**measurement.to_dict(), "raw_sha256": sha256(contents).hexdigest(), "processed_at": datetime.now(timezone.utc).isoformat(), "snapshot": asdict(measurement)},
     )
     return _race_summary(updated)
+
+
+@app.get("/races/{race_id}/measurement")
+def get_race_measurement(race_id: str) -> dict:
+    result = db.get_measurement(race_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="No versioned measurement stored; reattach GPX to measure it")
+    return {key: value for key, value in result.items() if key != "snapshot"}
 
 
 @app.get("/races/{race_id}/gpx")
@@ -443,7 +471,11 @@ def _score_results(race: db.Race, results: list) -> list[RunnerScoreOut]:
     if stored_gpx is not None:
         _filename, content = stored_gpx
         gpx_points = parse_track_points(content)
-    scores = score_race(race.to_race_record(), results, model_version=race.scoring_version, gpx_points=gpx_points)
+    stored_measurement = db.get_measurement(race.race_id)
+    if gpx_points is not None and race.scoring_version == '0.2.0-course-standard-measured' and stored_measurement is None:
+        raise ValueError('reattach the GPX to save a versioned measurement before using measured scoring')
+    measurement = Measurement(**stored_measurement["snapshot"]) if stored_measurement else None
+    scores = score_race(race.to_race_record(), results, model_version=race.scoring_version, gpx_points=gpx_points, measurement=measurement)
     return [RunnerScoreOut(**score.to_dict()) for score in scores]
 
 
@@ -479,7 +511,9 @@ async def submit_race_results(
     _require_race_owner(race, organizer)
 
     suffix = Path(file.filename or "").suffix or ".csv"
-    contents = await file.read()
+    contents = await file.read(20_000_001)
+    if len(contents) > 20_000_000:
+        raise HTTPException(status_code=413, detail="Upload exceeds 20 MB")
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp_file:
         temp_file.write(contents)
         temp_path = Path(temp_file.name)
@@ -521,15 +555,17 @@ async def analyze_gpx(file: UploadFile, finish_time_seconds: int | None = Form(d
     ``docs/gpx-predictor.md``.
     """
     suffix = Path(file.filename or "").suffix or ".gpx"
-    contents = await file.read()
+    contents = await file.read(20_000_001)
+    if len(contents) > 20_000_000:
+        raise HTTPException(status_code=413, detail="Upload exceeds 20 MB")
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp_file:
         temp_file.write(contents)
         temp_path = Path(temp_file.name)
 
     try:
-        points = read_track_points(temp_path)
-        features = extract_features(points)
-    except GpxParseError as error:
+        points, measurement = await run_in_threadpool(_measure_gpx_path, temp_path)
+        features = features_from_measurement(measurement)
+    except (GpxParseError, ValueError, UnicodeError) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     finally:
         temp_path.unlink(missing_ok=True)
@@ -537,8 +573,8 @@ async def analyze_gpx(file: UploadFile, finish_time_seconds: int | None = Form(d
     estimate = None
     if finish_time_seconds is not None:
         try:
-            estimate = IllustrativeEstimateOut(**estimate_score(finish_time_seconds, gpx_points=points).to_dict())
+            estimate = IllustrativeEstimateOut(**estimate_score(finish_time_seconds, gpx_points=points, measurement=measurement).to_dict())
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
 
-    return GpxAnalysis(features=features.to_dict(), estimate=estimate)
+    return GpxAnalysis(features=features.to_dict(), estimate=estimate, measurement={**measurement.to_dict(), "raw_sha256": sha256(contents).hexdigest()})

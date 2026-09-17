@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from course.gpx import TrackPoint
 from ingestion.records import RaceRecord, ResultRecord
 
-from .course_standard import CALIBRATED_CURVE, OFFICIAL_CURVE, SPEC_CURVE
+from .course_standard import CALIBRATED_CURVE, OFFICIAL_CURVE, SPEC_CURVE, MEASURED_CURVE
 from .course_standard import score_race_course_standard
 from .model import RunnerScore
 from .model import SCORING_VERSION as FIELD_RELATIVE_VERSION
@@ -23,7 +23,7 @@ from .model import score_race_field_relative
 COURSE_STANDARD_VERSION = OFFICIAL_CURVE.version
 COURSE_STANDARD_CALIBRATED_VERSION = CALIBRATED_CURVE.version
 COURSE_STANDARD_SPEC_VERSION = SPEC_CURVE.version
-DEFAULT_SCORING_VERSION = COURSE_STANDARD_VERSION
+DEFAULT_SCORING_VERSION = MEASURED_CURVE.version
 
 
 @dataclass(frozen=True)
@@ -35,6 +35,12 @@ class ScoringModelInfo:
 
 
 _MODEL_INFO: dict[str, ScoringModelInfo] = {
+    MEASURED_CURVE.version: ScoringModelInfo(
+        version=MEASURED_CURVE.version,
+        name='Course Standard V0.2 (measured)',
+        description='Shared WGS84 distance and denoised elevation profile. Measurement remains provisional without field validation. Uses the V0.1 score curve.',
+        uses_competitors=False,
+    ),
     COURSE_STANDARD_VERSION: ScoringModelInfo(
         version=COURSE_STANDARD_VERSION,
         name="Course Standard V0.1 (official)",
@@ -87,8 +93,11 @@ def score_race(
     *,
     model_version: str = DEFAULT_SCORING_VERSION,
     gpx_points: list[TrackPoint] | None = None,
+    measurement=None,
 ) -> list[RunnerScore]:
     """Score a race with the selected model version."""
+    if model_version == MEASURED_CURVE.version:
+        return score_race_course_standard(race, results, gpx_points=gpx_points, curve=MEASURED_CURVE, measurement=measurement)
     if model_version == COURSE_STANDARD_VERSION:
         return score_race_course_standard(race, results, gpx_points=gpx_points, curve=OFFICIAL_CURVE)
     if model_version == COURSE_STANDARD_CALIBRATED_VERSION:

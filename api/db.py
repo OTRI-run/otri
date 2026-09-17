@@ -15,6 +15,7 @@ Connection string via ``DATABASE_URL``, e.g.:
 from __future__ import annotations
 
 import os
+from psycopg.types.json import Jsonb
 import secrets
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -74,6 +75,8 @@ CREATE TABLE IF NOT EXISTS races (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+ALTER TABLE races ADD COLUMN IF NOT EXISTS measurement JSONB;
+
 CREATE TABLE IF NOT EXISTS results (
     id SERIAL PRIMARY KEY,
     race_id TEXT NOT NULL REFERENCES races(race_id) ON DELETE CASCADE,
@@ -112,6 +115,8 @@ class Race:
     event_name: str | None = None
     event_date: date | None = None
     organizer_id: int | None = None
+    measurement_version: str | None = None
+    measurement_status: str | None = None
 
     def to_race_record(self) -> RaceRecord:
         """Adapt to the shape ``scoring.score_race()`` expects."""
@@ -203,6 +208,8 @@ def delete_event(event_id: str) -> None:
 _RACE_JOIN_SELECT = """
     SELECT r.race_id, r.event_id, r.course_name, r.distance_km, r.elevation_gain_m,
            (r.gpx_content IS NOT NULL) AS has_gpx, r.scoring_version,
+           r.measurement->>'version' AS measurement_version,
+           r.measurement->>'status' AS measurement_status,
            e.event_name, e.event_date, e.organizer_id
     FROM races r JOIN events e ON e.event_id = r.event_id
 """
@@ -284,13 +291,13 @@ def delete_race(race_id: str) -> None:
             raise NotFoundError(f"race {race_id!r} not found")
 
 
-def attach_gpx(race_id: str, filename: str, content: str, distance_km: float, elevation_gain_m: float) -> Race:
+def attach_gpx(race_id: str, filename: str, content: str, distance_km: float, elevation_gain_m: float, measurement: dict | None = None) -> Race:
     """Store a GPX file for a race and refresh its course stats from the real parsed data."""
     with get_connection() as connection:
         cursor = connection.execute(
             "UPDATE races SET gpx_filename = %s, gpx_content = %s, distance_km = %s, elevation_gain_m = %s, "
-            "updated_at = now() WHERE race_id = %s",
-            (filename, content, distance_km, elevation_gain_m, race_id),
+            "measurement = %s, updated_at = now() WHERE race_id = %s",
+            (filename, content, distance_km, elevation_gain_m, Jsonb(measurement) if measurement else None, race_id),
         )
         if cursor.rowcount == 0:
             raise NotFoundError(f"race {race_id!r} not found")
@@ -366,3 +373,9 @@ def replace_results(race_id: str, results: list[ResultRecord]) -> None:
                     for result in results
                 ],
             )
+
+
+def get_measurement(race_id: str) -> dict | None:
+    with get_connection() as connection:
+        row = connection.execute("SELECT measurement FROM races WHERE race_id = %s", (race_id,)).fetchone()
+    return row["measurement"] if row else None

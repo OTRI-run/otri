@@ -42,6 +42,7 @@ def test_two_runner_fixture_produces_hand_verified_scores():
             "confidence": "Low",
             "scoring_version": SCORING_VERSION,
             "performance_rate": 0.0,
+            "quality_flags": [],
         },
         {
             "rank": 2,
@@ -56,6 +57,7 @@ def test_two_runner_fixture_produces_hand_verified_scores():
             "confidence": "Low",
             "scoring_version": SCORING_VERSION,
             "performance_rate": 0.0,
+            "quality_flags": [],
         },
     ]
 
