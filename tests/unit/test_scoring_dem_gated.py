@@ -7,7 +7,7 @@ A synthetic GeoTIFF stands in for a real Copernicus tile so the DEM path runs en
 import hashlib
 import json
 import math
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 
 import numpy as np
@@ -18,7 +18,7 @@ from rasterio.transform import from_origin
 
 from course.elevation import RasterProvider
 from course.gpx import GpxParseError, TrackPoint, parse_track_points
-from course.measurement import PARAMETERS, REVIEW_FLAGS, VERSION, Measurement, measure_course
+from course.measurement import CONFIDENCE_BLOCKING_FLAGS, PARAMETERS, REVIEW_FLAGS, VERSION, Measurement, measure_course
 from scoring.course_standard import DEM_GATED_CURVE, SMOOTHED_UPPER_CURVE, confidence_for
 from scoring.estimator import estimate_score
 from scoring.measured_demand import compute_measured_demand
@@ -174,7 +174,7 @@ def test_confidence_is_high_only_with_dem_on_a_dense_track(dem):
 
     sparse = measure_course(switchback_track()[::4], dem)
     label, reasons = confidence_for(sparse, DEM_GATED_CURVE, True)
-    assert label == "Low" and any(r.startswith("measurement_needs_review") for r in reasons)
+    assert label == "Low" and any(r.startswith("route_not_reproducible") for r in reasons)
     assert any("median point spacing" in r for r in reasons)
 
     uploaded = measure_course(with_uploaded_elevation(switchback_track()))
@@ -216,3 +216,40 @@ def test_real_course_is_dense_enough_to_pass_the_gate():
     assert "sparse_geometry_median_over_30m" not in m.quality_flags
     sparse = measure_course(pts[::5])
     assert "sparse_geometry_median_over_30m" in sparse.quality_flags
+
+
+# ------------------------------------------------------------ two tiers: review vs reproducibility
+
+
+def test_confidence_blocking_flags_are_the_reproducibility_subset_of_review_flags():
+    assert set(CONFIDENCE_BLOCKING_FLAGS) <= set(REVIEW_FLAGS)
+    assert "sustained_grade_outside_scoring_domain" in REVIEW_FLAGS
+    assert "sustained_grade_outside_scoring_domain" not in CONFIDENCE_BLOCKING_FLAGS
+
+
+def test_grade_domain_flag_marks_review_but_does_not_block_confidence(dem):
+    """Inherent to steep terrain and handled by the scoring clamp: an organizer should glance at
+    it, but it says nothing about whether another device would measure the same route."""
+    m = measure_course(switchback_track(), dem)
+    steep = replace(m, quality_flags=m.quality_flags + ("sustained_grade_outside_scoring_domain",))
+    assert steep.needs_review and steep.to_dict()["status"] == "needs_review"
+    assert not steep.blocks_confidence
+    assert confidence_for(steep, DEM_GATED_CURVE, True) == ("High", ())
+
+
+def test_noisy_uploaded_points_do_not_block_confidence_when_the_dem_is_the_source(dem):
+    """The bug real courses exposed: the implausibility flag was computed from uploaded points
+    the DEM path never used, so a noisy watch file could never reach High even on the DEM."""
+    pts = with_uploaded_elevation(switchback_track())
+    spiky = [TrackPoint(p.lat, p.lon, p.elevation_m + (300.0 if i % 50 == 25 else 0.0), p.time, p.segment_id) for i, p in enumerate(pts)]
+    on_dem = measure_course(spiky, dem)
+    assert "uploaded_elevation_implausible_unused" in on_dem.quality_flags
+    assert "implausible_local_elevation_change" not in on_dem.quality_flags
+    assert not on_dem.blocks_confidence
+    assert confidence_for(on_dem, DEM_GATED_CURVE, True)[0] == "High"
+    # Same file with the upload as the elevation source: the noise is real and blocks.
+    on_upload = measure_course(spiky)
+    assert "implausible_local_elevation_change" in on_upload.quality_flags
+    assert on_upload.blocks_confidence and on_upload.needs_review
+    label, reasons = confidence_for(on_upload, DEM_GATED_CURVE, True)
+    assert label == "Low" and any(r.startswith("route_not_reproducible") for r in reasons)

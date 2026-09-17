@@ -94,6 +94,8 @@ fraction of ceiling  95.13%
 V0.1 702 -> V0.3 783 -> V0.4 889 -> V0.5 970
 ```
 
+> **Elevation source.** The figures above, and the calibration of `STEEP_COEFFICIENT`, use the GPX file's own elevations. In production V0.7 measures from Copernicus GLO-30, which reads this course's ascent about 7.5% higher (10,311 m vs 9,592 m; official 9,890 m) and scores the same performance **987** on the current curve. See [V0.7 §6](../v0.7/OTRI-DEM-GATED-MEASUREMENT.md).
+
 ### 4.2 Headroom
 
 The trap V0.3 §1.1 documented and rejected was a curve that clips just above its own calibration point. V0.5 keeps room above the performance it was calibrated on:

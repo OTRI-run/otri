@@ -19,7 +19,7 @@ import math
 from dataclasses import dataclass, replace
 
 from course.gpx import TrackPoint
-from course.measurement import REVIEW_FLAGS
+from course.measurement import CONFIDENCE_BLOCKING_FLAGS
 from ingestion.records import RaceRecord, ResultRecord
 
 from .course_demand import CourseDemand, compute_course_demand, equivalent_flat_distance_from_totals
@@ -378,7 +378,10 @@ def confidence_for(measurement, curve: ScoreCurve, has_gpx: bool) -> tuple[str, 
     """Confidence label plus the flags that explain it.
 
     Pre-V0.7 curves keep their historical rule (Medium with a GPX, Low without). V0.7 earns
-    `High` only with DEM-sourced elevation on a dense track, and says exactly why otherwise.
+    `High` only with DEM-sourced elevation on a track whose *route* was measured reproducibly
+    (`Measurement.blocks_confidence`), and says exactly why otherwise. A measurement can be
+    `needs_review` for an organizer's attention and still `High` here - review and
+    reproducibility are different questions.
     """
     if curve.version != DEM_GATED_CURVE.version or measurement is None:
         return _confidence_for_course(has_gpx), ()
@@ -388,15 +391,15 @@ def confidence_for(measurement, curve: ScoreCurve, has_gpx: bool) -> tuple[str, 
             "elevation_not_dem_sourced: elevation came from the uploaded file, not a pinned terrain "
             "dataset; the same route recorded by another device may measure differently"
         )
-    if measurement.needs_review:
-        review = [flag for flag in measurement.quality_flags if flag in REVIEW_FLAGS]
-        detail = ', '.join(review)
-        if 'sparse_geometry_median_over_30m' in review:
+    if measurement.blocks_confidence:
+        blocking = [flag for flag in measurement.quality_flags if flag in CONFIDENCE_BLOCKING_FLAGS]
+        detail = ', '.join(blocking)
+        if 'sparse_geometry_median_over_30m' in blocking:
             detail += (
                 f" (median point spacing {measurement.median_edge_m} m; tracks sparser than 30 m chord the "
                 "switchbacks and measure the course short)"
             )
-        reasons.append(f"measurement_needs_review: {detail}")
+        reasons.append(f"route_not_reproducible: {detail}")
     return ('High' if not reasons else 'Low'), tuple(reasons)
 
 

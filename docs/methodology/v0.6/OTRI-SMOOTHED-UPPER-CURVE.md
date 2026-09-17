@@ -69,6 +69,8 @@ Everything at or below 544 is byte-for-byte V0.5. Above 544 the elasticity is co
 | 40:00:00 | 513 | 566 | **562** | +53 | +49 |
 | 46:00:00 | 472 | 515 | **515** | +43 | +43 |
 
+*UTMB figures use the file's own elevations. On Copernicus GLO-30 (V0.7 production) the winner scores 987 rather than 966 — see [V0.7 §6](../v0.7/OTRI-DEM-GATED-MEASUREMENT.md).*
+
 | Phuket trail 14.6 km | V0.4 | V0.5 | V0.6 | V0.4→V0.5 | V0.4→V0.6 |
 |---|---:|---:|---:|---:|---:|
 | 1:15:00 | 753 | 792 | **767** | +39 | +14 |

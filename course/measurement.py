@@ -36,6 +36,18 @@ REVIEW_FLAGS = (
     'sparse_geometry_median_over_30m',
 )
 
+# Flags that make the *number itself* untrustworthy across devices: the route was not measured
+# (chorded switchbacks, missing distance) or the elevation actually used was implausible. These
+# gate scoring confidence. `sustained_grade_outside_scoring_domain` is deliberately absent - it is
+# a scoring-domain clamp notice, inherent to steep terrain (0.35% of a real alpine 100-miler),
+# applied deterministically, and a single 50 m window tipping 0.45 -> 0.47 on a surface-model
+# canopy edge says nothing about reproducibility. It still marks the measurement for review.
+CONFIDENCE_BLOCKING_FLAGS = (
+    'sparse_geometry_median_over_30m',
+    'disconnected_track_segments',
+    'implausible_local_elevation_change',
+)
+
 UPLOADED_SOURCE = {'dataset': 'uploaded-gpx', 'datum': 'unknown', 'sensor': 'unknown'}
 
 
@@ -119,6 +131,10 @@ class Measurement:
         return any(flag in self.quality_flags for flag in REVIEW_FLAGS)
 
     @property
+    def blocks_confidence(self) -> bool:
+        return any(flag in self.quality_flags for flag in CONFIDENCE_BLOCKING_FLAGS)
+
+    @property
     def dem_sourced(self) -> bool:
         return self.source.get('dataset') != UPLOADED_SOURCE['dataset']
 
@@ -154,6 +170,7 @@ def measure_course(points: list[TrackPoint], provider=None) -> Measurement:
         original = list(group)
         clean = []
         noisy = False
+        uploaded_implausible = False
         for _, duplicates in groupby(original, key=lambda p: (p.lat, p.lon)):
             duplicates = list(duplicates)
             p = duplicates[0]
@@ -178,7 +195,7 @@ def measure_course(points: list[TrackPoint], provider=None) -> Measurement:
             if length > 100:
                 flags.add('sparse_geometry_over_100m')
             if a.elevation_m is not None and b.elevation_m is not None and abs(b.elevation_m - a.elevation_m) > max(8, length):
-                flags.add('implausible_local_elevation_change')
+                uploaded_implausible = True
                 noisy = True
         if total + xs[-1] > 2_000_000:
             raise GpxParseError('course exceeds the 2,000 km measurement limit')
@@ -226,6 +243,10 @@ def measure_course(points: list[TrackPoint], provider=None) -> Measurement:
             zs = uploaded_profile()
         if not used_provider:
             flags.add('unknown_elevation_provenance')
+        if uploaded_implausible:
+            # Only the profile actually used can make a measurement implausible. Under a DEM the
+            # uploaded elevations are unused, so their noise is recorded, not held against it.
+            flags.add('implausible_local_elevation_change' if not used_provider else 'uploaded_elevation_implausible_unused')
         # Avoid applying both spatial smoothing and a prominence filter to an
         # already smooth route-planner profile. The rule depends on observable
         # geometry/elevation quality, never filenames, race totals or creator.

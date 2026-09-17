@@ -50,7 +50,7 @@ The threshold comes from data, not preference. Demand error against median spaci
 
 At or under 30 m the error stays within ~2–3%; above it the error grows past what a performance score can absorb. Sparse tracks are **still measured and still scored** — refusing an organizer's only file would help nobody — but the measurement says why it should not be trusted, in words a runner can act on ("recorded one point every 47 m; switchbacks get cut short; upload a track recorded at least every 30 m"). Route-planner exports at 40–50 m spacing land here, correctly: they do measure 4–6% short.
 
-`sparse_geometry_median_over_30m` joins the review flags (`REVIEW_FLAGS`), which are now a single shared constant so the published `status` and the scoring confidence below can never disagree.
+`sparse_geometry_median_over_30m` joins the review flags (`REVIEW_FLAGS`) and the reproducibility flags (`CONFIDENCE_BLOCKING_FLAGS`, §2.3) — both single shared constants, so the published `status` and the scoring confidence are derived from the same source and differ only where §2.3 says they should.
 
 ### 2.2 Pinned DEM elevation as the production default
 
@@ -61,14 +61,26 @@ The terrain-provider adapter (`course/elevation.py`, pinned GeoTIFF tiles with S
 
 **Coverage is per course, not per configuration.** GLO-30 is global but the installed tiles are not; a course outside them is measured from its own uploaded elevations, with `terrain_coverage_incomplete_used_uploaded_elevation` set, `source` recorded as `uploaded-gpx`, and confidence `Low`. This is the *announced* fallback the measurement spec allows; a genuine provider failure (checksum mismatch, unreadable tile, no elevation in the file either) still stops the measurement rather than inventing one.
 
-### 2.3 A confidence label on every score
+### 2.3 A confidence label on every score — two tiers of flags
+
+Review and reproducibility are different questions, and the first real courses through V0.7 proved they must be kept apart. Measurement flags now come in two tiers:
+
+| tier | flags | effect |
+|---|---|---|
+| **review** (`REVIEW_FLAGS`) | `implausible_local_elevation_change`, `sustained_grade_outside_scoring_domain`, `disconnected_track_segments`, `sparse_geometry_median_over_30m` | `status = needs_review` — an organizer should glance at this |
+| **reproducibility** (`CONFIDENCE_BLOCKING_FLAGS`) | `sparse_geometry_median_over_30m`, `disconnected_track_segments`, `implausible_local_elevation_change` | blocks `High` — another device would not measure the same route |
 
 ```text
-High    elevation from the pinned DEM  AND  measurement not needs_review
+High    elevation from the pinned DEM  AND  no reproducibility flag
 Low     otherwise — with the reason(s) appended to quality_flags:
           elevation_not_dem_sourced: …
-          measurement_needs_review: <flags> (median point spacing 47.2 m; …)
+          route_not_reproducible: <flags> (median point spacing 47.2 m; …)
 ```
+
+Two flags are deliberately treated differently from the first draft of this model:
+
+- **`sustained_grade_outside_scoring_domain` marks review but never blocks `High`.** It is a scoring-domain clamp notice — a 50 m window past Minetti's ±45% — inherent to steep terrain (12 of 3,430 windows on UTMB, 0.35% of the course) and applied deterministically. On the Phuket trail the DEM and the uploaded file agree on ascent to the metre (618 m) yet one sliding window tips 0.39 → 0.47 on a surface-model canopy edge; letting that decide confidence would make `High` unreachable for exactly the courses OTRI exists for.
+- **`implausible_local_elevation_change` is raised only for the elevation actually used.** The first draft computed it from the uploaded per-point elevations even when the DEM was the source, so a noisy watch file could never reach `High` on the DEM (this blocked both UTMB and the V0.1 reference race). Under a DEM the noise is recorded as informational `uploaded_elevation_implausible_unused` and not held against the measurement.
 
 Pre-V0.7 curves keep their historical rule (`Medium` with a GPX, `Low` without), so nothing about older scores changes.
 
@@ -91,7 +103,9 @@ The score itself. For the same measurement, V0.7 and V0.6 produce identical `otr
 - **Device independence:** two copies of the same geometry with different uploaded elevations measure identically (same `profile_hash`) when the DEM covers them.
 - **Announced fallback:** a course outside coverage with uploaded elevations succeeds with the fallback flag and `uploaded-gpx` provenance; without uploaded elevations it still fails closed on `coverage`.
 - **The claim:** with elevation fixed by the DEM, every thinning that passes the gate measures within 3% of the full track; a thinning that fails the gate is `needs_review`.
-- **Confidence ladder:** `High` only for DEM + dense; `Low` with a `measurement_needs_review` reason for sparse; `Low` with `elevation_not_dem_sourced` for uploaded elevations; older curves unchanged.
+- **Confidence ladder:** `High` only for DEM + reproducible route; `Low` with a `route_not_reproducible` reason for sparse; `Low` with `elevation_not_dem_sourced` for uploaded elevations; older curves unchanged.
+- **Two tiers:** `CONFIDENCE_BLOCKING_FLAGS` is a strict subset of `REVIEW_FLAGS` that excludes the grade-domain flag; a measurement carrying only that flag is `needs_review` *and* `High`.
+- **Elevation actually used:** a file with 300 m spikes measured on the DEM carries `uploaded_elevation_implausible_unused`, not the blocking flag, and is `High`; the same file measured from its own elevations carries `implausible_local_elevation_change` and is `Low`.
 - **Score identity:** V0.7 equals V0.6 for the same measurement.
 - **Real course (skipped if absent):** the UTMB track passes the gate natively and fails it thinned ×5.
 
@@ -99,6 +113,6 @@ The score itself. For the same measurement, V0.7 and V0.6 produce identical `otr
 
 - **The gate is a floor, not a fix.** A track at 25 m spacing passes and still measures ~1–3% short of a 10 m one. That residual is inside the claim in §3 but it is not zero.
 - **Coverage is operational.** Confidence is `High` only where tiles are installed. The install script takes a tile list; someone has to decide which regions to cover, and an upload from anywhere else is `Low` until its tiles are added.
-- **GLO-30 is a surface model.** It includes tree canopy and buildings; on forested trails its ascent can differ materially from a bare-earth model. The measurement spec's benchmarking programme (Copernicus vs FABDEM vs calibrated barometric traversals on a known route) has not been run. `High` means *reproducible against a named dataset*, not *validated against the ground*.
+- **GLO-30 is a surface model, and it shows.** On UTMB it reads 10,311 m of ascent against 9,592 m from the uploaded file and 9,890 m official — the two sources sit −3% / +4% either side of the organizer's figure — and the same winning performance scores **987** on the DEM against the **966** pinned in the V0.6 note on uploaded elevation. On the Phuket trail the two agree exactly (618 m). The difference is alpine rock and canopy, not a general bias. Production numbers are DSM-based; the V0.5/V0.6 calibration and pins were made on uploaded elevation and are recorded as such there. No constant has been re-tuned to close the gap: the measurement spec's benchmarking programme (Copernicus vs a bare-earth model such as FABDEM vs calibrated barometric traversals on a known route) is the honest route to that, and has not been run. `High` means *reproducible against a named dataset*, not *validated against the ground*.
 - **Switchback loss is unaddressed.** Only snapping to a route network recovers geometry a sparse track never recorded.
 - Everything in V0.6 §5 and V0.5 §5 still applies to the curve and the terrain factor.

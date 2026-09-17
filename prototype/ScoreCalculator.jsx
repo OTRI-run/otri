@@ -127,7 +127,7 @@ function Stat({ label, value, mono = true }) {
 // dense enough to measure the route. Both are decided by the API; this only renders them.
 function MeasurementTrust({ estimate, measurement }) {
   const flags = estimate.quality_flags ?? []
-  const reasons = flags.filter((flag) => flag.startsWith('elevation_not_dem_sourced') || flag.startsWith('measurement_needs_review'))
+  const reasons = flags.filter((flag) => flag.startsWith('elevation_not_dem_sourced') || flag.startsWith('route_not_reproducible'))
   const demSourced = measurement?.source?.dataset && measurement.source.dataset !== 'uploaded-gpx'
   const spacing = measurement?.median_edge_m
   if (!estimate.confidence) return null
