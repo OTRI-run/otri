@@ -16,6 +16,7 @@ Run locally with: ``uvicorn api.app:app --reload``
 
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import asdict
 from hashlib import sha256
@@ -415,9 +416,69 @@ def remove_race(race_id: str, organizer: Organizer = Depends(require_organizer))
 # --- GPX attachment ----------------------------------------------------------
 
 
+# --- Measurement cache -------------------------------------------------------------------------
+#
+# Measuring a course from the DEM is the expensive step (geodesics for every edge, a raster
+# lookup for every 10 m of course). The prototype asks for the same file several times - on load,
+# for the first score, and on every slider settle - so the measurement is cached on disk, keyed by
+# the file's content hash and the terrain manifest it was measured against. Disk rather than
+# memory because gunicorn runs several workers on a 1 GB box. Bounded by count; entries are the
+# same JSON snapshot the API already persists per race, so a cache hit is a `Measurement(**...)`.
+_MEASUREMENT_CACHE_DIR = Path(__file__).resolve().parents[1] / "data" / "cache" / "measurements"
+_MEASUREMENT_CACHE_MAX_ENTRIES = 64
+
+
+def _manifest_fingerprint(provider) -> str:
+    if provider is None:
+        return "no-dem"
+    try:
+        st = os.stat(provider.path)
+        return sha256(f"{provider.path.resolve()}|{st.st_mtime_ns}|{st.st_size}".encode()).hexdigest()[:16]
+    except OSError:
+        return "dem-unknown"
+
+
+def _measurement_cache_key(path, provider) -> Path:
+    digest = sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            digest.update(chunk)
+    return _MEASUREMENT_CACHE_DIR / f"{digest.hexdigest()}-{_manifest_fingerprint(provider)}.json"
+
+
+def _measurement_cache_get(path, provider):
+    key = _measurement_cache_key(path, provider)
+    try:
+        snapshot = json.loads(key.read_text(encoding="utf-8"))
+        key.touch()  # keep recently used entries when trimming
+        return Measurement(**snapshot)
+    except (OSError, ValueError, TypeError):
+        return None
+
+
+def _measurement_cache_put(path, provider, measurement) -> None:
+    try:
+        _MEASUREMENT_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        key = _measurement_cache_key(path, provider)
+        tmp = key.with_suffix(".tmp")
+        tmp.write_text(json.dumps(asdict(measurement)), encoding="utf-8")
+        os.replace(tmp, key)
+        entries = sorted(_MEASUREMENT_CACHE_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime)
+        for stale in entries[:-_MEASUREMENT_CACHE_MAX_ENTRIES]:
+            stale.unlink(missing_ok=True)
+    except OSError:
+        pass  # a cache that cannot be written just means measuring again next time
+
+
 def _measure_gpx_path(path):
     points = read_track_points(path)
-    return points, measure_course(points, configured_provider())
+    provider = configured_provider()
+    cached = _measurement_cache_get(path, provider)
+    if cached is not None:
+        return points, cached
+    measurement = measure_course(points, provider)
+    _measurement_cache_put(path, provider, measurement)
+    return points, measurement
 
 
 @app.post("/races/{race_id}/gpx", response_model=RaceSummary)

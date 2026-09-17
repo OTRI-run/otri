@@ -633,3 +633,26 @@ def test_register_duplicate_email_returns_400():
     client.post("/auth/register", json={"email": "dupe@example.com", "password": "correct horse battery"})
     response = client.post("/auth/register", json={"email": "dupe@example.com", "password": "correct horse battery"})
     assert response.status_code == 400
+
+
+def test_analyze_gpx_reuses_the_cached_measurement_for_the_same_file(tmp_path, monkeypatch):
+    """The prototype re-sends the same file for every target time; the expensive measurement
+    must be done once and reused, and the reuse must be exact."""
+    import importlib
+    api_module = importlib.import_module("api.app")  # the module, not the FastAPI instance
+    monkeypatch.setattr(api_module, "_MEASUREMENT_CACHE_DIR", tmp_path / "measurements")
+    with FLAT_LOOP_GPX.open("rb") as handle:
+        first = client.post("/gpx/analyze", files={"file": ("flat-loop.gpx", handle, "application/gpx+xml")}, data={"finish_time_seconds": "600"})
+    assert first.status_code == 200
+    cached_files = list((tmp_path / "measurements").glob("*.json"))
+    assert len(cached_files) == 1
+
+    calls = []
+    real = api_module.measure_course
+    monkeypatch.setattr(api_module, "measure_course", lambda *a, **k: calls.append(1) or real(*a, **k))
+    with FLAT_LOOP_GPX.open("rb") as handle:
+        second = client.post("/gpx/analyze", files={"file": ("flat-loop.gpx", handle, "application/gpx+xml")}, data={"finish_time_seconds": "900"})
+    assert second.status_code == 200
+    assert calls == [], "second analysis of the same file must not re-measure the course"
+    assert second.json()["measurement"]["profile_hash"] == first.json()["measurement"]["profile_hash"]
+    assert second.json()["estimate"]["predicted_score"] != first.json()["estimate"]["predicted_score"]

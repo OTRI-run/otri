@@ -17,3 +17,6 @@ redeploy.bat
 # (tests/unit/test_scoring_terrain.py).
 data/demo/gpx/*.gpx
 !data/demo/gpx/sample-course.gpx
+
+# Measurement cache written by the API (see api/app.py); content-addressed, safe to delete.
+data/cache/
