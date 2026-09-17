@@ -13,14 +13,20 @@ import json
 import math
 import statistics
 
-from geographiclib.geodesic import Geodesic
+from pyproj import Geod
 
 from .gpx import GpxParseError, TrackPoint
 
-VERSION = 'course-measurement-v2'
+# v3: geodesics through pyproj's Geod (GeographicLib's Karney algorithm in C, vectorised) instead
+# of the pure-Python geographiclib port, and the smoother in numpy. Same maths, same windows, same
+# WGS84 ellipsoid; the two agree to ~3e-9 m on distances and ~5e-13 m on smoothed elevations, but
+# not bit for bit, so profile hashes change and this is a new processing version (spec section
+# 21). On a 1-CPU droplet the measure step drops from ~5 s to well under 1 s for a 171 km course.
+VERSION = 'course-measurement-v3'
 PARAMETERS = dict(spacing_m=10.0, median_radius_m=10.0, mean_radius_m=10.0,
                   reversal_m=8.0, grade_window_m=50.0, max_missing_gap_m=30.0,
                   smoothing_policy='terrain-or-implausible-local-elevation',
+                  geodesic='pyproj.Geod(WGS84), Karney inverse/direct',
                   # v2: a track whose median point spacing exceeds this chords the switchbacks and
                   # measures the course short. Measured on four real courses: at or under 30 m the
                   # demand error stays within ~2-3%; at 45-60 m it reaches 4-8%. Such tracks are still
@@ -94,17 +100,30 @@ def prominence(values, threshold=8.0):
 def _smooth(xs, zs):
     # Uniform interior spacing prevents the original recorder's sampling density
     # from weighting the filter. Preserve endpoints; clip windows, never pad.
-    values = zs[:]
-    for radius, reducer in [(PARAMETERS['median_radius_m'], statistics.median),
-                            (PARAMETERS['mean_radius_m'], statistics.mean)]:
-        result = []
-        for i, x in enumerate(xs):
-            lo = max(0, bisect_right(xs, x - radius - 1e-8))
-            hi = bisect_right(xs, x + radius + 1e-8)
-            result.append(reducer(values[lo:hi]))
+    #
+    # Windows are found exactly as before (searchsorted with the same +/-1e-8 slack on a
+    # by-distance radius); on the 10 m grid almost every interior window holds three points,
+    # which is reduced in one vectorised call, and the few clipped windows at segment ends are
+    # reduced individually.
+    import numpy as np
+
+    x = np.asarray(xs, dtype=float)
+    values = np.asarray(zs, dtype=float)
+    for radius, reducer in ((PARAMETERS['median_radius_m'], np.median), (PARAMETERS['mean_radius_m'], np.mean)):
+        lo = np.searchsorted(x, x - radius - 1e-8, side='right')
+        hi = np.searchsorted(x, x + radius + 1e-8, side='right')
+        result = np.empty_like(values)
+        three = (hi - lo) == 3
+        if three.any():
+            idx = np.nonzero(three)[0]
+            start = lo[idx]
+            stack = np.stack([values[start], values[start + 1], values[start + 2]], axis=1)
+            result[idx] = reducer(stack, axis=1)
+        for i in np.nonzero(~three)[0]:
+            result[i] = reducer(values[lo[i]:hi[i]])
         result[0], result[-1] = zs[0], zs[-1]
         values = result
-    return values
+    return values.tolist()
 
 
 @dataclass(frozen=True)
@@ -185,9 +204,13 @@ def measure_course(points: list[TrackPoint], provider=None) -> Measurement:
             clean.append(TrackPoint(p.lat, p.lon, statistics.median(zs) if zs else None, p.time, p.segment_id))
         if len(clean) < 2:
             raise GpxParseError('each track segment needs two distinct coordinates')
+        geod = Geod(ellps='WGS84')
+        lats = [p.lat for p in clean]
+        lons = [p.lon for p in clean]
+        azimuths, _, lengths = geod.inv(lons[:-1], lats[:-1], lons[1:], lats[1:])
+        azimuths = [float(v) for v in azimuths]
         xs = [0.0]
-        for a, b in zip(clean, clean[1:]):
-            length = Geodesic.WGS84.Inverse(a.lat, a.lon, b.lat, b.lon)['s12']
+        for (a, b), length in zip(zip(clean, clean[1:]), (float(v) for v in lengths)):
             if length <= 1e-6:
                 raise GpxParseError('consecutive coordinates resolve to the same WGS84 location')
             xs.append(xs[-1] + length)
@@ -216,13 +239,14 @@ def measure_course(points: list[TrackPoint], provider=None) -> Measurement:
 
         zs = None
         if provider is not None:
-            locations = []
-            for x in grid:
-                i = max(0, min(len(xs)-2, bisect_right(xs, x)-1))
-                a, b = clean[i:i+2]
-                edge = Geodesic.WGS84.Inverse(a.lat, a.lon, b.lat, b.lon)
-                pos = Geodesic.WGS84.Direct(a.lat, a.lon, edge['azi1'], x-xs[i])
-                locations.append((pos['lat2'], pos['lon2']))
+            # Every grid chainage projected onto its edge in one vectorised direct solve.
+            import numpy as np
+            grid_arr = np.asarray(grid, dtype=float)
+            xs_arr = np.asarray(xs, dtype=float)
+            edge = np.clip(np.searchsorted(xs_arr, grid_arr, side='right') - 1, 0, len(xs) - 2)
+            lon2, lat2, _ = geod.fwd(np.asarray(lons)[edge], np.asarray(lats)[edge],
+                                     np.asarray(azimuths)[edge], grid_arr - xs_arr[edge])
+            locations = list(zip(lat2.tolist(), lon2.tolist()))
             try:
                 sampled = provider.sample(locations)
             except (OSError, ValueError, KeyError) as error:

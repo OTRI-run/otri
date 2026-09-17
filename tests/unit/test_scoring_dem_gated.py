@@ -73,10 +73,10 @@ def with_uploaded_elevation(points, z=120.0):
 # ------------------------------------------------------------------ measurement v2: the gate
 
 
-def test_measurement_version_is_v2_and_records_median_spacing():
+def test_measurement_version_is_v3_and_records_median_spacing():
     m = measure_course(with_uploaded_elevation(switchback_track()))
-    assert VERSION == "course-measurement-v2"
-    assert m.to_dict()["version"] == "course-measurement-v2"
+    assert VERSION == "course-measurement-v3"
+    assert m.to_dict()["version"] == "course-measurement-v3"
     assert m.median_edge_m is not None and 10 < m.median_edge_m < 20
 
 

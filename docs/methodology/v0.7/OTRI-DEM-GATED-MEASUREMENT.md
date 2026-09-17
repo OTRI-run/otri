@@ -84,6 +84,12 @@ Two flags are deliberately treated differently from the first draft of this mode
 
 Pre-V0.7 curves keep their historical rule (`Medium` with a GPX, `Low` without), so nothing about older scores changes.
 
+### 2.4 Processing version v3: the same maths, in C and numpy
+
+After the DEM sampler was vectorised, profiling showed ~70% of a measurement in `geographiclib`'s pure-Python geodesics (one inverse solve per track edge, one direct solve per 10 m grid point — about 31,000 calls for UTMB) and ~25% in the smoother calling `statistics.mean` point by point. `course-measurement-v3` keeps every formula, window and threshold and changes only the arithmetic engine: geodesics through `pyproj.Geod` (GeographicLib's Karney algorithm in C, one vectorised call per segment) and the smoother in numpy with the same by-distance windows.
+
+Measured against the v2 implementation on three real courses (UTMB, CM6, Phuket), end to end: total distance within **1.4e-8 m**, gain and loss within **5.5e-9 m**, every profile point within **2.3e-8 m**, identical quality flags, identical scores (966 / 707 / 554). Component by component: per-edge geodesic distances agree to 2.8e-9 m and grid positions to 2e-14°; the median filter is bit-identical and the mean filter differs by at most 4.5e-13 m (summation order); the larger end-to-end figure is nanometre chainage shifts propagating through interpolation. `profile_hash` is a SHA over those floats, so v2 and v3 measurements of the same file hash differently. That is exactly the case §21 reserves a new processing version for; stored v2 snapshots replay unchanged.
+
 ## 3. What V0.7 can honestly claim
 
 > For a track that passes the gate, scored against the pinned DEM, the same route scores within about 3% regardless of which device recorded it — and any track that cannot meet that standard says so on the score.

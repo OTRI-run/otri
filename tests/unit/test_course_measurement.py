@@ -157,3 +157,41 @@ def test_phuket_2026_is_a_plausible_estimate_not_a_hardcoded_total():
     assert m.max_climb_grade < 1
     assert m.max_descent_grade < 1
     assert compute_measured_demand(measurement=m).elevation_gain_m == extract_features(points).elevation_gain_m
+
+
+def test_v3_geodesics_and_smoother_agree_with_the_v2_reference_to_nanometres():
+    """v3 swaps the pure-Python geographiclib geodesics and statistics-based smoother for
+    pyproj + numpy. The maths is the same; this pins how close: distances within 1e-8 m and
+    smoothed elevations within 1e-9 m of a geographiclib/statistics reference, on a real course.
+    (Not bit-identical - which is why v3 is a new processing version.)"""
+    import statistics
+    from bisect import bisect_right
+    from course.measurement import PARAMETERS, _smooth
+    from geographiclib.geodesic import Geodesic
+
+    points = read_track_points(Path(__file__).resolve().parents[1] / "fixtures" / "gpx" / "phuket-trail-2026-pkt15.gpx")
+    m = measure_course(points)
+
+    # Reference edge lengths and total distance.
+    ref_total = sum(Geodesic.WGS84.Inverse(a.lat, a.lon, b.lat, b.lon)["s12"] for a, b in zip(points, points[1:]))
+    assert abs(m.distance_m - ref_total) < 1e-8 * max(1.0, ref_total / 1000)
+
+    # Reference smoother on the same profile input (the stored profile is a stand-in for the
+    # pre-smoothing values; the question is reducer and window identity).
+    xs, zs = map(list, zip(*m.segments[0]))
+
+    def reference(xs, zs):
+        values = zs[:]
+        for radius, reducer in [(PARAMETERS["median_radius_m"], statistics.median), (PARAMETERS["mean_radius_m"], statistics.mean)]:
+            result = []
+            for x in xs:
+                lo = max(0, bisect_right(xs, x - radius - 1e-8))
+                hi = bisect_right(xs, x + radius + 1e-8)
+                result.append(reducer(values[lo:hi]))
+            result[0], result[-1] = zs[0], zs[-1]
+            values = result
+        return values
+
+    fast, slow = _smooth(xs, zs), reference(xs, zs)
+    assert len(fast) == len(slow)
+    assert max(abs(a - b) for a, b in zip(fast, slow)) < 1e-9

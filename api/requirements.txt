@@ -7,3 +7,4 @@ PyJWT>=2.9
 psycopg[binary]>=3.1
 resend>=2.0
 geographiclib==2.1
+pyproj==3.8.0
