@@ -315,6 +315,27 @@ TERRAIN_ADJUSTED_CURVE = replace(
     terrain_adjustment=TERRAIN_MODEL,
 )
 
+# V0.1's 692 demo anchor makes the 544->692 segment ~45% more elastic than the segments either
+# side of it (score ~ Q^0.87 there, ~Q^0.60 below and above). Any uniform course-level
+# correction — V0.4's duration scaling, V0.5's terrain factor — is therefore amplified in the
+# 550-700 band: on the reference race V0.5 lifted the 2:40 finisher by 63 points but the winner
+# by only 50. That is an artifact of fitting through three arbitrary demo finishers, not a
+# property of running. V0.6 drops the 692 anchor so a single power law runs from the 544 anchor
+# to the world-best 1000 anchor; everything at or below 544 is untouched. Being the universal
+# score shape, this also lowers road runners in the same band (~20-30 points around 700), who
+# were sitting in the same inflated segment. See docs/methodology/v0.6/OTRI-SMOOTHED-UPPER-CURVE.md.
+SMOOTHED_UPPER_CURVE = replace(
+    TERRAIN_ADJUSTED_CURVE,
+    version='0.6.0-course-standard-smoothed-upper',
+    anchor_scores=(0.0, 349.0, 544.0, 1000.0),
+    anchor_qs=(
+        OFFICIAL_CURVE.anchor_qs[0],
+        OFFICIAL_CURVE.anchor_qs[1],
+        OFFICIAL_CURVE.anchor_qs[2],
+        ENDURANCE_REFERENCED_Q_1000,
+    ),
+)
+
 # Curves scored from the V0.2 measured-demand pipeline rather than the raw V0.1 integral.
 MEASURED_DEMAND_VERSIONS = frozenset(
     {
@@ -322,6 +343,7 @@ MEASURED_DEMAND_VERSIONS = frozenset(
         DURATION_SCALED_CURVE.version,
         ENDURANCE_REFERENCED_CURVE.version,
         TERRAIN_ADJUSTED_CURVE.version,
+        SMOOTHED_UPPER_CURVE.version,
     }
 )
 

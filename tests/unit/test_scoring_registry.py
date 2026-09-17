@@ -14,6 +14,7 @@ from scoring import (
     COURSE_STANDARD_VERSION,
     DURATION_SCALED_VERSION,
     ENDURANCE_REFERENCED_VERSION,
+    TERRAIN_ADJUSTED_VERSION,
     FIELD_RELATIVE_VERSION,
 )
 from scoring.course_standard import MEASURED_CURVE
@@ -47,6 +48,7 @@ def test_available_scoring_models_includes_all_models():
     versions = {model.version for model in available_scoring_models()}
     assert versions == {
         DEFAULT_SCORING_VERSION,
+        TERRAIN_ADJUSTED_VERSION,
         ENDURANCE_REFERENCED_VERSION,
         DURATION_SCALED_VERSION,
         MEASURED_CURVE.version,

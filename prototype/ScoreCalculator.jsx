@@ -2,20 +2,26 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import CourseMap from '../src/components/CourseMap'
 import { analyzeGpx, listRaces, fetchRaceGpxFile } from './apiClient'
 
-// Published V0.4 anchor table (docs/methodology/v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md) —
-// shown for context in the "why this score" breakdown. The actual score always comes from the API.
-// Scores 0-692 are V0.1's real demo/test anchors, unchanged; the 1000-anchor is the measured
-// human ceiling at the reference course size, replacing V0.1's extrapolated 17.940.
-const PUBLISHED_ANCHORS = [
-  { score: 0, q: 1.0 },
-  { score: 349, q: 4.240362424138815 },
-  { score: 544, q: 8.935158501440922 },
-  { score: 692, q: 11.769395017793594 },
-  { score: 1000, q: 21.5331347785071 },
-]
+// Published anchor tables, shown for context in the "why this score" breakdown. The actual
+// score always comes from the API. Scores 0-544 are V0.1's real demo/test anchors in every
+// table; what differs is the top of the scale and whether the 692 demo anchor is kept:
+//   - V0.1-V0.3: 692 kept, 1000-anchor is V0.1's extrapolated 17.940
+//   - V0.4-V0.5: 692 kept, 1000-anchor is the measured human ceiling 21.533
+//   - V0.6+:     692 dropped (docs/methodology/v0.6/OTRI-SMOOTHED-UPPER-CURVE.md)
+const ANCHOR_0 = { score: 0, q: 1.0 }
+const ANCHOR_349 = { score: 349, q: 4.240362424138815 }
+const ANCHOR_544 = { score: 544, q: 8.935158501440922 }
+const ANCHOR_692 = { score: 692, q: 11.769395017793594 }
+const ANCHOR_1000_LEGACY = { score: 1000, q: 17.93986234619293 }
+const ANCHOR_1000 = { score: 1000, q: 21.5331347785071 }
 
-// Superseded curves still selectable for historical reproducibility.
-const LEGACY_ANCHOR_Q_1000 = 17.93986234619293
+function publishedAnchorsFor(scoringVersion) {
+  if (scoringVersion.includes('smoothed-upper')) return [ANCHOR_0, ANCHOR_349, ANCHOR_544, ANCHOR_1000]
+  if (scoringVersion.includes('endurance-referenced') || scoringVersion.includes('terrain-adjusted')) {
+    return [ANCHOR_0, ANCHOR_349, ANCHOR_544, ANCHOR_692, ANCHOR_1000]
+  }
+  return [ANCHOR_0, ANCHOR_349, ANCHOR_544, ANCHOR_692, ANCHOR_1000_LEGACY]
+}
 
 function parseHmsToSeconds(value) {
   const parts = value.trim().split(':').map(Number)
@@ -199,11 +205,9 @@ export default function ScoreCalculator() {
   const scaledVersion =
     scoringVersion.includes('endurance-referenced') ||
     scoringVersion.includes('terrain-adjusted') ||
+    scoringVersion.includes('smoothed-upper') ||
     scoringVersion.includes('duration-scaled')
-  // V0.4 and V0.5 share the endurance-referenced anchor table; older curves keep V0.1's.
-  const legacyCurve = !(
-    scoringVersion.includes('endurance-referenced') || scoringVersion.includes('terrain-adjusted')
-  )
+  const publishedAnchors = publishedAnchorsFor(scoringVersion)
 
   return (
     <section className="mt-10">
@@ -380,7 +384,8 @@ export default function ScoreCalculator() {
                     <dd className="font-mono font-semibold text-[#0b1220]">{estimate.scoring_version}</dd>
                   </div>
                 </dl>
-                {estimate.scoring_version?.includes('terrain-adjusted') && (
+                {(estimate.scoring_version?.includes('terrain-adjusted') ||
+                  estimate.scoring_version?.includes('smoothed-upper')) && (
                   <p className="mt-3 text-xs text-slate-500">
                     This course's demand is first adjusted for what gradient alone does not capture — sustained
                     steep terrain and altitude, both measured from your GPX (see{' '}
@@ -412,13 +417,10 @@ export default function ScoreCalculator() {
                 </p>
                 <table className="mt-1 w-full text-left text-xs">
                   <tbody>
-                    {PUBLISHED_ANCHORS.map((anchor) => (
+                    {publishedAnchors.map((anchor) => (
                       <tr key={anchor.score}>
                         <td className="py-0.5 pr-4 font-mono">{anchor.score}</td>
-                        <td className="py-0.5 font-mono">
-                          {(anchor.score === 1000 && legacyCurve ? LEGACY_ANCHOR_Q_1000 : anchor.q).toFixed(3)}{' '}
-                          demand-km/h
-                        </td>
+                        <td className="py-0.5 font-mono">{anchor.q.toFixed(3)} demand-km/h</td>
                       </tr>
                     ))}
                   </tbody>

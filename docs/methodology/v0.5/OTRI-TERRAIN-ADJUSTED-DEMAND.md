@@ -1,6 +1,6 @@
 # OTRI Terrain-Adjusted Demand — V0.5
 
-**Status:** Current default scoring model
+**Status:** Extended by [V0.6](../v0.6/OTRI-SMOOTHED-UPPER-CURVE.md), which keeps this model's demand and terrain adjustment and changes only the score-curve shape above 544 — V0.5 remains selectable and reproducible
 **Model identifier:** `0.5.0-course-standard-terrain-adjusted`
 **Extends:** [`../v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md`](../v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md) — the score curve is V0.4's, unchanged. V0.5 changes only **course demand**.
 **Depends on:** [`../v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md`](../v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md)

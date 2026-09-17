@@ -21,6 +21,7 @@ from .course_standard import (
     ENDURANCE_REFERENCED_CURVE,
     MEASURED_CURVE,
     OFFICIAL_CURVE,
+    SMOOTHED_UPPER_CURVE,
     SPEC_CURVE,
     TERRAIN_ADJUSTED_CURVE,
 )
@@ -35,7 +36,8 @@ COURSE_STANDARD_SPEC_VERSION = SPEC_CURVE.version
 DURATION_SCALED_VERSION = DURATION_SCALED_CURVE.version
 ENDURANCE_REFERENCED_VERSION = ENDURANCE_REFERENCED_CURVE.version
 TERRAIN_ADJUSTED_VERSION = TERRAIN_ADJUSTED_CURVE.version
-DEFAULT_SCORING_VERSION = TERRAIN_ADJUSTED_CURVE.version
+SMOOTHED_UPPER_VERSION = SMOOTHED_UPPER_CURVE.version
+DEFAULT_SCORING_VERSION = SMOOTHED_UPPER_CURVE.version
 
 
 @dataclass(frozen=True)
@@ -47,6 +49,18 @@ class ScoringModelInfo:
 
 
 _MODEL_INFO: dict[str, ScoringModelInfo] = {
+    SMOOTHED_UPPER_VERSION: ScoringModelInfo(
+        version=SMOOTHED_UPPER_VERSION,
+        name='Course Standard V0.6 (smoothed upper curve)',
+        description=(
+            "V0.5's terrain-adjusted demand and endurance-referenced curve, with V0.1's 692 demo "
+            'anchor dropped so one power law runs from the 544 anchor to the world-best 1000 '
+            'anchor. Removes a kink that amplified every course-level correction in the 550-700 '
+            'band; scores at or below 544 are unchanged '
+            '(see docs/methodology/v0.6/OTRI-SMOOTHED-UPPER-CURVE.md).'
+        ),
+        uses_competitors=False,
+    ),
     TERRAIN_ADJUSTED_VERSION: ScoringModelInfo(
         version=TERRAIN_ADJUSTED_VERSION,
         name='Course Standard V0.5 (terrain-adjusted)',
@@ -146,6 +160,10 @@ def score_race(
     measurement=None,
 ) -> list[RunnerScore]:
     """Score a race with the selected model version."""
+    if model_version == SMOOTHED_UPPER_VERSION:
+        return score_race_course_standard(
+            race, results, gpx_points=gpx_points, curve=SMOOTHED_UPPER_CURVE, measurement=measurement
+        )
     if model_version == TERRAIN_ADJUSTED_VERSION:
         return score_race_course_standard(
             race, results, gpx_points=gpx_points, curve=TERRAIN_ADJUSTED_CURVE, measurement=measurement
