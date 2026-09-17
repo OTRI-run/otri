@@ -46,8 +46,8 @@ function formatPace(totalSeconds, distanceKm) {
   return `${m}:${String(s).padStart(2, '0')} / km`
 }
 
-const STEP_ORDER = ['source', 'confirm', 'target', 'analyzing', 'result']
-const STEP_LABELS = { source: 'Course', confirm: 'Confirm', target: 'Target time', analyzing: 'Analysing', result: 'Result' }
+const STEP_ORDER = ['source', 'target', 'analyzing', 'result']
+const STEP_LABELS = { source: 'Course', target: 'Target time', analyzing: 'Analysing', result: 'Result' }
 
 function StepProgress({ step }) {
   const visibleSteps = STEP_ORDER.filter((s) => s !== 'analyzing')
@@ -102,7 +102,8 @@ export default function ScoreCalculator() {
   const [features, setFeatures] = useState(null)
   const [measurement, setMeasurement] = useState(null)
 
-  const [timeInput, setTimeInput] = useState('04:55:00')
+  const [targetSeconds, setTargetSeconds] = useState(17700)
+  const [timeInput, setTimeInput] = useState(formatHms(17700))
   const [targetError, setTargetError] = useState(null)
   const [visibleStage, setVisibleStage] = useState(0)
   const [estimate, setEstimate] = useState(null)
@@ -146,7 +147,12 @@ export default function ScoreCalculator() {
       setFeatures(analysis.features)
       setMeasurement(analysis.measurement)
       setCourseLabel(label)
-      setStep('confirm')
+      // Default target time: a 6 min/km pace on this course, clamped to the slider's range.
+      const suggested = analysis.features?.distance_km ? Math.round((analysis.features.distance_km * 360) / 30) * 30 : 17700
+      const clamped = Math.min(86400, Math.max(600, suggested))
+      setTargetSeconds(clamped)
+      setTimeInput(formatHms(clamped))
+      setStep('target')
     } catch (err) {
       setLoadError(err.message)
     } finally {
@@ -180,6 +186,21 @@ export default function ScoreCalculator() {
     setExploreRows(null)
     setShowExplain(false)
     setShowTechnical(false)
+  }
+
+  function updateTargetSeconds(seconds) {
+    setTargetSeconds(seconds)
+    setTimeInput(formatHms(seconds))
+    setTargetError(null)
+  }
+
+  function updateTimeInput(value) {
+    setTimeInput(value)
+    const seconds = parseHmsToSeconds(value)
+    if (seconds !== null && seconds > 0) {
+      setTargetSeconds(Math.min(86400, seconds))
+      setTargetError(null)
+    }
   }
 
   function startAnalysis() {
@@ -332,9 +353,9 @@ export default function ScoreCalculator() {
         </div>
       )}
 
-      {step === 'confirm' && features && (
+      {step === 'target' && features && (
         <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="font-mono text-[9px] tracking-[.08em] text-slate-400">STEP 2 — CONFIRM YOUR COURSE</p>
+          <p className="font-mono text-[9px] tracking-[.08em] text-slate-400">STEP 2 — YOUR COURSE & TARGET</p>
           {gpxText && <CourseMap gpxText={gpxText} measurement={measurement} className="mt-3" />}
           <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
@@ -355,43 +376,41 @@ export default function ScoreCalculator() {
           {hasAnomaly && (
             <p className="mt-3 text-sm text-amber-700">Elevation anomalies detected. Review the course profile before trusting this estimate.</p>
           )}
-          <div className="mt-4 flex gap-3">
-            <button onClick={startOver} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600">
-              Back
-            </button>
-            <button onClick={() => setStep('target')} className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white">
-              Continue
-            </button>
-          </div>
-        </div>
-      )}
 
-      {step === 'target' && (
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="font-mono text-[9px] tracking-[.08em] text-slate-400">STEP 3 — YOUR TARGET</p>
-          <div className="mt-3 flex flex-wrap items-end gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-500">Target finish time</label>
+          <div className="mt-5 border-t border-slate-100 pt-4">
+            <label className="font-mono text-[9px] tracking-[.08em] text-slate-400">YOUR TARGET FINISH TIME</label>
+            <div className="mt-2 flex flex-wrap items-center gap-4">
+              <p className="font-mono text-4xl font-bold tracking-[-.02em] text-[#0b1220]">{formatHms(targetSeconds)}</p>
               <input
                 type="text"
                 value={timeInput}
-                onChange={(event) => setTimeInput(event.target.value)}
+                onChange={(event) => updateTimeInput(event.target.value)}
                 placeholder="HH:MM:SS"
-                className="mt-1 w-32 rounded-lg border border-slate-300 px-3 py-2 text-center font-mono text-lg"
+                className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-center font-mono text-sm"
               />
-              {features && parseHmsToSeconds(timeInput) && (
-                <p className="mt-1 font-mono text-xs text-slate-400">{formatPace(parseHmsToSeconds(timeInput), features.distance_km)}</p>
-              )}
+              <p className="font-mono text-xs text-slate-400">{formatPace(targetSeconds, features.distance_km)}</p>
             </div>
+            <input
+              type="range"
+              min={600}
+              max={86400}
+              step={30}
+              value={targetSeconds}
+              onChange={(event) => updateTargetSeconds(Number(event.target.value))}
+              className="mt-3 w-full max-w-xl accent-blue-600"
+            />
+            {targetError && <p className="mt-2 text-xs text-red-600">{targetError}</p>}
+            {analysisError && <p className="mt-2 text-xs text-red-600">{analysisError}</p>}
+          </div>
+
+          <div className="mt-4 flex gap-3">
+            <button onClick={startOver} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600">
+              Change course
+            </button>
             <button onClick={startAnalysis} className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white">
               Analyse performance
             </button>
           </div>
-          {targetError && <p className="mt-3 text-xs text-red-600">{targetError}</p>}
-          {analysisError && <p className="mt-3 text-xs text-red-600">{analysisError}</p>}
-          <button onClick={() => setStep('confirm')} className="mt-4 text-xs font-semibold text-slate-500 hover:text-slate-700">
-            ← Back to course
-          </button>
         </div>
       )}
 
