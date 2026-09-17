@@ -2,15 +2,20 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import CourseMap from '../src/components/CourseMap'
 import { analyzeGpx, listRaces, fetchRaceGpxFile } from './apiClient'
 
-// Published V0.1 anchor table (docs/methodology/v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md section 13) —
+// Published V0.4 anchor table (docs/methodology/v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md) —
 // shown for context in the "why this score" breakdown. The actual score always comes from the API.
+// Scores 0-692 are V0.1's real demo/test anchors, unchanged; the 1000-anchor is the measured
+// human ceiling at the reference course size, replacing V0.1's extrapolated 17.940.
 const PUBLISHED_ANCHORS = [
   { score: 0, q: 1.0 },
   { score: 349, q: 4.240362424138815 },
   { score: 544, q: 8.935158501440922 },
   { score: 692, q: 11.769395017793594 },
-  { score: 1000, q: 17.93986234619293 },
+  { score: 1000, q: 21.5331347785071 },
 ]
+
+// Superseded curves still selectable for historical reproducibility.
+const LEGACY_ANCHOR_Q_1000 = 17.93986234619293
 
 function parseHmsToSeconds(value) {
   const parts = value.trim().split(':').map(Number)
@@ -188,6 +193,13 @@ export default function ScoreCalculator() {
   const anomalyFlags = ['implausible_local_elevation_change', 'conflicting_duplicate_elevations', 'sustained_grade_outside_scoring_domain']
   const hasAnomaly = measurement?.quality_flags?.some((flag) => anomalyFlags.includes(flag))
 
+  // Which curve produced this estimate: V0.4 scales by the endurance reference, V0.3 by the
+  // Riegel exponent, and everything older looks the observed rate up directly.
+  const scoringVersion = estimate?.scoring_version ?? ''
+  const scaledVersion =
+    scoringVersion.includes('endurance-referenced') || scoringVersion.includes('duration-scaled')
+  const legacyCurve = !scoringVersion.includes('endurance-referenced')
+
   return (
     <section className="mt-10">
       <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">CALCULATE SCORE</p>
@@ -363,22 +375,36 @@ export default function ScoreCalculator() {
                     <dd className="font-mono font-semibold text-[#0b1220]">{estimate.scoring_version}</dd>
                   </div>
                 </dl>
+                {estimate.scoring_version?.includes('endurance-referenced') && (
+                  <p className="mt-3 text-xs text-slate-500">
+                    Your performance rate is compared against the best rate a human has achieved on a course of this
+                    demand, then looked up in the table below (see{' '}
+                    <code>docs/methodology/v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md</code>). That is why a long race
+                    is not scored worse than a short one: sustainable rate naturally drops as an event gets longer,
+                    so the scale drops with it. A score of 1000 means world-best at any course size.
+                  </p>
+                )}
                 {estimate.scoring_version?.includes('duration-scaled') && (
                   <p className="mt-3 text-xs text-slate-500">
                     This course's demand is duration-scaled (Riegel exponent, see{' '}
                     <code>docs/methodology/v0.3/OTRI-DURATION-SCALED-CURVE.md</code>) before being looked up in the
                     table below, since sustainable performance rate naturally drops on much longer/harder courses.
+                    Superseded by V0.4.
                   </p>
                 )}
                 <p className="mt-3 font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">
-                  Published reference-course curve anchors{estimate.scoring_version?.includes('duration-scaled') ? ' (before duration-scaling)' : ''}
+                  Published reference-course curve anchors
+                  {scaledVersion ? ' (before course-size scaling)' : ''}
                 </p>
                 <table className="mt-1 w-full text-left text-xs">
                   <tbody>
                     {PUBLISHED_ANCHORS.map((anchor) => (
                       <tr key={anchor.score}>
                         <td className="py-0.5 pr-4 font-mono">{anchor.score}</td>
-                        <td className="py-0.5 font-mono">{anchor.q.toFixed(3)} demand-km/h</td>
+                        <td className="py-0.5 font-mono">
+                          {(anchor.score === 1000 && legacyCurve ? LEGACY_ANCHOR_Q_1000 : anchor.q).toFixed(3)}{' '}
+                          demand-km/h
+                        </td>
                       </tr>
                     ))}
                   </tbody>

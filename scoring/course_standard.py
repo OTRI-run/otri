@@ -1,11 +1,16 @@
-"""Course Standard scoring models — course + finish time only, no competitors.
+"""Course Standard scoring models - course + finish time only, no competitors.
 
-The official model (`OFFICIAL_CURVE`, `0.1.0-course-standard-calibrated`)
-implements `docs/methodology/v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md` exactly:
-the 50 m GPX course-demand integral plus its piecewise power-law score-to-Q
-curve, calibrated from demo/test race anchors. The score remains
-course + own finish time only. Legacy logarithmic curves (`SPEC_CURVE`,
-`CALIBRATED_CURVE`) remain selectable for historical reproducibility.
+The current default is `ENDURANCE_REFERENCED_CURVE` (`0.4.0-course-standard-endurance-referenced`):
+the V0.2 measured course-demand pipeline, V0.1's three real score anchors, and a course-size
+scaling built from published world-best performances so that a score means the same thing on a
+5 km race and on a 100-mile mountain race. See
+`docs/methodology/v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md`.
+
+`OFFICIAL_CURVE` (`0.1.0-course-standard-calibrated`) implements
+`docs/methodology/v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md` exactly: the 50 m GPX course-demand
+integral plus its piecewise power-law score-to-Q curve, calibrated from demo/test race anchors.
+`MEASURED_CURVE`, `DURATION_SCALED_CURVE` and the legacy logarithmic curves (`SPEC_CURVE`,
+`CALIBRATED_CURVE`) remain selectable so historical scores stay reproducible (spec section 21).
 """
 
 from __future__ import annotations
@@ -33,6 +38,9 @@ class ScoreCurve:
     curve_type: str = "logarithmic"
     anchor_scores: tuple[float, ...] = ()
     anchor_qs: tuple[float, ...] = ()
+    # How an observed performance rate is rescaled for course size before the anchor-table
+    # lookup. `None` means "no rescaling" — the V0.1/V0.2 duration-invariant behaviour.
+    demand_scaling: "DemandScaling | None" = None
 
     @property
     def is_curved(self) -> bool:
@@ -113,35 +121,188 @@ OFFICIAL_CURVE = ScoreCurve(
 SCORING_VERSION = OFFICIAL_CURVE.version
 MEASURED_CURVE = replace(OFFICIAL_CURVE, version='0.2.0-course-standard-measured')
 
-# V0.1's anchors were calibrated entirely from one course of this course demand (spec section
-# 12.1). Treating Q (demand-km/h) as duration-invariant works near that reference size, but
-# breaks down for radically larger courses: a real 100-mile mountain race (course demand ~218.7
-# demand-km) has a winning Q barely above V0.1's 692-anchor Q, so V0.1 scores its own winner
-# only ~700 instead of near the top of the scale. This mirrors a well-documented real-world
-# effect in endurance sport: sustainable pace/rate necessarily drops as event duration grows.
+# ---------------------------------------------------------------------------
+# Course-size (duration) scaling
+# ---------------------------------------------------------------------------
 #
-# DURATION_SCALED_CURVE corrects for this using Riegel's published race-time-prediction formula
-# (T2 = T1 * (D2/D1)^b, b=1.06 — Riegel, P.S. "Athletic Records and Human Endurance," American
-# Scientist 69(3):285-290, 1981), applied to course demand (our own distance-equivalent unit)
-# instead of raw distance. It rescales the *observed* performance rate relative to the reference
-# course's size before looking it up in the exact same V0.1 anchor table, rather than inventing
-# new anchors — so it reduces to V0.1 exactly at the reference course size (see
-# `_duration_scale_factor`).
+# V0.1's anchor table was calibrated entirely from one course of course demand 27.560 demand-km
+# (spec section 12.1) and treats Q (demand-km/h) as duration-invariant: the same Q always means
+# the same score, whatever the size of the course. That is wrong, and wrong in a way that
+# systematically punishes long races - nobody holds their 3-hour rate for 18 hours, so on a big
+# course every runner posts a lower Q and every runner is scored as if they had run badly.
 #
-# This is a provisional V2 calibration candidate, not a validated model: it rests on Riegel's
-# generic (non-ultra-specific) exponent plus exactly one real ultra-distance validation point.
-# Riegel's own literature notes b=1.06 underestimates fatigue at very long distances, so this
-# likely still under-corrects for extreme mountain ultras. See
-# docs/methodology/v0.3/OTRI-DURATION-SCALED-CURVE.md.
-ENDURANCE_EXPONENT = 1.06
+# A `DemandScaling` rescales the *observed* performance rate to its reference-course equivalent
+# before the (unchanged) anchor-table lookup:
+#
+#     adjusted_Q = Q_observed * scaling.factor(D)
+#
+# Every scaling is normalised so `factor(REFERENCE_DEMAND_KM) == 1.0`, which makes each scaled
+# curve reduce to its unscaled parent exactly at the reference course size. `performance_rate`
+# in output and API responses stays the raw, unscaled Q - a plain physical quantity. Only the
+# score lookup is scaled.
+
 REFERENCE_DEMAND_KM = 27.560
-DURATION_SCALED_CURVE = replace(OFFICIAL_CURVE, version='0.3.0-course-standard-duration-scaled')
 
 
-def _duration_scale_factor(course_demand_km: float) -> float:
+def _validate_demand(course_demand_km: float) -> None:
     if not math.isfinite(course_demand_km) or course_demand_km <= 0:
         raise ValueError("course_demand_km must be positive and finite")
-    return (course_demand_km / REFERENCE_DEMAND_KM) ** (ENDURANCE_EXPONENT - 1.0)
+
+
+@dataclass(frozen=True)
+class RiegelScaling:
+    """V0.3's scaling: one constant Riegel exponent applied to course demand.
+
+    Riegel's race-time-prediction formula (T2 = T1 * (D2/D1)^b, b=1.06 - Riegel, P.S.
+    "Athletic Records and Human Endurance," American Scientist 69(3):285-290, 1981), applied to
+    course demand instead of raw distance. Retained for reproducibility of V0.3 scores only:
+    b=1.06 was derived from the 3.5-230 minute road-racing range and badly under-corrects beyond
+    it (see `ENDURANCE_REFERENCE`, which supersedes it).
+    """
+
+    reference_demand_km: float
+    exponent: float
+
+    def factor(self, course_demand_km: float) -> float:
+        _validate_demand(course_demand_km)
+        return (course_demand_km / self.reference_demand_km) ** (self.exponent - 1.0)
+
+    def range_flags(self, course_demand_km: float) -> tuple[str, ...]:
+        return ()
+
+
+@dataclass(frozen=True)
+class EnduranceReference:
+    """V0.4's scaling: the human-ceiling performance rate as a function of course demand.
+
+    `rate(D)` is the world-best performance rate on a course of demand `D` - a piecewise power
+    law in log-log space through the published reference observations in `anchor_demand_km` /
+    `anchor_rates` (the same interpolation idiom V0.1 uses for its score curve), continuing the
+    end segments' exponents outside the observed range.
+
+    Because `factor(D) = rate(D_ref) / rate(D)`, the adjusted Q depends only on the ratio
+    `Q_observed / rate(D)` - the runner's *fraction of the human ceiling for a course of this
+    size*. That is the whole point: the score becomes a measure of calibre, and stops being a
+    measure of how long the race was.
+    """
+
+    reference_demand_km: float
+    anchor_demand_km: tuple[float, ...]
+    anchor_rates: tuple[float, ...]
+
+    def _segment(self, course_demand_km: float) -> int:
+        """Index of the segment to use, clamped so both ends extrapolate their end segment."""
+        demands = self.anchor_demand_km
+        index = 0
+        for i in range(len(demands) - 1):
+            if course_demand_km >= demands[i]:
+                index = i
+        return index
+
+    def rate(self, course_demand_km: float) -> float:
+        """World-best performance rate (demand-km/h) on a course of this course demand."""
+        _validate_demand(course_demand_km)
+        i = self._segment(course_demand_km)
+        d1, d2 = self.anchor_demand_km[i], self.anchor_demand_km[i + 1]
+        q1, q2 = self.anchor_rates[i], self.anchor_rates[i + 1]
+        exponent = math.log(q2 / q1) / math.log(d2 / d1)
+        return q1 * (course_demand_km / d1) ** exponent
+
+    def riegel_exponent(self, course_demand_km: float) -> float:
+        """The equivalent Riegel `b` on this segment - a published, checkable property.
+
+        Between the 5 km and marathon anchors this comes out at ~1.059, independently
+        reproducing Riegel's own published 1.06 over the range his data covered.
+        """
+        _validate_demand(course_demand_km)
+        i = self._segment(course_demand_km)
+        d1, d2 = self.anchor_demand_km[i], self.anchor_demand_km[i + 1]
+        q1, q2 = self.anchor_rates[i], self.anchor_rates[i + 1]
+        return 1.0 - math.log(q2 / q1) / math.log(d2 / d1)
+
+    def factor(self, course_demand_km: float) -> float:
+        return self.rate(self.reference_demand_km) / self.rate(course_demand_km)
+
+    def range_flags(self, course_demand_km: float) -> tuple[str, ...]:
+        """Flag courses outside the observed range, where `rate` is extrapolating.
+
+        Above the top anchor this matters in practice: multi-day mountain ultras include sleep
+        stops, so their true rate decay is steeper than the continued 24-hour exponent and this
+        model under-credits them. Surfaced rather than silently absorbed.
+        """
+        _validate_demand(course_demand_km)
+        low, high = self.anchor_demand_km[0], self.anchor_demand_km[-1]
+        if course_demand_km < low:
+            return (
+                f"course_demand_below_reference_range: {course_demand_km:.3f} demand-km is below the "
+                f"shortest reference observation ({low:.3f} demand-km); the human-ceiling rate is "
+                "extrapolated",
+            )
+        if course_demand_km > high:
+            return (
+                f"course_demand_above_reference_range: {course_demand_km:.3f} demand-km is beyond the "
+                f"longest reference observation ({high:.3f} demand-km); the human-ceiling rate is "
+                "extrapolated and is likely conservative for multi-day events",
+            )
+        return ()
+
+
+DemandScaling = RiegelScaling | EnduranceReference
+
+ENDURANCE_EXPONENT = 1.06
+RIEGEL_SCALING = RiegelScaling(reference_demand_km=REFERENCE_DEMAND_KM, exponent=ENDURANCE_EXPONENT)
+DURATION_SCALED_CURVE = replace(
+    OFFICIAL_CURVE,
+    version='0.3.0-course-standard-duration-scaled',
+    demand_scaling=RIEGEL_SCALING,
+)
+
+# --- V0.4 reference observations -------------------------------------------------------------
+#
+# Published open-category world-best track/road performances, used as the human ceiling. All are
+# flat courses, where course demand and physical distance coincide to within about a percent, so
+# `demand_km` is the event distance.
+#
+# Only three anchors are used, chosen for depth of competition and wide spacing. The held-out
+# records they were *not* built from land at 92-102% of the resulting curve (see
+# docs/methodology/v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md section 4), which is the validation
+# evidence for this shape. They are frozen constants of model version 0.4.0: refreshing them
+# when a record falls is a new model version, never an edit in place (spec section 21).
+ENDURANCE_REFERENCE_OBSERVATIONS: tuple[tuple[str, float, float], ...] = (
+    ("5000 m track, 12:35.36", 5.0, 755.36),
+    ("marathon road, 2:00:35", 42.195, 7235.0),
+    ("24-hour road, 319.614 km", 319.614, 86400.0),
+)
+
+ENDURANCE_REFERENCE = EnduranceReference(
+    reference_demand_km=REFERENCE_DEMAND_KM,
+    anchor_demand_km=tuple(demand for _label, demand, _seconds in ENDURANCE_REFERENCE_OBSERVATIONS),
+    anchor_rates=tuple(
+        demand / (seconds / 3600.0) for _label, demand, seconds in ENDURANCE_REFERENCE_OBSERVATIONS
+    ),
+)
+
+# V0.1's own 1000-anchor was never an observation - the spec labels it "upper-scale
+# continuation", a pure extrapolation. It sits at Q=17.940 at the reference course size, which
+# real world-class road performances comfortably exceed, so under V0.1/V0.3 everything from a
+# 15:06 5 km upwards clipped to 1000 while a 100-mile mountain-race winner scored 783. V0.4
+# replaces that one invented number with the measured human ceiling at the same reference course
+# size, so 1000 means "world best" at every course size. V0.1's three real demo/test anchors
+# (349, 544, 692) are kept exactly as published.
+ENDURANCE_REFERENCED_Q_1000 = ENDURANCE_REFERENCE.rate(REFERENCE_DEMAND_KM)
+
+ENDURANCE_REFERENCED_CURVE = replace(
+    OFFICIAL_CURVE,
+    version='0.4.0-course-standard-endurance-referenced',
+    q_1000=ENDURANCE_REFERENCED_Q_1000,
+    anchor_qs=OFFICIAL_CURVE.anchor_qs[:-1] + (ENDURANCE_REFERENCED_Q_1000,),
+    demand_scaling=ENDURANCE_REFERENCE,
+)
+
+# Curves scored from the V0.2 measured-demand pipeline rather than the raw V0.1 integral.
+MEASURED_DEMAND_VERSIONS = frozenset(
+    {MEASURED_CURVE.version, DURATION_SCALED_CURVE.version, ENDURANCE_REFERENCED_CURVE.version}
+)
 
 
 def performance_rate(equivalent_km: float, finish_time_seconds: float) -> float:
@@ -154,18 +315,24 @@ def performance_rate(equivalent_km: float, finish_time_seconds: float) -> float:
 
 def score_for_time(equivalent_km: float, finish_time_seconds: float, curve: ScoreCurve = OFFICIAL_CURVE) -> dict:
     q = performance_rate(equivalent_km, finish_time_seconds)
-    lookup_q = q * _duration_scale_factor(equivalent_km) if curve.version == DURATION_SCALED_CURVE.version else q
+    scaling = curve.demand_scaling
+    lookup_q = q * scaling.factor(equivalent_km) if scaling is not None else q
     raw = curve.raw_score(lookup_q)
     public = round(max(SCALE_MIN, min(SCALE_MAX, raw)))
-    return {"performance_rate": q, "otri_raw": raw, "otri_score": public}
+    return {
+        "performance_rate": q,
+        "otri_raw": raw,
+        "otri_score": public,
+        "quality_flags": scaling.range_flags(equivalent_km) if scaling is not None else (),
+    }
 
 
 def target_time_seconds(equivalent_km: float, score: float, curve: ScoreCurve = OFFICIAL_CURVE) -> float:
     if equivalent_km <= 0:
         raise ValueError("equivalent_km must be greater than 0")
     q = curve.required_q(score)
-    if curve.version == DURATION_SCALED_CURVE.version:
-        q = q / _duration_scale_factor(equivalent_km)
+    if curve.demand_scaling is not None:
+        q = q / curve.demand_scaling.factor(equivalent_km)
     if q <= 0:
         return math.inf
     return equivalent_km / q * 3600.0
@@ -190,7 +357,7 @@ def score_race_course_standard(
         return []
 
     if gpx_points is not None:
-        if curve.version in (MEASURED_CURVE.version, DURATION_SCALED_CURVE.version):
+        if curve.version in MEASURED_DEMAND_VERSIONS:
             from .measured_demand import compute_measured_demand
             demand = compute_measured_demand(gpx_points, measurement=measurement)
         else:
@@ -211,6 +378,9 @@ def score_race_course_standard(
             result.first_name,
         ),
     )
+
+    scaling_flags = curve.demand_scaling.range_flags(equivalent_km) if curve.demand_scaling else ()
+    quality_flags = tuple(quality_flags) + scaling_flags
 
     scores = []
     for result in ordered:

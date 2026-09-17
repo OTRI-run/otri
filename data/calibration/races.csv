@@ -1,0 +1,8 @@
+race_id,race_name,event_date,course_name,distance_km,elevation_gain_m
+CAL-10K,Calibration 10K (synthetic),2026-01-10,10K,10.0,450
+CAL-HALF,Calibration Half Marathon (synthetic),2026-01-10,21K,21.1,1000
+CAL-MARATHON,Calibration Marathon (synthetic),2026-01-10,42K,42.2,2200
+CAL-50K,Calibration 50K (synthetic),2026-01-10,50K,50.0,3000
+CAL-50MI,Calibration 50 Mile (synthetic),2026-01-10,80K,80.5,4500
+CAL-100K,Calibration 100K (synthetic),2026-01-10,100K,100.0,5800
+CAL-100MI,Calibration 100 Mile (synthetic),2026-01-10,160K,161.0,9000

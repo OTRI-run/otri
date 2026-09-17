@@ -11,7 +11,12 @@ from dataclasses import dataclass
 from course.gpx import TrackPoint
 
 from .course_demand import compute_course_demand, equivalent_flat_distance_from_totals
-from .course_standard import DURATION_SCALED_CURVE, MEASURED_CURVE, OFFICIAL_CURVE, ScoreCurve, score_for_time
+from .course_standard import (
+    ENDURANCE_REFERENCED_CURVE,
+    MEASURED_DEMAND_VERSIONS,
+    ScoreCurve,
+    score_for_time,
+)
 
 DISCLAIMER = (
     "Provisional course estimate. Scores match only when the race uses the same course measurement "
@@ -47,7 +52,7 @@ def estimate_score(
     gpx_points: list[TrackPoint] | None = None,
     distance_km: float | None = None,
     elevation_gain_m: float | None = None,
-    curve: ScoreCurve = DURATION_SCALED_CURVE,
+    curve: ScoreCurve = ENDURANCE_REFERENCED_CURVE,
     measurement=None,
 ) -> ScoreEstimate:
     """Predict the Course Standard score for `finish_time_seconds` on this course.
@@ -60,7 +65,7 @@ def estimate_score(
         raise ValueError("finish_time_seconds must be greater than 0")
 
     if gpx_points is not None:
-        if curve.version in (MEASURED_CURVE.version, DURATION_SCALED_CURVE.version):
+        if curve.version in MEASURED_DEMAND_VERSIONS:
             from .measured_demand import compute_measured_demand
             demand = compute_measured_demand(gpx_points, measurement=measurement)
         else:
@@ -74,6 +79,7 @@ def estimate_score(
         raise ValueError("either gpx_points or both distance_km and elevation_gain_m must be provided")
 
     computed = score_for_time(equivalent_km, finish_time_seconds, curve=curve)
+    quality_flags = tuple(quality_flags) + tuple(computed["quality_flags"])
 
     return ScoreEstimate(
         equivalent_distance_km=round(equivalent_km, 3),

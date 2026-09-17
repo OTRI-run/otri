@@ -1,11 +1,22 @@
 """OTRI scoring engine — pluggable, versioned scoring models.
 
-The current default is the official Course Standard V0.1 curved model
-(`0.1.0-course-standard-calibrated`, no competitor dependency). Older
-scoring curves remain selectable for historical reproducibility.
+The current default is Course Standard V0.4
+(`0.4.0-course-standard-endurance-referenced`, no competitor dependency).
+Older scoring curves remain selectable for historical reproducibility.
 """
 
-from .course_standard import CALIBRATED_CURVE, DURATION_SCALED_CURVE, OFFICIAL_CURVE, SPEC_CURVE, ScoreCurve
+from .course_standard import (
+    CALIBRATED_CURVE,
+    DURATION_SCALED_CURVE,
+    ENDURANCE_REFERENCE,
+    ENDURANCE_REFERENCED_CURVE,
+    MEASURED_CURVE,
+    OFFICIAL_CURVE,
+    SPEC_CURVE,
+    EnduranceReference,
+    RiegelScaling,
+    ScoreCurve,
+)
 from .course_standard import score_race_course_standard, score_for_time, target_time_seconds
 from .estimator import DISCLAIMER, ScoreEstimate, estimate_score
 from .model import SCORING_VERSION as FIELD_RELATIVE_VERSION
@@ -15,6 +26,7 @@ from .registry import (
     COURSE_STANDARD_SPEC_VERSION,
     COURSE_STANDARD_VERSION,
     DURATION_SCALED_VERSION,
+    ENDURANCE_REFERENCED_VERSION,
     DEFAULT_SCORING_VERSION,
     ScoringModelInfo,
     available_scoring_models,
@@ -43,6 +55,12 @@ __all__ = [
     "COURSE_STANDARD_SPEC_VERSION",
     "DURATION_SCALED_VERSION",
     "DURATION_SCALED_CURVE",
+    "ENDURANCE_REFERENCED_VERSION",
+    "ENDURANCE_REFERENCED_CURVE",
+    "ENDURANCE_REFERENCE",
+    "EnduranceReference",
+    "RiegelScaling",
+    "MEASURED_CURVE",
     "FIELD_RELATIVE_VERSION",
     "DEFAULT_SCORING_VERSION",
     "ScoringModelInfo",

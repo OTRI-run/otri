@@ -4,6 +4,7 @@ All notable OTRI releases and material methodology changes will be documented he
 
 ## Unreleased
 
+- **New default scoring model `0.4.0-course-standard-endurance-referenced`** (`docs/methodology/v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md`). A score now measures what fraction of the best humanly-possible performance on a course of that demand the runner achieved, so race length no longer moves the score: the same-calibre run scores the same at 5 demand-km and at 700, and 1000 means world-best at every course size. This fixes two defects at once — V0.3's Riegel `b=1.06` correction was derived from sub-4-hour road racing and under-corrected badly beyond it (a real 100-mile mountain-race winner scored 783), while V0.1's 1000-anchor was an acknowledged extrapolation that saturated the short end (a 15:06 5 km also scored 1000). V0.1's three real score anchors (349/544/692) are unchanged; only the invented 1000-anchor and the course-size scaling are replaced. The short segment of the new reference curve independently reproduces Riegel's published `b=1.06` to three decimals over the range his data covered. `0.3.0-course-standard-duration-scaled` and all earlier models remain selectable and reproducible.
 - Establish professional repository structure.
 - Add MIT licensing metadata.
 - Formalize documentation, data, test, script, and source-code areas.

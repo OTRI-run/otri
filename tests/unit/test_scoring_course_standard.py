@@ -9,6 +9,8 @@ from ingestion.records import RaceRecord, ResultRecord
 from scoring.course_standard import (
     CALIBRATED_CURVE,
     DURATION_SCALED_CURVE,
+    ENDURANCE_REFERENCE,
+    ENDURANCE_REFERENCED_CURVE,
     OFFICIAL_CURVE,
     REFERENCE_DEMAND_KM,
     SCALE_MAX,
@@ -195,3 +197,161 @@ def test_duration_scaled_curve_is_monotonic_in_finish_time():
     scores = [score_for_time(218.671, t, curve=DURATION_SCALED_CURVE)["otri_score"] for t in times]
     assert scores == sorted(scores, reverse=True)
 
+
+# ---------------------------------------------------------------------------
+# V0.4 endurance-referenced curve
+# ---------------------------------------------------------------------------
+#
+# Published world-best reference performances, flat courses (course demand ~= distance).
+# The first three are V0.4's own anchors; the rest are held out and were not used to build
+# the curve, so they are genuine validation.
+WORLD_BESTS = {
+    "5000 m track": (5.0, 755.36),
+    "marathon road": (42.195, 2 * 3600 + 35),
+    "24 h road": (319.614, 24 * 3600),
+    "1500 m track": (1.5, 206.0),
+    "3000 m track": (3.0, 440.67),
+    "10000 m track": (10.0, 1571.0),
+    "half marathon road": (21.0975, 57 * 60 + 30),
+    "50 km road": (50.0, 2 * 3600 + 42 * 60 + 7),
+    "100 km road": (100.0, 6 * 3600 + 5 * 60 + 35),
+    "100 miles road": (160.934, 10 * 3600 + 51 * 60 + 39),
+}
+
+UTMB_DEMAND_KM = 218.671
+UTMB_WINNER_SECONDS = 18 * 3600 + 16 * 60 + 29
+
+
+def test_endurance_referenced_curve_matches_official_shape_at_reference_demand():
+    """V0.4 keeps V0.1's three real demo/test anchors and only replaces the invented 1000-anchor,
+    so at the reference course size the two curves must still agree below score 692."""
+    assert ENDURANCE_REFERENCED_CURVE.anchor_scores == OFFICIAL_CURVE.anchor_scores
+    assert ENDURANCE_REFERENCED_CURVE.anchor_qs[:-1] == OFFICIAL_CURVE.anchor_qs[:-1]
+    for score in [0, 100, 349, 544, 692]:
+        official = target_time_seconds(REFERENCE_DEMAND_KM, score, curve=OFFICIAL_CURVE)
+        referenced = target_time_seconds(REFERENCE_DEMAND_KM, score, curve=ENDURANCE_REFERENCED_CURVE)
+        assert referenced == pytest.approx(official, rel=1e-9)
+
+
+def test_demand_scaling_is_a_no_op_at_the_reference_course_size():
+    assert ENDURANCE_REFERENCE.factor(REFERENCE_DEMAND_KM) == pytest.approx(1.0, rel=1e-12)
+
+
+def test_short_segment_reproduces_riegels_published_exponent():
+    """Built only from the 5 km and marathon world bests, the short segment lands on Riegel's
+    own published b=1.06 - independent corroboration that the reference curve has the right
+    shape over the range Riegel's data covered."""
+    assert ENDURANCE_REFERENCE.riegel_exponent(20.0) == pytest.approx(1.06, abs=0.01)
+
+
+def test_fatigue_decay_never_gets_gentler_as_courses_get_longer():
+    """The equivalent Riegel exponent must be non-decreasing in course demand: a physical
+    requirement, and what guarantees the scaling factor stays monotone."""
+    exponents = [ENDURANCE_REFERENCE.riegel_exponent(d) for d in (1.0, 5.0, 20.0, 42.195, 100.0, 320.0, 800.0)]
+    assert exponents == sorted(exponents)
+    assert exponents[0] > 1.0
+
+
+def test_reference_rate_falls_monotonically_with_course_demand():
+    demands = [1.0, 5.0, 10.0, 27.56, 42.195, 100.0, 219.0, 319.614, 700.0]
+    rates = [ENDURANCE_REFERENCE.rate(d) for d in demands]
+    assert rates == sorted(rates, reverse=True)
+
+
+@pytest.mark.parametrize("name", sorted(WORLD_BESTS))
+def test_every_world_best_scores_near_the_top_of_the_scale(name):
+    """The bug this model fixes: under V0.1/V0.3 world-best performances scored anywhere from
+    702 to 1000 depending only on how long the race was. Every one of them must now land near
+    the top, including the held-out records the curve was not built from."""
+    demand_km, seconds = WORLD_BESTS[name]
+    score = score_for_time(demand_km, seconds, curve=ENDURANCE_REFERENCED_CURVE)["otri_score"]
+    assert 940 <= score <= 1000, f"{name} scored {score}"
+
+
+def test_world_best_scores_no_longer_depend_on_race_length():
+    """The spread across world bests must be far tighter than under the models it replaces."""
+    def spread(curve):
+        scores = [
+            score_for_time(demand_km, seconds, curve=curve)["otri_score"]
+            for demand_km, seconds in WORLD_BESTS.values()
+        ]
+        return max(scores) - min(scores)
+
+    assert spread(OFFICIAL_CURVE) == 229
+    assert spread(DURATION_SCALED_CURVE) == 123
+    assert spread(ENDURANCE_REFERENCED_CURVE) <= 60
+
+
+@pytest.mark.parametrize("fraction", [0.55, 0.7, 0.85, 0.95])
+def test_equal_calibre_scores_the_same_at_every_course_size(fraction):
+    """The core invariant: a runner at a fixed fraction of the human ceiling scores the same
+    whether the course is 5 demand-km or 700. Nothing about race length may move the score."""
+    scores = set()
+    for demand_km in (5.0, 27.56, 42.195, 100.0, 218.671, 319.614, 700.0):
+        seconds = demand_km / (ENDURANCE_REFERENCE.rate(demand_km) * fraction) * 3600.0
+        scores.add(score_for_time(demand_km, seconds, curve=ENDURANCE_REFERENCED_CURVE)["otri_score"])
+    assert max(scores) - min(scores) <= 1
+
+
+def test_short_course_no_longer_saturates_for_a_merely_good_runner():
+    """Under V0.1/V0.3 a 15:06 5 km clipped to 1000 while a 100-mile winner scored 783. A 15:06
+    5 km is a good club run, not a world best, and must now score well short of the top."""
+    fifteen_oh_six = 15 * 60 + 6
+    assert score_for_time(5.0, fifteen_oh_six, curve=DURATION_SCALED_CURVE)["otri_score"] == 1000
+    assert score_for_time(5.0, fifteen_oh_six, curve=ENDURANCE_REFERENCED_CURVE)["otri_score"] < 950
+
+
+def test_real_ultra_winner_is_credited_far_more_than_by_the_models_it_replaces():
+    kwargs = dict(equivalent_km=UTMB_DEMAND_KM, finish_time_seconds=UTMB_WINNER_SECONDS)
+    official = score_for_time(**kwargs, curve=OFFICIAL_CURVE)["otri_score"]
+    scaled = score_for_time(**kwargs, curve=DURATION_SCALED_CURVE)["otri_score"]
+    referenced = score_for_time(**kwargs, curve=ENDURANCE_REFERENCED_CURVE)["otri_score"]
+    assert official == 702
+    assert scaled == 783
+    assert referenced > scaled + 80
+    assert referenced < 1000
+
+
+def test_raw_performance_rate_is_reported_unscaled():
+    """Scaling is a scoring-lookup concern only; the reported rate stays a plain physical
+    quantity, identical across every curve."""
+    computed = score_for_time(UTMB_DEMAND_KM, UTMB_WINNER_SECONDS, curve=ENDURANCE_REFERENCED_CURVE)
+    assert computed["performance_rate"] == pytest.approx(
+        performance_rate(UTMB_DEMAND_KM, UTMB_WINNER_SECONDS)
+    )
+
+
+@pytest.mark.parametrize("demand_km", [3.0, 5.0, REFERENCE_DEMAND_KM, 50.0, 218.671, 319.614, 700.0])
+def test_endurance_referenced_target_time_inverse(demand_km):
+    for score in [100, 300, 544, 692, 900, 1000]:
+        target = target_time_seconds(demand_km, score, curve=ENDURANCE_REFERENCED_CURVE)
+        recovered = score_for_time(demand_km, target, curve=ENDURANCE_REFERENCED_CURVE)["otri_score"]
+        assert recovered == pytest.approx(score, abs=1)
+
+
+@pytest.mark.parametrize("demand_km", [5.0, REFERENCE_DEMAND_KM, 218.671, 700.0])
+def test_endurance_referenced_curve_is_monotonic_in_finish_time(demand_km):
+    times = [1800, 3600, 7200, 18000, 36000, 65789, 100000, 250000]
+    scores = [score_for_time(demand_km, t, curve=ENDURANCE_REFERENCED_CURVE)["otri_raw"] for t in times]
+    assert scores == sorted(scores, reverse=True)
+
+
+def test_courses_outside_the_reference_range_are_flagged_not_silently_extrapolated():
+    assert score_for_time(400.0, 40 * 3600, curve=ENDURANCE_REFERENCED_CURVE)["quality_flags"]
+    assert score_for_time(2.0, 600, curve=ENDURANCE_REFERENCED_CURVE)["quality_flags"]
+    assert score_for_time(100.0, 12 * 3600, curve=ENDURANCE_REFERENCED_CURVE)["quality_flags"] == ()
+
+
+def test_scaling_flags_reach_the_scored_output():
+    scores = score_race_course_standard(
+        _race(distance_km=400.0, elevation_gain_m=0.0),
+        [_finisher("1", 60 * 3600)],
+        curve=ENDURANCE_REFERENCED_CURVE,
+    )
+    assert any("above_reference_range" in flag for flag in scores[0].score.quality_flags)
+
+
+def test_duration_scaled_curve_still_reproduces_its_published_scores():
+    """V0.3 is superseded but must stay byte-for-byte reproducible (spec section 21)."""
+    assert score_for_time(UTMB_DEMAND_KM, UTMB_WINNER_SECONDS, curve=DURATION_SCALED_CURVE)["otri_score"] == 783
+    assert score_for_time(REFERENCE_DEMAND_KM, 2 * 3600 + 20 * 60 + 30, curve=DURATION_SCALED_CURVE)["otri_score"] == 692

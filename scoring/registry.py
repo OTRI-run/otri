@@ -1,10 +1,11 @@
 """Pluggable scoring-model registry.
 
 OTRI supports multiple versioned scoring models so historical scores remain
-reproducible. The current default is the official Course Standard V0.1
-model (`0.1.0-course-standard-calibrated`): 50 m GPX course demand plus the
-piecewise power-law score curve from
-`docs/methodology/v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md`.
+reproducible. The current default is Course Standard V0.4
+(`0.4.0-course-standard-endurance-referenced`): the measured course-demand
+pipeline plus an endurance-referenced score curve, so a score means the same
+thing on a short race and on a multi-hour mountain ultra
+(`docs/methodology/v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md`).
 """
 
 from __future__ import annotations
@@ -14,7 +15,14 @@ from dataclasses import dataclass
 from course.gpx import TrackPoint
 from ingestion.records import RaceRecord, ResultRecord
 
-from .course_standard import CALIBRATED_CURVE, OFFICIAL_CURVE, SPEC_CURVE, MEASURED_CURVE, DURATION_SCALED_CURVE
+from .course_standard import (
+    CALIBRATED_CURVE,
+    DURATION_SCALED_CURVE,
+    ENDURANCE_REFERENCED_CURVE,
+    MEASURED_CURVE,
+    OFFICIAL_CURVE,
+    SPEC_CURVE,
+)
 from .course_standard import score_race_course_standard
 from .model import RunnerScore
 from .model import SCORING_VERSION as FIELD_RELATIVE_VERSION
@@ -24,7 +32,8 @@ COURSE_STANDARD_VERSION = OFFICIAL_CURVE.version
 COURSE_STANDARD_CALIBRATED_VERSION = CALIBRATED_CURVE.version
 COURSE_STANDARD_SPEC_VERSION = SPEC_CURVE.version
 DURATION_SCALED_VERSION = DURATION_SCALED_CURVE.version
-DEFAULT_SCORING_VERSION = DURATION_SCALED_CURVE.version
+ENDURANCE_REFERENCED_VERSION = ENDURANCE_REFERENCED_CURVE.version
+DEFAULT_SCORING_VERSION = ENDURANCE_REFERENCED_CURVE.version
 
 
 @dataclass(frozen=True)
@@ -36,14 +45,29 @@ class ScoringModelInfo:
 
 
 _MODEL_INFO: dict[str, ScoringModelInfo] = {
+    ENDURANCE_REFERENCED_VERSION: ScoringModelInfo(
+        version=ENDURANCE_REFERENCED_VERSION,
+        name='Course Standard V0.4 (endurance-referenced)',
+        description=(
+            'Same V0.2 measured course-demand engine and V0.1 score anchors, with the score '
+            'curve referenced to the human performance ceiling for a course of this size. A '
+            'score therefore measures how close a runner came to the best performance possible '
+            'on a course that big, so short and long races are scored on the same scale and '
+            '1000 means world-best at every distance '
+            '(see docs/methodology/v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md).'
+        ),
+        uses_competitors=False,
+    ),
     DURATION_SCALED_VERSION: ScoringModelInfo(
         version=DURATION_SCALED_VERSION,
         name='Course Standard V0.3 (duration-scaled, provisional)',
         description=(
-            'Same V0.1 course-demand engine and anchor table, plus a duration/course-demand '
-            'scaling correction (Riegel exponent b=1.06) so extreme ultra-distance courses do not '
-            "saturate at the top of the scale (see docs/methodology/v0.3/OTRI-DURATION-SCALED-CURVE.md). "
-            'Provisional: calibrated from one real ultra-distance validation point.'
+            'Superseded by V0.4. Same V0.1 course-demand engine and anchor table, plus a '
+            'duration/course-demand scaling correction (Riegel exponent b=1.06). b=1.06 was '
+            'derived from road racing under 4 hours and under-corrects badly beyond it, and '
+            "V0.1's invented 1000-anchor still saturates on short courses "
+            '(see docs/methodology/v0.3/OTRI-DURATION-SCALED-CURVE.md). '
+            'Retained so V0.3 scores stay reproducible.'
         ),
         uses_competitors=False,
     ),
@@ -108,6 +132,10 @@ def score_race(
     measurement=None,
 ) -> list[RunnerScore]:
     """Score a race with the selected model version."""
+    if model_version == ENDURANCE_REFERENCED_VERSION:
+        return score_race_course_standard(
+            race, results, gpx_points=gpx_points, curve=ENDURANCE_REFERENCED_CURVE, measurement=measurement
+        )
     if model_version == DURATION_SCALED_VERSION:
         return score_race_course_standard(race, results, gpx_points=gpx_points, curve=DURATION_SCALED_CURVE, measurement=measurement)
     if model_version == MEASURED_CURVE.version:

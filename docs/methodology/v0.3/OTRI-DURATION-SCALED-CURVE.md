@@ -1,8 +1,19 @@
 # OTRI Duration-Scaled Curve — V0.3 Addendum
 
-**Status:** Provisional calibration candidate (extends V0.1, does not replace it)
+**Status:** Superseded by [V0.4](../v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md) — retained so V0.3 scores stay reproducible
 **Model identifier:** `0.3.0-course-standard-duration-scaled`
 **Depends on:** [`../v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md`](../v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md) — this document only adds a duration-scaling step on top of that spec's course-demand engine and anchor table. Every section of the V0.1 spec still applies unchanged (course demand calculation, exclusions, determinism, versioning policy).
+
+> **Superseded.** V0.3 correctly identified that performance rate decays with event duration,
+> but corrected for it with Riegel's `b = 1.06` — an exponent derived from road racing under
+> about four hours. Fitted segment by segment against world-best performances, the real exponent
+> stays near 1.06 up to the marathon and then climbs to roughly 1.22 in the ultra range, so V0.3
+> left most of the correction unmade (the worked example below reached only 783). V0.3 also left
+> V0.1's *extrapolated* 1000-anchor in place, so the short end of the scale still saturated: a
+> 15:06 5 km scored 1000. Section 5's own limitations flagged both risks.
+>
+> [V0.4](../v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md) replaces this model. The rest of this
+> document is kept unchanged as the historical record for `0.3.0-course-standard-duration-scaled`.
 
 ## 1. The problem this fixes
 
