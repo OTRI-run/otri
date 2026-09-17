@@ -12,13 +12,9 @@ A single race score describes one performance. The overall OTRI Index should ans
 
 The overall index must combine several performances without becoming confusing, overly sensitive to one unusual race, or dominated by a single distance type.
 
-Existing systems provide useful reference designs, but OTRI should not copy them.
+Existing industry products provide useful general reference patterns, but OTRI should not copy any external methodology.
 
-ITRA currently calculates its general Performance Index as a weighted mean of up to five best scores over the previous 36 months, regardless of distance. It also provides distance-category indexes using the best five results in a category. ITRA gives more influence to recent results and higher-performing results, and a runner can receive an index after one result. citehttps://itra.run/FAQ/PerformanceIndex
-
-UTMB currently describes its Index as a weighted average of a runner's best scores over the past three years, with higher and more recent scores carrying more influence; it also maintains category-specific race scores and an overall index. citehttps://utmb.world/news/Index-evolution citehttps://utmb.world/race-score-utmb-index
-
-These systems establish a strong UX expectation: runners should have one headline index plus useful category views.
+Useful patterns to evaluate include a weighted set of recent/best performances, category views, a rolling time window, and a single headline index. These are research inputs only, not OTRI equations.
 
 ## 2. OTRI principle
 
@@ -82,7 +78,7 @@ This follows the existing OTRI principle that athletes may submit results for re
 
 **Proposed default:** 36 months rolling.
 
-Reason: ITRA uses 36 months and UTMB describes three years. This makes the concept familiar to runners while preserving a meaningful recent-history measure. citehttps://itra.run/FAQ/PerformanceIndex citehttps://utmb.world/news/Index-evolution
+This is an initial product hypothesis chosen because a multi-year rolling window is a familiar pattern in athlete-index products. It must be validated independently and may change.
 
 The window must be configurable in the scoring-version definition, not hard-coded into UI text.
 
@@ -93,8 +89,6 @@ The window must be configurable in the scoring-version definition, not hard-code
 This is a starting specification, not a claim that five is mathematically optimal. Benchmark alternatives such as 3, 5, 6 and 8 before locking the parameter.
 
 A runner with fewer than five valid races should still receive an index, but the profile must show lower evidence depth / confidence rather than pretending the estimate has equal support.
-
-This mirrors the user-facing accessibility of ITRA, which gives a Performance Index after one valid race while noting that more races improve the reliability of the estimate. citehttps://itra.run/FAQ/PerformanceIndex
 
 ## 5. Proposed aggregation model
 
@@ -120,9 +114,7 @@ round to displayed integer
 
 Newer performances should have more influence than older performances.
 
-Do not copy ITRA's exact 0.995 / 0.990 / 0.985 / 0.980 weights. Those are their methodology, not OTRI's.
-
-Instead, define an OTRI decay function in the published model, for example a smooth monotonic decay:
+Do not copy constants from another service. Define an OTRI decay function in the published model, for example a smooth monotonic decay:
 
 ```text
 weight_age(t) = published_function(t)
@@ -232,7 +224,7 @@ Trail           684
 100M            —
 ```
 
-Category labels must be based on OTRI-defined distance ranges. Do not copy ITRA or UTMB category names/thresholds without independent justification.
+Category labels must be based on OTRI-defined distance ranges and independently justified.
 
 ## 8. Which race should the UI show as counting?
 
@@ -314,9 +306,7 @@ The overall index should be robust to one bad performance.
 
 A low-score result should not automatically destroy a runner's index if better recent qualifying performances already exist.
 
-DNF should not count as a normal finishing performance.
-
-ITRA currently states that a DNF does not impact its Performance Index and that a much lower result may be excluded from the calculation; OTRI should treat this as reference behavior, not as a requirement to copy. citehttps://itra.run/FAQ/PerformanceIndex
+DNF should not count as a normal finishing performance unless a future methodology explicitly defines another treatment.
 
 ## 12. Race frequency and ultra-distance fairness
 
@@ -335,7 +325,7 @@ Recency
 
 rather than creating hidden experience bonuses.
 
-ITRA explicitly uses an experience component in its current calculation, with different weights depending on the number of valid results. OTRI should research whether this is necessary under its own scoring philosophy and validate alternatives empirically. citehttps://itra.run/FAQ/PerformanceIndex
+OTRI should research whether any explicit experience component is necessary under its own scoring philosophy and validate alternatives empirically.
 
 ## 13. Overall index vs race score
 
@@ -385,22 +375,15 @@ OTRI INDEX
 
 Do not overload the graph. It should answer "am I improving, stable, or declining?" without inventing a judgment about why.
 
-## 16. Cross-index comparison page
+## 16. Comparison research page
 
-OTRI may later show an informational comparison of OTRI, ITRA and UTMB concepts.
+OTRI may later show an informational comparison of common trail-running index concepts.
 
-The page must explain:
+This page should describe differences factually and avoid copying another service's scores, equations, terminology, branding, thresholds or category boundaries.
+
+The OTRI portion should explain:
 
 ```text
-ITRA
-Current public methodology: best up to 5 scores over 36 months,
-weighted for recency and performance; category indexes also exist.
-
-UTMB
-Current public methodology: best scores over the previous three years,
-with higher and more recent scores carrying more influence; Race Score
-is race-specific and Index aggregates performances.
-
 OTRI
 Independent methodology: course/performance race score + versioned
 rolling runner index.
@@ -456,4 +439,4 @@ Build the first version with:
 
 Then benchmark against alternatives before calling the method final.
 
-The implementation AI must not copy the exact ITRA or UTMB arithmetic. Those systems are research references only.
+The implementation AI must define OTRI arithmetic independently and must not copy another service's exact equations.
