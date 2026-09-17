@@ -1,6 +1,6 @@
 # OTRI Smoothed Upper Curve — V0.6
 
-**Status:** Current default scoring model
+**Status:** Curve still current; scored through [V0.7](../v0.7/OTRI-DEM-GATED-MEASUREMENT.md), which adds measurement gating and confidence on top — V0.6 remains selectable and reproducible
 **Model identifier:** `0.6.0-course-standard-smoothed-upper`
 **Extends:** [`../v0.5/OTRI-TERRAIN-ADJUSTED-DEMAND.md`](../v0.5/OTRI-TERRAIN-ADJUSTED-DEMAND.md) — demand measurement, terrain adjustment and the endurance reference are V0.5's, unchanged. V0.6 changes only the **shape of the score curve above 544**.
 **Depends on:** [`../v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md`](../v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md)

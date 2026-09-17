@@ -7,6 +7,7 @@ Older scoring curves remain selectable for historical reproducibility.
 
 from .course_standard import (
     CALIBRATED_CURVE,
+    DEM_GATED_CURVE,
     DURATION_SCALED_CURVE,
     ENDURANCE_REFERENCE,
     ENDURANCE_REFERENCED_CURVE,
@@ -32,6 +33,7 @@ from .registry import (
     ENDURANCE_REFERENCED_VERSION,
     TERRAIN_ADJUSTED_VERSION,
     SMOOTHED_UPPER_VERSION,
+    DEM_GATED_VERSION,
     DEFAULT_SCORING_VERSION,
     ScoringModelInfo,
     available_scoring_models,
@@ -67,6 +69,8 @@ __all__ = [
     "TERRAIN_ADJUSTED_CURVE",
     "SMOOTHED_UPPER_VERSION",
     "SMOOTHED_UPPER_CURVE",
+    "DEM_GATED_VERSION",
+    "DEM_GATED_CURVE",
     "TERRAIN_MODEL",
     "TerrainModel",
     "EnduranceReference",

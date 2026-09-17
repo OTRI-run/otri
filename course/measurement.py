@@ -17,10 +17,26 @@ from geographiclib.geodesic import Geodesic
 
 from .gpx import GpxParseError, TrackPoint
 
-VERSION = 'course-measurement-v1'
+VERSION = 'course-measurement-v2'
 PARAMETERS = dict(spacing_m=10.0, median_radius_m=10.0, mean_radius_m=10.0,
                   reversal_m=8.0, grade_window_m=50.0, max_missing_gap_m=30.0,
-                  smoothing_policy='terrain-or-implausible-local-elevation')
+                  smoothing_policy='terrain-or-implausible-local-elevation',
+                  # v2: a track whose median point spacing exceeds this chords the switchbacks and
+                  # measures the course short. Measured on four real courses: at or under 30 m the
+                  # demand error stays within ~2-3%; at 45-60 m it reaches 4-8%. Such tracks are still
+                  # measured, but the measurement is marked needs_review with a plain reason.
+                  max_median_edge_m=30.0)
+
+# Flags that make a measurement `needs_review` rather than `provisional`. Shared with scoring so
+# the confidence ladder and the published status can never disagree.
+REVIEW_FLAGS = (
+    'implausible_local_elevation_change',
+    'sustained_grade_outside_scoring_domain',
+    'disconnected_track_segments',
+    'sparse_geometry_median_over_30m',
+)
+
+UPLOADED_SOURCE = {'dataset': 'uploaded-gpx', 'datum': 'unknown', 'sensor': 'unknown'}
 
 
 def interpolate(xs, ys, x):
@@ -95,6 +111,16 @@ class Measurement:
     geometry_hash: str
     source: dict
     quality_flags: tuple[str, ...]
+    # v2. Defaults so v1 snapshots stored before this field existed still replay unchanged.
+    median_edge_m: float | None = None
+
+    @property
+    def needs_review(self) -> bool:
+        return any(flag in self.quality_flags for flag in REVIEW_FLAGS)
+
+    @property
+    def dem_sourced(self) -> bool:
+        return self.source.get('dataset') != UPLOADED_SOURCE['dataset']
 
     def to_dict(self):
         profile, offset = [], 0.0
@@ -104,7 +130,8 @@ class Measurement:
             offset += segment[-1][0]
         return dict(version=VERSION, parameters=PARAMETERS.copy(), distance_method='WGS84 horizontal',
                     geometry_hash=self.geometry_hash, source=self.source,
-                    status='needs_review' if any(f in self.quality_flags for f in ('implausible_local_elevation_change', 'sustained_grade_outside_scoring_domain', 'disconnected_track_segments')) else 'provisional', quality_flags=list(self.quality_flags),
+                    status='needs_review' if self.needs_review else 'provisional', quality_flags=list(self.quality_flags),
+                    median_edge_m=self.median_edge_m,
                     coverage_fraction=1.0, profile=profile,
                     profile_hash=sha256(json.dumps(profile, sort_keys=True).encode()).hexdigest())
 
@@ -113,14 +140,16 @@ def measure_course(points: list[TrackPoint], provider=None) -> Measurement:
     if len(points) < 2:
         raise GpxParseError('at least two valid track points are required')
     flags = {'elevation_estimate_not_field_validated'}
-    source = {'dataset': 'uploaded-gpx', 'datum': 'unknown', 'sensor': 'unknown'}
-    if provider is not None:
-        source = provider.manifest
-    else:
-        flags.add('unknown_elevation_provenance')
+    # Provenance is decided per course, not per configuration: a configured DEM that does not
+    # cover this course falls back to the uploaded elevations *announced* (flagged, and the
+    # source recorded as uploaded), never silently. Genuine provider failures still stop the
+    # measurement below.
+    source = provider.manifest if provider is not None else dict(UPLOADED_SOURCE)
+    used_provider = provider is not None
     segments = []
     total = gain = loss = steep_up = steep_down = 0.0
     grades = []
+    edge_lengths = []
     for _, group in groupby(points, key=lambda p: p.segment_id):
         original = list(group)
         clean = []
@@ -145,6 +174,7 @@ def measure_course(points: list[TrackPoint], provider=None) -> Measurement:
             if length <= 1e-6:
                 raise GpxParseError('consecutive coordinates resolve to the same WGS84 location')
             xs.append(xs[-1] + length)
+            edge_lengths.append(length)
             if length > 100:
                 flags.add('sparse_geometry_over_100m')
             if a.elevation_m is not None and b.elevation_m is not None and abs(b.elevation_m - a.elevation_m) > max(8, length):
@@ -153,7 +183,8 @@ def measure_course(points: list[TrackPoint], provider=None) -> Measurement:
         if total + xs[-1] > 2_000_000:
             raise GpxParseError('course exceeds the 2,000 km measurement limit')
         grid = boundaries(xs[-1], PARAMETERS['spacing_m'])
-        if provider is None:
+
+        def uploaded_profile():
             known = [(x, p.elevation_m) for x, p in zip(xs, clean) if p.elevation_m is not None]
             if len(known) < 2 or clean[0].elevation_m is None or clean[-1].elevation_m is None:
                 raise GpxParseError('elevation coverage incomplete: missing endpoint or profile; provide an elevation-complete GPX or configure a terrain provider')
@@ -164,8 +195,10 @@ def measure_course(points: list[TrackPoint], provider=None) -> Measurement:
                         raise GpxParseError('elevation coverage incomplete: missing interval exceeds 30 m')
                     flags.add('short_elevation_gap_interpolated')
             kx, kz = zip(*known)
-            zs = [interpolate(kx, kz, x) for x in grid]
-        else:
+            return [interpolate(kx, kz, x) for x in grid]
+
+        zs = None
+        if provider is not None:
             locations = []
             for x in grid:
                 i = max(0, min(len(xs)-2, bisect_right(xs, x)-1))
@@ -174,15 +207,29 @@ def measure_course(points: list[TrackPoint], provider=None) -> Measurement:
                 pos = Geodesic.WGS84.Direct(a.lat, a.lon, edge['azi1'], x-xs[i])
                 locations.append((pos['lat2'], pos['lon2']))
             try:
-                zs = provider.sample(locations)
+                sampled = provider.sample(locations)
             except (OSError, ValueError, KeyError) as error:
                 raise GpxParseError(f'terrain lookup failed: {error}') from error
-            if len(zs) != len(grid) or any(z is None or not math.isfinite(z) for z in zs):
-                raise GpxParseError('terrain provider has incomplete elevation coverage')
+            if len(sampled) == len(grid) and all(z is not None and math.isfinite(z) for z in sampled):
+                zs = sampled
+            else:
+                # Announced fallback: the DEM does not cover this course. Use the file's own
+                # elevations if it has them, and say so in the provenance and the flags.
+                try:
+                    zs = uploaded_profile()
+                except GpxParseError:
+                    raise GpxParseError('terrain provider has incomplete elevation coverage') from None
+                flags.add('terrain_coverage_incomplete_used_uploaded_elevation')
+                source = dict(UPLOADED_SOURCE)
+                used_provider = False
+        if zs is None:
+            zs = uploaded_profile()
+        if not used_provider:
+            flags.add('unknown_elevation_provenance')
         # Avoid applying both spatial smoothing and a prominence filter to an
         # already smooth route-planner profile. The rule depends on observable
         # geometry/elevation quality, never filenames, race totals or creator.
-        if noisy or provider is not None:
+        if noisy or used_provider:
             filtered = _smooth(grid, zs)
             flags.add('spatial_smoothing_applied')
         else:
@@ -210,8 +257,12 @@ def measure_course(points: list[TrackPoint], provider=None) -> Measurement:
         flags.add('disconnected_track_segments')
     if grades and max(abs(g) for g in grades) > 0.45:
         flags.add('sustained_grade_outside_scoring_domain')
+    median_edge = statistics.median(edge_lengths) if edge_lengths else None
+    if median_edge is not None and median_edge > PARAMETERS['max_median_edge_m']:
+        flags.add('sparse_geometry_median_over_30m')
     elevations = [z for segment in segments for _, z in segment]
     geometry_hash = sha256(json.dumps([(p.lat, p.lon, p.segment_id) for p in points]).encode()).hexdigest()
     return Measurement(tuple(segments), total, gain, loss, steep_up, steep_down,
                        max(0, max(grades)) if grades else None, max(0, -min(grades)) if grades else None,
-                       min(elevations), max(elevations), geometry_hash, source, tuple(sorted(flags)))
+                       min(elevations), max(elevations), geometry_hash, source, tuple(sorted(flags)),
+                       round(median_edge, 1) if median_edge is not None else None)

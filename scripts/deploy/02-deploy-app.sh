@@ -55,8 +55,19 @@ python3.12 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements-dev.txt
+pip install -r course/requirements-terrain.txt
 pip install gunicorn
 deactivate
+
+# Terrain dataset (course-measurement-v2 / scoring V0.7): if 06-install-dem.sh has pinned tiles,
+# point the API at them. Without it every score reports Low confidence, on purpose.
+if [[ -z "${OTRI_DEM_MANIFEST:-}" ]] && [[ -f "${APP_DIR}/dem/manifest.json" ]]; then
+  OTRI_DEM_MANIFEST="${APP_DIR}/dem/manifest.json"
+  echo "==> Using terrain manifest ${OTRI_DEM_MANIFEST}"
+elif [[ -z "${OTRI_DEM_MANIFEST:-}" ]]; then
+  echo "WARNING: no terrain manifest - elevation will come from uploaded GPX files and every" >&2
+  echo "         score will report Low confidence. Run 06-install-dem.sh to pin DEM tiles." >&2
+fi
 
 # Preserve an existing JWT secret across re-deploys (regenerating it would log
 # out every organizer on every deploy); only generate one the first time.
@@ -78,6 +89,7 @@ DATABASE_URL=${DATABASE_URL}
 RESEND_API_KEY=${RESEND_API_KEY:-}
 OTRI_EMAIL_FROM=${OTRI_EMAIL_FROM:-OTRI <noreply@otri.run>}
 OTRI_APP_BASE_URL=${OTRI_APP_BASE_URL:-https://otri.run}
+OTRI_DEM_MANIFEST=${OTRI_DEM_MANIFEST:-}
 EOF
 chmod 600 "${APP_DIR}/.env"
 

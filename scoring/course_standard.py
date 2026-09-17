@@ -19,6 +19,7 @@ import math
 from dataclasses import dataclass, replace
 
 from course.gpx import TrackPoint
+from course.measurement import REVIEW_FLAGS
 from ingestion.records import RaceRecord, ResultRecord
 
 from .course_demand import CourseDemand, compute_course_demand, equivalent_flat_distance_from_totals
@@ -336,6 +337,14 @@ SMOOTHED_UPPER_CURVE = replace(
     ),
 )
 
+# V0.7 changes nothing about the curve. It changes what the score is allowed to *claim*. The same
+# route recorded by two devices measured up to 25% apart under V0.6, and the score said nothing.
+# V0.7 scores from course-measurement-v2 (median-spacing gate) and grades its own confidence:
+# `High` only when elevation came from a pinned DEM and the track is dense enough to measure the
+# route rather than a chord of it; `Low`, with the reason surfaced, when either fails. See
+# docs/methodology/v0.7/OTRI-DEM-GATED-MEASUREMENT.md.
+DEM_GATED_CURVE = replace(SMOOTHED_UPPER_CURVE, version='0.7.0-course-standard-dem-gated')
+
 # Curves scored from the V0.2 measured-demand pipeline rather than the raw V0.1 integral.
 MEASURED_DEMAND_VERSIONS = frozenset(
     {
@@ -344,8 +353,51 @@ MEASURED_DEMAND_VERSIONS = frozenset(
         ENDURANCE_REFERENCED_CURVE.version,
         TERRAIN_ADJUSTED_CURVE.version,
         SMOOTHED_UPPER_CURVE.version,
+        DEM_GATED_CURVE.version,
     }
 )
+
+
+def measured_demand_for(gpx_points, measurement, curve: ScoreCurve):
+    """Course demand for a measured-pipeline curve, plus the Measurement it came from.
+
+    Measures the course here (with whatever terrain provider is configured) when no stored
+    measurement is supplied, so the scorer can see the measurement's provenance and status
+    rather than only its numbers.
+    """
+    from course.elevation import configured_provider
+    from course.measurement import measure_course
+    from .measured_demand import compute_measured_demand
+
+    if measurement is None:
+        measurement = measure_course(gpx_points, configured_provider())
+    return compute_measured_demand(measurement=measurement), measurement
+
+
+def confidence_for(measurement, curve: ScoreCurve, has_gpx: bool) -> tuple[str, tuple[str, ...]]:
+    """Confidence label plus the flags that explain it.
+
+    Pre-V0.7 curves keep their historical rule (Medium with a GPX, Low without). V0.7 earns
+    `High` only with DEM-sourced elevation on a dense track, and says exactly why otherwise.
+    """
+    if curve.version != DEM_GATED_CURVE.version or measurement is None:
+        return _confidence_for_course(has_gpx), ()
+    reasons = []
+    if not measurement.dem_sourced:
+        reasons.append(
+            "elevation_not_dem_sourced: elevation came from the uploaded file, not a pinned terrain "
+            "dataset; the same route recorded by another device may measure differently"
+        )
+    if measurement.needs_review:
+        review = [flag for flag in measurement.quality_flags if flag in REVIEW_FLAGS]
+        detail = ', '.join(review)
+        if 'sparse_geometry_median_over_30m' in review:
+            detail += (
+                f" (median point spacing {measurement.median_edge_m} m; tracks sparser than 30 m chord the "
+                "switchbacks and measure the course short)"
+            )
+        reasons.append(f"measurement_needs_review: {detail}")
+    return ('High' if not reasons else 'Low'), tuple(reasons)
 
 
 def adjusted_demand(demand: CourseDemand, curve: ScoreCurve) -> tuple[float, tuple[str, ...]]:
@@ -418,8 +470,7 @@ def score_race_course_standard(
 
     if gpx_points is not None:
         if curve.version in MEASURED_DEMAND_VERSIONS:
-            from .measured_demand import compute_measured_demand
-            demand = compute_measured_demand(gpx_points, measurement=measurement)
+            demand, measurement = measured_demand_for(gpx_points, measurement, curve)
         else:
             demand = compute_course_demand(gpx_points)
         equivalent_km, quality_flags = adjusted_demand(demand, curve)
@@ -427,7 +478,8 @@ def score_race_course_standard(
         equivalent_km = equivalent_flat_distance_from_totals(race.distance_km, race.elevation_gain_m)
         quality_flags = ()
 
-    confidence = _confidence_for_course(gpx_points is not None)
+    confidence, confidence_flags = confidence_for(measurement if gpx_points is not None else None, curve, gpx_points is not None)
+    quality_flags = tuple(quality_flags) + confidence_flags
     ordered = sorted(
         finishers,
         key=lambda result: (

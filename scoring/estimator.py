@@ -12,10 +12,12 @@ from course.gpx import TrackPoint
 
 from .course_demand import compute_course_demand, equivalent_flat_distance_from_totals
 from .course_standard import (
+    DEM_GATED_CURVE,
     MEASURED_DEMAND_VERSIONS,
-    SMOOTHED_UPPER_CURVE,
     ScoreCurve,
     adjusted_demand,
+    confidence_for,
+    measured_demand_for,
     score_for_time,
     target_time_seconds,
 )
@@ -74,6 +76,8 @@ class ScoreEstimate:
     disclaimer: str
     quality_flags: tuple[str, ...] = ()
     breakdown: EstimateBreakdown | None = None
+    # V0.7: how far this number can be trusted, and why (see course_standard.confidence_for).
+    confidence: str = "Low"
 
     def to_dict(self) -> dict:
         return {
@@ -85,6 +89,7 @@ class ScoreEstimate:
             "disclaimer": self.disclaimer,
             "quality_flags": list(self.quality_flags),
             "breakdown": self.breakdown.to_dict() if self.breakdown is not None else None,
+            "confidence": self.confidence,
         }
 
 
@@ -132,7 +137,7 @@ def estimate_score(
     gpx_points: list[TrackPoint] | None = None,
     distance_km: float | None = None,
     elevation_gain_m: float | None = None,
-    curve: ScoreCurve = SMOOTHED_UPPER_CURVE,
+    curve: ScoreCurve = DEM_GATED_CURVE,
     measurement=None,
 ) -> ScoreEstimate:
     """Predict the Course Standard score for `finish_time_seconds` on this course.
@@ -146,8 +151,7 @@ def estimate_score(
 
     if gpx_points is not None:
         if curve.version in MEASURED_DEMAND_VERSIONS:
-            from .measured_demand import compute_measured_demand
-            demand = compute_measured_demand(gpx_points, measurement=measurement)
+            demand, measurement = measured_demand_for(gpx_points, measurement, curve)
         else:
             demand = compute_course_demand(gpx_points)
         equivalent_km, quality_flags = adjusted_demand(demand, curve)
@@ -164,7 +168,10 @@ def estimate_score(
         raise ValueError("either gpx_points or both distance_km and elevation_gain_m must be provided")
 
     computed = score_for_time(equivalent_km, finish_time_seconds, curve=curve)
-    quality_flags = tuple(quality_flags) + tuple(computed["quality_flags"])
+    confidence, confidence_flags = confidence_for(
+        measurement if gpx_points is not None else None, curve, gpx_points is not None
+    )
+    quality_flags = tuple(quality_flags) + tuple(computed["quality_flags"]) + confidence_flags
 
     return ScoreEstimate(
         equivalent_distance_km=round(equivalent_km, 3),
@@ -174,6 +181,7 @@ def estimate_score(
         scoring_version=curve.version,
         disclaimer=DISCLAIMER,
         quality_flags=quality_flags,
+        confidence=confidence,
         breakdown=_breakdown(
             curve,
             physical_distance_km=physical_distance_km,

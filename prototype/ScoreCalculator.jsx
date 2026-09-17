@@ -16,7 +16,9 @@ const ANCHOR_1000_LEGACY = { score: 1000, q: 17.93986234619293 }
 const ANCHOR_1000 = { score: 1000, q: 21.5331347785071 }
 
 function publishedAnchorsFor(scoringVersion) {
-  if (scoringVersion.includes('smoothed-upper')) return [ANCHOR_0, ANCHOR_349, ANCHOR_544, ANCHOR_1000]
+  if (scoringVersion.includes('smoothed-upper') || scoringVersion.includes('dem-gated')) {
+    return [ANCHOR_0, ANCHOR_349, ANCHOR_544, ANCHOR_1000]
+  }
   if (scoringVersion.includes('endurance-referenced') || scoringVersion.includes('terrain-adjusted')) {
     return [ANCHOR_0, ANCHOR_349, ANCHOR_544, ANCHOR_692, ANCHOR_1000]
   }
@@ -72,6 +74,19 @@ function ScoreCard({ estimate, scoring, targetSeconds }) {
             {estimate.predicted_score}
           </p>
           <p className="mt-2 font-mono text-sm text-slate-500">{formatHms(targetSeconds)}</p>
+          {estimate.confidence && (
+            <p
+              className={`mt-2 inline-block rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-[.06em] ${
+                estimate.confidence === 'High'
+                  ? 'bg-emerald-50 text-emerald-700'
+                  : estimate.confidence === 'Medium'
+                    ? 'bg-slate-100 text-slate-600'
+                    : 'bg-amber-50 text-amber-700'
+              }`}
+            >
+              {estimate.confidence} confidence
+            </p>
+          )}
           {scoring && (
             <p className="mt-2 flex items-center justify-center gap-2 text-xs text-slate-500">
               <Spinner /> Updating…
@@ -108,7 +123,39 @@ function Stat({ label, value, mono = true }) {
 // Two audiences, one panel. The plain-language story on top reads the API's own breakdown of
 // the score — nothing is recomputed here — and the maths lives behind a native <details>, so
 // it costs nothing to ignore and needs no state.
-function ScoreExplanation({ estimate, features, targetSeconds, publishedAnchors, scaledVersion }) {
+// Why a score can or cannot be trusted: where the elevation came from, and whether the track was
+// dense enough to measure the route. Both are decided by the API; this only renders them.
+function MeasurementTrust({ estimate, measurement }) {
+  const flags = estimate.quality_flags ?? []
+  const reasons = flags.filter((flag) => flag.startsWith('elevation_not_dem_sourced') || flag.startsWith('measurement_needs_review'))
+  const demSourced = measurement?.source?.dataset && measurement.source.dataset !== 'uploaded-gpx'
+  const spacing = measurement?.median_edge_m
+  if (!estimate.confidence) return null
+  return (
+    <div
+      className={`mt-3 rounded-xl border px-3 py-2.5 text-xs ${
+        estimate.confidence === 'High' ? 'border-emerald-100 bg-emerald-50/60 text-emerald-800' : 'border-amber-100 bg-amber-50/60 text-amber-800'
+      }`}
+    >
+      <p className="font-semibold">
+        {estimate.confidence === 'High'
+          ? 'Measured from a pinned terrain dataset on a dense track — the same route scores the same from any device.'
+          : 'This score depends on how the course was recorded.'}
+      </p>
+      <ul className="mt-1 space-y-0.5">
+        <li>
+          Elevation: {demSourced ? `${measurement.source.dataset}${measurement.source.release ? ` (${measurement.source.release})` : ''}` : 'from your GPX file — not independently verified'}
+        </li>
+        {spacing != null && <li>Track density: one point every {spacing} m{spacing > 30 ? ' — too sparse; switchbacks get cut short' : ''}</li>}
+        {reasons.map((flag) => (
+          <li key={flag} className="break-words">{flag.replace(/^[a-z_]+: /, '')}</li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function ScoreExplanation({ estimate, features, targetSeconds, publishedAnchors, scaledVersion, measurement }) {
   const b = estimate.breakdown
   const pct = b?.fraction_of_ceiling != null ? Math.round(b.fraction_of_ceiling * 100) : null
   const terrainPct = b ? Math.round((b.terrain_factor - 1) * 1000) / 10 : 0
@@ -189,6 +236,8 @@ function ScoreExplanation({ estimate, features, targetSeconds, publishedAnchors,
         being long.
       </p>
 
+      <MeasurementTrust estimate={estimate} measurement={measurement} />
+
       <details className="group mt-4 rounded-xl border border-slate-200 bg-slate-50/60">
         <summary className="cursor-pointer select-none px-4 py-2.5 font-mono text-[10px] uppercase tracking-[.08em] text-slate-500 hover:text-slate-700">
           <span className="inline-block transition-transform group-open:rotate-90">▸</span> Show the maths
@@ -254,7 +303,8 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
           )}
 
           <p className="mt-4 text-[11px] text-slate-500">
-            Methodology: <code>docs/methodology/v0.6/OTRI-SMOOTHED-UPPER-CURVE.md</code> (curve),{' '}
+            Methodology: <code>docs/methodology/v0.7/OTRI-DEM-GATED-MEASUREMENT.md</code> (measurement & confidence),{' '}
+            <code>v0.6/OTRI-SMOOTHED-UPPER-CURVE.md</code> (curve),{' '}
             <code>v0.5/OTRI-TERRAIN-ADJUSTED-DEMAND.md</code> (terrain),{' '}
             <code>v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md</code> (human ceiling),{' '}
             <code>v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md</code> (course demand).
@@ -419,6 +469,7 @@ export default function ScoreCalculator() {
 
   const anomalyFlags = ['implausible_local_elevation_change', 'conflicting_duplicate_elevations', 'sustained_grade_outside_scoring_domain']
   const hasAnomaly = measurement?.quality_flags?.some((flag) => anomalyFlags.includes(flag))
+  const tooSparse = measurement?.quality_flags?.includes('sparse_geometry_median_over_30m')
 
   // Which curve produced this estimate: V0.4 scales by the endurance reference, V0.3 by the
   // Riegel exponent, and everything older looks the observed rate up directly.
@@ -427,6 +478,7 @@ export default function ScoreCalculator() {
     scoringVersion.includes('endurance-referenced') ||
     scoringVersion.includes('terrain-adjusted') ||
     scoringVersion.includes('smoothed-upper') ||
+    scoringVersion.includes('dem-gated') ||
     scoringVersion.includes('duration-scaled')
   const publishedAnchors = publishedAnchorsFor(scoringVersion)
 
@@ -537,6 +589,13 @@ export default function ScoreCalculator() {
             {hasAnomaly && (
               <p className="mt-3 text-sm text-amber-700">Elevation anomalies detected. Review the course profile before trusting this estimate.</p>
             )}
+            {tooSparse && (
+              <p className="mt-3 text-sm text-amber-700">
+                This track has a point only every {measurement.median_edge_m} m. Sparse recordings cut switchbacks short,
+                so the course measures shorter and easier than it is. For a trustworthy score, upload a track recorded
+                at least every 30 m (1–5 s on most watches).
+              </p>
+            )}
 
             <div className="mt-5 border-t border-slate-100 pt-4">
               <label className="font-mono text-[9px] tracking-[.08em] text-slate-400">YOUR TARGET FINISH TIME</label>
@@ -578,6 +637,7 @@ export default function ScoreCalculator() {
                   targetSeconds={targetSeconds}
                   publishedAnchors={publishedAnchors}
                   scaledVersion={scaledVersion}
+                  measurement={measurement}
                 />
               )}
             </div>

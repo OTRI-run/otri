@@ -17,6 +17,7 @@ from ingestion.records import RaceRecord, ResultRecord
 
 from .course_standard import (
     CALIBRATED_CURVE,
+    DEM_GATED_CURVE,
     DURATION_SCALED_CURVE,
     ENDURANCE_REFERENCED_CURVE,
     MEASURED_CURVE,
@@ -37,7 +38,8 @@ DURATION_SCALED_VERSION = DURATION_SCALED_CURVE.version
 ENDURANCE_REFERENCED_VERSION = ENDURANCE_REFERENCED_CURVE.version
 TERRAIN_ADJUSTED_VERSION = TERRAIN_ADJUSTED_CURVE.version
 SMOOTHED_UPPER_VERSION = SMOOTHED_UPPER_CURVE.version
-DEFAULT_SCORING_VERSION = SMOOTHED_UPPER_CURVE.version
+DEM_GATED_VERSION = DEM_GATED_CURVE.version
+DEFAULT_SCORING_VERSION = DEM_GATED_CURVE.version
 
 
 @dataclass(frozen=True)
@@ -49,6 +51,18 @@ class ScoringModelInfo:
 
 
 _MODEL_INFO: dict[str, ScoringModelInfo] = {
+    DEM_GATED_VERSION: ScoringModelInfo(
+        version=DEM_GATED_VERSION,
+        name='Course Standard V0.7 (DEM-gated measurement)',
+        description=(
+            "V0.6's curve, scored from course-measurement-v2: elevation from a pinned terrain "
+            'dataset when one is configured, and a median-point-spacing gate so tracks too sparse '
+            'to measure the route are marked for review instead of scored short. Reports its own '
+            'confidence - High only with DEM elevation on a dense track, Low with the reason '
+            '(see docs/methodology/v0.7/OTRI-DEM-GATED-MEASUREMENT.md).'
+        ),
+        uses_competitors=False,
+    ),
     SMOOTHED_UPPER_VERSION: ScoringModelInfo(
         version=SMOOTHED_UPPER_VERSION,
         name='Course Standard V0.6 (smoothed upper curve)',
@@ -160,6 +174,10 @@ def score_race(
     measurement=None,
 ) -> list[RunnerScore]:
     """Score a race with the selected model version."""
+    if model_version == DEM_GATED_VERSION:
+        return score_race_course_standard(
+            race, results, gpx_points=gpx_points, curve=DEM_GATED_CURVE, measurement=measurement
+        )
     if model_version == SMOOTHED_UPPER_VERSION:
         return score_race_course_standard(
             race, results, gpx_points=gpx_points, curve=SMOOTHED_UPPER_CURVE, measurement=measurement

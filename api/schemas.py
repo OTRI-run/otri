@@ -117,6 +117,7 @@ class IllustrativeEstimateOut(BaseModel):
     disclaimer: str
     quality_flags: list[str] = []
     breakdown: EstimateBreakdownOut | None = None
+    confidence: str = "Low"
 
 
 class GpxAnalysis(BaseModel):

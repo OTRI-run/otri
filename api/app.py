@@ -33,6 +33,14 @@ from course import GpxParseError, extract_features, parse_track_points, read_tra
 from course.measurement import Measurement, measure_course
 from course.features import features_from_measurement
 from course.elevation import configured_provider
+import logging
+
+_log = logging.getLogger("otri.api")
+if not os.environ.get("OTRI_DEM_MANIFEST"):
+    _log.warning(
+        "OTRI_DEM_MANIFEST is not set: courses are measured from uploaded elevations and every "
+        "V0.7 score will report Low confidence. See scripts/deploy/06-install-dem.sh."
+    )
 from ingestion import result_records, validate_result_file
 from scoring import available_scoring_models, estimate_score, get_scoring_model_info, score_race
 from scoring.course_standard import MEASURED_DEMAND_VERSIONS

@@ -8,6 +8,7 @@ Automates most of [`docs/operations/digitalocean-deployment.md`](../../docs/oper
 | 2 | `02-deploy-app.sh [repo_url] [branch] [app_dir]` | deploy user | Clones/updates the repo, sets up the Python venv, installs dependencies, writes `.env` (including `DATABASE_URL`, `RESEND_API_KEY`, etc.), runs the database schema/seed step, and installs/starts the `otri-api` systemd service. Safe to re-run for updates. Requires `OTRI_API_ALLOWED_ORIGINS` to be set first; auto-generates `OTRI_API_JWT_SECRET` on first run and preserves it on later runs (set it yourself to control the value); picks up `DATABASE_URL` automatically from step 1's output file. |
 | 3 | `03-configure-nginx.sh <domain> <email>` | root (sudo) | Configures the Nginx reverse proxy and issues a Let's Encrypt certificate. Point a DNS `A` record at the Droplet before running this. |
 | 4 | `04-backup-db.sh` | deploy user (via cron) | Nightly `pg_dump`, gzip-compressed, 14-day retention. Not installed automatically — add the cron line printed in the script's header comment. |
+| 6 | `06-install-dem.sh <tile-id>...` | deploy user | Downloads the named 1°×1° Copernicus GLO-30 tiles (e.g. `N45E006`, ~25 MB each) into `/opt/otri/dem/`, checksums them and writes `manifest.json`. `02-deploy-app.sh` then sets `OTRI_DEM_MANIFEST` automatically. Courses outside the installed tiles still score, from uploaded elevations, at Low confidence with the reason shown. |
 | 5 | `05-auto-update.sh [app_dir] [branch]` | deploy user (via cron) | Polls `origin/<branch>` once; if there's a new commit, discards local changes to tracked-but-gitignored files, pulls, and re-runs `02-deploy-app.sh` (reusing the existing `.env`'s `OTRI_API_ALLOWED_ORIGINS`/`RESEND_API_KEY`). Does nothing (no output, no restart) when there's nothing new — cheap to run every minute via cron. Not installed automatically — add the cron line printed in the script's header comment. |
 
 ## SSH access
@@ -26,6 +27,9 @@ RESEND_API_KEY="re_..." \
 
 # As root/sudo, after pointing DNS at the Droplet:
 sudo ./03-configure-nginx.sh api.otri.run you@example.com
+
+# As the otri user, pin terrain tiles for the regions you expect (then re-run step 2):
+./06-install-dem.sh N45E006 N45E007 N46E006 N46E007 N07E098 N08E098
 
 # As the otri user, add nightly backups:
 crontab -e

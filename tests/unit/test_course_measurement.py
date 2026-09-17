@@ -139,8 +139,13 @@ def test_provider_nodata_fails_closed_and_valid_provider_has_provenance():
     class Missing(Provider):
         def sample(self, locations):
             return [None]*len(locations)
+    # v2: no DEM coverage + no uploaded elevation -> still fails closed ...
     with pytest.raises(GpxParseError, match='coverage'):
-        measure_course(track([0,1]),Missing())
+        measure_course(track([None,None]),Missing())
+    # ... but with uploaded elevation it falls back, announced, and never claims DEM provenance.
+    fallback = measure_course(track([0,1]),Missing())
+    assert fallback.source['dataset'] == 'uploaded-gpx'
+    assert 'terrain_coverage_incomplete_used_uploaded_elevation' in fallback.quality_flags
 
 
 def test_phuket_2026_is_a_plausible_estimate_not_a_hardcoded_total():
