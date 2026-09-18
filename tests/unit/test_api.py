@@ -21,6 +21,8 @@ FLAT_LOOP_GPX = REPO_ROOT / "tests" / "fixtures" / "gpx" / "flat-loop.gpx"
 SINGLE_CLIMB_GPX = REPO_ROOT / "tests" / "fixtures" / "gpx" / "single-climb.gpx"
 STEEP_GPX = REPO_ROOT / "tests" / "fixtures" / "gpx" / "impossibly-steep.gpx"
 
+from course.gpx import parse_track_points  # noqa: E402
+
 client = TestClient(app)
 
 
@@ -727,7 +729,10 @@ def test_share_gpx_stores_the_file_under_a_content_id_and_serves_it_back(tmp_pat
 
     served = client.get(f"/gpx/shared/{body['share_id']}")
     assert served.status_code == 200
-    assert served.content == FLAT_LOOP_GPX.read_bytes()
+    # Served sanitized (course/sanitize.py): the same track, none of the upload's own metadata.
+    track = lambda text: [(p.lat, p.lon, p.elevation_m) for p in parse_track_points(text)]
+    assert track(served.text) == track(FLAT_LOOP_GPX.read_text(encoding="utf-8"))
+    assert 'creator="OTRI"' in served.text
     assert served.headers["content-type"].startswith("application/gpx+xml")
 
 
@@ -775,7 +780,7 @@ def test_share_gpx_is_gzipped_on_disk_and_evicts_the_oldest_when_over_budget(tmp
     assert not (tmp_path / "shared" / f"{ids[0]}.json").exists(), "its sidecar goes too"
     assert client.get(f"/gpx/shared/{ids[0]}").status_code == 404
     served = client.get(f"/gpx/shared/{ids[2]}")
-    assert served.status_code == 200 and served.content.startswith(b"<!-- v2 -->") or b"<!-- v2 -->" in served.content
+    assert served.status_code == 200 and b"<trkpt" in served.content, "the newest course survives"
 
 
 def test_share_gpx_caps_file_size_and_rate_limits(tmp_path, monkeypatch):

@@ -258,7 +258,7 @@ Nothing is fitted to a field of results and nothing is referenced to another ind
 
 - **Determinism.** Same GPX + same measurement version + same build id + same finish time = same score, bit for bit. No external service or live database is needed to score a stored course.
 - **Competitor independence.** Adding, removing or changing other runners never changes a score.
-- **Provenance.** Every scored course keeps its original file, its SHA-256, the measurement version, the elevation source, and the profile hash; every score stores the build id. Raw elevation stays available for audit.
+- **Provenance.** Every scored course keeps its track as uploaded (every position and elevation, exactly; the file's own metadata, timestamps and extensions are removed before storage and its statements of origin kept in the private record), the SHA-256 of the original upload and of the stored file, the measurement version, the elevation source, and the profile hash; every score stores the build id. Raw elevation stays available for audit, and the stored file measures bit-identically to the upload.
 - **Explainability.** The UI can show course demand, finish time, rate, the ceiling for that size, the share and the score, and the calculator's breakdown does.
 - **Output.** A scored result exposes at least the physical distance, gain and loss, segment count, course demand, finish time, `performance_rate`, `otri_raw`, `otri_score`, confidence and `quality_flags`.
 
