@@ -209,8 +209,8 @@ function App() {
   const [session, setSession] = useState(() => readSession())
 
   function signIn(token, email, isAdmin = false) {
-    writeSession(token, email, isAdmin)
-    setSession({ token, email, isAdmin })
+    writeSession()
+    setSession({ token, email, isAdmin, pending: false })
   }
   function signOut() {
     logoutOrganizer()
@@ -222,13 +222,14 @@ function App() {
   // Signed-out visitors hitting an authenticated route go to sign-in; signed-in visitors on the
   // welcome page go straight to their events.
   // Admin/demo flags can change server-side; refresh them for a stored session.
+  // Who is signed in comes from the API, never from storage: on load (and after each sign-in) ask
+  // /auth/me and fill in the email and admin flag.
+  const signedIn = Boolean(session)
   useEffect(() => {
-    if (!session) return
-    const { token, email } = session
-    getMe(token)
+    if (!signedIn) return
+    getMe('')
       .then((me) => {
-        writeSession(token, me.email, me.is_admin)
-        setSession((current) => (current && current.email === email ? { ...current, isAdmin: me.is_admin } : current))
+        setSession((current) => (current ? { ...current, email: me.email, isAdmin: me.is_admin, pending: false } : current))
       })
       .catch((err) => {
         // The cookie expired or was revoked (sign out everywhere, password change elsewhere):
@@ -238,8 +239,7 @@ function App() {
           setSession(null)
         }
       })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.email])
+  }, [signedIn])
 
   const needsAuth = /^\/(events|races|admin|account)/.test(route.path)
   useEffect(() => {
