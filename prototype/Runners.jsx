@@ -28,9 +28,9 @@ function runnerName(runner) {
 function IndexBadge({ index, provisional, size = 'sm' }) {
   if (index == null) return <span className="font-mono text-xs text-slate-400">—</span>
   return (
-    <span className={`inline-flex items-baseline gap-1 font-mono font-bold text-blue-600 ${size === 'lg' ? 'text-3xl' : 'text-base'}`}>
+    <span className={`inline-flex items-baseline gap-1 font-mono font-bold tabular-nums text-blue-600 ${size === 'lg' ? 'text-3xl' : 'text-base'}`}>
       {index}
-      {provisional && <span className="font-mono text-[10px] font-medium tracking-[.08em] text-amber-600">PROV.</span>}
+      {size === 'lg' && provisional && <span className="font-mono text-[10px] font-medium tracking-[.08em] text-amber-600">PROV.</span>}
     </span>
   )
 }
@@ -39,7 +39,7 @@ function RunnerRow({ runner, rank }) {
   return (
     <a
       href={`#runners/${encodeURIComponent(runner.runner_id)}`}
-      className="group grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 no-underline shadow-[0_10px_28px_rgba(15,23,42,.04)] transition hover:border-blue-300 sm:grid-cols-[32px_minmax(0,1fr)_120px_100px_auto]"
+      className="group grid grid-cols-[32px_minmax(0,1fr)_80px] items-center gap-3 px-4 py-3 no-underline transition odd:bg-white even:bg-slate-50/70 hover:bg-blue-50/60 sm:grid-cols-[32px_minmax(0,1fr)_88px_96px_80px]"
     >
       <span className="font-mono text-xs text-slate-400">{rank}</span>
       <span className="min-w-0">
@@ -49,13 +49,13 @@ function RunnerRow({ runner, rank }) {
           <span>{[runner.gender, runner.age_category].filter(Boolean).join(' · ')}</span>
         </span>
       </span>
-      <span className="hidden font-mono text-[10px] text-slate-500 sm:block">
+      <span className="hidden text-right font-mono text-[11px] tabular-nums text-slate-500 sm:block">
         {runner.result_count} result{runner.result_count === 1 ? '' : 's'}
       </span>
-      <span className="hidden font-mono text-[10px] text-slate-500 sm:block">{runner.last_race_date ?? ''}</span>
-      <span className="flex items-center gap-2">
+      <span className="hidden text-right font-mono text-[11px] tabular-nums text-slate-500 sm:block">{runner.last_race_date ?? ''}</span>
+      <span className="flex items-center justify-end gap-2">
         <IndexBadge index={runner.index} provisional={runner.provisional} />
-        <ArrowUpRight size={14} className="text-slate-300 transition group-hover:text-blue-600" />
+        <ArrowUpRight size={14} className="shrink-0 text-slate-300 transition group-hover:text-blue-600" />
       </span>
     </a>
   )
@@ -144,10 +144,19 @@ export function RunnersPage({ initialQuery = '' }) {
         {error && <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</p>}
         {runners === null && !error && <p className="mt-6 text-sm text-slate-500">Loading…</p>}
         {runners && shown.length === 0 && <p className="mt-6 text-sm text-slate-500">No runner matches that yet.</p>}
-        <div className="mt-4 grid gap-2">
-          {shown.map((runner, index) => (
-            <RunnerRow key={runner.runner_id} runner={runner} rank={index + 1} />
-          ))}
+        <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+          <div className="hidden grid-cols-[32px_minmax(0,1fr)_88px_96px_112px] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500 sm:grid">
+            <span>#</span>
+            <span>Runner</span>
+            <span className="text-right">Results</span>
+            <span className="text-right">Last race</span>
+            <span className="text-right">Index</span>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {shown.map((runner, index) => (
+              <RunnerRow key={runner.runner_id} runner={runner} rank={index + 1} />
+            ))}
+          </div>
         </div>
 
         <NextSteps
