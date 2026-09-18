@@ -100,8 +100,9 @@ def _render(
 <tr><td style="padding:0 4px 18px">
   <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>
     <td style="vertical-align:middle;padding-right:10px"><img src="{escape(LOGO_URL, quote=True)}" width="36" height="36" alt="OTRI" style="display:block;border:0"></td>
-    <td style="vertical-align:middle;font-family:{_FONT};font-size:22px;font-weight:800;letter-spacing:-1px;color:#0b1220">OTRI</td>
-    <td style="vertical-align:middle;padding-left:12px;border-left:1px solid #cbd5e1;margin-left:12px;font-family:{_MONO};font-size:10px;letter-spacing:1.5px;line-height:14px;color:#2563eb">&nbsp;OPEN TRAIL<br>&nbsp;RUNNING INDEX</td>
+    <td style="vertical-align:middle;padding-right:12px;font-family:{_FONT};font-size:22px;font-weight:800;letter-spacing:-1px;color:#0b1220">OTRI</td>
+    <td style="vertical-align:middle;padding-right:12px"><div style="width:1px;height:26px;background:#cbd5e1;font-size:0;line-height:0">&nbsp;</div></td>
+    <td style="vertical-align:middle;font-family:{_MONO};font-size:10px;letter-spacing:1.5px;line-height:14px;color:#2563eb">OPEN TRAIL<br>RUNNING INDEX</td>
   </tr></table>
 </td></tr>
 <tr><td style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:36px 36px 28px;font-family:{_FONT}">
