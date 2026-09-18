@@ -96,7 +96,7 @@ Defaults to `http://localhost:5173` (the Vite dev server) if unset.
 
 1. Install PostgreSQL and create a database (see `docs/operations/` for a production setup guide; for local dev, `createdb otri` after installing PostgreSQL is enough).
 2. `pip install -r requirements-dev.txt`
-3. `python scripts/seed_demo_data.py` — creates the schema and loads the synthetic demo events/races/results.
+3. `python scripts/seed_demo_data.py --publish` — creates the schema and loads the synthetic demo events/races/results. Without `--publish` the demo races are created unpublished (test data is not public by default; admins see them under Admin → Events & races); `--unpublish` hides them all again.
 4. `uvicorn api.app:app --reload`
 
 Then open `http://127.0.0.1:8000/docs` for interactive Swagger docs (generated automatically by FastAPI).

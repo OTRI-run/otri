@@ -222,7 +222,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 02 / Races */}
+      {/* 02 / Races: only when there is a scored race to show */}
+      {races.length > 0 && (
       <section id="races-preview" className="bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] py-14 sm:py-20">
         <div className={CONTAINER}>
           <div className="flex items-center justify-between gap-4">
@@ -239,7 +240,7 @@ export default function Home() {
                 <Gradient>Every number explained.</Gradient>
               </Heading>
               <p className="mt-5 max-w-[440px] text-sm leading-7 text-slate-500">
-                Demonstration races scored under the Course Standard model. A score depends only on the course and the
+                {races.every((race) => race.is_demo) ? 'Demonstration races' : 'Races'} scored under the Course Standard model. A score depends only on the course and the
                 runner's own finish time — never on who else raced. Open one to see its leaderboard.
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-2 font-mono text-[8px] text-slate-500">
@@ -255,6 +256,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      )}
 
       {/* 03 / Organizers */}
       <section className="bg-white py-14 sm:py-20">
