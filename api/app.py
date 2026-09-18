@@ -251,13 +251,15 @@ def health(request: Request, response: Response) -> dict:
             pending = [m.name for m in _migrations.pending(connection)]
         checks["database"] = {"ok": not pending, "pending_migrations": pending}
     except Exception as error:  # noqa: BLE001
-        checks["database"] = {"ok": False, "error": str(error)[:200]}
+        print(f"health: database check failed: {error!r}")
+        checks["database"] = {"ok": False, "error": "database unreachable (details in the API log)"}
     try:
         usage = shutil.disk_usage(REPO_ROOT)
         free_percent = round(usage.free / usage.total * 100, 1)
         checks["disk"] = {"ok": free_percent >= 10, "free_percent": free_percent}
     except OSError as error:
-        checks["disk"] = {"ok": False, "error": str(error)[:200]}
+        print(f"health: disk check failed: {error!r}")
+        checks["disk"] = {"ok": False, "error": "disk usage unavailable (details in the API log)"}
     ok = all(check["ok"] for check in checks.values())
     if not ok:
         response.status_code = 503

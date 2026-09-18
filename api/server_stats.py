@@ -252,6 +252,7 @@ def tls_expiry(host: str | None) -> dict:
         import ssl
 
         context = ssl.create_default_context()
+        context.minimum_version = ssl.TLSVersion.TLSv1_2  # never negotiate TLS 1.0/1.1, even on an old OpenSSL
         with socket.create_connection((host, 443), timeout=4) as sock:
             with context.wrap_socket(sock, server_hostname=host) as tls:
                 cert = tls.getpeercert()
