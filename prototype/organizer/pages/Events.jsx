@@ -130,11 +130,11 @@ export function NewEvent({ session }) {
             <Field label="Event date" htmlFor="ev-date" hint="The first day of the event.">
               <input id="ev-date" required type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
             </Field>
-            <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Location" htmlFor="ev-location" hint="Town or area, as runners know it.">
                 <input id="ev-location" value={location} onChange={(e) => setLocation(e.target.value)} className={inputClass} placeholder="Chiang Mai" />
               </Field>
-              <Field label="Country" htmlFor="ev-country" hint="Where the event takes place.">
+              <Field label="Country" htmlFor="ev-country" hint="Where it takes place.">
                 <CountrySelect id="ev-country" value={country} onChange={setCountry} className={inputClass} />
               </Field>
             </div>
@@ -255,7 +255,7 @@ export function EventPage({ session, eventId }) {
             <Field label="Event date" htmlFor="ed-date">
               <input id="ed-date" required type="date" value={form.event_date} onChange={(e) => setForm((f) => ({ ...f, event_date: e.target.value }))} className={inputClass} />
             </Field>
-            <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Location" htmlFor="ed-location">
                 <input id="ed-location" value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} className={inputClass} placeholder="Chiang Mai" />
               </Field>
