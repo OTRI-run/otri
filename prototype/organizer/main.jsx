@@ -53,9 +53,17 @@ function Header({ session, onSignOut }) {
             </a>
             <UnitsMenu />
             {session ? (
-              <button onClick={onSignOut} className="text-[13px] font-medium text-slate-500 hover:text-slate-950" title={session.email}>
-                Sign out
-              </button>
+              <span className="flex items-center gap-2">
+                <span className="hidden max-w-[180px] truncate text-xs text-slate-500 xl:inline" title={session.email}>
+                  {session.email}
+                </span>
+                {session.isAdmin && (
+                  <span className="rounded-full bg-amber-500 px-2 py-0.5 font-mono text-[8px] font-bold tracking-[.08em] text-white">ADMIN</span>
+                )}
+                <button onClick={onSignOut} className="text-[13px] font-medium text-slate-500 hover:text-slate-950" title={session.email}>
+                  Sign out
+                </button>
+              </span>
             ) : (
               <Link to="/login" className="inline-flex min-h-9 items-center rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white no-underline hover:bg-blue-700">
                 Sign in
@@ -64,9 +72,14 @@ function Header({ session, onSignOut }) {
           </nav>
           <div className="ml-auto flex items-center gap-2 md:hidden">
             {session ? (
-              <button onClick={onSignOut} className="text-xs font-semibold text-slate-500">
-                Sign out
-              </button>
+              <span className="flex items-center gap-2">
+                {session.isAdmin && (
+                  <span className="rounded-full bg-amber-500 px-2 py-0.5 font-mono text-[8px] font-bold tracking-[.08em] text-white">ADMIN</span>
+                )}
+                <button onClick={onSignOut} className="text-xs font-semibold text-slate-500">
+                  Sign out
+                </button>
+              </span>
             ) : (
               <Link to="/login" className="inline-flex min-h-9 items-center rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white no-underline">
                 Sign in

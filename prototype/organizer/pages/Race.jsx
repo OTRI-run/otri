@@ -342,13 +342,75 @@ const COLUMNS = [
   ['Team', 'optional', '', 'Club'],
 ]
 
-const TEMPLATE_CSV = [
-  'Rank,Time,Last name,First name,Gender,Status,Bib,Nationality,Birthdate,City,Team',
-  '1,4:12:33,Srisuk,Anong,F,Finisher,101,THA,,Chiang Mai,Trail Club',
-  '2,4:20:05,Wong,Daniel,M,Finisher,102,SGP,,Singapore,',
-  'DNF,,Martin,Alex,M,DNF,103,USA,,,',
-].join('\n')
-const TEMPLATE_HREF = `data:text/csv;charset=utf-8,${encodeURIComponent(TEMPLATE_CSV + '\n')}`
+// The example file lives in public/examples/ (served at the site root) in both formats; the
+// rows below mirror it so the page can show the layout before anyone downloads anything.
+const EXAMPLE_FILES = {
+  csv: '../../examples/otri-results-example.csv',
+  xlsx: '../../examples/otri-results-example.xlsx',
+}
+const EXAMPLE_HEADER = ['Rank', 'Time', 'Last name', 'First name', 'Gender', 'Status', 'Bib', 'Nationality', 'Birthdate', 'City', 'Team']
+const EXAMPLE_ROWS = [
+  ['1', '4:12:33', 'Srisuk', 'Anong', 'F', 'Finisher', '101', 'THA', '1991-03-04', 'Chiang Mai', 'Trail Club'],
+  ['2', '4:20:05', 'Wong', 'Daniel', 'M', 'Finisher', '102', 'SGP', '1987-08-03', 'Singapore', 'Mountain Crew'],
+  ['3', '4:35:48', 'Keller', 'Nina', 'F', 'Finisher', 'F-103', 'DEU', '', 'Munich', ''],
+  ['4', '5:01:10', 'Martin', 'Alex', 'M', 'Finisher', '104', 'USA', '1990-04-12', 'Boulder', ''],
+  ['DNF', '', 'Tan', 'Michael', 'M', 'DNF', '105', 'MYS', '1988-11-02', 'Penang', ''],
+  ['', '', 'Okafor', 'Chidi', 'M', 'DNS', '106', 'NGA', '', 'Lagos', ''],
+]
+
+function ExampleFile({ onUse, busy }) {
+  const [open, setOpen] = useState(true)
+  return (
+    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/60">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div>
+          <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">EXAMPLE FILE</p>
+          <p className="mt-0.5 text-xs text-slate-600">Six rows: four finishers, a DNF, a DNS. Any file laid out like this passes.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <a href={EXAMPLE_FILES.csv} download="otri-results-example.csv" className="inline-flex min-h-9 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-[#0b1220] no-underline hover:border-blue-300">
+            Download CSV
+          </a>
+          <a href={EXAMPLE_FILES.xlsx} download="otri-results-example.xlsx" className="inline-flex min-h-9 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-[#0b1220] no-underline hover:border-blue-300">
+            Download XLSX
+          </a>
+          <Button type="button" variant="secondary" className="min-h-9 px-3 text-xs" busy={busy} onClick={onUse}>
+            Use the example file
+          </Button>
+          <button type="button" onClick={() => setOpen((v) => !v)} className="text-xs font-semibold text-blue-600">
+            {open ? 'Hide' : 'Show'} rows
+          </button>
+        </div>
+      </div>
+      {open && (
+        <div className="overflow-x-auto border-t border-slate-200">
+          <table className="w-full min-w-[820px] text-left font-mono text-[11px]">
+            <thead>
+              <tr className="bg-white text-[9px] uppercase tracking-[.06em] text-slate-500">
+                {EXAMPLE_HEADER.map((h) => (
+                  <th key={h} className="whitespace-nowrap px-3 py-2 font-semibold">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {EXAMPLE_ROWS.map((row, i) => (
+                <tr key={i} className="border-t border-slate-100 text-[#0b1220]">
+                  {row.map((cell, j) => (
+                    <td key={j} className="whitespace-nowrap px-3 py-1.5">
+                      {cell === '' ? <span className="text-slate-300">·</span> : cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function IssueList({ issues, kind }) {
   return (
@@ -402,10 +464,28 @@ export function ResultsStep({ session, raceId }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [showGuide, setShowGuide] = useState(false)
+  const [loadingExample, setLoadingExample] = useState(false)
 
   useEffect(() => {
     getRaceResults(raceId, session.token).then(setExisting).catch(() => setExisting([]))
-  }, [raceId])
+  }, [raceId, session.token])
+
+  // Loads the example CSV into the dropzone so the whole validate-and-score step can be tried.
+  async function useExample() {
+    setLoadingExample(true)
+    setError(null)
+    try {
+      const response = await fetch(EXAMPLE_FILES.csv)
+      if (!response.ok) throw new Error(`Could not load the example file (HTTP ${response.status}).`)
+      const text = await response.text()
+      setFile(new File([text], 'otri-results-example.csv', { type: 'text/csv' }))
+      setSubmission(null)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoadingExample(false)
+    }
+  }
 
   async function submit() {
     if (!file) return
@@ -452,14 +532,8 @@ export function ResultsStep({ session, raceId }) {
             exports. Column names are matched loosely and extra columns are ignored. OTRI validates the file first and
             tells you exactly what to fix; nothing is scored until it passes.
           </p>
-          <div className="mt-3 flex flex-wrap items-center gap-4">
-            <a
-              href={TEMPLATE_HREF}
-              download="otri-results-template.csv"
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-[#0b1220] no-underline hover:border-blue-300"
-            >
-              Download CSV template
-            </a>
+          <ExampleFile onUse={useExample} busy={loadingExample} />
+          <div className="mt-3">
             <button type="button" onClick={() => setShowGuide((v) => !v)} className="text-xs font-semibold text-blue-600">
               {showGuide ? 'Hide' : 'Show'} the accepted columns
             </button>
