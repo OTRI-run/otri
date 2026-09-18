@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, EyeOff, Map, ShieldCheck, Trash2, UserCheck } from 'lucide-react'
+import { Activity, ArrowUpRight, Check, EyeOff, Flag as FlagIcon, HardDrive, Map, Server, ShieldCheck, Trash2, UserCheck } from 'lucide-react'
 import CourseMap from '../../../src/components/CourseMap'
 import {
   deleteAdminOrganizer,
+  deleteAdminReport,
+  deleteAdminRunner,
   deleteEvent,
   deleteRace,
   deleteSharedCourse,
   fetchRaceGpxFile,
   getAdminOverview,
+  getAdminServer,
   getRaceMeasurement,
   listAdminEvents,
   listAdminOrganizers,
+  listAdminReports,
   listSharedCourses,
+  resolveAdminReport,
   unpublishRace,
   verifyAdminOrganizer,
 } from '../../apiClient'
@@ -21,9 +26,11 @@ import { Button, Gradient, Notice, Page, StatusChip, formatDate, raceStatus } fr
 
 const TABS = [
   ['overview', 'Overview'],
+  ['reports', 'Reports'],
   ['accounts', 'Accounts'],
   ['events', 'Events & races'],
   ['shared', 'Shared courses'],
+  ['server', 'Server'],
 ]
 
 function fmtBytes(bytes) {
@@ -93,6 +100,11 @@ function Overview({ session }) {
         <Tile label="RUNNERS" value={stats.runners} sub="with any result" />
         <Tile label="SHARED COURSES" value={stats.shared_courses} sub={`${fmtBytes(stats.shared_bytes)} of ${stats.shared_budget_mb} MB`} />
       </div>
+      {stats.open_reports > 0 && (
+        <Notice kind="warning" title={`${stats.open_reports} open report${stats.open_reports === 1 ? '' : 's'} from the public site.`}>
+          Corrections and removal requests wait in the Reports tab.
+        </Notice>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <KeyValues
@@ -126,6 +138,23 @@ function Overview({ session }) {
         />
       </div>
 
+      <section className="rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
+        <p className="flex items-center gap-2 font-mono text-[9px] tracking-[.08em] text-amber-700">
+          <ShieldCheck size={13} /> WHO IS ADMIN
+        </p>
+        <ul className="mt-2 flex flex-wrap gap-2">
+          {(data.admin_accounts ?? []).map((email) => (
+            <li key={email} className="rounded-full bg-white px-3 py-1 font-mono text-xs text-[#0b1220] shadow-sm">
+              {email}
+            </li>
+          ))}
+          {(data.admin_accounts ?? []).length === 0 && <li className="text-xs text-slate-500">Nobody has signed in as admin yet.</li>}
+        </ul>
+        <p className="mt-2 text-[11px] text-slate-600">
+          Granted by the server's OTRI_ADMIN_EMAILS at sign-in ({(security.admin_emails ?? []).join(', ') || 'empty'}). Remove an email there and restart to revoke.
+        </p>
+      </section>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
           <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">RECENT SIGN-UPS</p>
@@ -158,6 +187,148 @@ function Overview({ session }) {
           </ul>
         </section>
       </div>
+    </div>
+  )
+}
+
+// ------------------------------------------------------------------------------ Reports
+
+const KIND_LABEL = { runner: 'Runner', race: 'Race', shared_course: 'Shared course', other: 'Other' }
+const REASON_LABEL = { not_me: 'not me / merged', wrong_result: 'wrong result', remove_my_data: 'remove my data', wrong_course: 'wrong course', other: 'other' }
+
+function subjectLink(report) {
+  if (report.kind === 'runner') return `../#runners/${encodeURIComponent(report.subject_id)}`
+  if (report.kind === 'race') return `../#races/${encodeURIComponent(report.subject_id)}`
+  if (report.kind === 'shared_course') return `../#calculator?gpx=${encodeURIComponent(report.subject_id)}`
+  return report.page_url ?? '../#home'
+}
+
+function ReportCard({ report, token, onChanged }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const [note, setNote] = useState('')
+  const open = report.status === 'open'
+
+  async function run(action, confirmMessage) {
+    if (confirmMessage && !window.confirm(confirmMessage)) return
+    setBusy(true)
+    setError(null)
+    try {
+      await action()
+      onChanged()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  const resolve = (resolution) => run(() => resolveAdminReport(report.id, resolution, token))
+  const subjectActions = {
+    runner: (
+      <Button
+        variant="danger"
+        busy={busy}
+        className="min-h-9 px-3 text-xs"
+        onClick={() => run(async () => { await deleteAdminRunner(report.subject_id, token); await resolveAdminReport(report.id, 'runner profile and results deleted', token) }, `Delete the runner "${report.subject_label ?? report.subject_id}" and every result attached to them? This cannot be undone.`)}
+      >
+        <Trash2 size={13} /> Delete runner data
+      </Button>
+    ),
+    race: (
+      <>
+        <Button variant="secondary" busy={busy} className="min-h-9 px-3 text-xs" onClick={() => run(async () => { await unpublishRace(report.subject_id, token); await resolveAdminReport(report.id, 'race unpublished', token) }, `Unpublish "${report.subject_label ?? report.subject_id}"?`)}>
+          <EyeOff size={13} /> Unpublish race
+        </Button>
+        <Button variant="danger" busy={busy} className="min-h-9 px-3 text-xs" onClick={() => run(async () => { await deleteRace(report.subject_id, token); await resolveAdminReport(report.id, 'race deleted', token) }, `Delete the race "${report.subject_label ?? report.subject_id}" and its results? This cannot be undone.`)}>
+          <Trash2 size={13} /> Delete race
+        </Button>
+      </>
+    ),
+    shared_course: (
+      <Button variant="danger" busy={busy} className="min-h-9 px-3 text-xs" onClick={() => run(async () => { await deleteSharedCourse(report.subject_id, token); await resolveAdminReport(report.id, 'shared course deleted', token) }, `Delete the shared course "${report.subject_label ?? report.subject_id}"? Links to it stop working.`)}>
+        <Trash2 size={13} /> Delete shared course
+      </Button>
+    ),
+  }
+
+  return (
+    <li className={`rounded-2xl border p-4 ${open ? 'border-amber-200 bg-white' : 'border-slate-200 bg-slate-50/60'}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="rounded-full bg-[#0b1220] px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-white">{KIND_LABEL[report.kind] ?? report.kind}</span>
+            {report.reason && <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-slate-600">{REASON_LABEL[report.reason] ?? report.reason}</span>}
+            <span className="font-mono text-[10px] text-slate-500">{when(report.created_at)}</span>
+            {!open && <span className="font-mono text-[10px] text-emerald-700">resolved {when(report.resolved_at)} by {report.resolved_by}{report.resolution ? ` · ${report.resolution}` : ''}</span>}
+          </p>
+          <p className="mt-2 text-sm font-semibold text-[#0b1220]">
+            <a href={subjectLink(report)} className="no-underline hover:underline">
+              {report.subject_label ?? report.subject_id} <ArrowUpRight size={12} className="inline" />
+            </a>
+            <span className="ml-2 font-mono text-[10px] font-normal text-slate-400">{report.subject_id}</span>
+          </p>
+          <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{report.message}</p>
+          <p className="mt-1 font-mono text-[10px] text-slate-500">
+            {report.reporter_email ? (
+              <a href={`mailto:${report.reporter_email}?subject=${encodeURIComponent(`Your OTRI report about ${report.subject_label ?? report.subject_id}`)}`} className="text-blue-600 no-underline hover:underline">
+                {report.reporter_email}
+              </a>
+            ) : (
+              'no email left'
+            )}
+          </p>
+          {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+        </div>
+        {open && (
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">{subjectActions[report.kind] ?? null}</div>
+            <div className="flex items-center gap-2">
+              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="note (optional)" className="w-40 rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
+              <Button variant="secondary" busy={busy} className="min-h-9 px-3 text-xs" onClick={() => resolve(note || null)}>
+                <Check size={13} /> Mark resolved
+              </Button>
+            </div>
+          </div>
+        )}
+        {!open && (
+          <button type="button" onClick={() => run(() => deleteAdminReport(report.id, token), 'Delete this resolved report?')} className="text-xs font-semibold text-slate-500 hover:text-red-600">
+            Delete
+          </button>
+        )}
+      </div>
+    </li>
+  )
+}
+
+function Reports({ session }) {
+  const [rows, setRows] = useState(null)
+  const [error, setError] = useState(null)
+  const [showAll, setShowAll] = useState(false)
+  const [version, setVersion] = useState(0)
+  useEffect(() => {
+    listAdminReports(session.token, showAll ? 'all' : 'open')
+      .then(setRows)
+      .catch((err) => setError(err.message))
+  }, [session.token, showAll, version])
+  const reload = () => setVersion((v) => v + 1)
+  if (error && !rows) return <Notice kind="error">{error}</Notice>
+  if (!rows) return <p className="text-sm text-slate-500">Loading…</p>
+  return (
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="flex items-center gap-2 font-mono text-[10px] tracking-[.08em] text-slate-500">
+          <FlagIcon size={13} className="text-blue-600" /> {rows.length} {showAll ? 'REPORT' : 'OPEN REPORT'}{rows.length === 1 ? '' : 'S'}
+        </p>
+        <button type="button" onClick={() => setShowAll((v) => !v)} className="text-xs font-semibold text-blue-600">
+          {showAll ? 'Show open only' : 'Show resolved too'}
+        </button>
+      </div>
+      <ul className="mt-4 grid gap-3">
+        {rows.map((report) => (
+          <ReportCard key={report.id} report={report} token={session.token} onChanged={reload} />
+        ))}
+        {rows.length === 0 && <li className="rounded-2xl border border-dashed border-slate-300 px-6 py-10 text-center text-sm text-slate-500">Nothing reported. The public pages have a "Report a problem" form under every runner profile, leaderboard and shared course.</li>}
+      </ul>
     </div>
   )
 }
@@ -519,6 +690,236 @@ function SharedCourses({ session }) {
   )
 }
 
+// ------------------------------------------------------------------------------ Server
+
+function Bar({ value, max, tone = 'blue' }) {
+  const pct = max ? Math.min(100, Math.round((value / max) * 100)) : 0
+  const color = pct > 90 ? 'bg-red-500' : pct > 75 ? 'bg-amber-500' : tone === 'blue' ? 'bg-blue-600' : 'bg-emerald-500'
+  return (
+    <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+      <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+    </div>
+  )
+}
+
+function uptime(seconds) {
+  if (seconds == null) return '—'
+  const d = Math.floor(seconds / 86400)
+  const h = Math.floor((seconds % 86400) / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  return d ? `${d}d ${h}h` : `${h}h ${m}m`
+}
+
+function Unavailable({ what, reason }) {
+  return (
+    <p className="text-xs text-slate-500">
+      {what} not available on this host{reason ? ` (${reason})` : ''}.
+    </p>
+  )
+}
+
+function ServerTab({ session }) {
+  const [data, setData] = useState(null)
+  const [error, setError] = useState(null)
+  useEffect(() => {
+    getAdminServer(session.token).then(setData).catch((err) => setError(err.message))
+  }, [session.token])
+  if (error) return <Notice kind="error">{error}</Notice>
+  if (!data) return <p className="text-sm text-slate-500">Reading the server…</p>
+  const { host, storage, services, firewall, fail2ban, api_usage: usage, tls } = data
+  const memUsed = host.memory_total != null && host.memory_available != null ? host.memory_total - host.memory_available : null
+  const maxHour = usage?.per_hour ? Math.max(1, ...usage.per_hour) : 1
+  const panel = 'rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)]'
+  const label = 'font-mono text-[9px] tracking-[.08em] text-slate-500'
+
+  return (
+    <div className="grid gap-6">
+      <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">
+        {host.hostname?.toUpperCase()} · SNAPSHOT {when(data.generated_at)} · REFRESHED EVERY 30 S
+      </p>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className={panel}>
+          <p className={label}>CPU</p>
+          <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">{host.cpu_percent != null ? `${host.cpu_percent}%` : '—'}</p>
+          <p className="mt-0.5 font-mono text-[10px] text-slate-500">
+            {host.cpu_count ?? '?'} core{host.cpu_count === 1 ? '' : 's'} · load {host.load_1 ?? '—'} / {host.load_5 ?? '—'} / {host.load_15 ?? '—'}
+          </p>
+          {host.cpu_percent != null && <Bar value={host.cpu_percent} max={100} />}
+        </div>
+        <div className={panel}>
+          <p className={label}>MEMORY</p>
+          <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">{memUsed != null ? fmtBytes(memUsed) : '—'}</p>
+          <p className="mt-0.5 font-mono text-[10px] text-slate-500">of {fmtBytes(host.memory_total)} · swap {fmtBytes(host.swap_total)}</p>
+          {memUsed != null && <Bar value={memUsed} max={host.memory_total} />}
+        </div>
+        <div className={panel}>
+          <p className={label}>DISK</p>
+          <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">{fmtBytes(storage.disk_used)}</p>
+          <p className="mt-0.5 font-mono text-[10px] text-slate-500">of {fmtBytes(storage.disk_total)} · {fmtBytes(storage.disk_free)} free</p>
+          {storage.disk_total && <Bar value={storage.disk_used} max={storage.disk_total} />}
+        </div>
+        <div className={panel}>
+          <p className={label}>UPTIME</p>
+          <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">{uptime(host.uptime_seconds)}</p>
+          <p className="mt-0.5 font-mono text-[10px] text-slate-500">
+            TLS {tls?.available ? `${tls.days_left} days left` : 'not checked'}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className={panel}>
+          <p className={`${label} flex items-center gap-2`}>
+            <Activity size={13} className="text-blue-600" /> API USAGE · LAST {usage?.hours ?? 24} H
+          </p>
+          {usage?.available ? (
+            <>
+              <div className="mt-3 grid grid-cols-3 gap-3">
+                <div>
+                  <p className={label}>REQUESTS</p>
+                  <p className="text-xl font-bold text-[#0b1220]">{usage.total.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className={label}>CLIENTS</p>
+                  <p className="text-xl font-bold text-[#0b1220]">{usage.unique_ips}</p>
+                </div>
+                <div>
+                  <p className={label}>5XX ERRORS</p>
+                  <p className={`text-xl font-bold ${usage.errors_5xx ? 'text-red-600' : 'text-[#0b1220]'}`}>{usage.errors_5xx}</p>
+                </div>
+              </div>
+              <div className="mt-4 flex h-16 items-end gap-[3px]" aria-label="Requests per hour">
+                {usage.per_hour.map((n, i) => (
+                  <div key={i} title={`${n} requests`} className="flex-1 rounded-t bg-blue-600/80" style={{ height: `${Math.max(2, (n / maxHour) * 100)}%` }} />
+                ))}
+              </div>
+              <p className="mt-1 flex justify-between font-mono text-[9px] text-slate-400">
+                <span>{usage.hours} h ago</span>
+                <span>now</span>
+              </p>
+              <p className="mt-3 font-mono text-[10px] text-slate-500">
+                {Object.entries(usage.by_status)
+                  .sort()
+                  .map(([k, v]) => `${k} ${v}`)
+                  .join(' · ') || 'no requests'}
+              </p>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className={label}>TOP ENDPOINTS</p>
+                  <ul className="mt-1 divide-y divide-slate-100 font-mono text-[11px]">
+                    {usage.top_paths.map((row) => (
+                      <li key={row.path} className="flex justify-between gap-2 py-1">
+                        <span className="min-w-0 truncate text-[#0b1220]">{row.path}</span>
+                        <span className="text-slate-500">{row.count}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <p className={label}>TOP CLIENTS</p>
+                  <ul className="mt-1 divide-y divide-slate-100 font-mono text-[11px]">
+                    {usage.top_ips.map((row) => (
+                      <li key={row.ip} className="flex justify-between gap-2 py-1">
+                        <span className="text-[#0b1220]">{row.ip}</span>
+                        <span className="text-slate-500">{row.count}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="mt-2">
+              <Unavailable what="Request log" reason={usage?.reason} />
+            </div>
+          )}
+        </section>
+
+        <div className="grid gap-4">
+          <section className={panel}>
+            <p className={`${label} flex items-center gap-2`}>
+              <ShieldCheck size={13} className="text-blue-600" /> FIREWALL & FAIL2BAN
+            </p>
+            {firewall?.available ? (
+              <p className="mt-2 text-xs text-[#0b1220]">
+                ufw <span className={firewall.active ? 'font-semibold text-emerald-700' : 'font-semibold text-red-600'}>{firewall.active ? 'active' : 'inactive'}</span>
+                {firewall.rules?.length ? <span className="text-slate-500"> · {firewall.rules.length} rules</span> : null}
+              </p>
+            ) : (
+              <div className="mt-2">
+                <Unavailable what="Firewall status" />
+              </div>
+            )}
+            {fail2ban?.available ? (
+              <ul className="mt-2 divide-y divide-slate-100">
+                {fail2ban.jails.map((jail) => (
+                  <li key={jail.name} className="py-2 text-xs">
+                    <p className="flex items-center justify-between">
+                      <span className="font-mono font-semibold text-[#0b1220]">jail {jail.name}</span>
+                      <span className="font-mono text-slate-500">
+                        {jail.currently_banned} banned now · {jail.total_banned} total · {jail.total_failed} failed attempts
+                      </span>
+                    </p>
+                    {jail.banned_ips.length > 0 && (
+                      <p className="mt-1 font-mono text-[10px] text-slate-500">{jail.banned_ips.slice(0, 12).join(' · ')}{jail.banned_ips.length > 12 ? ' …' : ''}</p>
+                    )}
+                  </li>
+                ))}
+                {fail2ban.jails.length === 0 && <li className="py-2 text-xs text-slate-500">fail2ban is running with no jails.</li>}
+              </ul>
+            ) : (
+              <div className="mt-2">
+                <Unavailable what="fail2ban" reason={fail2ban?.reason} />
+              </div>
+            )}
+          </section>
+
+          <section className={panel}>
+            <p className={`${label} flex items-center gap-2`}>
+              <Server size={13} className="text-blue-600" /> SERVICES
+            </p>
+            {services?.available ? (
+              <ul className="mt-2 grid grid-cols-2 gap-1 font-mono text-xs">
+                {Object.entries(services.units).map(([unit, state]) => (
+                  <li key={unit} className="flex items-center gap-2">
+                    <i className={`h-2 w-2 rounded-full ${state === 'active' ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                    {unit} <span className="text-slate-400">{state}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="mt-2">
+                <Unavailable what="Service status" />
+              </div>
+            )}
+          </section>
+
+          <section className={panel}>
+            <p className={`${label} flex items-center gap-2`}>
+              <HardDrive size={13} className="text-blue-600" /> STORAGE
+            </p>
+            <ul className="mt-2 divide-y divide-slate-100 font-mono text-xs">
+              <li className="flex justify-between py-1">
+                <span>database</span>
+                <span className="text-slate-500">{fmtBytes(storage.database_bytes)}</span>
+              </li>
+              {Object.entries(storage.dirs ?? {}).map(([name, info]) => (
+                <li key={name} className="flex justify-between gap-3 py-1">
+                  <span className="min-w-0 truncate" title={info.path ?? ''}>
+                    {name.replace('_', ' ')}
+                  </span>
+                  <span className="shrink-0 text-slate-500">{info.bytes == null ? '—' : fmtBytes(info.bytes)}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ------------------------------------------------------------------------------ page
 
 export function AdminEvents({ session, tab = 'overview' }) {
@@ -549,9 +950,11 @@ export function AdminEvents({ session, tab = 'overview' }) {
       </nav>
       <div className="mt-6">
         {active === 'overview' && <Overview session={session} />}
+        {active === 'reports' && <Reports session={session} />}
         {active === 'accounts' && <Accounts session={session} />}
         {active === 'events' && <EventsAdmin session={session} />}
         {active === 'shared' && <SharedCourses session={session} />}
+        {active === 'server' && <ServerTab session={session} />}
       </div>
     </Page>
   )

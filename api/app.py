@@ -67,9 +67,13 @@ from .auth import (
     verify_email,
 )
 from . import email as _email
+from . import server_stats as _server
 from .email import send_password_reset_email, send_verification_email
 from .rate_limit import enforce_rate_limit
 from .schemas import (
+    ReportCreate,
+    ReportOut,
+    ReportResolve,
     AdminOrganizerOut,
     AdminOverview,
     SharedCourseAdminOut,
@@ -1093,6 +1097,7 @@ def admin_overview(organizer: Organizer = Depends(require_admin)) -> AdminOvervi
     shared = _shared_course_rows()
     stats.update(
         {
+            "open_reports": db.count_open_reports(),
             "shared_courses": len(shared),
             "shared_bytes": sum(row.size_bytes for row in shared),
             "shared_budget_mb": _SHARED_COURSE_MAX_TOTAL_BYTES // 1_000_000,
@@ -1131,6 +1136,7 @@ def admin_overview(organizer: Organizer = Depends(require_admin)) -> AdminOvervi
             "shared_course_max_mb": _SHARED_COURSE_MAX_FILE_BYTES // 1_000_000,
             "upload_max_mb": 20,
         },
+        admin_accounts=[account.email for account in accounts if account.is_admin],
         recent_signups=[_account_out(account) for account in accounts[:8]],
         recent_races=[_race_summary(race, counts.get(race.race_id, 0)) for race in recent_races],
     )
@@ -1171,4 +1177,112 @@ def admin_delete_shared_course(share_id: str, organizer: Organizer = Depends(req
     _shared_course_path(share_id).unlink(missing_ok=True)
     (_SHARED_COURSE_DIR / f"{share_id}.gpx").unlink(missing_ok=True)  # pre-gzip layout
     _shared_course_meta_path(share_id).unlink(missing_ok=True)
+    return Response(status_code=204)
+
+
+_SERVER_CACHE: dict = {"at": 0.0, "value": None}
+
+
+def _server_snapshot(host_header: str | None) -> dict:
+    manifest = os.environ.get("OTRI_DEM_MANIFEST", "")
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "host": _server.host_stats(),
+        "storage": _server.storage_stats(
+            {
+                "root": Path("/"),
+                "terrain_tiles": Path(manifest).parent if manifest else None,
+                "shared_courses": _SHARED_COURSE_DIR,
+                "measurement_cache": _MEASUREMENT_CACHE_DIR,
+                "app": REPO_ROOT,
+            },
+            db.database_size_bytes(),
+        ),
+        "services": _server.services_status(),
+        "firewall": _server.firewall_status(),
+        "fail2ban": _server.fail2ban_status(),
+        "api_usage": _server.api_usage(),
+        "tls": _server.tls_expiry((host_header or "").split(":")[0] if host_header else None),
+    }
+
+
+@app.get("/admin/server")
+async def admin_server(request: Request, organizer: Organizer = Depends(require_admin)) -> dict:
+    """Host, storage, services, firewall, fail2ban and 24 h API usage. Read-only; cached for 30 s."""
+    import time as _time
+
+    now = _time.monotonic()
+    if _SERVER_CACHE["value"] is not None and now - _SERVER_CACHE["at"] < 30:
+        return _SERVER_CACHE["value"]
+    snapshot = await run_in_threadpool(_server_snapshot, request.headers.get("x-forwarded-host") or request.headers.get("host"))
+    _SERVER_CACHE.update({"at": now, "value": snapshot})
+    return snapshot
+
+
+# --- Reports ------------------------------------------------------------------------
+#
+# The public "something is wrong" form. Anyone may file one (rate limited); admins see them on
+# the dashboard next to the actions that resolve them (unpublish, delete race, delete runner data,
+# delete a shared course) and mark them resolved.
+
+_REPORT_KINDS = {"runner", "race", "shared_course", "other"}
+_REPORT_REASONS = {"not_me", "wrong_result", "remove_my_data", "wrong_course", "other"}
+
+
+def _report_out(report: db.Report) -> ReportOut:
+    return ReportOut(**vars(report))
+
+
+@app.post("/reports", response_model=ReportOut, status_code=201)
+def create_report(payload: ReportCreate, request: Request) -> ReportOut:
+    enforce_rate_limit(request, max_requests=5)
+    if payload.kind not in _REPORT_KINDS:
+        raise HTTPException(status_code=422, detail=f"kind must be one of {sorted(_REPORT_KINDS)}")
+    message = payload.message.strip()
+    if len(message) < 10 or len(message) > 2000:
+        raise HTTPException(status_code=422, detail="please describe the problem in 10 to 2000 characters")
+    email = (payload.reporter_email or "").strip().lower() or None
+    if email and ("@" not in email or len(email) > 254):
+        raise HTTPException(status_code=422, detail="that does not look like an email address")
+    reason = payload.reason if payload.reason in _REPORT_REASONS else None
+    report = db.create_report(
+        kind=payload.kind,
+        subject_id=payload.subject_id.strip()[:120],
+        subject_label=(payload.subject_label or "").strip()[:200] or None,
+        reason=reason,
+        message=message,
+        reporter_email=email,
+        page_url=(payload.page_url or "").strip()[:500] or None,
+    )
+    for admin_email in sorted(_ADMIN_EMAILS):
+        _email.send_report_email(admin_email, report.kind, report.subject_label or report.subject_id, message, report.page_url)
+    return _report_out(report)
+
+
+@app.get("/admin/reports", response_model=list[ReportOut])
+def admin_list_reports(status: str | None = "open", organizer: Organizer = Depends(require_admin)) -> list[ReportOut]:
+    return [_report_out(r) for r in db.list_reports(None if status in (None, "", "all") else status)]
+
+
+@app.post("/admin/reports/{report_id}/resolve", response_model=ReportOut)
+def admin_resolve_report(report_id: int, payload: ReportResolve, organizer: Organizer = Depends(require_admin)) -> ReportOut:
+    report = db.resolve_report(report_id, resolved_by=organizer.email, resolution=(payload.resolution or "").strip()[:500] or None)
+    if report is None:
+        raise HTTPException(status_code=404, detail="no report with that id")
+    return _report_out(report)
+
+
+@app.delete("/admin/reports/{report_id}", status_code=204)
+def admin_delete_report(report_id: int, organizer: Organizer = Depends(require_admin)) -> Response:
+    if not db.delete_report(report_id):
+        raise HTTPException(status_code=404, detail="no report with that id")
+    return Response(status_code=204)
+
+
+@app.delete("/admin/runners/{runner_id}", status_code=204)
+def admin_delete_runner(runner_id: str, organizer: Organizer = Depends(require_admin)) -> Response:
+    """Remove a runner's profile and every result attached to it (a removal request, or a bad merge)."""
+    if db.find_runner(runner_id) is None and not db.delete_runner(runner_id):
+        raise HTTPException(status_code=404, detail="no runner with that id")
+    db.delete_runner(runner_id)
     return Response(status_code=204)

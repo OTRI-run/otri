@@ -224,6 +224,31 @@ export function getAdminOverview(token) {
   return request('/admin/overview', { headers: authHeaders(token) })
 }
 
+/** A correction or removal request from the public site (no account needed). */
+export function submitReport(payload) {
+  return request('/reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+}
+
+export function listAdminReports(token, status = 'open') {
+  return request(`/admin/reports?status=${encodeURIComponent(status)}`, { headers: authHeaders(token) })
+}
+
+export function resolveAdminReport(reportId, resolution, token) {
+  return request(`/admin/reports/${reportId}/resolve`, { method: 'POST', headers: authHeaders(token, { 'Content-Type': 'application/json' }), body: JSON.stringify({ resolution }) })
+}
+
+export function deleteAdminReport(reportId, token) {
+  return request(`/admin/reports/${reportId}`, { method: 'DELETE', headers: authHeaders(token) })
+}
+
+export function deleteAdminRunner(runnerId, token) {
+  return request(`/admin/runners/${encodeURIComponent(runnerId)}`, { method: 'DELETE', headers: authHeaders(token) })
+}
+
+export function getAdminServer(token) {
+  return request('/admin/server', { headers: authHeaders(token) })
+}
+
 export function listAdminOrganizers(token) {
   return request('/admin/organizers', { headers: authHeaders(token) })
 }

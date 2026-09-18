@@ -50,7 +50,7 @@ def clean_state():
     db.init_db()
     with db.get_connection() as connection:
         connection.execute(
-            "TRUNCATE organizers, email_verification_tokens, password_reset_tokens, events, races, results, runners "
+            "TRUNCATE organizers, email_verification_tokens, password_reset_tokens, events, races, results, runners, reports "
             "RESTART IDENTITY CASCADE"
         )
     for race in race_records(RACES_FILE):

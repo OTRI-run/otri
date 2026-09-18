@@ -3,6 +3,7 @@ import { ArrowUpRight, Check, Copy, GitBranch, Link2, Mountain, RefreshCw, Searc
 import CourseMap from '../src/components/CourseMap'
 import { analyzeGpx, fetchRaceGpxFile, fetchSharedGpxFile, getRace, listRaces, shareGpx } from './apiClient'
 import NextSteps from './NextSteps'
+import ReportForm from './ReportForm'
 import { distanceUnit, formatDistance, formatElevation, formatPace as formatPaceUnits, formatRate, kmToUnit, useUnits } from '../src/lib/units'
 
 // Published anchor tables, shown for context in the "why this score" breakdown. The actual
@@ -692,7 +693,7 @@ function CoursePicker({ races, racesLoading, racesError, query, onQuery, onChoos
 
 // ----------------------------------------------------------------------------- loaded course
 
-function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCourse }) {
+function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCourse, shareId }) {
   const units = useUnits()
   const tooSparse = measurement?.quality_flags?.includes('sparse_geometry_median_over_30m')
   const stats = [
@@ -742,6 +743,9 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
           </div>
         )}
 
+        {courseLabel.meta === 'Shared course' && shareId && (
+          <ReportForm kind="shared_course" subjectId={shareId} subjectLabel={courseLabel.name} prompt="Is this course file yours, or wrong?" />
+        )}
         {tooSparse && (
           <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             This track has a point only every {measurement.median_edge_m} m. Sparse recordings cut switchbacks short, so
@@ -1076,7 +1080,7 @@ export default function ScoreCalculator() {
 
       <div id="calculator-course" className="scroll-mt-[68px]">
         {hasCourse ? (
-          <CourseDetails gpxText={gpxText} measurement={measurement} features={features} courseLabel={courseLabel} onChangeCourse={startOver} />
+          <CourseDetails gpxText={gpxText} measurement={measurement} features={features} courseLabel={courseLabel} onChangeCourse={startOver} shareId={shareId} />
         ) : (
           <CoursePicker
             races={filteredRaces}

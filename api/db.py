@@ -109,6 +109,22 @@ ALTER TABLE results ADD COLUMN IF NOT EXISTS birth_year INTEGER;
 ALTER TABLE results ADD COLUMN IF NOT EXISTS nationality TEXT;
 ALTER TABLE results ADD COLUMN IF NOT EXISTS runner_id TEXT REFERENCES runners(runner_id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS results_runner_id_idx ON results (runner_id);
+
+CREATE TABLE IF NOT EXISTS reports (
+    id SERIAL PRIMARY KEY,
+    kind TEXT NOT NULL,
+    subject_id TEXT NOT NULL,
+    subject_label TEXT,
+    reason TEXT,
+    message TEXT NOT NULL,
+    reporter_email TEXT,
+    page_url TEXT,
+    status TEXT NOT NULL DEFAULT 'open',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    resolved_at TIMESTAMPTZ,
+    resolved_by TEXT,
+    resolution TEXT
+);
 """
 
 
@@ -612,6 +628,77 @@ def published_results_grouped_by_race() -> dict[str, list[dict]]:
     return grouped
 
 
+# --- Reports (corrections and removal requests from the public site) ----------
+
+
+@dataclass(frozen=True)
+class Report:
+    id: int
+    kind: str
+    subject_id: str
+    subject_label: str | None
+    reason: str | None
+    message: str
+    reporter_email: str | None
+    page_url: str | None
+    status: str
+    created_at: datetime
+    resolved_at: datetime | None = None
+    resolved_by: str | None = None
+    resolution: str | None = None
+
+
+_REPORT_COLUMNS = "id, kind, subject_id, subject_label, reason, message, reporter_email, page_url, status, created_at, resolved_at, resolved_by, resolution"
+
+
+def create_report(*, kind: str, subject_id: str, subject_label: str | None, reason: str | None, message: str, reporter_email: str | None, page_url: str | None) -> Report:
+    with get_connection() as connection:
+        row = connection.execute(
+            "INSERT INTO reports (kind, subject_id, subject_label, reason, message, reporter_email, page_url) "
+            f"VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING {_REPORT_COLUMNS}",
+            (kind, subject_id, subject_label, reason, message, reporter_email, page_url),
+        ).fetchone()
+    return Report(**row)
+
+
+def list_reports(status: str | None = "open") -> list[Report]:
+    with get_connection() as connection:
+        if status:
+            rows = connection.execute(f"SELECT {_REPORT_COLUMNS} FROM reports WHERE status = %s ORDER BY created_at DESC", (status,)).fetchall()
+        else:
+            rows = connection.execute(f"SELECT {_REPORT_COLUMNS} FROM reports ORDER BY (status = 'open') DESC, created_at DESC").fetchall()
+    return [Report(**row) for row in rows]
+
+
+def count_open_reports() -> int:
+    with get_connection() as connection:
+        row = connection.execute("SELECT COUNT(*) AS n FROM reports WHERE status = 'open'").fetchone()
+    return int(row["n"])
+
+
+def resolve_report(report_id: int, *, resolved_by: str, resolution: str | None) -> Report | None:
+    with get_connection() as connection:
+        row = connection.execute(
+            "UPDATE reports SET status = 'resolved', resolved_at = now(), resolved_by = %s, resolution = %s WHERE id = %s "
+            f"RETURNING {_REPORT_COLUMNS}",
+            (resolved_by, resolution, report_id),
+        ).fetchone()
+    return Report(**row) if row else None
+
+
+def delete_report(report_id: int) -> bool:
+    with get_connection() as connection:
+        return connection.execute("DELETE FROM reports WHERE id = %s", (report_id,)).rowcount > 0
+
+
+def delete_runner(runner_id: str) -> int:
+    """Remove a runner and every result attached to them. Returns how many results went."""
+    with get_connection() as connection:
+        removed = connection.execute("DELETE FROM results WHERE runner_id = %s", (runner_id,)).rowcount
+        connection.execute("DELETE FROM runners WHERE runner_id = %s", (runner_id,))
+    return removed
+
+
 # --- Admin: accounts and platform statistics ---------------------------------
 
 
@@ -658,6 +745,15 @@ def delete_organizer(organizer_id: int) -> bool:
         connection.execute("DELETE FROM events WHERE organizer_id = %s", (organizer_id,))
         cursor = connection.execute("DELETE FROM organizers WHERE id = %s", (organizer_id,))
         return cursor.rowcount > 0
+
+
+def database_size_bytes() -> int | None:
+    try:
+        with get_connection() as connection:
+            row = connection.execute("SELECT pg_database_size(current_database()) AS n").fetchone()
+        return int(row["n"]) if row else None
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def platform_stats() -> dict:

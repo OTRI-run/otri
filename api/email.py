@@ -49,6 +49,22 @@ def send_verification_email(to: str, token: str) -> None:
     )
 
 
+def send_report_email(to: str, kind: str, subject_label: str, message: str, page_url: str | None) -> None:
+    """A new correction/removal request for the admins. Best effort, like every email here."""
+    from html import escape
+
+    link = f"{APP_BASE_URL}/prototype/organizer/#/admin"
+    safe_page = escape(page_url, quote=True) if page_url and page_url.startswith(("http://", "https://")) else None
+    _send(
+        to,
+        f"OTRI report: {kind} · {subject_label}"[:150],
+        f"<p>Someone reported a <b>{escape(kind)}</b>: {escape(subject_label)}</p>"
+        f"<p>{escape(message)}</p>"
+        + (f'<p>Page: <a href="{safe_page}">{safe_page}</a></p>' if safe_page else "")
+        + f'<p>Handle it in the <a href="{link}">admin dashboard</a>.</p>',
+    )
+
+
 def send_password_reset_email(to: str, token: str) -> None:
     link = f"{APP_BASE_URL}/prototype/?reset_token={token}"
     _send(

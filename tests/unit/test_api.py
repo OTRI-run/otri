@@ -1020,3 +1020,54 @@ def test_leaderboard_lists_finishers_then_dnf_and_dsq_but_never_dns():
     assert client.get(f"/races/{race_id}").json()["finisher_count"] == 2, "counts are finishers, not rows"
     quinn = client.get("/runners", params={"q": "quinn quit"}).json()
     assert quinn and quinn[0]["index"] is None, "a DNF is listed on the runner but never scored"
+
+
+def test_admin_server_snapshot_has_every_section_and_degrades_gracefully(monkeypatch):
+    admin = _admin_headers(monkeypatch)
+    assert client.get("/admin/server", headers=_organizer_auth_headers("nobody@example.com")).status_code == 403
+    body = client.get("/admin/server", headers=admin).json()
+    for key in ("host", "storage", "services", "firewall", "fail2ban", "api_usage", "tls", "generated_at"):
+        assert key in body, key
+    assert "available" in body["host"] and "dirs" in body["storage"]
+    assert client.get("/admin/overview", headers=admin).json()["admin_accounts"] == ["dash-admin@example.com"]
+
+
+# ----------------------------------------------------------------------------- reports
+
+
+def test_anyone_can_file_a_report_and_admins_resolve_it(monkeypatch):
+    bad = client.post("/reports", json={"kind": "runner", "subject_id": "run-x", "message": "short"})
+    assert bad.status_code == 422
+    bad_kind = client.post("/reports", json={"kind": "spaceship", "subject_id": "x", "message": "this is long enough to count"})
+    assert bad_kind.status_code == 422
+    filed = client.post(
+        "/reports",
+        json={"kind": "runner", "subject_id": "run-abc", "subject_label": "Pat Profile", "reason": "not_me", "message": "That is not me, please remove the profile.", "reporter_email": "Pat@Example.com", "page_url": "https://otri.run/prototype/#runners/run-abc"},
+    )
+    assert filed.status_code == 201, filed.text
+    body = filed.json()
+    assert body["status"] == "open" and body["reporter_email"] == "pat@example.com" and body["reason"] == "not_me"
+
+    assert client.get("/admin/reports").status_code == 401
+    admin = _admin_headers(monkeypatch)
+    open_reports = client.get("/admin/reports", headers=admin).json()
+    assert [r["id"] for r in open_reports] == [body["id"]]
+    assert client.get("/admin/overview", headers=admin).json()["stats"]["open_reports"] == 1
+    resolved = client.post(f"/admin/reports/{body['id']}/resolve", json={"resolution": "profile deleted"}, headers=admin).json()
+    assert resolved["status"] == "resolved" and resolved["resolved_by"] == "dash-admin@example.com" and resolved["resolution"] == "profile deleted"
+    assert client.get("/admin/reports", headers=admin).json() == []
+    assert len(client.get("/admin/reports", params={"status": "all"}, headers=admin).json()) == 1
+    assert client.delete(f"/admin/reports/{body['id']}", headers=admin).status_code == 204
+    assert client.delete(f"/admin/reports/{body['id']}", headers=admin).status_code == 404
+
+
+def test_admin_can_delete_a_runner_and_their_results(monkeypatch):
+    headers = _organizer_auth_headers("runner-owner@example.com")
+    race_id = _publish_results(headers, "Rank,Time,Last name,First name,Gender\n1,2:00:00,Gone,Greta,F\n2,2:05:00,Stays,Sam,M\n")
+    runner = client.get("/runners", params={"q": "greta gone"}).json()[0]
+    admin = _admin_headers(monkeypatch)
+    assert client.delete(f"/admin/runners/{runner['runner_id']}", headers=admin).status_code == 204
+    assert client.get(f"/runners/{runner['runner_id']}").status_code == 404
+    rows = client.get(f"/races/{race_id}/results").json()
+    assert [r["family_name"] for r in rows] == ["Stays"], "only that runner's results are gone"
+    assert client.delete(f"/admin/runners/{runner['runner_id']}", headers=admin).status_code == 404

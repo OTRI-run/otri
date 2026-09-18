@@ -215,10 +215,41 @@ class SharedCourseAdminOut(BaseModel):
     size_bytes: int = 0
 
 
+class ReportCreate(BaseModel):
+    kind: str
+    subject_id: str
+    subject_label: str | None = None
+    reason: str | None = None
+    message: str
+    reporter_email: str | None = None
+    page_url: str | None = None
+
+
+class ReportOut(BaseModel):
+    id: int
+    kind: str
+    subject_id: str
+    subject_label: str | None = None
+    reason: str | None = None
+    message: str
+    reporter_email: str | None = None
+    page_url: str | None = None
+    status: str
+    created_at: datetime
+    resolved_at: datetime | None = None
+    resolved_by: str | None = None
+    resolution: str | None = None
+
+
+class ReportResolve(BaseModel):
+    resolution: str | None = None
+
+
 class AdminOverview(BaseModel):
     stats: dict
     api: dict
     security: dict
+    admin_accounts: list[str] = []
     recent_signups: list[AdminOrganizerOut] = []
     recent_races: list[RaceSummary] = []
 

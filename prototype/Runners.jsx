@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowUpRight, Search } from 'lucide-react'
 import NextSteps from './NextSteps'
 import { DemoBadge } from './RaceCard'
 import { getRunner, listRunners } from './apiClient'
+import ReportForm from './ReportForm'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import Flag from '../src/components/Flag'
 
@@ -286,13 +287,7 @@ export function RunnerProfilePage({ runnerId, onBack }) {
                 <DemoBadge /> Some of these results are synthetic demo data.
               </p>
             )}
-            <p className="mt-3 font-mono text-[9px] tracking-[.05em] text-slate-400">
-              Built only from races their organizers published. Is this you and something is wrong?{' '}
-              <a href={`mailto:hello@otri.run?subject=${encodeURIComponent(`Runner profile ${profile.runner_id}`)}`} className="text-blue-600 underline">
-                Ask for a correction or removal
-              </a>
-              .
-            </p>
+            <ReportForm kind="runner" subjectId={profile.runner_id} subjectLabel={runnerName(profile)} />
             <NextSteps
               items={[
                 ['Why this index?', 'The rule, the research behind it, and what it does not know.', 'Runner index method', METHOD_URL],

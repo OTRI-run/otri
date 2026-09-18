@@ -10,6 +10,7 @@ import RaceCard, { DemoBadge } from './RaceCard'
 import ScoreCalculator from './ScoreCalculator'
 import { RunnerProfilePage, RunnersPage } from './Runners'
 import CourseMap from '../src/components/CourseMap'
+import ReportForm from './ReportForm'
 import Flag from '../src/components/Flag'
 import { fetchRaceGpxFile, getApiStatus, getRace, getRaceMeasurement, getRaceResults, listRaces } from './apiClient'
 import '../src/styles.css'
@@ -329,6 +330,7 @@ function Leaderboard({ raceId, onBack }) {
             scoring_version {race.scoring_version} · Course Standard model — depends only on the course and each runner's own
             finish time, never the field
           </p>
+          <ReportForm kind="race" subjectId={race.race_id} subjectLabel={`${race.event_name} · ${race.course_name}`} prompt="Wrong result, wrong course, or your name should not be here?" />
           <NextSteps
             items={[
               ['Where would you land?', race.has_gpx ? 'Try a target time on this exact course.' : 'Pick a course and a target time. The score updates live.', race.has_gpx ? 'Calculate your score here' : 'Calculate your score', race.has_gpx ? `#calculator?race=${encodeURIComponent(race.race_id)}` : '#calculator'],
