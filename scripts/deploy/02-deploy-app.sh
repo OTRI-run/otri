@@ -127,6 +127,8 @@ User=${SERVICE_USER}
 Group=${SERVICE_USER}
 WorkingDirectory=${APP_DIR}
 EnvironmentFile=${APP_DIR}/.env
+# ProtectHome hides /home; newer gunicorn wants a writable HOME for its control socket.
+Environment=HOME=${APP_DIR}/data
 ExecStart=${APP_DIR}/venv/bin/gunicorn api.app:app \\
     --workers 2 \\
     --worker-class uvicorn.workers.UvicornWorker \\
