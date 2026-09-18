@@ -219,10 +219,27 @@ def root() -> dict:
     return {"name": "OTRI API", "status": "in development", "docs": "/docs", "started_at": _STARTED_AT.isoformat()}
 
 
+def _is_local_or_admin(request: Request) -> bool:
+    """True for the watchdog on the droplet itself (direct to 127.0.0.1, so nginx has not added
+    X-Forwarded-For), the test client, or a signed-in admin. Everyone else is the public."""
+    if "x-forwarded-for" not in request.headers and (request.client is None or request.client.host in ("127.0.0.1", "::1", "testclient")):
+        return True
+    token, _from_cookie = _token_from_request(request, None)
+    if token is None:
+        return False
+    try:
+        organizer = _with_flags(decode_access_token(token))
+    except AuthError:
+        return False
+    return bool(organizer and organizer.is_admin)
+
+
 @app.get("/health")
-def health(response: Response) -> dict:
+def health(request: Request, response: Response) -> dict:
     """For the watchdog and uptime checks: database reachable, disk not full, migrations applied.
-    503 when degraded, so a plain HTTP check can alert."""
+    503 when degraded, so a plain HTTP check can alert. The public answer is the status alone;
+    the individual checks (disk space, pending migrations) are internal and only shown to the
+    watchdog on the droplet or to an admin."""
     import shutil
 
     checks: dict[str, dict] = {}
@@ -244,7 +261,10 @@ def health(response: Response) -> dict:
     ok = all(check["ok"] for check in checks.values())
     if not ok:
         response.status_code = 503
-    return {"status": "ok" if ok else "degraded", "checks": checks, "started_at": _STARTED_AT.isoformat()}
+    payload = {"status": "ok" if ok else "degraded", "started_at": _STARTED_AT.isoformat()}
+    if _is_local_or_admin(request):
+        payload["checks"] = checks
+    return payload
 
 
 _bearer_scheme = HTTPBearer(auto_error=False)
