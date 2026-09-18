@@ -61,5 +61,5 @@ def clean_state():
         if result_path.exists():
             db.replace_results(race.race_id, result_records(result_path))
             db.set_race_published(race.race_id, True)  # demo races are public, as in production
-    rate_limit._hits.clear()
+    rate_limit.reset()
     yield

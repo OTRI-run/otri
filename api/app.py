@@ -69,7 +69,8 @@ from .auth import (
 from . import email as _email
 from . import server_stats as _server
 from .email import send_password_reset_email, send_verification_email
-from .rate_limit import enforce_rate_limit
+from .rate_limit import AccountLocked, check_account_lock, clear_login_failures, enforce_rate_limit, record_login_failure
+from . import rate_limit as _rate_limit
 from .schemas import (
     ChangePassword,
     PasswordConfirm,
@@ -120,9 +121,21 @@ from .schemas import (
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
+_SENTRY_DSN = os.environ.get("SENTRY_DSN", "").strip()
+if _SENTRY_DSN:
+    try:
+        import sentry_sdk
+
+        sentry_sdk.init(dsn=_SENTRY_DSN, send_default_pii=False, traces_sample_rate=0.0, environment=os.environ.get("OTRI_ENV", "production"))
+    except Exception as error:  # noqa: BLE001 - monitoring must never stop the API
+        print(f"WARNING: Sentry not initialised: {error}")
+
+
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
-    db.init_db()
+    applied = db.init_db()
+    if applied:
+        print(f"schema migrations applied: {', '.join(applied)}")
     yield
 
 
@@ -156,6 +169,34 @@ def root() -> dict:
     return {"name": "OTRI API", "status": "in development", "docs": "/docs", "started_at": _STARTED_AT.isoformat()}
 
 
+@app.get("/health")
+def health(response: Response) -> dict:
+    """For the watchdog and uptime checks: database reachable, disk not full, migrations applied.
+    503 when degraded, so a plain HTTP check can alert."""
+    import shutil
+
+    checks: dict[str, dict] = {}
+    try:
+        with db.get_connection() as connection:
+            connection.execute("SELECT 1")
+            from . import migrations as _migrations
+
+            pending = [m.name for m in _migrations.pending(connection)]
+        checks["database"] = {"ok": not pending, "pending_migrations": pending}
+    except Exception as error:  # noqa: BLE001
+        checks["database"] = {"ok": False, "error": str(error)[:200]}
+    try:
+        usage = shutil.disk_usage(REPO_ROOT)
+        free_percent = round(usage.free / usage.total * 100, 1)
+        checks["disk"] = {"ok": free_percent >= 10, "free_percent": free_percent}
+    except OSError as error:
+        checks["disk"] = {"ok": False, "error": str(error)[:200]}
+    ok = all(check["ok"] for check in checks.values())
+    if not ok:
+        response.status_code = 503
+    return {"status": "ok" if ok else "degraded", "checks": checks, "started_at": _STARTED_AT.isoformat()}
+
+
 _bearer_scheme = HTTPBearer(auto_error=False)
 
 
@@ -164,10 +205,15 @@ _bearer_scheme = HTTPBearer(auto_error=False)
 _ADMIN_EMAILS = {email.strip().lower() for email in os.environ.get("OTRI_ADMIN_EMAILS", "").split(",") if email.strip()}
 
 
-def _with_flags(organizer: Organizer) -> Organizer:
+def _with_flags(organizer: Organizer, *, check_session: bool = True) -> Organizer:
     """The token carries identity; the admin/demo flags are read from the account on every request,
     so revoking admin takes effect immediately."""
-    return replace(organizer, **db.get_organizer_flags(organizer.id))
+    flags = db.get_organizer_flags(organizer.id)
+    if flags is None:
+        raise AuthError("this account no longer exists")
+    if check_session and flags["session_version"] != organizer.session_version:
+        raise AuthError("this session was signed out; sign in again")
+    return replace(organizer, **flags)
 
 
 def require_organizer(credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme)) -> Organizer:
@@ -238,14 +284,20 @@ def register(payload: OrganizerRegistration, request: Request) -> MessageRespons
 def login(payload: OrganizerCredentials, request: Request) -> TokenResponse:
     enforce_rate_limit(request, max_requests=10)
     try:
+        check_account_lock(payload.email)
+    except AccountLocked as error:
+        raise HTTPException(status_code=429, detail=str(error), headers={"Retry-After": "900"}) from error
+    try:
         organizer = authenticate_organizer(payload.email, payload.password)
     except EmailNotVerifiedError as error:
         raise HTTPException(status_code=403, detail=str(error)) from error
     except AuthError as error:
+        record_login_failure(payload.email)
         raise HTTPException(status_code=401, detail=str(error)) from error
+    clear_login_failures(payload.email)
     if organizer.email in _ADMIN_EMAILS:
         db.set_organizer_flags(organizer.email, is_admin=True)
-    organizer = _with_flags(organizer)
+    organizer = _with_flags(organizer, check_session=False)  # credentials, not a token: nothing to compare yet
     return _issue_session(organizer, payload.remember)
 
 
@@ -274,7 +326,7 @@ def login_second_step(payload: TwoFactorLogin, request: Request) -> TokenRespons
         organizer, remember = _auth.complete_login_challenge(payload.challenge, payload.code)
     except AuthError as error:
         raise HTTPException(status_code=401, detail=str(error)) from error
-    organizer = _with_flags(organizer)
+    organizer = _with_flags(organizer, check_session=False)
     return TokenResponse(
         access_token=create_access_token(organizer, remember),
         email=organizer.email,
@@ -324,14 +376,55 @@ def update_profile(payload: ProfileUpdate, organizer: Organizer = Depends(requir
     return _me(organizer)
 
 
-@app.post("/auth/change-password", response_model=MessageResponse)
-def change_password(payload: ChangePassword, request: Request, organizer: Organizer = Depends(require_organizer)) -> MessageResponse:
+@app.post("/auth/change-password", response_model=TokenResponse)
+def change_password(payload: ChangePassword, request: Request, organizer: Organizer = Depends(require_organizer)) -> TokenResponse:
+    """Changes the password and signs out every other device; returns a fresh token for this one."""
     enforce_rate_limit(request, max_requests=5)
     try:
         _auth.change_password(organizer.id, payload.current_password, payload.new_password)
     except AuthError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    return MessageResponse(message="password changed")
+    return _fresh_token(organizer)
+
+
+def _fresh_token(organizer: Organizer) -> TokenResponse:
+    return TokenResponse(
+        access_token=create_access_token(organizer),
+        email=organizer.email,
+        is_admin=organizer.is_admin,
+        is_demo=organizer.is_demo,
+        expires_in=_auth.token_ttl_seconds(False),
+    )
+
+
+@app.post("/auth/logout-all", response_model=MessageResponse)
+def logout_everywhere(payload: PasswordConfirm, organizer: Organizer = Depends(require_organizer)) -> MessageResponse:
+    """Invalidates every token for this account, this one included."""
+    try:
+        _auth.revoke_all_sessions(organizer.id, payload.password)
+    except AuthError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return MessageResponse(message="signed out everywhere")
+
+
+@app.get("/auth/export")
+def export_account(organizer: Organizer = Depends(require_organizer)) -> Response:
+    """Everything OTRI holds for this account, as a JSON download (PRIVACY.md, 'Your rights')."""
+    data = db.export_organizer(organizer.id)
+    data["exported_at"] = datetime.now(timezone.utc).isoformat()
+    body = json.dumps(data, default=str, indent=2)
+    return Response(content=body, media_type="application/json", headers={"Content-Disposition": 'attachment; filename="otri-account-export.json"'})
+
+
+@app.delete("/auth/account", response_model=MessageResponse)
+def delete_own_account(payload: PasswordConfirm, organizer: Organizer = Depends(require_organizer)) -> MessageResponse:
+    """Deletes the account with every event, race and result it owns. Published leaderboards
+    disappear and runner profiles lose those results. Cannot be undone."""
+    try:
+        _auth.delete_own_account(organizer.id, payload.password)
+    except AuthError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return MessageResponse(message="account deleted")
 
 
 @app.post("/auth/2fa/totp/setup", response_model=TotpSetupOut)
@@ -367,13 +460,14 @@ def email_two_factor_enable(payload: TwoFactorCode, organizer: Organizer = Depen
     return RecoveryCodesOut(codes=codes, method="email")
 
 
-@app.post("/auth/2fa/disable", response_model=MessageResponse)
-def two_factor_disable(payload: PasswordConfirm, organizer: Organizer = Depends(require_organizer)) -> MessageResponse:
+@app.post("/auth/2fa/disable", response_model=TokenResponse)
+def two_factor_disable(payload: PasswordConfirm, organizer: Organizer = Depends(require_organizer)) -> TokenResponse:
+    """Turns two-factor off and signs out every other device; returns a fresh token for this one."""
     try:
         _auth.disable_two_factor(organizer.id, payload.password)
     except AuthError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    return MessageResponse(message="two-factor authentication disabled")
+    return _fresh_token(organizer)
 
 
 @app.post("/auth/2fa/recovery-codes", response_model=RecoveryCodesOut)
@@ -1119,6 +1213,9 @@ _SHARED_COURSE_DIR = Path(__file__).resolve().parents[1] / "data" / "cache" / "s
 _SHARE_ID_RE = re.compile(r"^[0-9a-f]{16}$")
 _SHARED_COURSE_MAX_FILE_BYTES = 10_000_000
 _SHARED_COURSE_MAX_TOTAL_BYTES = int(float(os.environ.get("OTRI_SHARED_COURSES_MAX_MB", "2048")) * 1_000_000)
+# Eviction and the write happen under one lock per process, and the folder is trimmed again after
+# the write, so concurrent shares cannot leave the folder over budget (verified in test_hardening).
+_SHARED_COURSE_LOCK = __import__("threading").Lock()
 
 
 def _shared_course_path(share_id: str) -> Path:
@@ -1170,16 +1267,19 @@ async def share_gpx(request: Request, file: UploadFile, name: str | None = Form(
     path = _shared_course_path(share_id)
     created = not path.exists()
     if created:
-        _SHARED_COURSE_DIR.mkdir(parents=True, exist_ok=True)
         packed = gzip.compress(contents, compresslevel=6)
-        # Make room first so the new file is never the one evicted.
-        _evict_shared_courses(max(0, _SHARED_COURSE_MAX_TOTAL_BYTES - len(packed)))
-        path.write_bytes(packed)
         clean_name = (name or Path(file.filename or "").stem or "").strip()[:120] or None
-        _shared_course_meta_path(share_id).write_text(
-            json.dumps({"name": clean_name, "filename": file.filename, "created_at": datetime.now(timezone.utc).isoformat()}),
-            encoding="utf-8",
-        )
+        with _SHARED_COURSE_LOCK:
+            _SHARED_COURSE_DIR.mkdir(parents=True, exist_ok=True)
+            # Make room first so the new file is never the one evicted, then trim again in case
+            # another process wrote in between.
+            _evict_shared_courses(max(0, _SHARED_COURSE_MAX_TOTAL_BYTES - len(packed)))
+            path.write_bytes(packed)
+            _shared_course_meta_path(share_id).write_text(
+                json.dumps({"name": clean_name, "filename": file.filename, "created_at": datetime.now(timezone.utc).isoformat()}),
+                encoding="utf-8",
+            )
+            _evict_shared_courses(_SHARED_COURSE_MAX_TOTAL_BYTES)
     else:
         # Touch, so an actively shared course is evicted after the ones nobody reshares.
         try:
@@ -1238,6 +1338,7 @@ def admin_overview(organizer: Organizer = Depends(require_admin)) -> AdminOvervi
     from scoring import DEFAULT_SCORING_VERSION
 
     stats = db.platform_stats()
+    stats.update(db.email_stats())
     shared = _shared_course_rows()
     stats.update(
         {
@@ -1274,7 +1375,10 @@ def admin_overview(organizer: Organizer = Depends(require_admin)) -> AdminOvervi
             "token_ttl_hours": round(_auth._TOKEN_TTL_SECONDS / 3600),
             "email_configured": bool(_email.RESEND_API_KEY),
             "email_from": _email.EMAIL_FROM,
-            "rate_limits": {"register": 5, "login": 10, "password_reset": 5, "share": 10, "window_seconds": 60},
+            "rate_limits": {"register": 5, "login": 10, "password_reset": 5, "share": 10, "window_seconds": 60, "backend": "database (shared by all workers)"},
+            "lockout": {"failures": _rate_limit.LOCKOUT_FAILURES, "window_minutes": int(_rate_limit.LOCKOUT_WINDOW.total_seconds() // 60), "minutes": int(_rate_limit.LOCKOUT_DURATION.total_seconds() // 60)},
+            "session_revocation": "password change, 2FA off and 'sign out everywhere' invalidate every earlier token",
+            "error_monitoring": bool(_SENTRY_DSN),
             "allowed_origins": [origin.strip() for origin in _allowed_origins.split(",") if origin.strip()],
             "admin_emails": sorted(_ADMIN_EMAILS),
             "shared_course_max_mb": _SHARED_COURSE_MAX_FILE_BYTES // 1_000_000,
@@ -1284,6 +1388,13 @@ def admin_overview(organizer: Organizer = Depends(require_admin)) -> AdminOvervi
         recent_signups=[_account_out(account) for account in accounts[:8]],
         recent_races=[_race_summary(race, counts.get(race.race_id, 0)) for race in recent_races],
     )
+
+
+@app.get("/admin/emails")
+def admin_emails(limit: int = 50, organizer: Organizer = Depends(require_admin)) -> list[dict]:
+    """The last emails the API asked Resend to send, with the provider id and any error, newest
+    first. For "I never got the email": find the row, then look the id up in the Resend dashboard."""
+    return db.recent_emails(max(1, min(limit, 500)))
 
 
 @app.get("/admin/newsletter", response_model=list[NewsletterSubscriber])

@@ -224,11 +224,16 @@ def get_connection() -> Iterator[psycopg.Connection]:
         connection.close()
 
 
-def init_db() -> None:
-    """Create all tables if they don't already exist. Safe to call on every startup."""
+def init_db() -> list[str]:
+    """Apply the idempotent baseline, then every pending numbered migration (api/migrations.py).
+    Safe to call on every startup. Returns the names of the migrations applied this time."""
+    from . import migrations
+
     with get_connection() as connection:
         connection.execute(_SCHEMA)
+        applied = migrations.apply_pending(connection)
     assign_missing_runners()
+    return applied
 
 
 def _new_id(prefix: str) -> str:
@@ -858,10 +863,81 @@ def platform_stats() -> dict:
 # --- Organizer flags (admin / demo) ------------------------------------------
 
 
-def get_organizer_flags(organizer_id: int) -> dict:
+def get_organizer_flags(organizer_id: int) -> dict | None:
+    """Flags plus the current session version; None when the account no longer exists."""
     with get_connection() as connection:
-        row = connection.execute("SELECT is_admin, is_demo FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
-    return {"is_admin": bool(row["is_admin"]), "is_demo": bool(row["is_demo"])} if row else {"is_admin": False, "is_demo": False}
+        row = connection.execute("SELECT is_admin, is_demo, session_version FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
+    if row is None:
+        return None
+    return {"is_admin": bool(row["is_admin"]), "is_demo": bool(row["is_demo"]), "session_version": int(row["session_version"])}
+
+
+def bump_session_version(organizer_id: int) -> int:
+    """Invalidate every token issued so far for this account; returns the new version."""
+    with get_connection() as connection:
+        row = connection.execute(
+            "UPDATE organizers SET session_version = session_version + 1 WHERE id = %s RETURNING session_version", (organizer_id,)
+        ).fetchone()
+    return int(row["session_version"]) if row else 1
+
+
+def export_organizer(organizer_id: int) -> dict:
+    """Everything OTRI holds for one account, for the 'download my data' button."""
+    with get_connection() as connection:
+        account = connection.execute(
+            "SELECT email, created_at, email_verified, is_admin, display_name, organization, website, phone, country, bio, "
+            "terms_accepted_at, marketing_opt_in, marketing_opt_in_at, two_factor_method, password_changed_at "
+            "FROM organizers WHERE id = %s",
+            (organizer_id,),
+        ).fetchone()
+        events = connection.execute("SELECT * FROM events WHERE organizer_id = %s ORDER BY event_date", (organizer_id,)).fetchall()
+        races = connection.execute(
+            "SELECT r.race_id, r.event_id, r.course_name, r.distance_km, r.elevation_gain_m, r.scoring_version, r.published_at, r.created_at, "
+            "(r.gpx_content IS NOT NULL) AS has_gpx FROM races r JOIN events e ON e.event_id = r.event_id WHERE e.organizer_id = %s",
+            (organizer_id,),
+        ).fetchall()
+        results = connection.execute(
+            "SELECT res.* FROM results res JOIN races r ON r.race_id = res.race_id JOIN events e ON e.event_id = r.event_id WHERE e.organizer_id = %s",
+            (organizer_id,),
+        ).fetchall()
+        emails = connection.execute(
+            "SELECT subject, status, created_at FROM email_log WHERE to_email = %s ORDER BY created_at DESC LIMIT 200", (account["email"],)
+        ).fetchall() if account else []
+    return {
+        "account": dict(account) if account else None,
+        "events": [dict(row) for row in events],
+        "races": [dict(row) for row in races],
+        "results": [dict(row) for row in results],
+        "emails_sent_to_you": [dict(row) for row in emails],
+    }
+
+
+def log_email(to_email: str, subject: str, status: str, provider_id: str | None = None, error: str | None = None) -> None:
+    try:
+        with get_connection() as connection:
+            connection.execute(
+                "INSERT INTO email_log (to_email, subject, provider_id, status, error) VALUES (%s, %s, %s, %s, %s)",
+                (to_email, subject, provider_id, status, (error or None) and str(error)[:500]),
+            )
+    except Exception:  # noqa: BLE001 - logging must never break the send path
+        pass
+
+
+def email_stats() -> dict:
+    with get_connection() as connection:
+        row = connection.execute(
+            "SELECT COUNT(*) FILTER (WHERE status = 'sent') AS sent, COUNT(*) FILTER (WHERE status <> 'sent') AS failed, "
+            "MAX(created_at) FILTER (WHERE status <> 'sent') AS last_failure_at FROM email_log WHERE created_at > now() - interval '24 hours'"
+        ).fetchone()
+    return {"emails_24h": int(row["sent"]), "email_failures_24h": int(row["failed"]), "email_last_failed_at": row["last_failure_at"]}
+
+
+def recent_emails(limit: int = 50) -> list[dict]:
+    with get_connection() as connection:
+        rows = connection.execute(
+            "SELECT id, to_email, subject, provider_id, status, error, created_at FROM email_log ORDER BY created_at DESC LIMIT %s", (limit,)
+        ).fetchall()
+    return [dict(row) for row in rows]
 
 
 def set_organizer_flags(email: str, *, is_admin: bool | None = None, is_demo: bool | None = None) -> bool:

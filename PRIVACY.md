@@ -10,7 +10,7 @@ This page describes what personal data OTRI collects and why. For race-result da
 - Email address
 - Password (never stored in plain text — hashed with `bcrypt` before saving; must be 10+ characters and not a common password)
 - Account creation timestamp
-- Optional profile details the organizer chooses to add (name, organization, website, country, phone, short bio). Organization and website are shown next to the organizer's published races; the rest is visible only to admins.
+- Optional profile details the organizer chooses to add (name, organization, website, country, short bio). Organization and website are shown next to the organizer's published races; the rest is visible only to admins.
 - If two-factor authentication is switched on: an authenticator secret or the hash of a one-time email code, and hashed recovery codes.
 - The time you accepted `TERMS.md` and this policy at sign-up.
 - Whether you asked for OTRI news, and when. This is off unless you tick the box at sign-up or in your account settings, and you can untick it there at any time; the timestamp is cleared when you do.
@@ -52,7 +52,9 @@ You can ask us to:
 - Correct inaccurate data.
 - Delete your account and associated data.
 
-There is currently no self-service way to do this in the product — contact `hello@otri.run` (see `README.md`'s footer) until one exists.
+Organizers can do the last two themselves on the account page: **Download my data** gives a JSON file with the account, consents, events, races, result rows and the emails we sent; **Delete my account** removes everything the account owns after a password check. For anything else, or as a runner, contact `hello@otri.run`.
+
+We keep a log of every email sent (recipient, subject, provider message id, outcome) so delivery problems can be traced; it is visible to admins only.
 
 ## Security
 

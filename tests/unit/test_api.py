@@ -744,13 +744,13 @@ def test_share_gpx_caps_file_size_and_rate_limits(tmp_path, monkeypatch):
     assert response.status_code == 413
 
     rate_limit = importlib.import_module("api.rate_limit")
-    rate_limit._hits.clear()
+    rate_limit.reset()  # the size-capped request above counted too; the limiter lives in the database now
     statuses = []
     for i in range(12):
         variant = raw.replace(b"<gpx", f"<!-- r{i} --><gpx".encode(), 1)
         statuses.append(client.post("/gpx/share", files={"file": ("f.gpx", variant, "application/gpx+xml")}).status_code)
     assert statuses[:10] == [200] * 10 and statuses[10:] == [429, 429]
-    rate_limit._hits.clear()
+    rate_limit.reset()
 
 
 # ----------------------------------------------------------------------------- publishing & admin
@@ -1153,7 +1153,10 @@ def test_change_password_and_profile():
     headers = _organizer_auth_headers("profile@example.com")
     assert client.post("/auth/change-password", json={"current_password": "nope nope nope", "new_password": "a brand new passphrase"}, headers=headers).status_code == 400
     assert client.post("/auth/change-password", json={"current_password": "correct horse battery", "new_password": "short"}, headers=headers).status_code == 400
-    assert client.post("/auth/change-password", json={"current_password": "correct horse battery", "new_password": "a brand new passphrase"}, headers=headers).status_code == 200
+    changed = client.post("/auth/change-password", json={"current_password": "correct horse battery", "new_password": "a brand new passphrase"}, headers=headers)
+    assert changed.status_code == 200, changed.text
+    assert client.get("/auth/me", headers=headers).status_code == 401, "the old token is revoked"
+    headers = {"Authorization": f"Bearer {changed.json()['access_token']}"}  # the response carries a fresh one
     assert client.post("/auth/login", json={"email": "profile@example.com", "password": "correct horse battery"}).status_code == 401
     assert client.post("/auth/login", json={"email": "profile@example.com", "password": "a brand new passphrase"}).status_code == 200
     assert client.get("/auth/me", headers=headers).json()["password_changed_at"]

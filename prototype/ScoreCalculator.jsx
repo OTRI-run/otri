@@ -601,10 +601,37 @@ function CoursePicker({ races, racesLoading, racesError, query, onQuery, onChoos
               <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">the course.</span>
             </h2>
           </div>
-          <p className="min-w-0 text-sm leading-7 text-slate-500">
-            Pick a race whose course has already been verified, or upload your own GPX. Either way the track is measured
-            on the server: distance along the ellipsoid, elevation from terrain data where it is installed.
-          </p>
+          <div className="min-w-0">
+            <p className="text-sm leading-7 text-slate-500">
+              Pick a race whose course has already been verified, or upload your own GPX. Either way the track is measured
+              on the server: distance along the ellipsoid, elevation from terrain data where it is installed.
+            </p>
+            <details className="group mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+              <summary className="cursor-pointer list-none font-semibold text-[#0b1220]">
+                <span className="text-blue-600">What is a GPX, and where do I get one?</span>
+              </summary>
+              <div className="mt-2 grid gap-2 leading-6">
+                <p>
+                  A GPX file is the route as a list of GPS points, the format every watch, phone app and route planner can export. It weighs
+                  a megabyte or two and holds nothing about you unless you exported a recording with timestamps.
+                </p>
+                <p>
+                  <span className="font-semibold text-[#0b1220]">Before a race:</span> most organizers publish the course GPX on the race
+                  website's course or route page weeks ahead, often per distance; look for "Download GPX", "Track" or "Trace", or check
+                  the final participant email.{' '}
+                  <span className="font-semibold text-[#0b1220]">After a race:</span> export your own recording (Garmin Connect, Strava,
+                  Coros, Suunto, Polar all have "Export GPX"); it will be slightly longer than the official course.
+                </p>
+                <p>
+                  A file with a point at least every 30 m scores at High confidence; a heavily simplified file still scores, labelled Low.
+                  Uploads are measured and forgotten unless you share the score.{' '}
+                  <a href="https://github.com/OTRI-run/otri/blob/main/docs/WHAT-IS-A-GPX.md" target="_blank" rel="noreferrer" className="font-semibold text-blue-600">
+                    Full guide ↗
+                  </a>
+                </p>
+              </div>
+            </details>
+          </div>
         </div>
 
         <div className="mt-10 grid gap-4 lg:grid-cols-2">

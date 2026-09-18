@@ -136,6 +136,11 @@ function Overview({ session }) {
             ['Admin accounts (env)', security.admin_emails.join(', ') || 'none'],
             ['Shared course limits', `${security.shared_course_max_mb} MB per file · ${stats.shared_budget_mb} MB total, oldest evicted`],
             ['Uploads', `${security.upload_max_mb} MB max · validated before anything is scored`],
+            ['Rate-limit store', security.rate_limits.backend ?? 'in-process'],
+            ['Account lockout', security.lockout ? `${security.lockout.failures} wrong passwords in ${security.lockout.window_minutes} min → locked ${security.lockout.minutes} min` : 'off'],
+            ['Session revocation', security.session_revocation ?? '—'],
+            ['Email (24 h)', `${stats.emails_24h ?? 0} sent · ${stats.email_failures_24h ?? 0} failed`, (stats.email_failures_24h ?? 0) > 0 ? 'bad' : 'ok'],
+            ['Error monitoring', ...yes(security.error_monitoring)],
           ]}
         />
       </div>

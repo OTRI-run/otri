@@ -232,7 +232,7 @@ function App() {
   else if (route.path === '/verify') page = <Verify token={route.query.token} />
   else if (route.path === '/reset') page = <Reset token={route.query.token} onSignedIn={signIn} />
   else if (session && route.path === '/admin') page = session.isAdmin ? <AdminEvents session={session} /> : <NotFound />
-  else if (session && route.path === '/account') page = <AccountPage session={session} />
+  else if (session && route.path === '/account') page = <AccountPage session={session} onToken={signIn} onSignOut={signOut} />
   else if (session && route.path === '/events') page = <Dashboard session={session} />
   else if (session && route.path === '/events/new') page = <NewEvent session={session} />
   else if (session && (params = match('/events/:id/races/new', route.path))) page = <NewRace session={session} eventId={params.id} />

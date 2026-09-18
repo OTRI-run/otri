@@ -32,6 +32,11 @@ Every event/race mutation (create/edit/delete, GPX attach, result submission) re
 | GET | `/races/{race_id}` | Race distance detail, 404 if unknown. |
 | GET | `/scoring/models` | List every available scoring algorithm (`version`, `name`, `description`, `uses_competitors`) a race distance can be configured to use — see `scoring/README.md`. |
 | POST | `/events/{event_id}/races` | **Requires ownership of the event.** Add a race distance. Optional `scoring_version` (defaults to OTRI model 0.1.0, build id `0.8.0-course-standard-power`), 422 if unknown, if `course_name` is blank, or if distance/elevation are invalid. |
+| GET | `/health` | Database reachable, migrations applied, disk not full: `{status: ok|degraded, checks}`; 503 when degraded. |
+| POST | `/auth/logout-all` | **Requires auth** + password. Invalidates every token for the account, the caller's included. |
+| GET | `/auth/export` | **Requires auth.** JSON download of everything held for the account (profile, consents, events, races, result rows, emails sent). |
+| DELETE | `/auth/account` | **Requires auth** + password in the body. Deletes the account with every event, race and result it owns. |
+| GET | `/admin/emails?limit=50` | **Admin.** Recent sends with Resend message id, status and error, newest first. |
 | GET | `/admin/newsletter` · `/admin/newsletter.csv` | **Admin.** Verified, non-demo organizers who opted in to OTRI news (email, name, organization, country, consent time), as JSON or a CSV download for a mailing tool. |
 | PATCH | `/races/{race_id}` | **Requires ownership.** Partial update of `course_name`/`distance_km`/`elevation_gain_m`/`scoring_version`. 422 on an unknown `scoring_version`. |
 | DELETE | `/races/{race_id}` | **Requires ownership.** Deletes the race distance, cascading to its results. |
@@ -94,9 +99,10 @@ Then open `http://127.0.0.1:8000/docs` for interactive Swagger docs (generated a
 
 ## Known gaps (intentional, for now)
 
-- Organizer accounts use a hand-rolled JWT scheme, not a battle-tested auth provider (e.g. no refresh tokens — a session just expires after 12h) — fine for a prototype, not for real production use.
-- Rate limiting is in-process/in-memory (`api/rate_limit.py`) — correct for a single worker, but not shared across multiple gunicorn/uvicorn worker processes. A real deployment with multiple workers needs a shared store (Redis, per `HANDBOOK.md`'s recommended stack).
-- No database migration tool — the schema is created with `CREATE TABLE IF NOT EXISTS` (`api/db.py`), fine while the schema is small and stable, but will need a real migration tool (e.g. Alembic) once it needs to evolve without downtime.
+- Organizer sessions are signed JWTs (12 h, or 30 days with "remember me") carrying the account's `session_version`; a password change, turning 2FA off, "sign out everywhere" (`POST /auth/logout-all`) or deleting the account bumps it and every earlier token fails on the next request. There are no refresh tokens; a session simply expires.
+- Rate limits are counted in the `rate_limits` table (`api/rate_limit.py`), so they hold across gunicorn workers and restarts; if the database is unreachable the limiter falls back to an in-process counter rather than switching off. Ten wrong passwords for one account within 15 minutes lock that account for 15 minutes (`login_failures`), whatever the source IP.
+- Schema changes: the idempotent baseline in `api/db.py` (`CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`) plus numbered one-shot migrations in `api/migrations.py`, recorded in `schema_migrations` and applied on every start and by `python scripts/migrate.py upgrade`; `python scripts/migrate.py status` exits 1 while anything is pending. Older code refuses to start on a database with migrations it does not know.
+- Every email the API asks Resend to send is recorded in `email_log` with the provider's message id and any error (`GET /admin/emails`); `/health` reports the database, pending migrations and free disk (503 when degraded) for the watchdog and uptime checks; setting `SENTRY_DSN` sends unhandled exceptions to Sentry without request bodies or personal data.
 - `GET /events`/`GET /races` compute `race_count`/joins with one query per event (N+1) — acceptable at prototype scale, would need optimizing for a large number of events.
 - The production model is OTRI model 0.1.0 (`docs/methodology/OTRI-MODEL-0.1.0.md`); the API returns its build id `0.8.0-course-standard-power` as `scoring_version`. Its course-demand engine is grounded in published gradient-cost research (Minetti et al.), but the `Q_500`/`Q_1000` scale anchors (`scoring.course_standard`) are explicit OTRI design choices, not yet validated against real race results.
 - Races whose GPX contains a segment grade outside the model's supported ±45% domain fail explicitly (422) rather than being silently approximated — by design (spec section 13), but it means genuinely extreme courses currently can't be scored under Course Standard until reviewed.

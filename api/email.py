@@ -11,6 +11,8 @@ import os
 
 import resend
 
+from . import db
+
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
 EMAIL_FROM = os.environ.get("OTRI_EMAIL_FROM", "OTRI <noreply@otri.run>")
 APP_BASE_URL = os.environ.get("OTRI_APP_BASE_URL", "http://localhost:5173")
@@ -28,10 +30,15 @@ else:
 def _send(to: str, subject: str, html: str) -> None:
     if not RESEND_API_KEY:
         print(f"[email not sent - no RESEND_API_KEY] to={to!r} subject={subject!r}\n{html}")
+        db.log_email(to, subject, "logged")
         return
     try:
-        resend.Emails.send({"from": EMAIL_FROM, "to": [to], "subject": subject, "html": html})
+        response = resend.Emails.send({"from": EMAIL_FROM, "to": [to], "subject": subject, "html": html})
+        provider_id = response.get("id") if isinstance(response, dict) else getattr(response, "id", None)
+        db.log_email(to, subject, "sent", provider_id=provider_id)
+        print(f"email sent to={to!r} subject={subject!r} resend_id={provider_id}")
     except resend.exceptions.ResendError as error:
+        db.log_email(to, subject, "failed", error=str(error))
         # Never let an email-provider hiccup break registration/login/reset —
         # log loudly and continue. A failed verification/reset email is
         # recoverable (the organizer can ask again); a 500 on register/login

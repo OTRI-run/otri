@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Check, Copy, KeyRound, ShieldCheck, Smartphone, Mail } from 'lucide-react'
+import { Check, Copy, Download, KeyRound, LogOut, ShieldCheck, Smartphone, Mail, Trash2 } from 'lucide-react'
 import QRCode from 'qrcode'
 import PasswordStrength, { assessPassword } from '../../../src/components/PasswordStrength'
 import {
   changePassword,
+  deleteOwnAccount,
   disableTwoFactor,
+  fetchAccountExport,
+  logoutEverywhere,
   emailTwoFactorEnable,
   emailTwoFactorStart,
   getMe,
@@ -86,14 +89,9 @@ function ProfileForm({ me, onSaved }) {
         <Field label="Website" htmlFor="pf-web" hint="Linked from your race pages.">
           <input id="pf-web" value={form.website} onChange={set('website')} className={inputClass} placeholder="https://…" />
         </Field>
-        <div className="grid gap-4 sm:grid-cols-[120px_1fr]">
-          <Field label="Country" htmlFor="pf-country" hint="3-letter code.">
-            <input id="pf-country" value={form.country} onChange={(e) => setForm((f) => ({ ...f, country: e.target.value.toUpperCase() }))} maxLength={3} className={`${inputClass} font-mono uppercase`} placeholder="THA" />
-          </Field>
-          <Field label="Phone" htmlFor="pf-phone" hint="Admins only, for urgent questions about a race.">
-            <input id="pf-phone" value={form.phone} onChange={set('phone')} className={inputClass} placeholder="+66 …" />
-          </Field>
-        </div>
+        <Field label="Country" htmlFor="pf-country" hint="3-letter code, e.g. THA.">
+          <input id="pf-country" value={form.country} onChange={(e) => setForm((f) => ({ ...f, country: e.target.value.toUpperCase() }))} maxLength={3} className={`${inputClass} font-mono uppercase`} placeholder="THA" />
+        </Field>
       </div>
       <Field label="About" htmlFor="pf-bio" hint="A sentence or two about the races you organize.">
         <textarea id="pf-bio" rows={3} maxLength={1000} value={form.bio} onChange={set('bio')} className={inputClass} />
@@ -134,12 +132,12 @@ function ChangePasswordForm({ email, onChanged }) {
     setError(null)
     setDone(false)
     try {
-      await changePassword(current, next)
+      const result = await changePassword(current, next)
       setDone(true)
       setCurrent('')
       setNext('')
       setConfirm('')
-      onChanged?.()
+      onChanged?.(result)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -160,7 +158,7 @@ function ChangePasswordForm({ email, onChanged }) {
         <input id="cp-confirm" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inputClass} />
       </Field>
       {error && <Notice kind="error">{error}</Notice>}
-      {done && <Notice kind="success">Password changed. Other devices stay signed in until their session expires.</Notice>}
+      {done && <Notice kind="success">Password changed. Every other device has been signed out; this one stays signed in.</Notice>}
       <div>
         <Button type="submit" busy={busy} disabled={!current || !check.ok || mismatch}>
           <KeyRound size={15} /> Change password
@@ -170,7 +168,7 @@ function ChangePasswordForm({ email, onChanged }) {
   )
 }
 
-function TwoFactor({ me, email, onChanged }) {
+function TwoFactor({ me, email, onChanged, onToken }) {
   const status = me?.two_factor ?? { enabled: false }
   const [mode, setMode] = useState(null) // null | 'totp' | 'email' | 'disable' | 'codes'
   const [setup, setSetup] = useState(null) // { secret, otpauth_uri, svg }
@@ -225,7 +223,8 @@ function TwoFactor({ me, email, onChanged }) {
     })
   const disable = () =>
     run(async () => {
-      await disableTwoFactor(password)
+      const result = await disableTwoFactor(password)
+      onToken?.(result)
       setMode(null)
       setPassword('')
       setRecovery(null)
@@ -340,10 +339,145 @@ function TwoFactor({ me, email, onChanged }) {
   )
 }
 
-export function AccountPage({ session }) {
+function SessionsCard({ onSignedOut }) {
+  const [password, setPassword] = useState('')
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  async function go() {
+    setBusy(true)
+    setError(null)
+    try {
+      await logoutEverywhere(password)
+      onSignedOut()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm">
+          <span className="font-semibold text-[#0b1220]">Sign out everywhere</span>{' '}
+          <span className="text-slate-500">· lost a phone or used a shared computer? Every session ends, this one too.</span>
+        </p>
+        {!open && (
+          <Button variant="secondary" className="min-h-10 text-xs" onClick={() => setOpen(true)}>
+            <LogOut size={14} /> Sign out everywhere
+          </Button>
+        )}
+      </div>
+      {open && (
+        <div className="mt-3 grid gap-3">
+          <Field label="Confirm with your password" htmlFor="so-pw">
+            <input id="so-pw" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+          </Field>
+          {error && <Notice kind="error">{error}</Notice>}
+          <div className="flex gap-2">
+            <Button busy={busy} disabled={!password} onClick={go}>
+              Sign out everywhere
+            </Button>
+            <Button variant="secondary" onClick={() => { setOpen(false); setPassword('') }}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DataCard({ email, onDeleted }) {
+  const [password, setPassword] = useState('')
+  const [confirmText, setConfirmText] = useState('')
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  async function download() {
+    setError(null)
+    try {
+      const blob = await fetchAccountExport()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'otri-account-export.json'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+  async function remove() {
+    setBusy(true)
+    setError(null)
+    try {
+      await deleteOwnAccount(password)
+      onDeleted()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Card>
+      <Eyebrow>YOUR DATA</Eyebrow>
+      <div className="mt-3 grid gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3">
+          <p className="text-sm">
+            <span className="font-semibold text-[#0b1220]">Download my data</span>{' '}
+            <span className="text-slate-500">· your account, events, races, result rows and the emails we sent you, as JSON.</span>
+          </p>
+          <Button variant="secondary" className="min-h-10 text-xs" onClick={download}>
+            <Download size={14} /> Download (JSON)
+          </Button>
+        </div>
+        <div className="rounded-xl border border-red-200 bg-red-50/60 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm">
+              <span className="font-semibold text-red-700">Delete my account</span>{' '}
+              <span className="text-slate-600">· removes every event, race and result you uploaded. Published leaderboards disappear. This cannot be undone.</span>
+            </p>
+            {!open && (
+              <Button variant="danger" className="min-h-10 text-xs" onClick={() => setOpen(true)}>
+                <Trash2 size={14} /> Delete account
+              </Button>
+            )}
+          </div>
+          {open && (
+            <div className="mt-3 grid gap-3">
+              <Field label={`Type ${email} to confirm`} htmlFor="del-confirm">
+                <input id="del-confirm" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} className={inputClass} autoComplete="off" />
+              </Field>
+              <Field label="Your password" htmlFor="del-pw">
+                <input id="del-pw" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+              </Field>
+              {error && <Notice kind="error">{error}</Notice>}
+              <div className="flex gap-2">
+                <Button variant="danger" busy={busy} disabled={!password || confirmText.trim().toLowerCase() !== email.toLowerCase()} onClick={remove}>
+                  Delete my account for good
+                </Button>
+                <Button variant="secondary" onClick={() => { setOpen(false); setPassword(''); setConfirmText('') }}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+export function AccountPage({ session, onToken, onSignOut }) {
   const [me, setMe] = useState(null)
   const [error, setError] = useState(null)
   const load = () => getMe(session.token).then(setMe).catch((err) => setError(err.message))
+  const keepToken = (result) => {
+    if (result?.access_token) onToken?.(result.access_token, result.email, result.is_admin)
+  }
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -377,8 +511,9 @@ export function AccountPage({ session }) {
           <Card>
             <Eyebrow>SIGN-IN SECURITY</Eyebrow>
             <div className="mt-3">
-              <TwoFactor me={me} email={session.email} onChanged={load} />
+              <TwoFactor me={me} email={session.email} onChanged={load} onToken={keepToken} />
             </div>
+            <SessionsCard onSignedOut={onSignOut} />
             <p className="mt-4 text-[11px] leading-5 text-slate-500">
               Sessions last 12 hours, or 30 days when you tick "remember me" at sign-in. Password last changed:{' '}
               {me?.password_changed_at ? new Date(me.password_changed_at).toLocaleDateString() : 'never'}.
@@ -388,9 +523,10 @@ export function AccountPage({ session }) {
           <Card>
             <Eyebrow>PASSWORD</Eyebrow>
             <div className="mt-3">
-              <ChangePasswordForm email={session.email} onChanged={load} />
+              <ChangePasswordForm email={session.email} onChanged={(result) => { keepToken(result); load() }} />
             </div>
           </Card>
+          <DataCard email={session.email} onDeleted={onSignOut} />
         </div>
       </div>
     </Page>

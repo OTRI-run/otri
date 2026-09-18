@@ -81,6 +81,15 @@ if [[ -z "${OTRI_API_JWT_SECRET:-}" ]]; then
   fi
 fi
 
+# Optional settings live in .env only (set by hand on the Droplet); keep them across re-deploys.
+keep_env() { grep "^$1=" "${APP_DIR}/.env" 2>/dev/null | head -1 | cut -d= -f2- || true; }
+OTRI_ADMIN_EMAILS="${OTRI_ADMIN_EMAILS:-$(keep_env OTRI_ADMIN_EMAILS)}"
+OTRI_ALERT_EMAIL="${OTRI_ALERT_EMAIL:-$(keep_env OTRI_ALERT_EMAIL)}"
+OTRI_SHARED_COURSES_MAX_MB="${OTRI_SHARED_COURSES_MAX_MB:-$(keep_env OTRI_SHARED_COURSES_MAX_MB)}"
+OTRI_BACKUP_RCLONE_REMOTE="${OTRI_BACKUP_RCLONE_REMOTE:-$(keep_env OTRI_BACKUP_RCLONE_REMOTE)}"
+SENTRY_DSN="${SENTRY_DSN:-$(keep_env SENTRY_DSN)}"
+OTRI_ENV="${OTRI_ENV:-$(keep_env OTRI_ENV)}"
+
 echo "==> Writing ${APP_DIR}/.env"
 cat >"${APP_DIR}/.env" <<EOF
 OTRI_API_ALLOWED_ORIGINS=${OTRI_API_ALLOWED_ORIGINS}
@@ -90,12 +99,20 @@ RESEND_API_KEY=${RESEND_API_KEY:-}
 OTRI_EMAIL_FROM=${OTRI_EMAIL_FROM:-OTRI <noreply@otri.run>}
 OTRI_APP_BASE_URL=${OTRI_APP_BASE_URL:-https://otri.run}
 OTRI_DEM_MANIFEST=${OTRI_DEM_MANIFEST:-}
+OTRI_ADMIN_EMAILS=${OTRI_ADMIN_EMAILS}
+OTRI_ALERT_EMAIL=${OTRI_ALERT_EMAIL}
+OTRI_SHARED_COURSES_MAX_MB=${OTRI_SHARED_COURSES_MAX_MB:-2048}
+OTRI_BACKUP_RCLONE_REMOTE=${OTRI_BACKUP_RCLONE_REMOTE}
+SENTRY_DSN=${SENTRY_DSN}
+OTRI_ENV=${OTRI_ENV:-production}
 EOF
 chmod 600 "${APP_DIR}/.env"
 
-echo "==> Initializing database schema (and seeding demo data on first run)"
+echo "==> Applying schema migrations, seeding demo data on first run"
 source venv/bin/activate
+DATABASE_URL="${DATABASE_URL}" python scripts/migrate.py upgrade
 DATABASE_URL="${DATABASE_URL}" python scripts/seed_demo_data.py
+DATABASE_URL="${DATABASE_URL}" python scripts/migrate.py status
 deactivate
 
 echo "==> Installing systemd unit"

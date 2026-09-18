@@ -54,6 +54,7 @@ class Organizer:
     email: str
     is_admin: bool = False
     is_demo: bool = False
+    session_version: int = 1
 
 
 def register_organizer(email: str, password: str, *, accept_terms: bool = True, marketing_opt_in: bool = False) -> Organizer:
@@ -109,10 +110,19 @@ def token_ttl_seconds(remember: bool = False) -> int:
     return _REMEMBER_TTL_SECONDS if remember else _TOKEN_TTL_SECONDS
 
 
+def current_session_version(organizer_id: int) -> int:
+    with get_connection() as connection:
+        row = connection.execute("SELECT session_version FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
+    return int(row["session_version"]) if row else 1
+
+
 def create_access_token(organizer: Organizer, remember: bool = False) -> str:
+    """The token carries the account's session version; a bump (password change, 2FA off,
+    sign out everywhere) makes every earlier token fail verification."""
     payload = {
         "sub": str(organizer.id),
         "email": organizer.email,
+        "sv": current_session_version(organizer.id),
         "exp": int(time.time()) + token_ttl_seconds(remember),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=_JWT_ALGORITHM)
@@ -123,7 +133,7 @@ def decode_access_token(token: str) -> Organizer:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[_JWT_ALGORITHM])
     except jwt.PyJWTError as error:
         raise AuthError("invalid or expired token") from error
-    return Organizer(id=int(payload["sub"]), email=payload["email"])
+    return Organizer(id=int(payload["sub"]), email=payload["email"], session_version=int(payload.get("sv", 1)))
 
 
 # --- Email verification -------------------------------------------------
@@ -229,8 +239,10 @@ def change_password(organizer_id: int, current_password: str, new_password: str)
             raise AuthError("choose a password you have not used here before")
         password_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         connection.execute(
-            "UPDATE organizers SET password_hash = %s, password_changed_at = now() WHERE id = %s", (password_hash, organizer_id)
+            "UPDATE organizers SET password_hash = %s, password_changed_at = now(), session_version = session_version + 1 WHERE id = %s",
+            (password_hash, organizer_id),
         )
+        connection.execute("DELETE FROM login_challenges WHERE organizer_id = %s", (organizer_id,))
 
 
 def _check_password(connection, organizer_id: int, password: str) -> None:
@@ -324,11 +336,27 @@ def disable_two_factor(organizer_id: int, password: str) -> None:
         _check_password(connection, organizer_id, password)
         connection.execute(
             "UPDATE organizers SET two_factor_method = NULL, totp_secret = NULL, totp_secret_pending = NULL, "
-            "email_code_hash = NULL, email_code_expires_at = NULL WHERE id = %s",
+            "email_code_hash = NULL, email_code_expires_at = NULL, session_version = session_version + 1 WHERE id = %s",
             (organizer_id,),
         )
         connection.execute("DELETE FROM recovery_codes WHERE organizer_id = %s", (organizer_id,))
         connection.execute("DELETE FROM login_challenges WHERE organizer_id = %s", (organizer_id,))
+
+
+def revoke_all_sessions(organizer_id: int, password: str) -> None:
+    """'Sign out everywhere': every token issued so far stops working, including the caller's."""
+    with get_connection() as connection:
+        _check_password(connection, organizer_id, password)
+        connection.execute("UPDATE organizers SET session_version = session_version + 1 WHERE id = %s", (organizer_id,))
+        connection.execute("DELETE FROM login_challenges WHERE organizer_id = %s", (organizer_id,))
+
+
+def delete_own_account(organizer_id: int, password: str) -> None:
+    from . import db as _db
+
+    with get_connection() as connection:
+        _check_password(connection, organizer_id, password)
+    _db.delete_organizer(organizer_id)
 
 
 def regenerate_recovery_codes(organizer_id: int, password: str) -> list[str]:

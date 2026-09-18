@@ -74,6 +74,15 @@ export function updateProfile(profile) {
 export function changePassword(currentPassword, newPassword) {
   return request('/auth/change-password', { method: 'POST', ...json(sessionToken(), { current_password: currentPassword, new_password: newPassword }) })
 }
+export function logoutEverywhere(password) {
+  return request('/auth/logout-all', { method: 'POST', ...json(sessionToken(), { password }) })
+}
+export function deleteOwnAccount(password) {
+  return request('/auth/account', { method: 'DELETE', ...json(sessionToken(), { password }) })
+}
+export function fetchAccountExport() {
+  return fetch(`${API_BASE_URL}/auth/export`, { headers: authHeaders(sessionToken()) }).then((r) => (r.ok ? r.blob() : Promise.reject(new Error(r.statusText))))
+}
 export function totpSetup() {
   return request('/auth/2fa/totp/setup', { method: 'POST', headers: authHeaders(sessionToken()) })
 }
