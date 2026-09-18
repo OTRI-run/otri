@@ -71,20 +71,20 @@ function navigate(hash) {
 // ------------------------------------------------------------------------------------- shell
 
 const NAV = [
-  { id: 'calculator', label: 'Calculate score', href: '#calculator' },
+  { id: 'calculator', label: 'Calculate score', short: 'Calculator', href: '#calculator' },
   { id: 'races', label: 'Races', href: '#races' },
   { id: 'runners', label: 'Runners', href: '#runners' },
   { id: 'faq', label: 'FAQ', href: '#faq' },
 ]
 
-function NavLink({ item, active, className = '' }) {
+function NavLink({ item, active, className = '', short = false }) {
   return (
     <a
       href={item.href}
       aria-current={active ? 'page' : undefined}
       className={`text-[13px] font-medium no-underline ${active ? 'text-[#0b1220]' : 'text-slate-500 hover:text-slate-950'} ${className}`}
     >
-      {item.label}
+      {short ? item.short ?? item.label : item.label}
     </a>
   )
 }
@@ -127,7 +127,8 @@ function Header({ tab }) {
               key={item.id}
               item={item}
               active={tab === item.id}
-              className={`border-b-2 py-3 ${tab === item.id ? 'border-blue-600' : 'border-transparent'}`}
+              short
+              className={`whitespace-nowrap border-b-2 py-3 ${tab === item.id ? 'border-blue-600' : 'border-transparent'}`}
             />
           ))}
           <div className="ml-auto py-1.5">

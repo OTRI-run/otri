@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import CountrySelect from '../../../src/components/CountrySelect'
 import { Check, Copy, Download, KeyRound, LogOut, ShieldCheck, Smartphone, Mail, Trash2 } from 'lucide-react'
 import QRCode from 'qrcode'
 import PasswordStrength, { assessPassword } from '../../../src/components/PasswordStrength'
@@ -89,8 +90,8 @@ function ProfileForm({ me, onSaved }) {
         <Field label="Website" htmlFor="pf-web" hint="Linked from your race pages.">
           <input id="pf-web" value={form.website} onChange={set('website')} className={inputClass} placeholder="https://…" />
         </Field>
-        <Field label="Country" htmlFor="pf-country" hint="3-letter code, e.g. THA.">
-          <input id="pf-country" value={form.country} onChange={(e) => setForm((f) => ({ ...f, country: e.target.value.toUpperCase() }))} maxLength={3} className={`${inputClass} font-mono uppercase`} placeholder="THA" />
+        <Field label="Country" htmlFor="pf-country" hint="Where you organize.">
+          <CountrySelect id="pf-country" value={form.country} onChange={(value) => setForm((f) => ({ ...f, country: value }))} className={inputClass} />
         </Field>
       </div>
       <Field label="About" htmlFor="pf-bio" hint="A sentence or two about the races you organize.">

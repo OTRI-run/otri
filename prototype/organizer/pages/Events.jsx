@@ -4,6 +4,7 @@ import { createEvent, deleteEvent, getEvent, listMyEvents, updateEvent } from '.
 import { Link, navigate } from '../router'
 import { formatDistance, formatElevation, useUnits } from '../../../src/lib/units'
 import { Button, Card, EmptyState, Eyebrow, Field, Gradient, Notice, Page, StatusChip, formatDate, inputClass, raceStatus } from '../ui'
+import CountrySelect from '../../../src/components/CountrySelect'
 
 export function Dashboard({ session }) {
   const [events, setEvents] = useState(null)
@@ -133,8 +134,8 @@ export function NewEvent({ session }) {
               <Field label="Location" htmlFor="ev-location" hint="Town or area, as runners know it.">
                 <input id="ev-location" value={location} onChange={(e) => setLocation(e.target.value)} className={inputClass} placeholder="Chiang Mai" />
               </Field>
-              <Field label="Country" htmlFor="ev-country" hint="3-letter code.">
-                <input id="ev-country" value={country} onChange={(e) => setCountry(e.target.value.toUpperCase())} maxLength={3} className={`${inputClass} font-mono uppercase`} placeholder="THA" />
+              <Field label="Country" htmlFor="ev-country" hint="Where the event takes place.">
+                <CountrySelect id="ev-country" value={country} onChange={setCountry} className={inputClass} />
               </Field>
             </div>
             {error && <Notice kind="error">{error}</Notice>}
@@ -142,6 +143,7 @@ export function NewEvent({ session }) {
               <Button type="submit" busy={busy} disabled={!name.trim() || !date}>
                 Create event <ArrowRight size={15} />
               </Button>
+              {!busy && (!name.trim() || !date) && <span className="text-xs text-slate-500">{!name.trim() ? 'Enter the event name to continue.' : 'Pick the event date to continue.'}</span>}
               <Button type="button" variant="secondary" onClick={() => navigate('/events')}>
                 Cancel
               </Button>
@@ -172,7 +174,7 @@ function RaceRow({ race }) {
       <div className="flex shrink-0 items-center gap-3">
         <StatusChip status={status} />
         <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 transition group-hover:gap-2">
-          {status === 'scored' ? 'Review' : 'Continue'} <ArrowRight size={13} />
+          {status === 'published' ? 'Open' : status === 'scored' ? 'Review' : 'Continue'} <ArrowRight size={13} />
         </span>
       </div>
     </Link>
@@ -258,7 +260,7 @@ export function EventPage({ session, eventId }) {
                 <input id="ed-location" value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} className={inputClass} placeholder="Chiang Mai" />
               </Field>
               <Field label="Country" htmlFor="ed-country">
-                <input id="ed-country" value={form.country} onChange={(e) => setForm((f) => ({ ...f, country: e.target.value.toUpperCase() }))} maxLength={3} className={`${inputClass} font-mono uppercase`} placeholder="THA" />
+                <CountrySelect id="ed-country" value={form.country} onChange={(value) => setForm((f) => ({ ...f, country: value }))} className={inputClass} />
               </Field>
             </div>
             <Button type="submit" busy={busy}>
