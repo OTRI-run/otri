@@ -179,6 +179,8 @@ CREATE TABLE IF NOT EXISTS reports (
     resolved_by TEXT,
     resolution TEXT
 );
+-- A race suggested by a runner carries its facts as data, so an admin can turn it into a listing in one step.
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS payload JSONB;
 """
 
 
@@ -846,17 +848,18 @@ class Report:
     resolved_at: datetime | None = None
     resolved_by: str | None = None
     resolution: str | None = None
+    payload: dict | None = None
 
 
-_REPORT_COLUMNS = "id, kind, subject_id, subject_label, reason, message, reporter_email, page_url, status, created_at, resolved_at, resolved_by, resolution"
+_REPORT_COLUMNS = "id, kind, subject_id, subject_label, reason, message, reporter_email, page_url, status, created_at, resolved_at, resolved_by, resolution, payload"
 
 
-def create_report(*, kind: str, subject_id: str, subject_label: str | None, reason: str | None, message: str, reporter_email: str | None, page_url: str | None) -> Report:
+def create_report(*, kind: str, subject_id: str, subject_label: str | None, reason: str | None, message: str, reporter_email: str | None, page_url: str | None, payload: dict | None = None) -> Report:
     with get_connection() as connection:
         row = connection.execute(
-            "INSERT INTO reports (kind, subject_id, subject_label, reason, message, reporter_email, page_url) "
-            f"VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING {_REPORT_COLUMNS}",
-            (kind, subject_id, subject_label, reason, message, reporter_email, page_url),
+            "INSERT INTO reports (kind, subject_id, subject_label, reason, message, reporter_email, page_url, payload) "
+            f"VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING {_REPORT_COLUMNS}",
+            (kind, subject_id, subject_label, reason, message, reporter_email, page_url, Jsonb(payload) if payload else None),
         ).fetchone()
     return Report(**row)
 

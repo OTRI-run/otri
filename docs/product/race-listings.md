@@ -1,6 +1,6 @@
 # Race listings
 
-**Status:** phase 1 built (listings, requests for scores, admin import, claim by report). Notification emails and a self-service claim flow are not built.
+**Status:** phase 1 built (listings, requests for scores, admin import, claim by report) and the calendar (view, add to calendar, subscribable feed, suggested races). Notification emails and a self-service claim flow are not built.
 
 A listing is a race shown on the public races page before anyone has uploaded its results. It exists so runners can find their race, see that it is not scored yet, say they want scores, and nudge the organizer; and so OTRI can see which organizers are worth writing to first.
 
@@ -40,6 +40,17 @@ A runner's own GPX still works in the calculator for their own estimate; it does
 | POST | `/admin/events/{id}/assign` | admin | Hand the event to an organizer account (after checking the claim, e.g. the email's domain against the race website), or release it. |
 
 `GET /races` returns scored races and listings; `request_count`, `is_listed`, `is_claimed` and `official_url` are on every summary.
+
+## The calendar
+
+Listings with a date ahead make the races page a race calendar (`#races?view=calendar`; the view and every filter live in the address, so `#races?view=calendar&country=THA` is a link that can be shared).
+
+- **View:** upcoming events by month, one row per event with its distances, a countdown, and the distances whose course is on OTRI highlighted: those open the calculator for a target time before race day. Search, distance and country filters apply; the status filter and sorting belong to the list view.
+- **Add to calendar:** every event, and the page of every upcoming race, has an `.ics` download (`GET /calendar.ics?event=<id>`) and a Google Calendar link. Entries are all-day: OTRI does not hold start times.
+- **Subscribe:** `GET /calendar.ics` is the feed of upcoming public events, optionally `?country=THA`. The page links it as `webcal://`, so a calendar app keeps re-reading it: a corrected date corrects itself, a new race appears. One entry per event; the description lists the distances and links back to the race page.
+- **Suggest a race:** a form on the calendar (name, date, place, country, official website, distances; facts only). It is a report of kind `suggestion` carrying the facts as `listing`, validated like an admin listing. Nothing is public until an admin has checked it against the race's website: Admin → Reports → **Create listing** (`POST /admin/reports/{id}/create-listing`) lists it and resolves the report.
+
+What this is for: a runner who comes for the calendar meets the calculator on the races they are planning, and asks for scores after race day; every suggestion is a race OTRI did not have to find.
 
 ## Adding course files in bulk
 

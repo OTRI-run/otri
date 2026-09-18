@@ -163,6 +163,9 @@ export default function Home() {
               <a className={secondaryButton} href="#races">
                 Browse scored races <ArrowRight size={15} />
               </a>
+              <a className={secondaryButton} href="#races?view=calendar">
+                Race calendar <ArrowRight size={15} />
+              </a>
             </div>
             <div className="mt-7 flex flex-wrap gap-x-4 gap-y-2 font-mono text-[8px] tracking-[.08em] text-slate-500 sm:text-[9px]">
               <span className="text-blue-600">OPEN</span>

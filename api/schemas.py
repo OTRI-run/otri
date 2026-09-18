@@ -291,6 +291,8 @@ class ReportCreate(BaseModel):
     message: str = Field(max_length=4000)
     reporter_email: str | None = Field(default=None, max_length=320)
     page_url: str | None = Field(default=None, max_length=1000)
+    # kind 'suggestion' only: the suggested race's facts, in the shape of a listing.
+    listing: ListingCreate | None = None
 
 
 class ReportOut(BaseModel):
@@ -307,6 +309,7 @@ class ReportOut(BaseModel):
     resolved_at: datetime | None = None
     resolved_by: str | None = None
     resolution: str | None = None
+    payload: dict | None = None
 
 
 class ReportResolve(BaseModel):

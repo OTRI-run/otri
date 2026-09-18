@@ -69,6 +69,7 @@ from .auth import (
     verify_email,
 )
 from . import email as _email
+from .calendar_feed import CalendarEvent, CalendarRace, build_calendar
 from . import server_stats as _server
 from .email import send_password_reset_email, send_verification_email
 from .rate_limit import AccountLocked, check_account_lock, clear_login_failures, enforce_rate_limit, record_login_failure
@@ -922,15 +923,21 @@ def _clean_url(value: str | None) -> str | None:
     return url
 
 
-def _create_listing(payload: ListingCreate, skipped: list[str]) -> tuple[int, int]:
-    """Create the event (or reuse one with the same name and date) and its missing races, listed."""
+def _validate_listing(payload: ListingCreate) -> tuple[str, str | None, str | None, str | None]:
+    """The cleaned name, country, website and source of a listing's facts; 422 when they are not usable."""
     name = payload.event_name.strip()
     if not name:
         raise HTTPException(status_code=422, detail="event_name is required")
     country, website, source_url = _clean_country(payload.country), _clean_url(payload.website), _clean_url(payload.source_url)
     for race in payload.races:
-        if not race.course_name.strip() or race.distance_km <= 0 or race.elevation_gain_m < 0:
+        if not race.course_name.strip() or not 0 < race.distance_km <= 2000 or not 0 <= race.elevation_gain_m <= 100_000:
             raise HTTPException(status_code=422, detail=f"{name}: each race needs a course_name, distance_km > 0 and elevation_gain_m >= 0")
+    return name, country, website, source_url
+
+
+def _create_listing(payload: ListingCreate, skipped: list[str]) -> tuple[int, int]:
+    """Create the event (or reuse one with the same name and date) and its missing races, listed."""
+    name, country, website, source_url = _validate_listing(payload)
     existing = next((e for e in db.list_events() if e.event_name.strip().lower() == name.lower() and e.event_date == payload.event_date), None)
     created_events = 0
     if existing is None:
@@ -1047,6 +1054,53 @@ def admin_assign_event(event_id: str, payload: EventAssign, organizer: Organizer
         country=event.country, organizer_email=event.organizer_email, website=event.website, source_url=event.source_url,
         published_count=sum(1 for race in races if race.published_at is not None),
         races=[_race_summary(race, counts.get(race.race_id, 0)) for race in races],
+    )
+
+
+@app.post("/admin/reports/{report_id}/create-listing", response_model=ListingImportResult)
+def admin_create_listing_from_report(report_id: int, organizer: Organizer = Depends(require_admin)) -> ListingImportResult:
+    """Turn a runner's race suggestion into a public listing and close the report."""
+    report = next((r for r in db.list_reports(None) if r.id == report_id), None)
+    if report is None:
+        raise HTTPException(status_code=404, detail="no report with that id")
+    if report.kind != "suggestion" or not report.payload:
+        raise HTTPException(status_code=422, detail="that report is not a race suggestion")
+    skipped: list[str] = []
+    events, races = _create_listing(ListingCreate(**report.payload), skipped)
+    db.resolve_report(report_id, resolved_by=organizer.email, resolution=f"listed: {races} race(s) in {events} new event(s)")
+    return ListingImportResult(created_events=events, created_races=races, skipped=skipped)
+
+
+# --- Calendar -----------------------------------------------------------------------
+# The public races as an iCalendar feed: one all-day entry per event. With no filter it is the
+# upcoming calendar, meant to be subscribed to (webcal://); ?event=<id> is one event, past or
+# future, for an "add to calendar" button; ?country=THA narrows the feed.
+
+
+@app.get("/calendar.ics")
+def race_calendar(event: str | None = None, country: str | None = None) -> Response:
+    wanted_country = _clean_country(country) if country else None
+    today = date.today()
+    events: dict[str, CalendarEvent] = {}
+    for race in db.list_races(published_only=True):
+        if event is not None:
+            if race.event_id != event:
+                continue
+        elif race.event_date is None or race.event_date < today or (wanted_country and race.event_country != wanted_country):
+            continue
+        entry = events.setdefault(
+            race.event_id,
+            CalendarEvent(event_id=race.event_id, name=race.event_name or race.course_name, day=race.event_date, location=race.event_location, country=race.event_country, website=race.event_website),
+        )
+        entry.races.append(CalendarRace(race.race_id, race.course_name, race.distance_km, race.elevation_gain_m))
+    if event is not None and not events:
+        raise HTTPException(status_code=404, detail="no public event with that id")
+    name = "OTRI trail race calendar" + (f" · {wanted_country}" if wanted_country else "")
+    filename = f"otri-{event}.ics" if event else "otri-races.ics"
+    return Response(
+        content=build_calendar(list(events.values()), _email.SITE_URL, name=name),
+        media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": f'inline; filename="{filename}"', "Cache-Control": "public, max-age=3600"},
     )
 
 
@@ -1893,7 +1947,7 @@ async def admin_server(request: Request, organizer: Organizer = Depends(require_
 # the dashboard next to the actions that resolve them (unpublish, delete race, delete runner data,
 # delete a shared course) and mark them resolved.
 
-_REPORT_KINDS = {"runner", "race", "shared_course", "claim", "other"}
+_REPORT_KINDS = {"runner", "race", "shared_course", "claim", "suggestion", "other"}
 _REPORT_REASONS = {"not_me", "wrong_result", "remove_my_data", "wrong_course", "other"}
 
 
@@ -1913,6 +1967,14 @@ def create_report(payload: ReportCreate, request: Request) -> ReportOut:
     if email and ("@" not in email or len(email) > 254):
         raise HTTPException(status_code=422, detail="that does not look like an email address")
     reason = payload.reason if payload.reason in _REPORT_REASONS else None
+    listing = None
+    if payload.kind == "suggestion":
+        # A runner proposing a race for the calendar: facts only, checked like an admin's listing, and
+        # nothing is public until an admin has looked at it.
+        if payload.listing is None:
+            raise HTTPException(status_code=422, detail="a suggestion needs the race's facts")
+        _validate_listing(payload.listing)
+        listing = payload.listing.model_dump(mode="json")
     report = db.create_report(
         kind=payload.kind,
         subject_id=payload.subject_id.strip()[:120],
@@ -1921,6 +1983,7 @@ def create_report(payload: ReportCreate, request: Request) -> ReportOut:
         message=message,
         reporter_email=email,
         page_url=(payload.page_url or "").strip()[:500] or None,
+        payload=listing,
     )
     for admin_email in sorted(_ADMIN_EMAILS):
         _email.send_report_email(admin_email, report.kind, report.subject_label or report.subject_id, message, report.page_url)
