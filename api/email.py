@@ -65,6 +65,15 @@ def send_report_email(to: str, kind: str, subject_label: str, message: str, page
     )
 
 
+def send_login_code_email(to: str, code: str) -> None:
+    _send(
+        to,
+        f"{code} is your OTRI sign-in code",
+        f"<p>Your OTRI sign-in code is <b style=\"font-size:20px;letter-spacing:2px\">{code}</b>.</p>"
+        "<p>It expires in 10 minutes. If you were not signing in, change your password.</p>",
+    )
+
+
 def send_password_reset_email(to: str, token: str) -> None:
     link = f"{APP_BASE_URL}/prototype/?reset_token={token}"
     _send(

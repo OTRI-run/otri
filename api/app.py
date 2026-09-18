@@ -71,6 +71,15 @@ from . import server_stats as _server
 from .email import send_password_reset_email, send_verification_email
 from .rate_limit import enforce_rate_limit
 from .schemas import (
+    ChangePassword,
+    PasswordConfirm,
+    ProfileOut,
+    ProfileUpdate,
+    RecoveryCodesOut,
+    TotpSetupOut,
+    TwoFactorCode,
+    TwoFactorLogin,
+    TwoFactorStatus,
     ReportCreate,
     ReportOut,
     ReportResolve,
@@ -235,13 +244,141 @@ def login(payload: OrganizerCredentials, request: Request) -> TokenResponse:
     if organizer.email in _ADMIN_EMAILS:
         db.set_organizer_flags(organizer.email, is_admin=True)
     organizer = _with_flags(organizer)
-    return TokenResponse(access_token=create_access_token(organizer), email=organizer.email, is_admin=organizer.is_admin, is_demo=organizer.is_demo)
+    return _issue_session(organizer, payload.remember)
+
+
+def _issue_session(organizer: Organizer, remember: bool) -> TokenResponse:
+    """Either a token, or a second-step challenge when the account has two-factor enabled."""
+    status = _auth.two_factor_status(organizer.id)
+    if status["enabled"]:
+        challenge, method, code = _auth.start_login_challenge(organizer, remember)
+        if code:
+            _email.send_login_code_email(organizer.email, code)
+        return TokenResponse(access_token="", email=organizer.email, requires_2fa=True, challenge=challenge, method=method)
+    return TokenResponse(
+        access_token=create_access_token(organizer, remember),
+        email=organizer.email,
+        is_admin=organizer.is_admin,
+        is_demo=organizer.is_demo,
+        expires_in=_auth.token_ttl_seconds(remember),
+    )
+
+
+@app.post("/auth/login/2fa", response_model=TokenResponse)
+def login_second_step(payload: TwoFactorLogin, request: Request) -> TokenResponse:
+    """The second step: an authenticator code, an emailed code, or a recovery code."""
+    enforce_rate_limit(request, max_requests=10)
+    try:
+        organizer, remember = _auth.complete_login_challenge(payload.challenge, payload.code)
+    except AuthError as error:
+        raise HTTPException(status_code=401, detail=str(error)) from error
+    organizer = _with_flags(organizer)
+    return TokenResponse(
+        access_token=create_access_token(organizer, remember),
+        email=organizer.email,
+        is_admin=organizer.is_admin,
+        is_demo=organizer.is_demo,
+        expires_in=_auth.token_ttl_seconds(remember),
+    )
+
+
+def _me(organizer: Organizer) -> MeResponse:
+    profile = db.get_profile(organizer.id)
+    return MeResponse(
+        email=organizer.email,
+        is_admin=organizer.is_admin,
+        is_demo=organizer.is_demo,
+        profile=ProfileOut(**{k: profile.get(k) for k in db.PROFILE_FIELDS}),
+        two_factor=TwoFactorStatus(**_auth.two_factor_status(organizer.id)),
+        password_changed_at=profile.get("password_changed_at"),
+    )
 
 
 @app.get("/auth/me", response_model=MeResponse)
 def me(organizer: Organizer = Depends(require_organizer)) -> MeResponse:
-    """Who the token belongs to, with the current admin/demo flags."""
-    return MeResponse(email=organizer.email, is_admin=organizer.is_admin, is_demo=organizer.is_demo)
+    """Who the token belongs to: flags, profile and two-factor status."""
+    return _me(organizer)
+
+
+@app.patch("/auth/profile", response_model=MeResponse)
+def update_profile(payload: ProfileUpdate, organizer: Organizer = Depends(require_organizer)) -> MeResponse:
+    """Organizer details shown with their races (organization, website) and to admins (the rest)."""
+    values = {}
+    for field in db.PROFILE_FIELDS:
+        value = getattr(payload, field)
+        if value is None:
+            continue
+        value = value.strip()
+        if field == "website" and value and not re.match(r"^https?://", value):
+            value = "https://" + value
+        if field == "country":
+            value = _clean_country(value) or ""
+        limit = 1000 if field == "bio" else 200
+        values[field] = value[:limit] or None
+    db.update_profile(organizer.id, values)
+    return _me(organizer)
+
+
+@app.post("/auth/change-password", response_model=MessageResponse)
+def change_password(payload: ChangePassword, request: Request, organizer: Organizer = Depends(require_organizer)) -> MessageResponse:
+    enforce_rate_limit(request, max_requests=5)
+    try:
+        _auth.change_password(organizer.id, payload.current_password, payload.new_password)
+    except AuthError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return MessageResponse(message="password changed")
+
+
+@app.post("/auth/2fa/totp/setup", response_model=TotpSetupOut)
+def totp_setup(organizer: Organizer = Depends(require_organizer)) -> TotpSetupOut:
+    """Start authenticator-app setup: a secret to scan; nothing changes until a code confirms it."""
+    secret, uri = _auth.begin_totp_setup(organizer.id, organizer.email)
+    return TotpSetupOut(secret=secret, otpauth_uri=uri)
+
+
+@app.post("/auth/2fa/totp/enable", response_model=RecoveryCodesOut)
+def totp_enable(payload: TwoFactorCode, organizer: Organizer = Depends(require_organizer)) -> RecoveryCodesOut:
+    try:
+        codes = _auth.enable_totp(organizer.id, payload.code)
+    except AuthError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return RecoveryCodesOut(codes=codes, method="totp")
+
+
+@app.post("/auth/2fa/email/start", response_model=MessageResponse)
+def email_two_factor_start(request: Request, organizer: Organizer = Depends(require_organizer)) -> MessageResponse:
+    enforce_rate_limit(request, max_requests=5)
+    code = _auth.begin_email_two_factor(organizer.id)
+    _email.send_login_code_email(organizer.email, code)
+    return MessageResponse(message=f"a code was sent to {organizer.email}")
+
+
+@app.post("/auth/2fa/email/enable", response_model=RecoveryCodesOut)
+def email_two_factor_enable(payload: TwoFactorCode, organizer: Organizer = Depends(require_organizer)) -> RecoveryCodesOut:
+    try:
+        codes = _auth.enable_email_two_factor(organizer.id, payload.code)
+    except AuthError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return RecoveryCodesOut(codes=codes, method="email")
+
+
+@app.post("/auth/2fa/disable", response_model=MessageResponse)
+def two_factor_disable(payload: PasswordConfirm, organizer: Organizer = Depends(require_organizer)) -> MessageResponse:
+    try:
+        _auth.disable_two_factor(organizer.id, payload.password)
+    except AuthError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return MessageResponse(message="two-factor authentication disabled")
+
+
+@app.post("/auth/2fa/recovery-codes", response_model=RecoveryCodesOut)
+def two_factor_recovery_codes(payload: PasswordConfirm, organizer: Organizer = Depends(require_organizer)) -> RecoveryCodesOut:
+    """Fresh recovery codes; the old ones stop working."""
+    try:
+        codes = _auth.regenerate_recovery_codes(organizer.id, payload.password)
+    except AuthError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return RecoveryCodesOut(codes=codes, method=_auth.two_factor_status(organizer.id)["method"] or "")
 
 
 @app.post("/auth/verify-email", response_model=MessageResponse)
@@ -283,7 +420,7 @@ def confirm_password_reset(payload: PasswordResetConfirm, request: Request) -> T
         organizer = reset_password(payload.token, payload.new_password)
     except AuthError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    return TokenResponse(access_token=create_access_token(organizer), email=organizer.email)
+    return TokenResponse(access_token=create_access_token(organizer), email=organizer.email, expires_in=_auth.token_ttl_seconds(False))
 
 
 # --- Events ------------------------------------------------------------------
@@ -308,6 +445,8 @@ def _race_summary(race: db.Race, finisher_count: int | None = None) -> RaceSumma
         finisher_count=finisher_count,
         event_location=race.event_location,
         event_country=race.event_country,
+        organizer_display=race.organizer_display,
+        organizer_website=race.organizer_website,
     )
 
 

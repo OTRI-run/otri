@@ -8,8 +8,10 @@ This page describes what personal data OTRI collects and why. For race-result da
 
 **Organizer accounts** (`POST /auth/register`):
 - Email address
-- Password (never stored in plain text — hashed with `bcrypt` before saving)
+- Password (never stored in plain text — hashed with `bcrypt` before saving; must be 10+ characters and not a common password)
 - Account creation timestamp
+- Optional profile details the organizer chooses to add (name, organization, website, country, phone, short bio). Organization and website are shown next to the organizer's published races; the rest is visible only to admins.
+- If two-factor authentication is switched on: an authenticator secret or the hash of a one-time email code, and hashed recovery codes.
 
 **Race/result submissions**: race metadata and result files organizers choose to submit (see `DATA_POLICY.md` for how athlete data within those files is handled). From a results file OTRI keeps each finisher's names, gender, finish time and rank, and, when supplied, the **year** of birth and a country code, never the full date of birth.
 

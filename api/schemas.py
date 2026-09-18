@@ -52,6 +52,8 @@ class RaceSummary(BaseModel):
     finisher_count: int | None = None
     event_location: str | None = None
     event_country: str | None = None
+    organizer_display: str | None = None
+    organizer_website: str | None = None
 
 
 class EventDetail(EventSummary):
@@ -205,6 +207,9 @@ class AdminOrganizerOut(BaseModel):
     created_at: datetime
     event_count: int = 0
     race_count: int = 0
+    display_name: str | None = None
+    organization: str | None = None
+    two_factor_method: str | None = None
 
 
 class SharedCourseAdminOut(BaseModel):
@@ -254,10 +259,60 @@ class AdminOverview(BaseModel):
     recent_races: list[RaceSummary] = []
 
 
+class ProfileOut(BaseModel):
+    display_name: str | None = None
+    organization: str | None = None
+    website: str | None = None
+    phone: str | None = None
+    country: str | None = None
+    bio: str | None = None
+
+
+class ProfileUpdate(ProfileOut):
+    pass
+
+
+class TwoFactorStatus(BaseModel):
+    enabled: bool = False
+    method: str | None = None
+    recovery_codes_left: int = 0
+
+
 class MeResponse(BaseModel):
     email: str
     is_admin: bool = False
     is_demo: bool = False
+    profile: ProfileOut = ProfileOut()
+    two_factor: TwoFactorStatus = TwoFactorStatus()
+    password_changed_at: datetime | None = None
+
+
+class TwoFactorLogin(BaseModel):
+    challenge: str
+    code: str
+
+
+class TwoFactorCode(BaseModel):
+    code: str
+
+
+class PasswordConfirm(BaseModel):
+    password: str
+
+
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class TotpSetupOut(BaseModel):
+    secret: str
+    otpauth_uri: str
+
+
+class RecoveryCodesOut(BaseModel):
+    codes: list[str]
+    method: str
 
 
 class AdminEventOut(EventSummary):
@@ -286,9 +341,15 @@ class ScoringModelOut(BaseModel):
 class OrganizerCredentials(BaseModel):
     email: str
     password: str
+    remember: bool = False
+
 
 
 class TokenResponse(BaseModel):
+    requires_2fa: bool = False
+    challenge: str | None = None
+    method: str | None = None
+    expires_in: int | None = None
     is_admin: bool = False
     is_demo: bool = False
     access_token: str

@@ -81,6 +81,36 @@ ALTER TABLE races ADD COLUMN IF NOT EXISTS measurement JSONB;
 ALTER TABLE races ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ;
 ALTER TABLE organizers ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE organizers ADD COLUMN IF NOT EXISTS is_demo BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE organizers ADD COLUMN IF NOT EXISTS display_name TEXT;
+ALTER TABLE organizers ADD COLUMN IF NOT EXISTS organization TEXT;
+ALTER TABLE organizers ADD COLUMN IF NOT EXISTS website TEXT;
+ALTER TABLE organizers ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE organizers ADD COLUMN IF NOT EXISTS country TEXT;
+ALTER TABLE organizers ADD COLUMN IF NOT EXISTS bio TEXT;
+ALTER TABLE organizers ADD COLUMN IF NOT EXISTS totp_secret TEXT;
+ALTER TABLE organizers ADD COLUMN IF NOT EXISTS totp_secret_pending TEXT;
+ALTER TABLE organizers ADD COLUMN IF NOT EXISTS two_factor_method TEXT;
+ALTER TABLE organizers ADD COLUMN IF NOT EXISTS email_code_hash TEXT;
+ALTER TABLE organizers ADD COLUMN IF NOT EXISTS email_code_expires_at TIMESTAMPTZ;
+ALTER TABLE organizers ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS recovery_codes (
+    id SERIAL PRIMARY KEY,
+    organizer_id INTEGER NOT NULL REFERENCES organizers(id) ON DELETE CASCADE,
+    code_hash TEXT NOT NULL,
+    used_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS login_challenges (
+    token TEXT PRIMARY KEY,
+    organizer_id INTEGER NOT NULL REFERENCES organizers(id) ON DELETE CASCADE,
+    method TEXT NOT NULL,
+    code_hash TEXT,
+    remember BOOLEAN NOT NULL DEFAULT FALSE,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
 CREATE TABLE IF NOT EXISTS runners (
     runner_id TEXT PRIMARY KEY,
@@ -162,6 +192,8 @@ class Race:
     created_at: datetime | None = None
     event_location: str | None = None
     event_country: str | None = None
+    organizer_display: str | None = None
+    organizer_website: str | None = None
 
     def to_race_record(self) -> RaceRecord:
         """Adapt to the shape ``scoring.score_race()`` expects."""
@@ -276,7 +308,8 @@ _RACE_JOIN_SELECT = """
            r.measurement->>'version' AS measurement_version,
            r.measurement->>'status' AS measurement_status,
            r.published_at, COALESCE(o.is_demo, FALSE) AS is_demo, r.created_at,
-           e.event_name, e.event_date, e.organizer_id, e.location AS event_location, e.country AS event_country
+           e.event_name, e.event_date, e.organizer_id, e.location AS event_location, e.country AS event_country,
+           COALESCE(NULLIF(o.organization, ''), NULLIF(o.display_name, '')) AS organizer_display, NULLIF(o.website, '') AS organizer_website
     FROM races r JOIN events e ON e.event_id = r.event_id
     LEFT JOIN organizers o ON o.id = e.organizer_id
 """
@@ -628,6 +661,28 @@ def published_results_grouped_by_race() -> dict[str, list[dict]]:
     return grouped
 
 
+# --- Organizer profile ---------------------------------------------------------
+
+PROFILE_FIELDS = ("display_name", "organization", "website", "phone", "country", "bio")
+
+
+def get_profile(organizer_id: int) -> dict:
+    with get_connection() as connection:
+        row = connection.execute(
+            f"SELECT {', '.join(PROFILE_FIELDS)}, two_factor_method, password_changed_at FROM organizers WHERE id = %s", (organizer_id,)
+        ).fetchone()
+    return dict(row) if row else {}
+
+
+def update_profile(organizer_id: int, values: dict) -> dict:
+    fields = [f for f in PROFILE_FIELDS if f in values]
+    if fields:
+        assignments = ", ".join(f"{f} = %s" for f in fields)
+        with get_connection() as connection:
+            connection.execute(f"UPDATE organizers SET {assignments} WHERE id = %s", tuple(values[f] for f in fields) + (organizer_id,))
+    return get_profile(organizer_id)
+
+
 # --- Reports (corrections and removal requests from the public site) ----------
 
 
@@ -712,6 +767,9 @@ class OrganizerAccount:
     created_at: datetime
     event_count: int = 0
     race_count: int = 0
+    display_name: str | None = None
+    organization: str | None = None
+    two_factor_method: str | None = None
 
 
 def list_organizer_accounts() -> list[OrganizerAccount]:
@@ -719,7 +777,8 @@ def list_organizer_accounts() -> list[OrganizerAccount]:
         rows = connection.execute(
             """
             SELECT o.id, o.email, o.email_verified, o.is_admin, o.is_demo, o.created_at,
-                   COUNT(DISTINCT e.event_id) AS event_count, COUNT(DISTINCT r.race_id) AS race_count
+                   COUNT(DISTINCT e.event_id) AS event_count, COUNT(DISTINCT r.race_id) AS race_count,
+                   o.display_name, o.organization, o.two_factor_method
             FROM organizers o
             LEFT JOIN events e ON e.organizer_id = o.id
             LEFT JOIN races r ON r.event_id = e.event_id

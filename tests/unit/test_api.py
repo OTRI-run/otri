@@ -33,6 +33,7 @@ def _register_and_verify(email: str, password: str) -> None:
 
 
 def _organizer_auth_headers(email: str = "organizer@example.com", password: str = "correct horse battery") -> dict:
+    # "correct horse battery" is 21 characters and not on the common list: fine under the policy.
     _register_and_verify(email, password)
     response = client.post("/auth/login", json={"email": email, "password": password})
     assert response.status_code == 200, response.text
@@ -1071,3 +1072,96 @@ def test_admin_can_delete_a_runner_and_their_results(monkeypatch):
     rows = client.get(f"/races/{race_id}/results").json()
     assert [r["family_name"] for r in rows] == ["Stays"], "only that runner's results are gone"
     assert client.delete(f"/admin/runners/{runner['runner_id']}", headers=admin).status_code == 404
+
+
+# ----------------------------------------------------------------------------- sign-in security
+
+
+def test_registration_refuses_weak_passwords_with_a_reason():
+    for password, fragment in (("short1", "at least 10"), ("password1234", "attacker"), ("weak-alice-2026", "email address")):
+        response = client.post("/auth/register", json={"email": "alice@example.com", "password": password})
+        assert response.status_code == 400, password
+        assert fragment in response.json()["detail"], response.json()
+
+
+def test_remember_me_issues_a_longer_session():
+    import jwt as pyjwt
+
+    _register_and_verify("remember@example.com", "correct horse battery")
+    short = client.post("/auth/login", json={"email": "remember@example.com", "password": "correct horse battery"}).json()
+    long = client.post("/auth/login", json={"email": "remember@example.com", "password": "correct horse battery", "remember": True}).json()
+    assert short["expires_in"] == 12 * 3600 and long["expires_in"] == 30 * 24 * 3600
+    exp_short = pyjwt.decode(short["access_token"], options={"verify_signature": False})["exp"]
+    exp_long = pyjwt.decode(long["access_token"], options={"verify_signature": False})["exp"]
+    assert exp_long - exp_short > 29 * 24 * 3600
+
+
+def test_authenticator_two_factor_setup_login_and_recovery_codes():
+    from api.security import totp_now
+
+    headers = _organizer_auth_headers("totp@example.com")
+    assert client.get("/auth/me", headers=headers).json()["two_factor"] == {"enabled": False, "method": None, "recovery_codes_left": 0}
+    setup = client.post("/auth/2fa/totp/setup", headers=headers).json()
+    assert setup["otpauth_uri"].startswith("otpauth://totp/OTRI:totp%40example.com?secret=" + setup["secret"])
+    assert client.post("/auth/2fa/totp/enable", json={"code": "000000"}, headers=headers).status_code == 400
+    enabled = client.post("/auth/2fa/totp/enable", json={"code": totp_now(setup["secret"])}, headers=headers).json()
+    assert len(enabled["codes"]) == 10 and enabled["method"] == "totp"
+    assert client.get("/auth/me", headers=headers).json()["two_factor"] == {"enabled": True, "method": "totp", "recovery_codes_left": 10}
+
+    # Sign-in now has a second step.
+    first = client.post("/auth/login", json={"email": "totp@example.com", "password": "correct horse battery", "remember": True}).json()
+    assert first["requires_2fa"] is True and first["method"] == "totp" and first["access_token"] == ""
+    wrong = client.post("/auth/login/2fa", json={"challenge": first["challenge"], "code": "123456"})
+    assert wrong.status_code == 401
+    second = client.post("/auth/login/2fa", json={"challenge": first["challenge"], "code": totp_now(setup["secret"])}).json()
+    assert second["access_token"] and second["expires_in"] == 30 * 24 * 3600, "remember me survives the second step"
+    assert client.post("/auth/login/2fa", json={"challenge": first["challenge"], "code": totp_now(setup["secret"])}).status_code == 401, "a challenge is single use"
+
+    # A recovery code works once.
+    again = client.post("/auth/login", json={"email": "totp@example.com", "password": "correct horse battery"}).json()
+    assert client.post("/auth/login/2fa", json={"challenge": again["challenge"], "code": enabled["codes"][0]}).status_code == 200
+    third = client.post("/auth/login", json={"email": "totp@example.com", "password": "correct horse battery"}).json()
+    assert client.post("/auth/login/2fa", json={"challenge": third["challenge"], "code": enabled["codes"][0]}).status_code == 401
+    assert client.get("/auth/me", headers=headers).json()["two_factor"]["recovery_codes_left"] == 9
+
+    # Disable needs the password.
+    assert client.post("/auth/2fa/disable", json={"password": "wrong password here"}, headers=headers).status_code == 400
+    assert client.post("/auth/2fa/disable", json={"password": "correct horse battery"}, headers=headers).status_code == 200
+    plain = client.post("/auth/login", json={"email": "totp@example.com", "password": "correct horse battery"}).json()
+    assert plain["access_token"] and plain["requires_2fa"] is False
+
+
+def test_email_two_factor_uses_a_mailed_code(monkeypatch):
+    import importlib
+
+    api_module = importlib.import_module("api.app")
+    sent = []
+    monkeypatch.setattr(api_module._email, "send_login_code_email", lambda to, code: sent.append((to, code)))
+    headers = _organizer_auth_headers("mailcode@example.com")
+    assert client.post("/auth/2fa/email/start", headers=headers).status_code == 200
+    assert sent[-1][0] == "mailcode@example.com" and len(sent[-1][1]) == 6
+    assert client.post("/auth/2fa/email/enable", json={"code": "999999"}, headers=headers).status_code == 400
+    enabled = client.post("/auth/2fa/email/enable", json={"code": sent[-1][1]}, headers=headers).json()
+    assert enabled["method"] == "email" and len(enabled["codes"]) == 10
+    first = client.post("/auth/login", json={"email": "mailcode@example.com", "password": "correct horse battery"}).json()
+    assert first["requires_2fa"] and first["method"] == "email"
+    assert sent[-1][0] == "mailcode@example.com"
+    assert client.post("/auth/login/2fa", json={"challenge": first["challenge"], "code": sent[-1][1]}).status_code == 200
+
+
+def test_change_password_and_profile():
+    headers = _organizer_auth_headers("profile@example.com")
+    assert client.post("/auth/change-password", json={"current_password": "nope nope nope", "new_password": "a brand new passphrase"}, headers=headers).status_code == 400
+    assert client.post("/auth/change-password", json={"current_password": "correct horse battery", "new_password": "short"}, headers=headers).status_code == 400
+    assert client.post("/auth/change-password", json={"current_password": "correct horse battery", "new_password": "a brand new passphrase"}, headers=headers).status_code == 200
+    assert client.post("/auth/login", json={"email": "profile@example.com", "password": "correct horse battery"}).status_code == 401
+    assert client.post("/auth/login", json={"email": "profile@example.com", "password": "a brand new passphrase"}).status_code == 200
+    assert client.get("/auth/me", headers=headers).json()["password_changed_at"]
+
+    me = client.patch("/auth/profile", json={"display_name": "Ann Organizer", "organization": "Doi Trail Club", "website": "doitrail.example", "country": "tha", "phone": "+66 1 234"}, headers=headers).json()
+    assert me["profile"]["website"] == "https://doitrail.example" and me["profile"]["country"] == "THA"
+    event = client.post("/events", json={"event_name": "Org Shown", "event_date": "2026-11-01"}, headers=headers).json()
+    race = client.post(f"/events/{event['event_id']}/races", json={"course_name": "10K", "distance_km": 10, "elevation_gain_m": 100}, headers=headers).json()
+    public = client.get(f"/races/{race['race_id']}").json()
+    assert public["organizer_display"] == "Doi Trail Club" and public["organizer_website"] == "https://doitrail.example"
+    assert "phone" not in public
