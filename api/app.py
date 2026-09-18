@@ -1015,8 +1015,6 @@ def list_race(race_id: str, payload: RaceListingUpdate | None = None, organizer:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
     permission = ((payload.course_permission if payload else None) or "").strip()[:500] or None
-    if race.organizer_id is None and race.has_gpx and not (permission or race.course_permission):
-        raise HTTPException(status_code=422, detail="an unclaimed listing with a course file needs course_permission")
     return _race_summary(db.set_race_listed(race_id, True, permission), db.count_results_by_race().get(race_id, 0))
 
 
@@ -1229,10 +1227,9 @@ async def attach_race_gpx(
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
-    # Nobody who owns this course has uploaded it: say on what basis OTRI may publish the file.
+    # Nobody who owns this course has uploaded it. The basis on which OTRI shows the file (its licence,
+    # the organizer's consent) is recorded when the admin gives one; it is not required to upload.
     permission = (course_permission or "").strip()[:500] or race.course_permission
-    if race.organizer_id is None and not permission:
-        raise HTTPException(status_code=422, detail="an unclaimed listing needs course_permission (the licence or the organizer's consent) before a course file is attached")
 
     suffix = _safe_suffix(file.filename, ".gpx")
     contents = await file.read(20_000_001)
@@ -1250,7 +1247,7 @@ async def attach_race_gpx(
     finally:
         _discard_temp(temp_path)
 
-    if race.organizer_id is None:
+    if race.organizer_id is None and permission:
         db.set_race_listed(race_id, race.listed_at is not None, permission)
     # Stored and served: positions and elevations only (course/sanitize.py). What the upload said about
     # its origin stays with the race's private record; raw_sha256 still identifies the original file.

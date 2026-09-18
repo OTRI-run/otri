@@ -89,13 +89,14 @@ def test_csv_import_groups_rows_into_events_and_reports_bad_lines(monkeypatch):
     assert missing.status_code == 422 and "course_name" in missing.json()["detail"]
 
 
-def test_a_course_file_on_an_unclaimed_listing_needs_a_recorded_permission(monkeypatch):
+def test_a_course_file_on_an_unclaimed_listing_records_the_permission_when_one_is_given(monkeypatch):
     admin = _admin_headers(monkeypatch)
     _listing(admin)
     race_id = _public_race()["race_id"]
     with SINGLE_CLIMB_GPX.open("rb") as handle:
-        refused = client.post(f"/races/{race_id}/gpx", files={"file": ("c.gpx", handle, "application/gpx+xml")}, headers=admin)
-    assert refused.status_code == 422 and "course_permission" in refused.json()["detail"]
+        bare = client.post(f"/races/{race_id}/gpx", files={"file": ("c.gpx", handle, "application/gpx+xml")}, headers=admin)
+    assert bare.status_code == 200, "the note is optional"
+    assert bare.json()["course_permission"] is None and bare.json()["has_gpx"] is True
 
     with SINGLE_CLIMB_GPX.open("rb") as handle:
         attached = client.post(

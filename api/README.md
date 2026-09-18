@@ -45,7 +45,7 @@ Every event/race mutation (create/edit/delete, GPX attach, result submission) re
 | PATCH | `/races/{race_id}` | **Requires ownership.** Partial update of `course_name`/`distance_km`/`elevation_gain_m`/`scoring_version`. 422 on an unknown `scoring_version`. |
 | DELETE | `/races/{race_id}` | **Requires ownership.** Deletes the race distance, cascading to its results. |
 | GET | `/races/{race_id}/measurement` | Saved cleaned profile, measurement version, source and quality status; 404 for legacy GPX attachments without a snapshot. |
-| POST | `/races/{race_id}/gpx` | **Requires ownership.** Attach/replace a GPX file for a race distance — recomputes `distance_km`/`elevation_gain_m` from the parsed course. 422 on an unparseable GPX. A race nobody owns (an unclaimed listing) also needs the `course_permission` form field: the licence or the organizer's consent under which OTRI may show the file. |
+| POST | `/races/{race_id}/gpx` | **Requires ownership.** Attach/replace a GPX file for a race distance — recomputes `distance_km`/`elevation_gain_m` from the parsed course. 422 on an unparseable GPX. For a race nobody owns (an unclaimed listing) the optional `course_permission` form field records the licence or the organizer's consent under which OTRI shows the file. |
 | GET | `/races/{race_id}/gpx` | Raw GPX content for a race distance (`application/gpx+xml`), 404 if none attached. |
 | GET | `/races/{race_id}/results` | Scored results for a race already on file (scored with whichever model the race is configured for), 404 if unknown race or no results submitted yet. |
 | POST | `/races/{race_id}/results` | **Requires ownership of the race's event.** Upload a CSV/XLSX result file. Always validates first, then re-scores from the raw file using the race's configured scoring model — **the organizer can never supply a score directly** (`HANDBOOK.md` "Validation and anti-gaming"). A successful submission replaces any previously stored results for that race. Returns `is_valid`, `errors`, `warnings`, and `scores` (empty if invalid). |
@@ -96,7 +96,7 @@ Defaults to `http://localhost:5173` (the Vite dev server) if unset.
 
 1. Install PostgreSQL and create a database (see `docs/operations/` for a production setup guide; for local dev, `createdb otri` after installing PostgreSQL is enough).
 2. `pip install -r requirements-dev.txt`
-3. `python scripts/seed_demo_data.py` — creates the schema and loads the synthetic demo events/races/results.
+3. `python scripts/seed_demo_data.py --publish` — creates the schema and loads the synthetic demo events/races/results. Without `--publish` the demo races are created unpublished (test data is not public by default; admins see them under Admin → Events & races); `--unpublish` hides them all again.
 4. `uvicorn api.app:app --reload`
 
 Then open `http://127.0.0.1:8000/docs` for interactive Swagger docs (generated automatically by FastAPI).

@@ -9,7 +9,7 @@ A listing is a race shown on the public races page before anyone has uploaded it
 | | source | rule |
 |---|---|---|
 | Race facts: name, date, place, country, distance, climb, official website | compiled by an admin, by hand or CSV | Facts, not a copied database. `source_url` records where they were checked. |
-| Course file (GPX) | the organizer once they claim the race; or a file under an explicit open licence; or the organizer's written yes | **Never** a file copied from a race website or route-sharing site because it was reachable ([`pre-race-score-calculator.md`](pre-race-score-calculator.md), [`DATA_POLICY.md`](../../DATA_POLICY.md)). On an unclaimed listing the API refuses a course file without `course_permission`, and stores it with the race. |
+| Course file (GPX) | the organizer once they claim the race; or a file under an explicit open licence; or the organizer's written yes | **Never** a file copied from a race website or route-sharing site because it was reachable ([`pre-race-score-calculator.md`](pre-race-score-calculator.md), [`DATA_POLICY.md`](../../DATA_POLICY.md)). That is the policy; the API does not enforce it. On an unclaimed listing `course_permission` is optional: when the admin gives one it is stored with the race and the public page says "course shown with permission", otherwise the page says "course file". Uploading a file without a basis is the admin's responsibility. |
 | Results | the organizer, through the normal upload and publish steps | Unchanged. A listing never shows results. |
 
 A runner's own GPX still works in the calculator for their own estimate; it does not become the listing's course.
@@ -34,7 +34,7 @@ A runner's own GPX still works in the calculator for their own estimate; it does
 | POST | `/admin/listings` | admin | One event with its race distances, unowned and listed. Re-posting the same event (name and date) adds only the distances that are missing. |
 | POST | `/admin/listings/import` | admin | The same from a CSV: `event_name,event_date,location,country,website,source_url,course_name,distance_km,elevation_gain_m`, one row per distance. Bad rows are skipped and reported; the rest are imported. |
 | POST / DELETE | `/races/{id}/listing` | owner or admin | List a race ahead of its results, or take the listing down. Organizers can list their own upcoming race. |
-| POST | `/races/{id}/gpx` (`course_permission` form field) | owner or admin | Required when the race has no owner. |
+| POST | `/races/{id}/gpx` (`course_permission` form field) | owner or admin | Optional; recorded with a race that has no owner. |
 | POST | `/races/{id}/score-requests` | anyone | "I'd like scores". One per visitor: the key is a salted hash of the address plus the browser's random id, at most 25 per address per race, rate limited. Nothing personal is stored. 409 once the race is scored. |
 | POST | `/reports` with `kind: "claim"` | anyone | "I organize this race". Lands in the admin reports queue and is emailed to admins. |
 | POST | `/admin/events/{id}/assign` | admin | Hand the event to an organizer account (after checking the claim, e.g. the email's domain against the race website), or release it. |
@@ -43,7 +43,7 @@ A runner's own GPX still works in the calculator for their own estimate; it does
 
 ## Adding course files in bulk
 
-Admin → Events & races → Listings → **Choose GPX files** takes many files at once. Each is matched to a race without a course by its file name (event name plus distance, e.g. `doi-inthanon-trail-50k.gpx`; a year helps when an event is listed twice); the match is a guess shown in a dropdown, and nothing is sent until the admin presses Attach. One permission note can cover every file, or a row can carry its own; a race nobody owns is not sent without one. Files go one at a time through `POST /races/{id}/gpx`, because the server measures each course. A failed file says why and can be retried.
+Admin → Events & races → Listings → **Choose GPX files** takes many files at once. Each is matched to a race without a course by its file name (event name plus distance, e.g. `doi-inthanon-trail-50k.gpx`; a year helps when an event is listed twice); the match is a guess shown in a dropdown, and nothing is sent until the admin presses Attach. One optional permission note can cover every file, or a row can carry its own. Files go one at a time through `POST /races/{id}/gpx`, because the server measures each course. A failed file says why and can be retried.
 
 ## Claiming, today
 
