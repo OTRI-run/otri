@@ -10,14 +10,16 @@ from dataclasses import dataclass
 
 from course.gpx import TrackPoint
 
-from .course_demand import compute_course_demand, equivalent_flat_distance_from_totals
+from .course_demand import compute_course_demand, demand_from_totals
 from .course_standard import (
     MEASURED_DEMAND_VERSIONS,
-    POWER_CURVE,
+    DOMAIN_GATED_CURVE,
+    CourseNotScoredError,
     ScoreCurve,
     adjusted_demand,
     confidence_for,
     measured_demand_for,
+    not_scored_reason,
     score_for_time,
     target_time_seconds,
 )
@@ -137,7 +139,7 @@ def estimate_score(
     gpx_points: list[TrackPoint] | None = None,
     distance_km: float | None = None,
     elevation_gain_m: float | None = None,
-    curve: ScoreCurve = POWER_CURVE,
+    curve: ScoreCurve = DOMAIN_GATED_CURVE,
     measurement=None,
 ) -> ScoreEstimate:
     """Predict the Course Standard score for `finish_time_seconds` on this course.
@@ -149,6 +151,7 @@ def estimate_score(
     if finish_time_seconds <= 0:
         raise ValueError("finish_time_seconds must be greater than 0")
 
+    demand = None
     if gpx_points is not None:
         if curve.version in MEASURED_DEMAND_VERSIONS:
             demand, measurement = measured_demand_for(gpx_points, measurement, curve)
@@ -159,17 +162,20 @@ def estimate_score(
         course_demand_km = demand.course_demand_km
         steep_fraction, altitude_excess = demand.steep_distance_fraction, demand.altitude_excess_m
     elif distance_km is not None and elevation_gain_m is not None:
-        equivalent_km = equivalent_flat_distance_from_totals(distance_km, elevation_gain_m)
-        quality_flags = ()
+        equivalent_km, quality_flags = demand_from_totals(distance_km, elevation_gain_m)
         # The totals fallback has no segment profile, so no terrain inputs: factor is exactly 1.
         physical_distance_km, course_demand_km = distance_km, equivalent_km
         steep_fraction, altitude_excess = 0.0, 0.0
     else:
         raise ValueError("either gpx_points or both distance_km and elevation_gain_m must be provided")
 
+    not_scored = not_scored_reason(curve, demand, distance_km, elevation_gain_m)
+    if not_scored is not None:
+        raise CourseNotScoredError(not_scored.split(": ", 1)[1])
+
     computed = score_for_time(equivalent_km, finish_time_seconds, curve=curve)
     confidence, confidence_flags = confidence_for(
-        measurement if gpx_points is not None else None, curve, gpx_points is not None
+        measurement if gpx_points is not None else None, curve, gpx_points is not None, demand, equivalent_km
     )
     quality_flags = tuple(quality_flags) + tuple(computed["quality_flags"]) + confidence_flags
 

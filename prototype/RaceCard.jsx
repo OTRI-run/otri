@@ -10,6 +10,15 @@ export function DemoBadge({ className = '' }) {
   )
 }
 
+// Uphill-only course (the API's is_vertical). A label for finding races; it never enters a score.
+export function VerticalBadge({ className = '' }) {
+  return (
+    <span className={`inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 font-mono text-[10px] tracking-[.08em] text-blue-700 ${className}`}>
+      VERTICAL
+    </span>
+  )
+}
+
 // A published race from the API, as a real link so it can be opened in a new tab.
 export default function RaceCard({ race }) {
   const units = useUnits()
@@ -21,6 +30,7 @@ export default function RaceCard({ race }) {
       <div className="flex items-center justify-between gap-2">
         <p className="truncate font-mono text-[10px] tracking-[.08em] text-blue-600">{race.event_date}</p>
         <span className="flex shrink-0 items-center gap-2">
+          {race.is_vertical && <VerticalBadge />}
           {race.is_demo && <DemoBadge />}
           <ArrowUpRight size={14} className="text-slate-300 transition group-hover:text-blue-600" />
         </span>
@@ -47,7 +57,7 @@ export default function RaceCard({ race }) {
         {race.has_gpx && <span className="text-blue-600">VERIFIED COURSE</span>}
       </div>
       <div className="mt-4 flex items-center justify-between text-xs font-semibold text-blue-600">
-        <span>{race.finisher_count ?? 0} scored</span>
+        <span>{race.finisher_count ?? 0} {race.is_vertical ? 'finishers' : 'scored'}</span>
         <span className="text-slate-400 transition group-hover:text-blue-600">Leaderboard →</span>
       </div>
     </a>

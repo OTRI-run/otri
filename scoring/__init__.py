@@ -1,13 +1,14 @@
 """OTRI scoring engine — pluggable, versioned scoring models.
 
-The current default is Course Standard V0.4
-(`0.4.0-course-standard-endurance-referenced`, no competitor dependency).
+The current default is `DEFAULT_SCORING_VERSION`, a build of OTRI model 0.1.0 (no competitor
+dependency).
 Older scoring curves remain selectable for historical reproducibility.
 """
 
 from .course_standard import (
     CALIBRATED_CURVE,
     DEM_GATED_CURVE,
+    DOMAIN_GATED_CURVE,
     DURATION_SCALED_CURVE,
     ENDURANCE_REFERENCE,
     ENDURANCE_REFERENCED_CURVE,
@@ -36,6 +37,7 @@ from .registry import (
     SMOOTHED_UPPER_VERSION,
     DEM_GATED_VERSION,
     POWER_VERSION,
+    DOMAIN_GATED_VERSION,
     DEFAULT_SCORING_VERSION,
     ScoringModelInfo,
     available_scoring_models,
@@ -75,6 +77,8 @@ __all__ = [
     "DEM_GATED_CURVE",
     "POWER_VERSION",
     "POWER_CURVE",
+    "DOMAIN_GATED_VERSION",
+    "DOMAIN_GATED_CURVE",
     "TERRAIN_MODEL",
     "TerrainModel",
     "EnduranceReference",

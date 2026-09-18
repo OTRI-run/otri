@@ -2,7 +2,7 @@
 
 **Status:** The model in production. Every published race, runner profile and calculator estimate is scored under it.
 **Public name:** `OTRI model 0.1.0` · **Measurement:** `course-measurement-v3` · **Elevation:** Copernicus GLO-30 where installed
-**Internal build id:** `0.8.0-course-standard-power` — the identifier the API returns as `scoring_version` and stores with every score, so old results replay byte-for-byte. It is a build label, not a second model; the website shows it as "OTRI model 0.1.0".
+**Internal build id:** `0.9.0-course-standard-domain-gated` — the identifier the API returns as `scoring_version` and stores with every score, so old results replay byte-for-byte. It is a build label, not a second model; the website shows it, and `0.8.0-course-standard-power` before it (same scores, §7.4), as "OTRI model 0.1.0".
 **Code:** `scoring/course_demand.py` (course demand), `scoring/terrain.py` (terrain factor), `scoring/course_standard.py` (ceiling and curve), `course/` (measurement). If this page and the code disagree, the code wins and this page has a bug.
 
 This page is the complete specification of model 0.1.0: every formula, every constant, where each came from, the evidence, the tests that pin it, and its limits. It is self-contained. The development builds it consolidates (§14) live only in git history.
@@ -187,10 +187,11 @@ On the Copernicus terrain model the same course reads about 7.5 % more ascent (1
 Every score carries `High` or `Low` confidence. Confidence affects trust, never the number.
 
 ```text
-High    elevation from the pinned terrain model  AND  no reproducibility flag
+High    elevation from the pinned terrain model  AND  no reproducibility flag  AND  inside the model's evidence (§7.4)
 Low     otherwise, with the reason appended to quality_flags:
           elevation_not_dem_sourced: …
           route_not_reproducible: <flags> (median point spacing 47.2 m; …)
+          gradient_domain_exceeded: …          course_below_validated_range: …
 ```
 
 ### 7.1 The point-spacing gate
@@ -220,6 +221,18 @@ Sparse tracks are still measured and scored; the score says why it should not be
 
 A course outside the installed tiles is measured from its own elevations with `terrain_coverage_incomplete_used_uploaded_elevation`, provenance `uploaded-gpx`, and `Low` confidence. A genuine provider failure (checksum mismatch, unreadable tile, no elevation in the file either) stops the measurement rather than inventing one.
 
+### 7.4 Where the model's own evidence ends
+
+Build `0.9.0` ([OEP-002](../../governance/oep/OEP-002-domain-gating-and-vertical-races.md)) changes no score. It adds what the model says about courses beyond what it was built and checked on:
+
+| condition | effect | why |
+|---|---|---|
+| more than 20 % of the course's demand comes from segments clamped at ±45 % | `Low`, `gradient_domain_exceeded` | a clamped segment is under-credited by an unknown amount (13.5 % at 50 %, 18.6 % at 52 % if the polynomial is extrapolated); at a fifth of the demand the course-level error passes the 3 % of §7.3. The clamp notice alone still never blocks `High` (§7.2) |
+| `D'` below 1.5 flat-km | `Low`, `course_below_validated_range` | 1,500 m is the shortest held-out record (§5.3); below it events are anaerobic and the records outrun the curve (800 m 107 %, 400 m 121 %) |
+| steep share above 0.50, or with no course file an average grade of 20 % or more | **not scored**: `otri_score` is null, the row carries `course_not_scored: …`, the result does not enter a runner index | the steep-terrain coefficient (§4) was calibrated at a steep share of 0.184 and real mountain courses measure 0–0.25; an uphill-only course is about 1.0, the linear term multiplies its demand by 1.6, and a 50-minute vertical kilometre would score 1000 |
+
+Vertical races are therefore published with finish times and ranks and without scores until the term is recalibrated on vertical-race data (§12). Race summaries carry a descriptive `is_vertical` label (ascent ≥ 10 × descent and average grade ≥ 10 %; from official figures alone, average grade ≥ 20 %); the label never enters a score.
+
 ## 8. Every constant
 
 | constant | value | origin |
@@ -235,6 +248,8 @@ A course outside the installed tiles is measured from its own elevations with `t
 | `Q_1000` | 21.5331347785 flat-km/h | `rate(D_ref)`, derived |
 | Curve exponent | 0.85 | chosen |
 | Sparse-track gate | median spacing > 30 m | from data (four real courses) |
+| Not scored above | steep share 0.50 | chosen: twice any course the steep term has been seen on (§7.4) |
+| `Low` above / below | 20 % of demand clamped · 1.5 flat-km | derived from the 3 % claim · the shortest held-out record |
 | Terrain data | Copernicus GLO-30, pinned by checksum | public dataset |
 
 Nothing is fitted to a field of results and nothing is referenced to another index.
@@ -256,6 +271,7 @@ All of these run in `tests/unit` (`test_scoring_course_demand.py`, `test_scoring
 - Ceiling: the short segment's `b` is 1.06 ± 0.01; `b(D)` non-decreasing and above 1; `rate(D)` strictly decreasing; every world best in §5 scores ≥ 940; a runner at a fixed share of the ceiling scores within 1 point across 5–700 flat-km; out-of-range courses are flagged.
 - Curve: `otri_raw(f × Q_1000) == 1000 × f^0.85` to 1e-12 for `f` in 0.05–1.1; inverse round-trip within tolerance across 3–700 flat-km and scores 50–1000; faster time always scores higher; the reported rate is unscaled.
 - Confidence: `High` only with terrain-model elevation and a reproducible route; `Low` with the reason for sparse tracks and for uploaded elevation; the clamp notice alone leaves `High` reachable; two files with the same geometry and different uploaded elevations hash identically under the terrain model; thinning that passes the gate measures within 3 %.
+- Domain gating (`test_scoring_domain_gated.py`): builds `0.8.0` and `0.9.0` score every scored course identically; the two `Low` thresholds sit exactly at 20 % and 1.5 flat-km; a course with a steep share above 0.50 lists every finisher with no score and the reason; official figures beyond ±45 % are clamped and flagged.
 - Reproducibility: every earlier build id still returns its published numbers for the worked examples; a `course-measurement-v1`/`v2` snapshot replays unchanged.
 - Real-course pins run when the (gitignored) organizer files are present and are skipped otherwise.
 
@@ -279,18 +295,19 @@ The scale is defined by three published world bests, two literature constants, o
 7. **Conditions do not enter** (heat, mud, snow, night), by design.
 8. **Beyond 320 flat-km the ceiling extrapolates** (§5.4).
 9. **Three anchors is a deliberately small basis**, justified by the held-out validation; an OTRI-owned dataset would justify more.
+10. **Vertical races cannot be scored.** The steep-terrain term is linear in the steep share and calibrated at 0.18; at 1.0 it over-scores by about 60 % of demand. Such courses are listed without scores (§7.4) until the term is refitted on vertical-race data, which would be a new model.
 
 What would make the model non-provisional: real, licensed finish data on real courses across sizes and ability levels, enough to fit the steep-terrain coefficient and the exponent instead of choosing them, and a same-route benchmark of the terrain model against a bare-earth model and calibrated barometric traversals.
 
 ## 13. Versioning
 
-- The public model name changes (`0.2.0`, …) only when a score can change for the same course and time. Anything that leaves every score identical (engine speed-ups, caching, a new measurement build with identical output) keeps the name.
+- The public model name changes (`0.2.0`, …) only when a score can change for the same course and time. Anything that leaves every score identical (engine speed-ups, caching, a new measurement build with identical output, a build that changes only confidence or withholds a score it cannot defend, §7.4) keeps the name.
 - Every change to a formula or constant above needs an OEP ([`../governance/`](../../governance/)) and a new build id in `scoring/`. Old build ids stay selectable so historical scores replay; a historical score is never rewritten under a new formula. The ceiling anchors are frozen constants of this version: refreshing them when a record falls is a new version.
 - The plain-language companion to this page is [`HOW-OTRI-SCORES.md`](HOW-OTRI-SCORES.md); the runner index that combines scores into one number per runner is [`RUNNER-INDEX-v1.md`](../runner-index/RUNNER-INDEX-v1.md).
 
 ## 14. Development history
 
-Model 0.1.0 is the consolidation of eight development builds. Each remains selectable by its build id in `scoring/registry.py` so any score ever published can be reproduced. Their individual specifications were removed from this folder in September 2026 because everything 0.1.0 uses is on this page; they are in git history (`git log --all -- docs/methodology/v0.8`).
+Model 0.1.0 is the consolidation of eight development builds, plus one build since that changes no score. Each remains selectable by its build id in `scoring/registry.py` so any score ever published can be reproduced. Their individual specifications were removed from this folder in September 2026 because everything 0.1.0 uses is on this page; they are in git history (`git log --all -- docs/methodology/v0.8`).
 
 | build id | what it contributed to 0.1.0 |
 |---|---|
@@ -300,6 +317,7 @@ Model 0.1.0 is the consolidation of eight development builds. Each remains selec
 | `0.5.0-course-standard-terrain-adjusted` | the steep-terrain and altitude adjustments (§4) |
 | `0.6.0-course-standard-smoothed-upper` | dropped the last demo anchor from the upper curve |
 | `0.7.0-course-standard-dem-gated` | terrain-model elevation, the spacing gate and the confidence label (§7) |
-| `0.8.0-course-standard-power` | the single power curve (§6); this build **is** model 0.1.0 |
+| `0.8.0-course-standard-power` | the single power curve (§6); the first build of model 0.1.0 |
+| `0.9.0-course-standard-domain-gated` | the same scores; confidence reports the model's own limits and vertical races are listed without scores (§7.4, OEP-002); the current build of model 0.1.0 |
 
 The retired baseline `0.1.0-field-relative` (`scoring/model.py`, [OEP-001](../../governance/oep/OEP-001-baseline-scoring-model.md)) shares the number but is a different, competitor-relative rule kept only for reproducibility; it is not model 0.1.0.

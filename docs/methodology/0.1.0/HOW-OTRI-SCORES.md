@@ -1,6 +1,6 @@
 # How an OTRI score is calculated — and how to question it
 
-**Status:** Explainer for **OTRI model 0.1.0**, the model running in production — specified in [`OTRI-MODEL-0.1.0.md`](OTRI-MODEL-0.1.0.md) (internal build id `0.8.0-course-standard-power`, measurement `course-measurement-v3`)
+**Status:** Explainer for **OTRI model 0.1.0**, the model running in production — specified in [`OTRI-MODEL-0.1.0.md`](OTRI-MODEL-0.1.0.md) (internal build id `0.9.0-course-standard-domain-gated`, measurement `course-measurement-v3`)
 **Audience:** Runners, race organizers, and anyone who wants to check whether the number deserves trust
 **Source of truth:** [`OTRI-MODEL-0.1.0.md`](OTRI-MODEL-0.1.0.md) and the code in `scoring/` and `course/`; the development builds it consolidates are listed in its §14. If this page and the code disagree, the code wins — and that is a bug in this page.
 
@@ -31,7 +31,8 @@ Three things follow from the definition, and each is tested in the code:
 3. **Your rate** = flat-equivalent km ÷ hours.
 4. **The ceiling** for that course size is read from a curve through three public world-best performances (5000 m, marathon, 24 hours) — the fastest rate ever sustained over that much demand.
 5. **Score** = 1000 × (your rate ÷ ceiling)^0.85.
-6. **A confidence label** (`High`/`Low`) says whether another device recording the same route would have produced the same number. `High` needs terrain-model elevation and a dense enough track.
+6. **A confidence label** (`High`/`Low`) says whether another device recording the same route would have produced the same number. `High` needs terrain-model elevation, a dense enough track, and a course inside what the model was checked on (not mostly steeper than 45 %, not shorter than 1.5 flat-km).
+7. **Vertical races get no score yet.** On an uphill-only course (more than half of it at 20 % or steeper) the steep-ground factor, tuned on mountain courses with descents, over-scores by about 60 %. Those races are listed with finish times only and do not count toward a runner index.
 
 ---
 

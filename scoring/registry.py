@@ -1,11 +1,8 @@
 """Pluggable scoring-model registry.
 
 OTRI supports multiple versioned scoring models so historical scores remain
-reproducible. The current default is Course Standard V0.4
-(`0.4.0-course-standard-endurance-referenced`): the measured course-demand
-pipeline plus an endurance-referenced score curve, so a score means the same
-thing on a short race and on a multi-hour mountain ultra
-(`docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md`).
+reproducible. The current default is `DEFAULT_SCORING_VERSION` below, a build of
+OTRI model 0.1.0 (`docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md`).
 """
 
 from __future__ import annotations
@@ -18,6 +15,7 @@ from ingestion.records import RaceRecord, ResultRecord
 from .course_standard import (
     CALIBRATED_CURVE,
     DEM_GATED_CURVE,
+    DOMAIN_GATED_CURVE,
     DURATION_SCALED_CURVE,
     ENDURANCE_REFERENCED_CURVE,
     MEASURED_CURVE,
@@ -41,7 +39,8 @@ TERRAIN_ADJUSTED_VERSION = TERRAIN_ADJUSTED_CURVE.version
 SMOOTHED_UPPER_VERSION = SMOOTHED_UPPER_CURVE.version
 DEM_GATED_VERSION = DEM_GATED_CURVE.version
 POWER_VERSION = POWER_CURVE.version
-DEFAULT_SCORING_VERSION = POWER_CURVE.version
+DOMAIN_GATED_VERSION = DOMAIN_GATED_CURVE.version
+DEFAULT_SCORING_VERSION = DOMAIN_GATED_CURVE.version
 
 
 @dataclass(frozen=True)
@@ -53,6 +52,18 @@ class ScoringModelInfo:
 
 
 _MODEL_INFO: dict[str, ScoringModelInfo] = {
+    DOMAIN_GATED_VERSION: ScoringModelInfo(
+        version=DOMAIN_GATED_VERSION,
+        name='Course Standard V0.9 (domain-gated confidence)',
+        description=(
+            "V0.8's scores, unchanged to the last digit, with confidence also reporting where the "
+            'model itself runs out of evidence: Low when more than a fifth of the course demand comes '
+            'from ground steeper than the 45% gradient domain (very steep vertical races), and Low '
+            'below 1.5 flat-km, the shortest performance the ceiling is validated against '
+            '(docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md section 7.4; still OTRI model 0.1.0).'
+        ),
+        uses_competitors=False,
+    ),
     POWER_VERSION: ScoringModelInfo(
         version=POWER_VERSION,
         name='Course Standard V0.8 (power curve)',
@@ -188,6 +199,10 @@ def score_race(
     measurement=None,
 ) -> list[RunnerScore]:
     """Score a race with the selected model version."""
+    if model_version == DOMAIN_GATED_VERSION:
+        return score_race_course_standard(
+            race, results, gpx_points=gpx_points, curve=DOMAIN_GATED_CURVE, measurement=measurement
+        )
     if model_version == POWER_VERSION:
         return score_race_course_standard(
             race, results, gpx_points=gpx_points, curve=POWER_CURVE, measurement=measurement
