@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .reader import read_rows
-from .schema import NON_FINISHER_CODES, RACE_FIELDS, RESULT_FIELDS, FieldSpec, _normalize_header
+from .schema import RACE_FIELDS, RESULT_FIELDS, FieldSpec, _normalize_header, clean_cell, rank_position, resolve_rank
 from .time_utils import parse_hms_to_seconds
 
 
@@ -133,30 +133,27 @@ def validate_result_file(path: str | Path) -> ValidationReport:
 
 def _validate_result_cross_field(rows: list[dict[str, str]], mapping: dict[str, str]) -> list[ValidationIssue]:
     issues: list[ValidationIssue] = []
+    rank_header = mapping.get("rank")
+    status_header = mapping.get("status")
+    time_header = mapping.get("finish_time")
 
-    if "rank" in mapping and "finish_time" in mapping:
-        for row_index, row in enumerate(rows, start=1):
-            rank_raw = row.get(mapping["rank"], "").strip()
-            if rank_raw.upper() in NON_FINISHER_CODES:
-                continue  # DNF/DNS/DSQ rows are not expected to have a finish time
-            try:
-                int(rank_raw)
-            except ValueError:
-                continue  # already reported by the rank field validator
-            if not row.get(mapping["finish_time"], "").strip():
-                issues.append(
-                    ValidationIssue("error", row_index, "finish_time", "value is required for finishers")
-                )
-
-    if "rank" in mapping:
+    if rank_header:
         seen_ranks: dict[int, int] = {}
         previous_rank: int | None = None
+        previous_seconds: int | None = None
         for row_index, row in enumerate(rows, start=1):
-            raw = row.get(mapping["rank"], "").strip()
-            try:
-                rank = int(raw)
-            except ValueError:
-                continue  # already reported by the field validator
+            rank_raw = row.get(rank_header, "")
+            status_raw = row.get(status_header, "") if status_header else ""
+            resolved = resolve_rank(rank_raw, status_raw)
+            if resolved is None:
+                if not clean_cell(rank_raw):
+                    issues.append(ValidationIssue("error", row_index, "rank", "value is required"))
+                continue  # a malformed rank was already reported by the field validator
+            if isinstance(resolved, str):
+                continue  # DNF/DNS/DSQ rows: no finish time, no place in the ranking order
+            rank = resolved
+            if time_header and not clean_cell(row.get(time_header, "")):
+                issues.append(ValidationIssue("error", row_index, "finish_time", "value is required for finishers"))
             if rank in seen_ranks:
                 issues.append(ValidationIssue("error", row_index, "rank", f"duplicate rank: {rank}"))
             else:
@@ -166,11 +163,24 @@ def _validate_result_cross_field(rows: list[dict[str, str]], mapping: dict[str, 
                     ValidationIssue("error", row_index, "rank", "rank must increase strictly from the previous row")
                 )
             previous_rank = rank
+            if time_header:
+                seconds = parse_hms_to_seconds(row.get(time_header, ""))
+                if seconds is not None:
+                    if previous_seconds is not None and seconds < previous_seconds:
+                        issues.append(
+                            ValidationIssue(
+                                "error",
+                                row_index,
+                                "finish_time",
+                                "finish_time must not decrease relative to the previous (ascending rank) row",
+                            )
+                        )
+                    previous_seconds = seconds
 
     if "bib_number" in mapping:
         seen_bibs: dict[str, int] = {}
         for row_index, row in enumerate(rows, start=1):
-            bib = row.get(mapping["bib_number"], "").strip()
+            bib = clean_cell(row.get(mapping["bib_number"], ""))
             if not bib:
                 continue
             if bib in seen_bibs:
@@ -178,21 +188,19 @@ def _validate_result_cross_field(rows: list[dict[str, str]], mapping: dict[str, 
             else:
                 seen_bibs[bib] = row_index
 
-    if "finish_time" in mapping:
-        previous_seconds: int | None = None
-        for row_index, row in enumerate(rows, start=1):
-            seconds = parse_hms_to_seconds(row.get(mapping["finish_time"], ""))
-            if seconds is None:
-                continue  # already reported by the field validator
-            if previous_seconds is not None and seconds < previous_seconds:
-                issues.append(
-                    ValidationIssue(
-                        "error",
-                        row_index,
-                        "finish_time",
-                        "finish_time must not decrease relative to the previous (ascending rank) row",
-                    )
+    # One file per race distance: a combined export (50K and 30K in one sheet) would rank the
+    # short race's finishers against the long course. Refuse it with the values found.
+    if "race" in mapping:
+        values = sorted({_normalize_header(row.get(mapping["race"], "")) for row in rows if row.get(mapping["race"], "").strip()})
+        if len(values) > 1:
+            listed = ", ".join(values[:6]) + (", …" if len(values) > 6 else "")
+            issues.append(
+                ValidationIssue(
+                    "error",
+                    None,
+                    "race",
+                    f"this file mixes {len(values)} races ({listed}); upload one file per race distance",
                 )
-            previous_seconds = seconds
+            )
 
     return issues

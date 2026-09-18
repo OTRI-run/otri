@@ -326,18 +326,29 @@ export function CourseStep({ session, raceId }) {
 
 // -------------------------------------------------------------------------- Step 3: results
 
+// The layout timing companies already export. Column names are matched loosely: the last
+// column lists the variants that are also recognised. Extra columns are ignored.
 const COLUMNS = [
-  ['Ranking', 'required', 'finish rank, or DNF'],
-  ['Time', 'finishers', 'HH:MM:SS; blank for DNF'],
-  ['Family name', 'required', ''],
-  ['First Name', 'required', ''],
-  ['Gender', 'required', 'M / F'],
-  ['Bib Number', 'recommended', ''],
-  ['Nationality', 'optional', 'country code'],
-  ['Birthdate', 'optional', 'only if you may share it'],
-  ['City', 'optional', ''],
-  ['Team', 'optional', ''],
+  ['Rank', 'required', 'finishing position, or DNF / DNS / DSQ', 'Ranking, Position, Place, Overall'],
+  ['Time', 'finishers', 'H:MM:SS; blank for non-finishers', 'Finish time, Net time, Chip time, Official time'],
+  ['Last name', 'required', '', 'Family name, Surname, Lastname'],
+  ['First name', 'required', '', 'Firstname, Given name'],
+  ['Gender', 'required', 'M / F / X, or Male / Female', 'Sex'],
+  ['Status', 'optional', 'Finisher, DNF, DNS, DSQ; may replace the rank', 'Result status'],
+  ['Bib', 'recommended', 'as printed, letters allowed', 'Bib number, Race number, Start number'],
+  ['Nationality', 'optional', '3-letter country code', 'Country, Nat'],
+  ['Birthdate', 'optional', 'YYYY-MM-DD; only if you may share it', 'Date of birth, DOB, YOB'],
+  ['City', 'optional', '', 'Town'],
+  ['Team', 'optional', '', 'Club'],
 ]
+
+const TEMPLATE_CSV = [
+  'Rank,Time,Last name,First name,Gender,Status,Bib,Nationality,Birthdate,City,Team',
+  '1,4:12:33,Srisuk,Anong,F,Finisher,101,THA,,Chiang Mai,Trail Club',
+  '2,4:20:05,Wong,Daniel,M,Finisher,102,SGP,,Singapore,',
+  'DNF,,Martin,Alex,M,DNF,103,USA,,,',
+].join('\n')
+const TEMPLATE_HREF = `data:text/csv;charset=utf-8,${encodeURIComponent(TEMPLATE_CSV + '\n')}`
 
 function IssueList({ issues, kind }) {
   return (
@@ -437,23 +448,49 @@ export function ResultsStep({ session, raceId }) {
         <Card>
           <Eyebrow>{existing?.length ? 'REPLACE RESULTS' : 'UPLOAD RESULTS'}</Eyebrow>
           <p className="mt-1 text-sm text-slate-600">
-            One row per finisher, CSV or XLSX. OTRI validates the file first and tells you exactly what to fix; nothing is scored until it passes.
+            One file per race distance, CSV or XLSX, one row per participant: the layout your timing company already
+            exports. Column names are matched loosely and extra columns are ignored. OTRI validates the file first and
+            tells you exactly what to fix; nothing is scored until it passes.
           </p>
-          <button type="button" onClick={() => setShowGuide((v) => !v)} className="mt-2 text-xs font-semibold text-blue-600">
-            {showGuide ? 'Hide' : 'Show'} the expected columns
-          </button>
+          <div className="mt-3 flex flex-wrap items-center gap-4">
+            <a
+              href={TEMPLATE_HREF}
+              download="otri-results-template.csv"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-[#0b1220] no-underline hover:border-blue-300"
+            >
+              Download CSV template
+            </a>
+            <button type="button" onClick={() => setShowGuide((v) => !v)} className="text-xs font-semibold text-blue-600">
+              {showGuide ? 'Hide' : 'Show'} the accepted columns
+            </button>
+          </div>
           {showGuide && (
-            <table className="mt-2 w-full text-left text-xs">
-              <tbody>
-                {COLUMNS.map(([name, need, note]) => (
-                  <tr key={name} className="border-b border-slate-100 last:border-0">
-                    <td className="py-1 pr-3 font-mono font-semibold text-[#0b1220]">{name}</td>
-                    <td className="py-1 pr-3 text-slate-500">{need}</td>
-                    <td className="py-1 text-slate-500">{note}</td>
+            <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full min-w-[560px] text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[9px] uppercase tracking-[.06em] text-slate-500">
+                    <th className="px-3 py-2">Column</th>
+                    <th className="px-3 py-2">Needed</th>
+                    <th className="px-3 py-2">Values</th>
+                    <th className="px-3 py-2">Also accepted as</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {COLUMNS.map(([name, need, note, aliases]) => (
+                    <tr key={name} className="border-b border-slate-100 last:border-0">
+                      <td className="px-3 py-1.5 font-mono font-semibold text-[#0b1220]">{name}</td>
+                      <td className="px-3 py-1.5 text-slate-500">{need}</td>
+                      <td className="px-3 py-1.5 text-slate-500">{note}</td>
+                      <td className="px-3 py-1.5 text-slate-500">{aliases}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="px-3 py-2 text-[11px] text-slate-500">
+                Files that mix several distances are rejected with the distances found: each race distance has its own
+                course, so each gets its own upload.
+              </p>
+            </div>
           )}
           <div className="mt-4">
             <Dropzone

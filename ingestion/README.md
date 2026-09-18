@@ -8,7 +8,7 @@ Format-agnostic readers and deterministic validators for organizer race and resu
 
 One intentional gap between the two layers: the published JSON Schema treats `gender` as a strict `M`/`F`/`X` enum, while the Python validator accepts other values as a **warning**, since real organizer exports are not always pre-cleaned.
 
-`rank` also accepts the non-finisher codes `DNF`, `DNS`, and `DSQ` (case-insensitive) instead of a number. `finish_time` is only required when `rank` is an actual finishing position.
+`rank` also accepts the non-finisher codes `DNF`, `DNS`, and `DSQ` (and their usual spellings: "Did not finish", "Abandon", "DQ" …) instead of a number, and an optional `status` column may carry the code instead when the rank cell is empty. `finish_time` is only required when `rank` is an actual finishing position; fractional seconds and `MM:SS` are accepted. Gender values such as `Male`/`Female`/`Woman` are normalised to `M`/`F`. Header names follow common timing exports (see the alias lists in `schema.py`), and a file whose race/distance column holds several values is rejected: one file per race distance.
 
 ## Usage
 

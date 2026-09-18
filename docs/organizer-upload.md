@@ -51,30 +51,34 @@ A race submission should contain:
 
 ## Result file
 
-The initial organizer-compatible XLSX layout uses one row per participant and the following columns:
+One file per race distance (CSV or XLSX), one row per participant. The layout is the one timing companies already export; header names are matched case- and punctuation-insensitively, and the variants below are all recognised. Extra columns (category, age group, splits, chip id) are ignored.
 
-| Column | Required | Description |
-|---|---|---|
-| Ranking | Yes | Finish rank or `DNF` |
-| Time | Yes for finishers | Finish time; blank for DNF |
-| Family name | Yes | Participant family/surname |
-| First Name | Yes | Participant given name |
-| Gender | Yes | OTRI normalized gender value |
-| Birthdate | Optional | Date of birth if the organizer has the right to provide it |
-| Nationality | Optional/Recommended | ISO-style country code |
-| Bib Number | Recommended | Race bib |
-| City | Optional | City supplied by organizer |
-| Team | Optional | Team/club |
+| Column | Required | Description | Also accepted as |
+|---|---|---|---|
+| Rank | Yes | Finishing position (`12`, `12.`, `12th`), or `DNF` / `DNS` / `DSQ` | Ranking, Position, Place, Overall, Pos |
+| Time | Finishers | `H:MM:SS`, fractional seconds allowed; `MM:SS` for short races; blank for non-finishers | Finish time, Net time, Chip time, Official time, Gun time, Result |
+| Last name | Yes | Family name | Family name, Surname, Lastname |
+| First name | Yes | Given name | Firstname, Given name, Forename |
+| Gender | Yes | `M`, `F` or `X`; `Male` / `Female` / `Man` / `Woman` and common translations are normalised | Sex |
+| Status | Optional | `Finisher`, `DNF`, `DNS`, `DSQ` (also "Did not finish", "Abandon", "DQ" …). A non-finisher status may replace the rank | Result status |
+| Bib | Recommended | Race bib as printed; letters allowed | Bib number, Race number, Start number |
+| Nationality | Optional | 3-letter country code | Country, Nat |
+| Birthdate | Optional | `YYYY-MM-DD`, only if the organizer has the right to provide it | Date of birth, DOB |
+| Year of birth | Optional | Four-digit year, when a full date is not shared | YOB |
+| City | Optional | City supplied by organizer | Town |
+| Team | Optional | Team or club | Club |
 
-The initial format deliberately resembles a widely used organizer-style result spreadsheet layout. OTRI does not copy any other organization's database or scoring system; the compatibility is limited to a practical file-ingestion format.
+A file whose `Race` / `Distance` / `Event` column holds more than one value is rejected: results for a 50K and a 30K must be uploaded to their own race distances, because each is scored against its own course.
+
+The format deliberately resembles the result spreadsheets organizers already produce for other services. OTRI does not copy any other organization's database or scoring system; the compatibility is limited to a practical file-ingestion format.
 
 ## DNF and DNS
 
-For a DNF:
+For a DNF, either of these works:
 
 ```text
-Ranking = DNF
-Time = blank
+Rank = DNF          Time = blank
+Rank = blank        Status = DNF   (or "Did not finish", "Abandon")
 ```
 
 DNS participants should not appear in the official finisher-results table. If OTRI later accepts start-list data, DNS records may be stored separately for participation statistics.

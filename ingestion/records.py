@@ -11,7 +11,7 @@ from datetime import date
 from pathlib import Path
 
 from .reader import read_rows
-from .schema import NON_FINISHER_CODES, RACE_FIELDS, RESULT_FIELDS, FieldSpec, _normalize_header
+from .schema import RACE_FIELDS, RESULT_FIELDS, FieldSpec, _normalize_header, clean_cell, normalize_gender, resolve_rank
 from .time_utils import parse_hms_to_seconds
 from .validate import validate_race_file, validate_result_file
 
@@ -94,24 +94,27 @@ def result_records(path: str | Path) -> list[ResultRecord]:
     mapping = _column_map(list(rows[0].keys()) if rows else [], RESULT_FIELDS)
 
     records: list[ResultRecord] = []
+    status_header = mapping.get("status")
     for row in rows:
-        rank_raw = row[mapping["rank"]].strip()
-        rank: int | str = rank_raw.upper() if rank_raw.upper() in NON_FINISHER_CODES else int(rank_raw)
+        rank = resolve_rank(row[mapping["rank"]], row.get(status_header, "") if status_header else "")
+        if rank is None:  # unreachable after validation, kept as a guard
+            raise InvalidFileError(f"{path}: a row has neither a rank nor a non-finisher status")
 
         time_header = mapping.get("finish_time")
-        time_raw = row.get(time_header, "").strip() if time_header else ""
-        finish_time_seconds = parse_hms_to_seconds(time_raw) if time_raw else None
+        time_raw = clean_cell(row.get(time_header, "")) if time_header else ""
+        finish_time_seconds = parse_hms_to_seconds(time_raw) if (time_raw and isinstance(rank, int)) else None
 
         bib_header = mapping.get("bib_number")
-        bib_raw = row.get(bib_header, "").strip() if bib_header else ""
+        bib_raw = clean_cell(row.get(bib_header, "")) if bib_header else ""
 
+        gender_raw = row[mapping["gender"]]
         records.append(
             ResultRecord(
                 rank=rank,
                 finish_time_seconds=finish_time_seconds,
                 family_name=row[mapping["family_name"]].strip(),
                 first_name=row[mapping["first_name"]].strip(),
-                gender=row[mapping["gender"]].strip().upper(),
+                gender=normalize_gender(gender_raw) or gender_raw.strip().upper(),
                 bib_number=bib_raw or None,
             )
         )
