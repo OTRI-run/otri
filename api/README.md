@@ -31,6 +31,8 @@ Every event/race mutation (create/edit/delete, GPX attach, result submission) re
 | GET | `/races` | Public races: those with published results and listings awaiting them (`listing_status`: `scored`, `upcoming`, `awaiting_results`; `request_count`, `is_listed`, `is_claimed`, `official_url`). `?all=true` (admin) lists every race. |
 | POST · DELETE | `/races/{race_id}/listing` | **Requires ownership.** Show the race publicly before it has results, or take the listing down. Results stay behind publishing (`docs/product/race-listings.md`). |
 | POST | `/races/{race_id}/score-requests` | Public: a runner asks for a listed race to be scored. Optional `client_id`; counted once per visitor, capped per address, rate limited. 409 once the race is scored. |
+| GET | `/calendar.ics` | Public iCalendar feed of upcoming public events (one all-day entry per event, distances in the description). `?country=THA` narrows it; `?event=<event_id>` is a single event, past or future, for an add-to-calendar button. Cached for an hour. |
+| POST | `/admin/reports/{report_id}/create-listing` | **Admin.** Turn a `suggestion` report (a runner's proposed race, carried as `listing` on `POST /reports`) into a public listing and resolve the report. |
 | POST | `/admin/listings` · `/admin/listings/import` | **Admin.** Add unowned listings from race facts (JSON, or a CSV with one row per distance). Existing events and distances are skipped and reported. |
 | POST | `/admin/events/{event_id}/assign` | **Admin.** Hand an event to an organizer's account (`organizer_email`), or release it with none: how a claimed listing reaches its organizer. |
 | GET | `/races/{race_id}` | Race distance detail, 404 if unknown. |

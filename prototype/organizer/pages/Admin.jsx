@@ -3,6 +3,7 @@ import { Activity, ArrowUpRight, Check, Eye, EyeOff, Flag as FlagIcon, HardDrive
 import CourseMap from '../../../src/components/CourseMap'
 import {
   assignEvent,
+  createListingFromReport,
   importListings,
   setRaceListed,
   deleteAdminOrganizer,
@@ -205,7 +206,7 @@ function Overview({ session }) {
 
 // ------------------------------------------------------------------------------ Reports
 
-const KIND_LABEL = { runner: 'Runner', race: 'Race', shared_course: 'Shared course', other: 'Other' }
+const KIND_LABEL = { runner: 'Runner', race: 'Race', shared_course: 'Shared course', claim: 'Claim', suggestion: 'Suggested race', other: 'Other' }
 const REASON_LABEL = { not_me: 'not me / merged', wrong_result: 'wrong result', remove_my_data: 'remove my data', wrong_course: 'wrong course', other: 'other' }
 
 function subjectLink(report) {
@@ -260,6 +261,19 @@ function ReportCard({ report, token, onChanged }) {
       <Button variant="danger" busy={busy} className="min-h-9 px-3 text-xs" onClick={() => run(async () => { await deleteSharedCourse(report.subject_id, token); await resolveAdminReport(report.id, 'shared course deleted', token) }, `Delete the shared course "${report.subject_label ?? report.subject_id}"? Links to it stop working.`)}>
         <Trash2 size={13} /> Delete shared course
       </Button>
+    ),
+    // Check the facts against the race's own website first; listing makes them public.
+    suggestion: report.payload && (
+      <>
+        {report.payload.website && (
+          <a href={report.payload.website} target="_blank" rel="noreferrer" className="inline-flex min-h-9 items-center gap-1 text-xs font-semibold text-blue-600 no-underline hover:underline">
+            Check the website <ArrowUpRight size={12} />
+          </a>
+        )}
+        <Button busy={busy} className="min-h-9 px-3 text-xs" onClick={() => run(() => createListingFromReport(report.id, token), `List "${report.payload.event_name}" (${report.payload.event_date}) with ${report.payload.races.length} distance(s) on the public calendar?`)}>
+          <Check size={13} /> Create listing
+        </Button>
+      </>
     ),
   }
 

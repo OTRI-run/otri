@@ -301,6 +301,11 @@ export function listAdminReports(token, status = 'open') {
   return request(`/admin/reports?status=${encodeURIComponent(status)}`, { headers: authHeaders(token) })
 }
 
+/** Admin: turn a runner's race suggestion into a public listing; the report is resolved by the API. */
+export function createListingFromReport(reportId, token) {
+  return request(`/admin/reports/${reportId}/create-listing`, { method: 'POST', headers: authHeaders(token) })
+}
+
 export function resolveAdminReport(reportId, resolution, token) {
   return request(`/admin/reports/${reportId}/resolve`, { method: 'POST', headers: authHeaders(token, { 'Content-Type': 'application/json' }), body: JSON.stringify({ resolution }) })
 }

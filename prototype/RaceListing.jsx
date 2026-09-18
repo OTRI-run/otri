@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Check, ExternalLink, Hand, Share2 } from 'lucide-react'
 import { requestScores, submitReport } from './apiClient'
+import { AddToCalendar, countdown } from './calendarLinks'
 
 // A listed race has no results on OTRI yet: say so, let runners ask for scores (one per browser,
 // counted by the API), hand them a message for the organizer, and let the organizer claim it.
@@ -136,7 +137,8 @@ export default function RaceListing({ race }) {
   return (
     <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
       <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">{upcoming ? 'UPCOMING · NO RESULTS YET' : 'NO RESULTS ON OTRI YET'}</p>
-      <h3 className="mt-2 text-xl font-bold tracking-[-.03em] text-[#0b1220]">{upcoming ? 'Scores appear here after race day.' : 'This race has not been scored.'}</h3>
+      <h3 className="mt-2 text-xl font-bold tracking-[-.03em] text-[#0b1220]">{upcoming ? `Race day is ${countdown(race.event_date) ?? 'soon'}. Scores appear here afterwards.` : 'This race has not been scored.'}</h3>
+      {upcoming && <AddToCalendar event={{ ...race, races: [race] }} className="mt-2" />}
       <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
         OTRI scores come from the official results, uploaded by the race's organizer. {race.is_claimed ? 'The organizer is on OTRI and has not published results yet.' : 'Nobody from this race has joined yet.'} If you{' '}
         {upcoming ? 'are running it' : 'ran it'}, say so: organizers hear about it, and the count is shown here.
