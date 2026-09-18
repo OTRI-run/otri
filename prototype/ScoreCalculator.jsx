@@ -12,8 +12,8 @@ import { distanceUnit, formatDistance, formatElevation, formatPace as formatPace
 // table; what differs is the top of the scale and whether the 692 demo anchor is kept:
 //   - V0.1-V0.3: 692 kept, 1000-anchor is V0.1's extrapolated 17.940
 //   - V0.4-V0.5: 692 kept, 1000-anchor is the measured human ceiling 21.533
-//   - V0.6+:     692 dropped (docs/methodology/v0.6/OTRI-SMOOTHED-UPPER-CURVE.md)
-//   - V0.8:      one power law, no anchor table (docs/methodology/v0.8/OTRI-POWER-CURVE.md)
+//   - V0.6+:     692 dropped
+//   - V0.8:      one power law, no anchor table (docs/methodology/OTRI-MODEL-0.1.0.md section 6)
 const ANCHOR_0 = { score: 0, q: 1.0 }
 const ANCHOR_349 = { score: 349, q: 4.240362424138815 }
 const ANCHOR_544 = { score: 544, q: 8.935158501440922 }
@@ -453,11 +453,8 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
             )}
 
             <p className="mt-5 text-[11px] text-slate-500">
-              Methodology: <code>docs/methodology/v0.8/OTRI-POWER-CURVE.md</code> (curve),{' '}
-              <code>v0.7/OTRI-DEM-GATED-MEASUREMENT.md</code> (measurement & confidence),{' '}
-              <code>v0.6/OTRI-SMOOTHED-UPPER-CURVE.md</code> (curve), <code>v0.5/OTRI-TERRAIN-ADJUSTED-DEMAND.md</code>{' '}
-              (terrain), <code>v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md</code> (human ceiling),{' '}
-              <code>v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md</code> (course demand).
+              Methodology: <code>docs/methodology/OTRI-MODEL-0.1.0.md</code> — course demand §3, terrain §4, human ceiling §5,
+              curve §6, measurement and confidence §7.
             </p>
           </div>
         </details>

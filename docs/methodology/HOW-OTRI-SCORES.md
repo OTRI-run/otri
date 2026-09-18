@@ -2,7 +2,7 @@
 
 **Status:** Explainer for **OTRI model 0.1.0**, the model running in production — specified in [`OTRI-MODEL-0.1.0.md`](OTRI-MODEL-0.1.0.md) (internal build id `0.8.0-course-standard-power`, measurement `course-measurement-v3`)
 **Audience:** Runners, race organizers, and anyone who wants to check whether the number deserves trust
-**Source of truth:** [`OTRI-MODEL-0.1.0.md`](OTRI-MODEL-0.1.0.md) and the code in `scoring/` and `course/`; the development notes under [`v0.1/`](v0.1/) … [`v0.8/`](v0.8/) are history. If this page and the code disagree, the code wins — and that is a bug in this page.
+**Source of truth:** [`OTRI-MODEL-0.1.0.md`](OTRI-MODEL-0.1.0.md) and the code in `scoring/` and `course/`; the development builds it consolidates are listed in its §14. If this page and the code disagree, the code wins — and that is a bug in this page.
 
 ---
 
@@ -61,9 +61,9 @@ Nothing in the model is fitted to a field of results, and nothing is referenced 
 
 ### 2.2 Evidence that the shape is right
 
-- **Length-invariance.** With three anchors chosen for depth of competition, nine other world records the curve never saw land at 92–102% of it: 1500 m to half marathon within 2.4%; the 100 km, 100-mile, 6-hour and 12-hour records at 92–97% (softer events, as expected) — [`v0.4`](v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md) §4.
+- **Length-invariance.** With three anchors chosen for depth of competition, nine other world records the curve never saw land at 92–102% of it: 1500 m to half marathon within 2.4%; the 100 km, 100-mile, 6-hour and 12-hour records at 92–97% (softer events, as expected) — [`OTRI-MODEL-0.1.0.md`](OTRI-MODEL-0.1.0.md) §5.3.
 - **Riegel corroboration.** The 5 km → marathon segment of the ceiling, built only from those two records, has an exponent of 1.059. Riegel's 1981 survey found 1.06. The model did not use his number.
-- **Route-invariance, bounded.** The same real course thinned to simulate coarser recording: within ~2–3% of full-density demand while median spacing stays ≤ 30 m; 4–13% short beyond it — which is why the gate sits at 30 m and why sparser tracks are labelled rather than scored silently ([`v0.7`](v0.7/OTRI-DEM-GATED-MEASUREMENT.md) §2.1).
+- **Route-invariance, bounded.** The same real course thinned to simulate coarser recording: within ~2–3% of full-density demand while median spacing stays ≤ 30 m; 4–13% short beyond it — which is why the gate sits at 30 m and why sparser tracks are labelled rather than scored silently ([`OTRI-MODEL-0.1.0.md`](OTRI-MODEL-0.1.0.md) §7.1).
 - **Elevation source matters, and the model says so.** On the reference 100-miler the terrain model reads 10,311 m of ascent against 9,592 m from the file and 9,890 m official. On an 80 km Chiang Mai course whose watch file carried 3,844 implausible jumps, the file said 7,525 m, the terrain model 4,549 m, and heavier smoothing of the file converged on the terrain model. On a Phuket trail the two agree to the metre. Production uses the terrain model; the note records both figures.
 - **Determinism.** Three repeat runs of the same file are bit-identical. Changing the arithmetic engine (v2 → v3) moved every number by less than 3e-8 m and no score by a point — and still triggered a new processing version, because the hashes changed.
 
@@ -77,7 +77,7 @@ Nothing in the model is fitted to a field of results, and nothing is referenced 
 6. **A sparse recording still cannot be fixed.** The gate labels it; only route-snapping could rebuild the missing switchbacks, and that is not built.
 7. **No conditions.** Heat, mud, snow, night — none of it enters. Two editions of the same race in different weather are not comparable, by design.
 8. **Courses beyond 320 flat-km extrapolate** the 24-hour segment of the ceiling, which is conservative for multi-day events with sleep stops. They are flagged.
-9. **Scores changed during development.** Model 0.1.0 is the consolidation of eight development builds. Every build is selectable by its id and every stored measurement replays byte-for-byte; a race's score is only comparable to another under the same model. This is policy ([`v0.1`](v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md) §21), not an accident.
+9. **Scores changed during development.** Model 0.1.0 is the consolidation of eight development builds. Every build is selectable by its id and every stored measurement replays byte-for-byte; a race's score is only comparable to another under the same model. This is policy ([`OTRI-MODEL-0.1.0.md`](OTRI-MODEL-0.1.0.md) §13), not an accident.
 
 ### 2.4 Hard questions, answered straight
 
@@ -91,7 +91,7 @@ Nothing in the model is fitted to a field of results, and nothing is referenced 
 
 **"Isn't comparing a 10 km trail and a 100-miler meaningless?"** Comparing *times* is. Comparing *shares of what is humanly possible over that demand* is exactly what the ceiling makes possible, and the nine held-out world records are the evidence the ceiling has the right shape.
 
-**"Who decided 0.85?"** The maintainers, on the record, with the alternatives stated ([`v0.8`](v0.8/OTRI-POWER-CURVE.md) §2.1). It will be revisited only when licensed field data exists, and never to track another index.
+**"Who decided 0.85?"** The maintainers, on the record, with the alternatives stated ([`OTRI-MODEL-0.1.0.md`](OTRI-MODEL-0.1.0.md) §6.1). It will be revisited only when licensed field data exists, and never to track another index.
 
 **"Can I reproduce a score?"** Yes. Every API response carries the scoring version, the measurement version, the elevation source, and a hash of the measured profile; the code is public; old versions remain selectable. Reproducing it needs nothing but the GPX and the finish time.
 

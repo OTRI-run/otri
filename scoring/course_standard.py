@@ -4,10 +4,10 @@ The current default is `ENDURANCE_REFERENCED_CURVE` (`0.4.0-course-standard-endu
 the V0.2 measured course-demand pipeline, V0.1's three real score anchors, and a course-size
 scaling built from published world-best performances so that a score means the same thing on a
 5 km race and on a 100-mile mountain race. See
-`docs/methodology/v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md`.
+`docs/methodology/OTRI-MODEL-0.1.0.md` section 5.
 
-`OFFICIAL_CURVE` (`0.1.0-course-standard-calibrated`) implements
-`docs/methodology/v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md` exactly: the 50 m GPX course-demand
+`OFFICIAL_CURVE` (`0.1.0-course-standard-calibrated`) is the retired first development build
+(`docs/methodology/OTRI-MODEL-0.1.0.md` section 14): the 50 m GPX course-demand
 integral plus its piecewise power-law score-to-Q curve, calibrated from demo/test race anchors.
 `MEASURED_CURVE`, `DURATION_SCALED_CURVE` and the legacy logarithmic curves (`SPEC_CURVE`,
 `CALIBRATED_CURVE`) remain selectable so historical scores stay reproducible (spec section 21).
@@ -117,7 +117,7 @@ class ScoreCurve:
 SPEC_CURVE = ScoreCurve(version="1.0.0-course-standard", q_500=15.0, q_1000=22.5)
 CALIBRATED_CURVE = ScoreCurve(version="1.1.0-course-standard", q_500=3.5, q_1000=10.5)
 
-# Official V0.1 model — docs/methodology/v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md section 13.
+# Development build V0.1 (retired; docs/methodology/OTRI-MODEL-0.1.0.md section 14).
 # Piecewise power law through demo/test race reference anchors:
 #   6:29:58 -> 349, 3:05:04 -> 544, 2:20:30 -> 692 (course demand ~27.560 demand-km).
 # The final segment continues the same exponent up to Q~17.94 at score 1000.
@@ -277,7 +277,7 @@ DURATION_SCALED_CURVE = replace(
 #
 # Only three anchors are used, chosen for depth of competition and wide spacing. The held-out
 # records they were *not* built from land at 92-102% of the resulting curve (see
-# docs/methodology/v0.4/OTRI-ENDURANCE-REFERENCED-CURVE.md section 4), which is the validation
+# docs/methodology/OTRI-MODEL-0.1.0.md section 5.3), which is the validation
 # evidence for this shape. They are frozen constants of model version 0.4.0: refreshing them
 # when a record falls is a new model version, never an edit in place (spec section 21).
 ENDURANCE_REFERENCE_OBSERVATIONS: tuple[tuple[str, float, float], ...] = (
@@ -316,7 +316,7 @@ ENDURANCE_REFERENCED_CURVE = replace(
 # costs. V0.5 closes that gap by adjusting demand itself (see `scoring/terrain.py`), leaving the
 # endurance-referenced curve untouched. Road courses have a terrain factor of exactly 1.0 and
 # are unaffected; steep courses rise together, including the V0.1 reference race, whose winner
-# moves from 692 to 737 as a result. See docs/methodology/v0.5/OTRI-TERRAIN-ADJUSTED-DEMAND.md.
+# moves from 692 to 737 as a result. See docs/methodology/OTRI-MODEL-0.1.0.md section 4.
 TERRAIN_ADJUSTED_CURVE = replace(
     ENDURANCE_REFERENCED_CURVE,
     version='0.5.0-course-standard-terrain-adjusted',
@@ -331,7 +331,7 @@ TERRAIN_ADJUSTED_CURVE = replace(
 # property of running. V0.6 drops the 692 anchor so a single power law runs from the 544 anchor
 # to the world-best 1000 anchor; everything at or below 544 is untouched. Being the universal
 # score shape, this also lowers road runners in the same band (~20-30 points around 700), who
-# were sitting in the same inflated segment. See docs/methodology/v0.6/OTRI-SMOOTHED-UPPER-CURVE.md.
+# were sitting in the same inflated segment. See docs/methodology/OTRI-MODEL-0.1.0.md section 14.
 SMOOTHED_UPPER_CURVE = replace(
     TERRAIN_ADJUSTED_CURVE,
     version='0.6.0-course-standard-smoothed-upper',
@@ -349,7 +349,7 @@ SMOOTHED_UPPER_CURVE = replace(
 # V0.7 scores from course-measurement-v2 (median-spacing gate) and grades its own confidence:
 # `High` only when elevation came from a pinned DEM and the track is dense enough to measure the
 # route rather than a chord of it; `Low`, with the reason surfaced, when either fails. See
-# docs/methodology/v0.7/OTRI-DEM-GATED-MEASUREMENT.md.
+# docs/methodology/OTRI-MODEL-0.1.0.md section 7.
 DEM_GATED_CURVE = replace(SMOOTHED_UPPER_CURVE, version='0.7.0-course-standard-dem-gated')
 
 # Above 544, V0.6/V0.7 were already exactly score = 1000 * f**0.692 with f the runner's fraction
@@ -360,7 +360,7 @@ DEM_GATED_CURVE = replace(SMOOTHED_UPPER_CURVE, version='0.7.0-course-standard-d
 # score below it drops, more so further down (a runner at 53% of the ceiling: 643 -> 581; at 22%:
 # 371 -> 274). 0.85 is a judgement between "score is your percentage of world best" (1.0) and the
 # old curve, not a fitted or externally referenced value.
-# See docs/methodology/v0.8/OTRI-POWER-CURVE.md.
+# See docs/methodology/OTRI-MODEL-0.1.0.md section 6.
 POWER_EXPONENT = 0.85
 POWER_CURVE = replace(
     DEM_GATED_CURVE,

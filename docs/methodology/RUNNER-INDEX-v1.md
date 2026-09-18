@@ -57,4 +57,4 @@ Two people with the same name, gender and birth year would be merged; a runner w
 
 ## 5. Versioning
 
-Any change to the window, the count, the weighting, the combination or the identity rules is a new version (`runner-index-v2`, …) with its own note, per the policy in [`v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md`](v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md) §21. The API reports the version with every index.
+Any change to the window, the count, the weighting, the combination or the identity rules is a new version (`runner-index-v2`, …) with its own note, per the policy in [`OTRI-MODEL-0.1.0.md`](OTRI-MODEL-0.1.0.md) §13. The API reports the version with every index.

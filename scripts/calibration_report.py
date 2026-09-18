@@ -1,7 +1,6 @@
 """Runs the real OTRI scoring pipeline over data/calibration/ to compare V0.1 vs V0.3
-(duration-scaled) scores across common trail-race distances — see
-docs/methodology/v0.3/OTRI-DURATION-SCALED-CURVE.md section 6 ("what would make this
-non-provisional"). All courses/times here are synthetic/illustrative (data/calibration/README.md).
+(duration-scaled) scores across common trail-race distances — both retired development
+builds listed in docs/methodology/OTRI-MODEL-0.1.0.md section 14. All courses/times here are synthetic/illustrative (data/calibration/README.md).
 
 Run with: python scripts/calibration_report.py
 """
