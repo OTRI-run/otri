@@ -1,7 +1,7 @@
 import { ArrowRight, ArrowUpRight, Calculator, Database, FileText, GitBranch, Mountain, ShieldCheck, Timer, Upload, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import RaceCard from './RaceCard'
-import { listRaces } from './apiClient'
+import { getRaceResults, listRaces } from './apiClient'
 
 const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 const DOCS = {
@@ -32,7 +32,30 @@ const secondaryButton =
 const textLink = 'inline-flex items-center gap-1 text-xs font-semibold text-blue-600 no-underline hover:underline'
 
 // The landing page's dark "index engine" card, with every row a link into the prototype.
-function EngineCard({ raceCount, resultCount, scoringVersion }) {
+// A handful of real (demo) scores scrolling by, each a link to the runner: the quickest way to
+// show what the index produces. Pauses for people who prefer reduced motion (see styles.css).
+function ScoreTicker({ entries }) {
+  if (!entries.length) return null
+  const rows = [...entries, ...entries]
+  return (
+    <div className="relative mt-1 h-[88px] overflow-hidden border-b border-slate-700/70" aria-label="Recent scores">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-4 bg-gradient-to-b from-[#0b1730] to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-4 bg-gradient-to-t from-[#0f2a5f] to-transparent" />
+      <ul className="otri-ticker">
+        {rows.map((entry, index) => (
+          <li key={`${entry.runner_id ?? entry.name}-${index}`} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-1 font-mono text-[10px]">
+            <a href={entry.runner_id ? `#runners/${encodeURIComponent(entry.runner_id)}` : `#races/${encodeURIComponent(entry.race_id)}`} className="min-w-0 truncate text-slate-300 no-underline hover:text-white">
+              {entry.name} <span className="text-slate-500">· {entry.race}</span>
+            </a>
+            <span className="font-bold text-blue-300">{entry.score}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function EngineCard({ raceCount, resultCount, scoringVersion, ticker }) {
   const rows = [
     [Calculator, 'CALCULATE', 'any course · any time', '#calculator'],
     [Database, 'RACES', `${raceCount} scored · ${resultCount} results`, '#races'],
@@ -48,13 +71,17 @@ function EngineCard({ raceCount, resultCount, scoringVersion }) {
           LIVE API
         </span>
       </div>
-      <div className="border-b border-slate-700/70 py-10">
+      <a href="#calculator" className="group block border-b border-slate-700/70 py-7 text-white no-underline">
         <small className="font-mono text-[8px] tracking-[.08em] text-blue-300">WHAT CAN I DO HERE?</small>
         <strong className="mt-2 block bg-gradient-to-r from-white to-blue-200 bg-clip-text pb-1 text-4xl font-bold leading-[1.25] tracking-[-.05em] text-transparent">
           Try the index.
         </strong>
         <span className="mt-1 block text-xs text-slate-400">Real scoring code. Real course measurement. Demo data.</span>
-      </div>
+        <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-blue-300 transition group-hover:gap-2 group-hover:text-white">
+          Calculate your score <ArrowRight size={13} />
+        </span>
+      </a>
+      <ScoreTicker entries={ticker} />
       <div>
         {rows.map(([Icon, title, desc, href]) => (
           <a
@@ -79,8 +106,31 @@ function EngineCard({ raceCount, resultCount, scoringVersion }) {
 
 export default function Home() {
   const [races, setRaces] = useState([])
+  const [ticker, setTicker] = useState([])
   useEffect(() => {
-    listRaces().then(setRaces).catch(() => {})
+    let cancelled = false
+    listRaces()
+      .then(async (rows) => {
+        if (cancelled) return
+        setRaces(rows)
+        // A few scored finishers from the newest published races, for the card's ticker.
+        const sample = rows.filter((race) => (race.finisher_count ?? 0) > 0).slice(0, 4)
+        const lists = await Promise.all(sample.map((race) => getRaceResults(race.race_id).catch(() => [])))
+        // Top three of each race, interleaved round-robin so the list reads like a feed across races.
+        const perRace = sample.map((race, i) =>
+          lists[i]
+            .filter((row) => row.status === 'finisher' && row.otri_score != null)
+            .slice(0, 3)
+            .map((row) => ({ name: `${row.first_name} ${row.family_name}`, race: race.event_name, score: row.otri_score, runner_id: row.runner_id, race_id: race.race_id })),
+        )
+        const entries = []
+        for (let round = 0; round < 3; round += 1) perRace.forEach((rows) => rows[round] && entries.push(rows[round]))
+        if (!cancelled) setTicker(entries.slice(0, 12))
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
   }, [])
   const resultCount = races.reduce((sum, race) => sum + (race.finisher_count ?? 0), 0)
   const scoringVersion = races[0]?.scoring_version ?? ''
@@ -118,7 +168,7 @@ export default function Home() {
               <span>INDEPENDENT</span>
             </div>
           </div>
-          <EngineCard raceCount={races.length} resultCount={resultCount} scoringVersion={scoringVersion} />
+          <EngineCard raceCount={races.length} resultCount={resultCount} scoringVersion={scoringVersion} ticker={ticker} />
         </div>
       </section>
 

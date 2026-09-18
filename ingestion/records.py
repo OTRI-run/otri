@@ -29,6 +29,8 @@ class RaceRecord:
     course_name: str
     distance_km: float
     elevation_gain_m: float
+    location: str | None = None
+    country: str | None = None
 
 
 @dataclass(frozen=True)
@@ -81,6 +83,8 @@ def race_records(path: str | Path) -> list[RaceRecord]:
             course_name=row[mapping["course_name"]].strip(),
             distance_km=float(row[mapping["distance_km"]]),
             elevation_gain_m=float(row[mapping["elevation_gain_m"]]),
+            location=(row.get(mapping["location"], "").strip() or None) if "location" in mapping else None,
+            country=(row.get(mapping["country"], "").strip().upper() or None) if "country" in mapping else None,
         )
         for row in rows
     ]

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowUpRight, Mail } from 'lucide-react'
+import { ArrowUpRight, ChevronDown, Mail } from 'lucide-react'
 import '../../src/styles.css'
 import Logo from '../../src/components/Logo'
 import UnitsMenu from '../../src/components/UnitsMenu'
@@ -15,91 +15,135 @@ import { Button, CONTAINER } from './ui'
 
 const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 
+function initialOf(email) {
+  return (email || '?').trim().charAt(0).toUpperCase()
+}
+
+// Account menu: avatar + chevron opens email, role, the app's pages and Sign out. Keeps the
+// header to five things: logo, badge, Your events, Admin, and this.
+function AccountMenu({ session, onSignOut }) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef(null)
+  useEffect(() => {
+    if (!open) return undefined
+    const onPointerDown = (event) => {
+      if (rootRef.current && !rootRef.current.contains(event.target)) setOpen(false)
+    }
+    const onKey = (event) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+  const item = 'block rounded-lg px-3 py-2 text-sm text-[#0b1220] no-underline hover:bg-slate-50'
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Account menu"
+        className="flex items-center gap-1.5 rounded-full border border-slate-300 bg-white py-1 pl-1 pr-2 hover:border-blue-300"
+      >
+        <span className={`flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs font-bold text-white ${session.isAdmin ? 'bg-amber-500' : 'bg-blue-600'}`}>
+          {initialOf(session.email)}
+        </span>
+        <ChevronDown size={13} className={`text-slate-500 transition ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_18px_44px_rgba(15,23,42,.14)]">
+          <div className="px-3 py-2">
+            <p className="truncate font-mono text-xs text-[#0b1220]" title={session.email}>
+              {session.email}
+            </p>
+            <p className="mt-1 flex items-center gap-2 font-mono text-[9px] tracking-[.08em] text-slate-500">
+              ORGANIZER
+              {session.isAdmin && <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[8px] font-bold text-white">ADMIN</span>}
+            </p>
+          </div>
+          <div className="my-1 border-t border-slate-100" />
+          <Link to="/events" className={item} onClick={() => setOpen(false)}>
+            Your events
+          </Link>
+          {session.isAdmin && (
+            <Link to="/admin" className={item} onClick={() => setOpen(false)}>
+              Admin dashboard
+            </Link>
+          )}
+          <a href="../#home" className={item}>
+            Public site ↗
+          </a>
+          <a href={GITHUB_URL} className={item}>
+            GitHub ↗
+          </a>
+          <div className="my-1 border-t border-slate-100" />
+          <button type="button" onClick={onSignOut} className={`${item} w-full text-left`}>
+            Sign out
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Header({ session, onSignOut }) {
   return (
     <>
       <header className="sticky top-0 z-50 h-[68px] border-b border-slate-200/90 bg-white/95 backdrop-blur">
-        <div className={`${CONTAINER} flex h-full min-w-0 items-center`}>
+        <div className={`${CONTAINER} flex h-full min-w-0 items-center gap-4`}>
           <Logo href="../#home" />
           <Link
             to="/"
-            className="ml-6 hidden shrink-0 items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 font-mono text-[9px] font-medium tracking-[.08em] text-blue-600 no-underline sm:flex"
+            className="hidden shrink-0 items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 font-mono text-[9px] font-medium tracking-[.08em] text-blue-600 no-underline sm:flex"
           >
             <i className="h-1.5 w-1.5 rounded-full bg-blue-600 shadow-[0_0_0_3px_#dbeafe]" />
             FOR ORGANIZERS
           </Link>
-          <nav className="ml-auto hidden shrink-0 items-center gap-7 md:flex">
-            <a href="../#calculator" className="text-[13px] font-medium text-slate-500 no-underline hover:text-slate-950">
-              Calculate score
-            </a>
-            <a href="../#races" className="text-[13px] font-medium text-slate-500 no-underline hover:text-slate-950">
-              Races
-            </a>
-            <a href="../#runners" className="text-[13px] font-medium text-slate-500 no-underline hover:text-slate-950">
-              Runners
-            </a>
+          <nav className="ml-auto flex shrink-0 items-center gap-3 sm:gap-5">
             {session && (
-              <Link to="/events" className="text-[13px] font-semibold text-[#0b1220] no-underline">
+              <Link to="/events" className="hidden text-[13px] font-semibold text-[#0b1220] no-underline md:inline">
                 Your events
               </Link>
             )}
             {session?.isAdmin && (
-              <Link to="/admin" className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-mono text-[9px] tracking-[.08em] text-amber-700 no-underline">
-                ADMIN · ALL EVENTS
+              <Link
+                to="/admin"
+                className="hidden items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-mono text-[9px] tracking-[.08em] text-amber-700 no-underline md:inline-flex"
+              >
+                ADMIN
               </Link>
             )}
-            <a className="flex items-center gap-1 text-[13px] font-semibold text-[#0b1220] no-underline" href={GITHUB_URL}>
-              GitHub <ArrowUpRight size={14} />
+            <a href="../#home" className="hidden items-center gap-1 text-[13px] font-medium text-slate-500 no-underline hover:text-slate-950 lg:inline-flex">
+              Public site <ArrowUpRight size={13} />
             </a>
-            <UnitsMenu />
+            <span className="hidden sm:block">
+              <UnitsMenu />
+            </span>
             {session ? (
-              <span className="flex items-center gap-2">
-                <span className="hidden max-w-[200px] truncate text-xs text-slate-500 2xl:inline" title={session.email}>
-                  {session.email}
-                </span>
-                {session.isAdmin && (
-                  <span className="rounded-full bg-amber-500 px-2 py-0.5 font-mono text-[8px] font-bold tracking-[.08em] text-white">ADMIN</span>
-                )}
-                <button onClick={onSignOut} className="text-[13px] font-medium text-slate-500 hover:text-slate-950" title={session.email}>
-                  Sign out
-                </button>
-              </span>
+              <AccountMenu session={session} onSignOut={onSignOut} />
             ) : (
               <Link to="/login" className="inline-flex min-h-9 items-center rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white no-underline hover:bg-blue-700">
                 Sign in
               </Link>
             )}
           </nav>
-          <div className="ml-auto flex items-center gap-2 md:hidden">
-            {session ? (
-              <span className="flex items-center gap-2">
-                {session.isAdmin && (
-                  <span className="rounded-full bg-amber-500 px-2 py-0.5 font-mono text-[8px] font-bold tracking-[.08em] text-white">ADMIN</span>
-                )}
-                <button onClick={onSignOut} className="text-xs font-semibold text-slate-500">
-                  Sign out
-                </button>
-              </span>
-            ) : (
-              <Link to="/login" className="inline-flex min-h-9 items-center rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white no-underline">
-                Sign in
-              </Link>
-            )}
-          </div>
         </div>
       </header>
-      {/* Small screens: section links in their own row. */}
+      {/* Small screens: the app's pages in their own row. */}
       <div className="border-b border-slate-200 bg-white md:hidden">
         <div className={`${CONTAINER} flex items-center gap-5`}>
-          <a href="../#calculator" className="py-3 text-[13px] font-medium text-slate-500 no-underline">
-            Calculate score
-          </a>
-          <a href="../#races" className="py-3 text-[13px] font-medium text-slate-500 no-underline">
-            Races
-          </a>
-          {session && (
+          {session ? (
             <Link to="/events" className="py-3 text-[13px] font-semibold text-[#0b1220] no-underline">
               Your events
+            </Link>
+          ) : (
+            <Link to="/" className="py-3 text-[13px] font-semibold text-[#0b1220] no-underline">
+              For organizers
             </Link>
           )}
           {session?.isAdmin && (
@@ -107,7 +151,10 @@ function Header({ session, onSignOut }) {
               ADMIN
             </Link>
           )}
-          <div className="ml-auto py-1.5">
+          <a href="../#home" className="py-3 text-[13px] font-medium text-slate-500 no-underline">
+            Public site
+          </a>
+          <div className="ml-auto py-1.5 sm:hidden">
             <UnitsMenu />
           </div>
         </div>

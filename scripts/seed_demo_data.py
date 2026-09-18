@@ -51,8 +51,10 @@ def main() -> None:
     for race in races:
         event_id = f"{DEMO_EVENT_PREFIX}{race.race_id.removeprefix('OTRI-DEMO-')}"
         if db.find_event(event_id) is None:
-            db.create_event(race.race_name, race.event_date, organizer_id=organizer_id, event_id=event_id)
+            db.create_event(race.race_name, race.event_date, organizer_id=organizer_id, event_id=event_id, location=race.location, country=race.country)
             inserted += 1
+        elif race.location or race.country:
+            db.update_event(event_id, location=race.location, country=race.country)
 
         if db.find_race(race.race_id) is None:
             db.create_race(

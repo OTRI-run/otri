@@ -348,7 +348,13 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
       })
     })
 
+    // The page around the map often changes width after the map was created (cards load,
+    // fonts settle); MapLibre only sizes its canvas on window resize, so watch the container.
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => map.resize()) : null
+    observer?.observe(mapContainerRef.current)
+
     return () => {
+      observer?.disconnect()
       scaleRef.current = null
       map.remove()
     }
@@ -446,13 +452,20 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
         </div>
       </div>
       <ElevationProfile profile={profile} stepUnit={stepUnit} units={units} onHover={handleProfileHover} />
-      <p className="mt-2 text-xs text-slate-500">
-        {measurement
-          ? `Estimated elevation · ${measurement.source.dataset} · ${measurement.version}`
-          : 'Route preview. Analyze the GPX to calculate its elevation profile.'}
-      </p>
+      <p className="mt-2 text-xs text-slate-500">{measurement ? elevationCaption(measurement) : 'Route preview. Analyze the GPX to calculate its elevation profile.'}</p>
     </div>
   )
+}
+
+// Says plainly where the elevation came from: the Copernicus GLO-30 terrain model when it is
+// installed for the region, otherwise the GPX file's own elevations.
+function elevationCaption(measurement) {
+  const dataset = measurement.source?.dataset ?? ''
+  const fromDem = measurement.dem_sourced === true || (dataset && dataset !== 'uploaded-gpx')
+  const which = fromDem
+    ? `Elevation from the Copernicus GLO-30 terrain model (30 m grid, ${dataset})`
+    : 'Elevation from the GPX file itself — no terrain model is installed for this region'
+  return `${which} · distance along the WGS84 ellipsoid · ${measurement.version}`
 }
 
 // ---------------------------------------------------------------------------- elevation profile

@@ -1,5 +1,6 @@
 import { ArrowUpRight, Mountain, TrendingUp } from 'lucide-react'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
+import Flag from '../src/components/Flag'
 
 export function DemoBadge({ className = '' }) {
   return (
@@ -25,7 +26,15 @@ export default function RaceCard({ race }) {
         </span>
       </div>
       <h3 className="mt-2 text-xl font-bold tracking-[-.03em] text-[#0b1220]">{race.event_name}</h3>
-      <p className="mt-1 text-xs text-slate-500">{race.course_name}</p>
+      <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+        <span>{race.course_name}</span>
+        {(race.event_location || race.event_country) && (
+          <span className="flex items-center gap-1.5">
+            {race.event_country && <Flag code={race.event_country} showCode={false} />}
+            {race.event_location ?? race.event_country}
+          </span>
+        )}
+      </p>
       <div className="mt-4 flex gap-4 font-mono text-[10px] text-slate-500">
         <span className="flex items-center gap-1">
           <TrendingUp size={12} className="text-blue-600" />

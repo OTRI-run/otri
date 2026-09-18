@@ -84,6 +84,8 @@ export function Dashboard({ session }) {
 export function NewEvent({ session }) {
   const [name, setName] = useState('')
   const [date, setDate] = useState('')
+  const [location, setLocation] = useState('')
+  const [country, setCountry] = useState('')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
 
@@ -92,7 +94,10 @@ export function NewEvent({ session }) {
     setError(null)
     setBusy(true)
     try {
-      const created = await createEvent({ event_name: name.trim(), event_date: date }, session.token)
+      const created = await createEvent(
+        { event_name: name.trim(), event_date: date, location: location.trim() || null, country: country.trim() || null },
+        session.token,
+      )
       navigate(`/events/${encodeURIComponent(created.event_id)}`, { replace: true })
     } catch (err) {
       setError(err.message)
@@ -122,6 +127,14 @@ export function NewEvent({ session }) {
             <Field label="Event date" htmlFor="ev-date" hint="The first day of the event.">
               <input id="ev-date" required type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
             </Field>
+            <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
+              <Field label="Location" htmlFor="ev-location" hint="Town or area, as runners know it.">
+                <input id="ev-location" value={location} onChange={(e) => setLocation(e.target.value)} className={inputClass} placeholder="Chiang Mai" />
+              </Field>
+              <Field label="Country" htmlFor="ev-country" hint="3-letter code.">
+                <input id="ev-country" value={country} onChange={(e) => setCountry(e.target.value.toUpperCase())} maxLength={3} className={`${inputClass} font-mono uppercase`} placeholder="THA" />
+              </Field>
+            </div>
             {error && <Notice kind="error">{error}</Notice>}
             <div className="flex flex-wrap gap-3">
               <Button type="submit" busy={busy} disabled={!name.trim() || !date}>
@@ -168,14 +181,14 @@ export function EventPage({ session, eventId }) {
   const [event, setEvent] = useState(null)
   const [error, setError] = useState(null)
   const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState({ event_name: '', event_date: '' })
+  const [form, setForm] = useState({ event_name: '', event_date: '', location: '', country: '' })
   const [busy, setBusy] = useState(false)
 
   function load() {
     getEvent(eventId)
       .then((detail) => {
         setEvent(detail)
-        setForm({ event_name: detail.event_name, event_date: detail.event_date })
+        setForm({ event_name: detail.event_name, event_date: detail.event_date, location: detail.location ?? '', country: detail.country ?? '' })
       })
       .catch((err) => setError(err.message))
   }
@@ -186,7 +199,7 @@ export function EventPage({ session, eventId }) {
     setBusy(true)
     setError(null)
     try {
-      await updateEvent(eventId, form, session.token)
+      await updateEvent(eventId, { ...form, location: form.location.trim() || null, country: form.country.trim() || null }, session.token)
       setEditing(false)
       load()
     } catch (err) {
@@ -238,6 +251,14 @@ export function EventPage({ session, eventId }) {
             <Field label="Event date" htmlFor="ed-date">
               <input id="ed-date" required type="date" value={form.event_date} onChange={(e) => setForm((f) => ({ ...f, event_date: e.target.value }))} className={inputClass} />
             </Field>
+            <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
+              <Field label="Location" htmlFor="ed-location">
+                <input id="ed-location" value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} className={inputClass} placeholder="Chiang Mai" />
+              </Field>
+              <Field label="Country" htmlFor="ed-country">
+                <input id="ed-country" value={form.country} onChange={(e) => setForm((f) => ({ ...f, country: e.target.value.toUpperCase() }))} maxLength={3} className={`${inputClass} font-mono uppercase`} placeholder="THA" />
+              </Field>
+            </div>
             <Button type="submit" busy={busy}>
               Save changes
             </Button>

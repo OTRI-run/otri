@@ -302,6 +302,8 @@ def _race_summary(race: db.Race, finisher_count: int | None = None) -> RaceSumma
         is_published=race.published_at is not None,
         is_demo=race.is_demo,
         finisher_count=finisher_count,
+        event_location=race.event_location,
+        event_country=race.event_country,
     )
 
 
@@ -320,6 +322,16 @@ def list_scoring_models() -> list[ScoringModelOut]:
     return [ScoringModelOut(**vars(model)) for model in available_scoring_models()]
 
 
+def _clean_country(value: str | None) -> str | None:
+    """A 3-letter country code, upper-cased; anything else is rejected."""
+    if value is None or not value.strip():
+        return None
+    code = value.strip().upper()
+    if not re.fullmatch(r"[A-Z]{3}", code):
+        raise HTTPException(status_code=422, detail="country must be a 3-letter country code (e.g. THA)")
+    return code
+
+
 @app.get("/events", response_model=list[EventSummary])
 def list_events(mine: bool = False, organizer: Organizer | None = Depends(_optional_organizer)) -> list[EventSummary]:
     """By default lists every event (public). Pass ?mine=true with a bearer token to list only
@@ -335,6 +347,8 @@ def list_events(mine: bool = False, organizer: Organizer | None = Depends(_optio
             event_name=event.event_name,
             event_date=event.event_date,
             race_count=len(db.list_races_for_event(event.event_id)),
+            location=event.location,
+            country=event.country,
         )
         for event in events
     ]
@@ -352,6 +366,8 @@ def get_event(event_id: str) -> EventDetail:
         event_name=event.event_name,
         event_date=event.event_date,
         race_count=len(races),
+        location=event.location,
+        country=event.country,
         races=[_race_summary(race, counts.get(race.race_id, 0)) for race in races],
     )
 
@@ -369,6 +385,8 @@ def admin_list_events(organizer: Organizer = Depends(require_admin)) -> list[Adm
                 event_name=event.event_name,
                 event_date=event.event_date,
                 race_count=len(races),
+                location=event.location,
+                country=event.country,
                 organizer_email=event.organizer_email,
                 published_count=sum(1 for race in races if race.published_at is not None),
                 races=[_race_summary(race, counts.get(race.race_id, 0)) for race in races],
@@ -383,8 +401,11 @@ def create_event(payload: EventCreate, organizer: Organizer = Depends(require_or
     """Requires a valid, verified organizer bearer token."""
     if not payload.event_name.strip():
         raise HTTPException(status_code=422, detail="event_name is required")
-    event = db.create_event(payload.event_name.strip(), payload.event_date, organizer.id)
-    return EventSummary(event_id=event.event_id, event_name=event.event_name, event_date=event.event_date, race_count=0)
+    country = _clean_country(payload.country)
+    event = db.create_event(
+        payload.event_name.strip(), payload.event_date, organizer.id, location=(payload.location or "").strip() or None, country=country
+    )
+    return EventSummary(event_id=event.event_id, event_name=event.event_name, event_date=event.event_date, race_count=0, location=event.location, country=event.country)
 
 
 @app.patch("/events/{event_id}", response_model=EventSummary)
@@ -394,12 +415,20 @@ def edit_event(event_id: str, payload: EventUpdate, organizer: Organizer = Depen
         raise HTTPException(status_code=404, detail=f"event {event_id!r} not found")
     _require_event_owner(event, organizer)
 
-    updated = db.update_event(event_id, event_name=payload.event_name, event_date_=payload.event_date)
+    updated = db.update_event(
+        event_id,
+        event_name=payload.event_name,
+        event_date_=payload.event_date,
+        location=(payload.location.strip() if payload.location is not None else None),
+        country=_clean_country(payload.country) if payload.country else None,
+    )
     return EventSummary(
         event_id=updated.event_id,
         event_name=updated.event_name,
         event_date=updated.event_date,
         race_count=len(db.list_races_for_event(event_id)),
+        location=updated.location,
+        country=updated.country,
     )
 
 
@@ -674,12 +703,29 @@ def _score_results(race: db.Race, results: list) -> list[RunnerScoreOut]:
         out.append(
             RunnerScoreOut(
                 **data,
+                status="finisher",
                 finish_time_seconds=source.finish_time_seconds if source else None,
                 runner_id=source.runner_id if source else None,
                 gender=source.gender if source else None,
                 nationality=source.nationality if source else None,
             )
         )
+    # Non-finishers who started are part of the story of a race; DNS rows are not listed.
+    for result in results:
+        if isinstance(result.rank, str) and result.rank in ("DNF", "DSQ"):
+            out.append(
+                RunnerScoreOut(
+                    rank=result.rank,
+                    bib_number=result.bib_number,
+                    family_name=result.family_name,
+                    first_name=result.first_name,
+                    scoring_version=race.scoring_version,
+                    status=result.rank,
+                    runner_id=result.runner_id,
+                    gender=result.gender,
+                    nationality=result.nationality,
+                )
+            )
     return out
 
 
@@ -774,7 +820,7 @@ def _scored_rows_for_race(race_id: str) -> dict[str, RunnerScoreOut]:
         scored = _score_results(race, db.get_results(race_id))
     except ValueError:
         return {}
-    return {row.runner_id: row for row in scored if row.runner_id}
+    return {row.runner_id: row for row in scored if row.runner_id and row.status == "finisher"}
 
 
 def _runner_profile(runner: db.Runner, as_of: date) -> RunnerProfile:

@@ -35,3 +35,9 @@ a[aria-label="OTRI home"]::after{
 }
 
 /* deployment refresh: preserve the OTRI lockup exactly */
+
+/* Home card: scores scrolling by. The list is rendered twice so the loop is seamless. */
+@keyframes otri-ticker{from{transform:translateY(0)}to{transform:translateY(-50%)}}
+.otri-ticker{animation:otri-ticker 28s linear infinite}
+.otri-ticker:hover{animation-play-state:paused}
+@media (prefers-reduced-motion:reduce){.otri-ticker{animation:none}}

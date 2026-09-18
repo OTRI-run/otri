@@ -240,6 +240,8 @@ RACE_FIELDS: tuple[FieldSpec, ...] = (
     FieldSpec("course_name", ("course name", "course"), True, _required_nonempty),
     FieldSpec("distance_km", ("distance km", "distance"), True, _positive_float),
     FieldSpec("elevation_gain_m", ("elevation gain m", "elevation gain"), True, _nonnegative_float),
+    FieldSpec("location", ("location", "place", "city"), False, _optional),
+    FieldSpec("country", ("country", "country code", "nation"), False, _nationality),
 )
 
 # Aliases are matched after lower-casing and collapsing punctuation, so "Last Name", "LASTNAME"

@@ -16,16 +16,22 @@ class EventSummary(BaseModel):
     event_name: str
     event_date: date
     race_count: int = 0
+    location: str | None = None
+    country: str | None = None
 
 
 class EventCreate(BaseModel):
     event_name: str
     event_date: date
+    location: str | None = None
+    country: str | None = None
 
 
 class EventUpdate(BaseModel):
     event_name: str | None = None
     event_date: date | None = None
+    location: str | None = None
+    country: str | None = None
 
 
 class RaceSummary(BaseModel):
@@ -44,6 +50,8 @@ class RaceSummary(BaseModel):
     is_published: bool = False
     is_demo: bool = False
     finisher_count: int | None = None
+    event_location: str | None = None
+    event_country: str | None = None
 
 
 class EventDetail(EventSummary):
@@ -65,17 +73,20 @@ class RaceUpdate(BaseModel):
 
 
 class RunnerScoreOut(BaseModel):
-    rank: int
+    """A leaderboard row. Finishers carry a score; DNF/DSQ rows carry the code as rank and no score."""
+
+    rank: int | str
     bib_number: str | None
     family_name: str
     first_name: str
-    otri_score: int
-    base_performance: float
-    course_adjustment: float
-    field_adjustment: float
-    environmental_factor: float
-    confidence: str
+    otri_score: int | None = None
+    base_performance: float = 0.0
+    course_adjustment: float = 0.0
+    field_adjustment: float = 0.0
+    environmental_factor: float = 0.0
+    confidence: str = "n/a"
     scoring_version: str
+    status: str = "finisher"
     performance_rate: float = 0.0
     quality_flags: list[str] = []
     finish_time_seconds: int | None = None

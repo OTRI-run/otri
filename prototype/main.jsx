@@ -259,8 +259,14 @@ function Leaderboard({ raceId, onBack }) {
       {!race && !error && <p className="mt-6 text-sm text-slate-500">Loading…</p>}
       {race && (
         <>
-          <p className="mt-6 flex items-center gap-3 font-mono text-[9px] tracking-[.08em] text-blue-600">
-            {race.event_date}
+          <p className="mt-6 flex flex-wrap items-center gap-3 font-mono text-[9px] tracking-[.08em] text-blue-600">
+            <span>{race.event_date}</span>
+            {(race.event_location || race.event_country) && (
+              <span className="flex items-center gap-2 text-[#0b1220]">
+                {race.event_country && <Flag code={race.event_country} showCode={false} />}
+                {[race.event_location, race.event_country].filter(Boolean).join(' · ').toUpperCase()}
+              </span>
+            )}
             {race.is_demo && <DemoBadge />}
           </p>
           <h2 className="mt-2 text-[clamp(32px,4.5vw,52px)] font-bold leading-[.98] tracking-[-.05em] text-[#0b1220]">{race.event_name}</h2>
@@ -290,7 +296,7 @@ function Leaderboard({ raceId, onBack }) {
               </thead>
               <tbody>
                 {(results ?? []).map((row) => (
-                  <tr key={`${row.rank}-${row.bib_number ?? row.family_name}-${row.first_name}`} className="border-b border-slate-100 last:border-0">
+                  <tr key={`${row.rank}-${row.bib_number ?? row.family_name}-${row.first_name}`} className={`border-b border-slate-100 last:border-0 ${row.status !== 'finisher' ? 'bg-slate-50/60 text-slate-500' : ''}`}>
                     <td className="px-4 py-3 font-mono text-xs text-slate-500">{row.rank}</td>
                     <td className="px-4 py-3 font-medium text-[#0b1220]">
                       {row.runner_id ? (
@@ -306,7 +312,7 @@ function Leaderboard({ raceId, onBack }) {
                     <td className="px-4 py-3">{row.nationality ? <Flag code={row.nationality} /> : <span className="text-slate-300">—</span>}</td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-500">{row.gender ?? '—'}</td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-500">{formatHms(row.finish_time_seconds)}</td>
-                    <td className="px-4 py-3 font-mono text-sm font-bold text-blue-600">{row.otri_score}</td>
+                    <td className="px-4 py-3 font-mono text-sm font-bold text-blue-600">{row.otri_score ?? <span className="text-slate-300">—</span>}</td>
                   </tr>
                 ))}
                 {results?.length === 0 && (

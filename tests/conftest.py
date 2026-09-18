@@ -55,7 +55,7 @@ def clean_state():
         )
     for race in race_records(RACES_FILE):
         event_id = f"evt-{race.race_id}"
-        db.create_event(race.race_name, race.event_date, organizer_id=None, event_id=event_id)
+        db.create_event(race.race_name, race.event_date, organizer_id=None, event_id=event_id, location=race.location, country=race.country)
         db.create_race(event_id, race.course_name, race.distance_km, race.elevation_gain_m, race_id=race.race_id)
         result_path = RESULTS_DIR / f"{race.race_id}.csv"
         if result_path.exists():

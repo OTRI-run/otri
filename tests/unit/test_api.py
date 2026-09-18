@@ -989,3 +989,34 @@ def test_admin_lists_and_deletes_shared_courses(tmp_path, monkeypatch):
     assert client.get(f"/gpx/shared/{shared['share_id']}").status_code == 404
     assert client.get("/admin/shared-courses", headers=admin).json() == []
     assert client.delete("/admin/shared-courses/0123456789abcdef", headers=admin).status_code == 404
+
+
+# ----------------------------------------------------------------------------- location, DNF rows
+
+
+def test_event_location_and_country_reach_race_summaries_and_leaderboards():
+    headers = _organizer_auth_headers()
+    bad = client.post("/events", json={"event_name": "Where", "event_date": "2026-05-01", "country": "Thailand"}, headers=headers)
+    assert bad.status_code == 422
+    event = client.post("/events", json={"event_name": "Where", "event_date": "2026-05-01", "location": "Chiang Mai", "country": "tha"}, headers=headers)
+    assert event.status_code == 201 and event.json()["country"] == "THA" and event.json()["location"] == "Chiang Mai"
+    race = client.post(f"/events/{event.json()['event_id']}/races", json={"course_name": "21K", "distance_km": 21.0, "elevation_gain_m": 900}, headers=headers).json()
+    assert race["event_country"] == "THA" and race["event_location"] == "Chiang Mai"
+    edited = client.patch(f"/events/{event.json()['event_id']}", json={"location": "Doi Suthep"}, headers=headers).json()
+    assert edited["location"] == "Doi Suthep" and edited["country"] == "THA"
+    demo = client.get("/races/OTRI-DEMO-001").json()
+    assert demo["event_country"] == "THA" and demo["event_location"] == "Phuket"
+
+
+def test_leaderboard_lists_finishers_then_dnf_and_dsq_but_never_dns():
+    headers = _organizer_auth_headers()
+    race_id = _publish_results(
+        headers,
+        "Rank,Time,Last name,First name,Gender,Status\n1,2:00:00,First,Fay,F,Finisher\n2,2:10:00,Second,Sam,M,Finisher\nDNF,,Quit,Quinn,M,DNF\n,,Gone,Gia,F,DNS\nDSQ,,Out,Oli,M,DSQ\n",
+    )
+    rows = client.get(f"/races/{race_id}/results").json()
+    assert [(r["rank"], r["status"]) for r in rows] == [(1, "finisher"), (2, "finisher"), ("DNF", "DNF"), ("DSQ", "DSQ")]
+    assert rows[2]["otri_score"] is None and rows[2]["finish_time_seconds"] is None and rows[2]["runner_id"]
+    assert client.get(f"/races/{race_id}").json()["finisher_count"] == 2, "counts are finishers, not rows"
+    quinn = client.get("/runners", params={"q": "quinn quit"}).json()
+    assert quinn and quinn[0]["index"] is None, "a DNF is listed on the runner but never scored"

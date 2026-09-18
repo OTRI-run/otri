@@ -61,6 +61,8 @@ CREATE TABLE IF NOT EXISTS events (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE events ADD COLUMN IF NOT EXISTS location TEXT;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS country TEXT;
 
 CREATE TABLE IF NOT EXISTS races (
     race_id TEXT PRIMARY KEY,
@@ -121,6 +123,8 @@ class Event:
     event_date: date
     organizer_id: int | None
     organizer_email: str | None = None
+    location: str | None = None
+    country: str | None = None
 
 
 @dataclass(frozen=True)
@@ -140,6 +144,8 @@ class Race:
     published_at: datetime | None = None
     is_demo: bool = False
     created_at: datetime | None = None
+    event_location: str | None = None
+    event_country: str | None = None
 
     def to_race_record(self) -> RaceRecord:
         """Adapt to the shape ``scoring.score_race()`` expects."""
@@ -184,7 +190,7 @@ def _new_id(prefix: str) -> str:
 def list_events() -> list[Event]:
     with get_connection() as connection:
         rows = connection.execute(
-            "SELECT e.event_id, e.event_name, e.event_date, e.organizer_id, o.email AS organizer_email "
+            "SELECT e.event_id, e.event_name, e.event_date, e.organizer_id, o.email AS organizer_email, e.location, e.country "
             "FROM events e LEFT JOIN organizers o ON o.id = e.organizer_id ORDER BY e.event_date"
         ).fetchall()
     return [Event(**row) for row in rows]
@@ -193,30 +199,46 @@ def list_events() -> list[Event]:
 def find_event(event_id: str) -> Event | None:
     with get_connection() as connection:
         row = connection.execute(
-            "SELECT e.event_id, e.event_name, e.event_date, e.organizer_id, o.email AS organizer_email "
+            "SELECT e.event_id, e.event_name, e.event_date, e.organizer_id, o.email AS organizer_email, e.location, e.country "
             "FROM events e LEFT JOIN organizers o ON o.id = e.organizer_id WHERE e.event_id = %s",
             (event_id,),
         ).fetchone()
     return Event(**row) if row else None
 
 
-def create_event(event_name: str, event_date_: date, organizer_id: int | None, event_id: str | None = None) -> Event:
+def create_event(
+    event_name: str,
+    event_date_: date,
+    organizer_id: int | None,
+    event_id: str | None = None,
+    *,
+    location: str | None = None,
+    country: str | None = None,
+) -> Event:
     event_id = event_id or _new_id("evt")
     with get_connection() as connection:
         connection.execute(
-            "INSERT INTO events (event_id, event_name, event_date, organizer_id) VALUES (%s, %s, %s, %s)",
-            (event_id, event_name, event_date_, organizer_id),
+            "INSERT INTO events (event_id, event_name, event_date, organizer_id, location, country) VALUES (%s, %s, %s, %s, %s, %s)",
+            (event_id, event_name, event_date_, organizer_id, location, country),
         )
-    return Event(event_id=event_id, event_name=event_name, event_date=event_date_, organizer_id=organizer_id)
+    return Event(event_id=event_id, event_name=event_name, event_date=event_date_, organizer_id=organizer_id, location=location, country=country)
 
 
-def update_event(event_id: str, *, event_name: str | None = None, event_date_: date | None = None) -> Event:
+def update_event(
+    event_id: str,
+    *,
+    event_name: str | None = None,
+    event_date_: date | None = None,
+    location: str | None = None,
+    country: str | None = None,
+) -> Event:
     with get_connection() as connection:
         row = connection.execute(
             "UPDATE events SET event_name = COALESCE(%s, event_name), event_date = COALESCE(%s, event_date), "
+            "location = COALESCE(%s, location), country = COALESCE(%s, country), "
             "updated_at = now() WHERE event_id = %s "
-            "RETURNING event_id, event_name, event_date, organizer_id",
-            (event_name, event_date_, event_id),
+            "RETURNING event_id, event_name, event_date, organizer_id, location, country",
+            (event_name, event_date_, location, country, event_id),
         ).fetchone()
         if row is None:
             raise NotFoundError(f"event {event_id!r} not found")
@@ -238,7 +260,7 @@ _RACE_JOIN_SELECT = """
            r.measurement->>'version' AS measurement_version,
            r.measurement->>'status' AS measurement_status,
            r.published_at, COALESCE(o.is_demo, FALSE) AS is_demo, r.created_at,
-           e.event_name, e.event_date, e.organizer_id
+           e.event_name, e.event_date, e.organizer_id, e.location AS event_location, e.country AS event_country
     FROM races r JOIN events e ON e.event_id = r.event_id
     LEFT JOIN organizers o ON o.id = e.organizer_id
 """
@@ -396,7 +418,7 @@ def get_results(race_id: str) -> list[ResultRecord]:
 
 def count_results_by_race() -> dict[str, int]:
     with get_connection() as connection:
-        rows = connection.execute("SELECT race_id, COUNT(*) AS n FROM results GROUP BY race_id").fetchall()
+        rows = connection.execute("SELECT race_id, COUNT(*) AS n FROM results WHERE finish_time_seconds IS NOT NULL GROUP BY race_id").fetchall()
     return {row["race_id"]: int(row["n"]) for row in rows}
 
 

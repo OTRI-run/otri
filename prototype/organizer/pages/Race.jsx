@@ -446,7 +446,7 @@ export function ScoresTable({ rows, limit, compact = false }) {
               <td className="px-3 py-2 font-mono text-xs text-slate-500">{row.rank}</td>
               <td className="px-3 py-2 font-medium text-[#0b1220]">{row.first_name} {row.family_name}</td>
               {!compact && <td className="px-3 py-2 font-mono text-xs text-slate-500">{row.bib_number ?? '—'}</td>}
-              <td className="px-3 py-2 text-right font-mono font-bold text-blue-600">{row.otri_score}</td>
+              <td className="px-3 py-2 text-right font-mono font-bold text-blue-600">{row.otri_score ?? <span className="font-normal text-slate-400">{row.status}</span>}</td>
             </tr>
           ))}
         </tbody>
@@ -591,7 +591,7 @@ export function ResultsStep({ session, raceId }) {
         )}
         {submission?.is_valid && (
           <Card>
-            <Notice kind="success" title={`${submission.scores.length} finisher${submission.scores.length === 1 ? '' : 's'} scored.`}>
+            <Notice kind="success" title={`${submission.scores.filter((r) => r.status === 'finisher').length} finisher${submission.scores.filter((r) => r.status === 'finisher').length === 1 ? '' : 's'} scored${submission.scores.some((r) => r.status !== 'finisher') ? `, ${submission.scores.filter((r) => r.status !== 'finisher').length} did not finish` : ''}.`}>
               {submission.warnings.length > 0 ? `${submission.warnings.length} warning${submission.warnings.length === 1 ? '' : 's'} to review — none block submission.` : 'No warnings.'}
             </Notice>
             {submission.warnings.length > 0 && (
@@ -657,6 +657,7 @@ export function ReviewStep({ session, raceId }) {
   if (!race || results === null) return <Page title="Loading…" />
 
   const base = `/races/${encodeURIComponent(raceId)}`
+  const finishers = results.filter((r) => r.status === 'finisher')
   const hasResults = results.length > 0
   const status = raceStatus(race, hasResults)
   const lowConfidence = results.filter((r) => r.confidence === 'Low').length
@@ -683,7 +684,7 @@ export function ReviewStep({ session, raceId }) {
             <ChecklistRow
               ok={hasResults}
               label="Results"
-              detail={hasResults ? `${results.length} finishers scored${lowConfidence ? ` · ${lowConfidence} at low confidence` : ''}` : 'No results uploaded.'}
+              detail={hasResults ? `${finishers.length} finishers scored${results.length > finishers.length ? ` · ${results.length - finishers.length} DNF/DSQ` : ''}${lowConfidence ? ` · ${lowConfidence} at low confidence` : ''}` : 'No results uploaded.'}
               fixTo={`${base}/results`}
               fixLabel="Upload results"
             />

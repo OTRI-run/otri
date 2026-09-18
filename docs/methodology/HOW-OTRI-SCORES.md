@@ -16,8 +16,6 @@ Read a score like this:
 |---:|---|
 | **1000** | the world-best rate for a course of that size |
 | **984** | the 2026 calibration performance — an alpine 100-mile win, 18:16:29 — 98% of the ceiling |
-| **581** | 12:33:43 on an 80 km / ~4,500 m Chiang Mai mountain course — 53% of the ceiling |
-| **543** | a 2:00 road half-marathon — 49% |
 | **274** | 6:30 on a 22 km mountain course — 22% |
 
 Three things follow from the definition, and each is tested in the code:
@@ -28,7 +26,7 @@ Three things follow from the definition, and each is tested in the code:
 
 ### What goes in, step by step
 
-1. **The course is measured** from the GPX: distance along the WGS84 ellipsoid, and — where terrain data is installed — elevation read from the Copernicus GLO-30 terrain model rather than from your watch. The track is checked for one thing you can fix: if it was recorded too sparsely (a point less often than every 30 m on average), switchbacks get cut short and the course measures shorter than it is, and the score says so.
+1. **The course is measured** from the GPX: distance along the WGS84 ellipsoid, and — where terrain data is installed — elevation read from the Copernicus GLO-30 terrain model (30 m grid) rather than from your watch. The map on every course page says which of the two it used. The track is checked for one thing you can fix: if it was recorded too sparsely (a point less often than every 30 m on average), switchbacks get cut short and the course measures shorter than it is, and the score says so.
 2. **The course becomes "flat-equivalent km"** ("course demand"): every 50 m is weighed by how much harder its gradient is than flat running (Minetti et al. 2002). Sustained steep ground (≥ 20%) and altitude above 1,500 m add a further factor.
 3. **Your rate** = flat-equivalent km ÷ hours.
 4. **The ceiling** for that course size is read from a curve through three public world-best performances (5000 m, marathon, 24 hours) — the fastest rate ever sustained over that much demand.
@@ -53,7 +51,7 @@ The right question to ask of any index is: *which numbers were measured, which w
 | Ceiling anchors | 5000 m 12:35.36; marathon 2:00:35; 24 h 319.614 km | **public world bests** | defines what 1000 means |
 | Ceiling shape | piecewise power law through those three | derived | its short segment reproduces Riegel's published exponent (1.059 vs 1.06) without using it — the model's one independent corroboration |
 | Altitude cost | 7% per 1,000 m above 1,500 m | **physiology literature** | small (the reference 100-miler: +1.7%) |
-| Steep-terrain cost | 0.5951 per unit share of ≥ 20% ground | **calibrated to one performance** (the 2026 calibration performance → 970, V0.5) | material (the reference 100-miler: +10.9%) — the model's weakest constant |
+| Steep-terrain cost | 0.5951 per unit share of ≥ 20% ground | **calibrated to one strong trail performance**: a 2026 alpine 100-mile win in 18:16:29 was set to score 970 (V0.5) | material (the reference 100-miler: +10.9%) — the model's weakest constant |
 | Curve exponent | 0.85 | **chosen** — between "percentage of world best" (1.0) and the earlier 0.692 | shapes the whole scale below the top |
 | Sparse-track gate | median spacing > 30 m | **from data** on four real courses (error ≤ 3% below it, 4–8% above) | affects trust, not the number |
 | Measurement details | 10 m grid, ±10 m smoothing, 8 m prominence, 50 m segments | **chosen**, sensitivity documented, not field-validated | affects every ascent figure |
@@ -72,7 +70,7 @@ Nothing in the model is fitted to a field of results, and nothing is referenced 
 ### 2.3 What the model does not know — the honest list
 
 1. **Technical footing is invisible.** A GPX cannot see rock, roots, mud or exposure. Two courses with the same gradient profile get the same steep-terrain factor whether one is a fire road and the other an alpine scramble. This is the single largest reason a mountain-ultra winner sits at 98% of a *road-referenced* ceiling rather than 100%.
-2. **One constant is calibrated to one performance.** The steep-terrain coefficient was set so that one real calibration performance scored 970. That is the definition of a provisional constant.
+2. **One constant is calibrated to one performance.** The steep-terrain coefficient was set so that one strong, real trail performance (a 2026 alpine 100-mile win, 18:16:29) scored 970. Calibrating to a good trail run rather than a road record is deliberate: the constant exists to price mountain ground. Calibrating to a single one is provisional by definition.
 3. **The curve exponent is a judgement.** 0.85 was chosen, not measured. Its consequence is stated plainly: the further from the top, the larger the relative drop compared with the previous shape.
 4. **The terrain model is a surface model.** GLO-30 includes tree canopy and buildings; on forested alpine ground it can read ascent high. `High` confidence means *reproducible against a named dataset*, not *validated against the ground*. The benchmarking programme in [`REAL-WORLD-COURSE-MEASUREMENT-SPEC.md`](REAL-WORLD-COURSE-MEASUREMENT-SPEC.md) has not been run.
 5. **Terrain coverage is per region.** A course outside the installed tiles is measured from its own file, at `Low` confidence, and says so.
