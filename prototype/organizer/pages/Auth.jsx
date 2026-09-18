@@ -424,7 +424,7 @@ export function Login({ onSignedIn }) {
       onSignedIn(result.access_token, result.email, result.is_admin)
       navigate('/events', { replace: true })
     } catch (err) {
-      setError(err.message)
+      setError(/invalid email or password/i.test(err.message) ? 'That email and password do not match. Check both, or use “Forgot your password?” below.' : err.message)
       if (/verif/i.test(err.message)) setNeedsVerification(true)
     } finally {
       setBusy(false)

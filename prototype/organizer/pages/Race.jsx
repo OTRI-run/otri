@@ -124,6 +124,9 @@ export function NewRace({ session, eventId }) {
             <Button type="submit" busy={busy} disabled={!form.course_name.trim() || !form.distance_km || form.elevation_gain_m === ''}>
               Save and add the course <ArrowRight size={15} />
             </Button>
+            {!busy && (!form.course_name.trim() || !form.distance_km || form.elevation_gain_m === '') && (
+              <span className="text-xs text-slate-500">Enter the name, official distance and climb to continue.</span>
+            )}
             <Button type="button" variant="secondary" onClick={() => navigate(`/events/${encodeURIComponent(eventId)}`)}>
               Cancel
             </Button>
@@ -359,7 +362,7 @@ const EXAMPLE_ROWS = [
 ]
 
 function ExampleFile({ onUse, busy }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   return (
     <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/60">
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
@@ -412,15 +415,33 @@ function ExampleFile({ onUse, busy }) {
   )
 }
 
+const FIELD_LABELS = {
+  finish_time: 'time',
+  finish_time_seconds: 'time',
+  bib_number: 'bib',
+  family_name: 'last name',
+  first_name: 'first name',
+  birth_date: 'birth date',
+  birth_year: 'birth year',
+  nationality: 'nationality',
+  gender: 'gender',
+  rank: 'rank',
+  status: 'status',
+}
+
+function humanise(text) {
+  return String(text ?? '').replace(/\b([a-z]+(?:_[a-z]+)+)\b/g, (word) => FIELD_LABELS[word] ?? word.replace(/_/g, ' '))
+}
+
 function IssueList({ issues, kind }) {
   return (
-    <ul className="mt-2 max-h-64 space-y-1 overflow-auto text-xs">
+    <ul className="mt-2 max-h-64 space-y-1.5 overflow-auto text-sm">
       {issues.map((issue, index) => (
         <li key={index} className={kind === 'error' ? 'text-red-700' : 'text-amber-800'}>
-          {issue.row != null ? <span className="font-mono">row {issue.row}</span> : null}
-          {issue.field ? <span className="font-mono"> · {issue.field}</span> : null}
-          {issue.row != null || issue.field ? ' — ' : ''}
-          {issue.message}
+          {issue.row != null && <span className="font-mono text-xs">Row {issue.row}</span>}
+          {issue.field && <span className="font-mono text-xs">{issue.row != null ? ' · ' : ''}{FIELD_LABELS[issue.field] ?? issue.field}</span>}
+          {issue.row != null || issue.field ? ': ' : ''}
+          {humanise(issue.message)}
         </li>
       ))}
     </ul>
@@ -685,7 +706,7 @@ export function ReviewStep({ session, raceId }) {
             <ChecklistRow
               ok={hasResults}
               label="Results"
-              detail={hasResults ? `${finishers.length} finishers scored${results.length > finishers.length ? ` · ${results.length - finishers.length} DNF/DSQ` : ''}${lowConfidence ? ` · ${lowConfidence} at low confidence` : ''}` : 'No results uploaded.'}
+              detail={hasResults ? `${finishers.length} finishers scored${results.length > finishers.length ? ` · ${results.length - finishers.length} DNF/DSQ` : ''}${lowConfidence ? ` · ${lowConfidence} at Low confidence (no terrain model for this region; the score is unaffected)` : ''}` : 'No results uploaded.'}
               fixTo={`${base}/results`}
               fixLabel="Upload results"
             />
