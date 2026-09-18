@@ -1,7 +1,11 @@
 name: Deploy OTRI website
 
+# The build job runs on every pull request too, so a pull request shows whether the site still
+# builds before it is merged; only a push to main deploys.
 on:
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
@@ -11,7 +15,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -43,6 +47,7 @@ jobs:
         with:
           path: ./dist
   deploy:
+    if: github.event_name != 'pull_request'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

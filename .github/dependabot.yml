@@ -25,11 +25,16 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
   - package-ecosystem: pip
-    # api/requirements.txt (runtime) and requirements-dev.txt (tests) in one weekly pass.
-    directories: ["/api", "/"]
+    # requirements-dev.txt includes api/ and ingestion/ via -r, so the root covers all three;
+    # course/requirements-terrain.txt (rasterio, installed on the droplet only) is listed separately.
+    directories: ["/", "/course"]
     schedule:
       interval: weekly
       day: monday
+    # Only touch a requirement when the new release falls outside its range. Our runtime
+    # dependencies are ">=" lower bounds, and raising them just because a newer release
+    # exists is churn; exact pins (rasterio, pyproj, geographiclib) still get updates.
+    versioning-strategy: increase-if-necessary
     groups:
       python-minor-and-patch:
         update-types: ["minor", "patch"]
