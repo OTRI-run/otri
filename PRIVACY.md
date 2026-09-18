@@ -23,7 +23,7 @@ This page describes what personal data OTRI collects and why. For race-result da
 
 **Server logs**: standard web server access logs (IP address, request path, timestamp) for operational/security purposes (e.g. the rate limiter in `api/rate_limit.py` uses request IP to throttle abuse). Not used for tracking or analytics.
 
-We do not use cookies, third-party analytics, or advertising trackers.
+The only cookie is `otri_session`, set by the API when an organizer signs in on the organizer site and needed for that sign-in to work (strictly necessary; HttpOnly, so page scripts cannot read it; it expires with the session). We do not use third-party analytics or advertising trackers.
 
 ## Why we collect it
 

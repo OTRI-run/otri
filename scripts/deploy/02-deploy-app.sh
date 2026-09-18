@@ -110,9 +110,13 @@ chmod 600 "${APP_DIR}/.env"
 
 echo "==> Applying schema migrations, seeding demo data on first run"
 source venv/bin/activate
-DATABASE_URL="${DATABASE_URL}" python scripts/migrate.py upgrade
-DATABASE_URL="${DATABASE_URL}" python scripts/seed_demo_data.py
-DATABASE_URL="${DATABASE_URL}" python scripts/migrate.py status
+# The same secrets the service gets, so these one-off processes do not warn about a missing JWT
+# secret or print emails they would otherwise send.
+export DATABASE_URL OTRI_API_JWT_SECRET
+export RESEND_API_KEY="${RESEND_API_KEY:-}"
+python scripts/migrate.py upgrade
+python scripts/seed_demo_data.py
+python scripts/migrate.py status
 deactivate
 
 echo "==> Installing systemd unit"

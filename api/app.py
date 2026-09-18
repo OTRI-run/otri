@@ -161,6 +161,7 @@ app.add_middleware(
     allow_origins=[origin.strip() for origin in _allowed_origins.split(",") if origin.strip()],
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["*"],
+    allow_credentials=True,  # the organizer app authenticates with an HttpOnly cookie
 )
 
 
@@ -216,12 +217,72 @@ def _with_flags(organizer: Organizer, *, check_session: bool = True) -> Organize
     return replace(organizer, **flags)
 
 
-def require_organizer(credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme)) -> Organizer:
-    """FastAPI dependency: requires a valid 'Authorization: Bearer <token>' header."""
-    if credentials is None:
+# --- Sessions -------------------------------------------------------------------------------
+#
+# Two ways to present a session token:
+#   * `Authorization: Bearer <token>` — API clients, scripts, tests. The token is in the body of
+#     the login response.
+#   * the `otri_session` cookie — the organizer web app. It sends `X-OTRI-Client: web` on every
+#     request; login-type endpoints then set an HttpOnly, SameSite=Lax cookie (Secure behind
+#     HTTPS) and leave `access_token` empty in the body, so page scripts never hold the token
+#     and a cross-site-scripting bug cannot exfiltrate a 30-day session.
+# Cookie-authenticated requests that change state must carry the client header too: a cross-site
+# form post cannot add custom headers, and a cross-origin fetch with one is stopped by CORS.
+_SESSION_COOKIE = "otri_session"
+_CLIENT_HEADER = "x-otri-client"
+_SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+
+
+def _is_web_client(request: Request) -> bool:
+    return request.headers.get(_CLIENT_HEADER, "").lower() == "web"
+
+
+def _cookie_secure(request: Request) -> bool:
+    return request.headers.get("x-forwarded-proto", request.url.scheme).lower() == "https"
+
+
+def _set_session_cookie(response: Response, request: Request, token: str, remember: bool) -> None:
+    response.set_cookie(
+        _SESSION_COOKIE,
+        token,
+        max_age=_auth.token_ttl_seconds(remember),
+        httponly=True,
+        secure=_cookie_secure(request),
+        samesite="lax",
+        path="/",
+    )
+
+
+def _clear_session_cookie(response: Response, request: Request) -> None:
+    response.delete_cookie(_SESSION_COOKIE, path="/", httponly=True, secure=_cookie_secure(request), samesite="lax")
+
+
+def _token_from_request(request: Request, credentials: HTTPAuthorizationCredentials | None) -> tuple[str | None, bool]:
+    """(token, from_cookie). A bearer header wins over the cookie."""
+    if credentials is not None:
+        return credentials.credentials, False
+    cookie = request.cookies.get(_SESSION_COOKIE)
+    return (cookie, True) if cookie else (None, False)
+
+
+def _finish_session(response: Response, request: Request, session: TokenResponse, remember: bool) -> TokenResponse:
+    """For the web client, move the token from the body into the cookie."""
+    if session.access_token and _is_web_client(request):
+        _set_session_cookie(response, request, session.access_token, remember)
+        session.access_token = ""
+        session.token_type = "cookie"
+    return session
+
+
+def require_organizer(request: Request, credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme)) -> Organizer:
+    """FastAPI dependency: a valid session, as a bearer header or the session cookie."""
+    token, from_cookie = _token_from_request(request, credentials)
+    if token is None:
         raise HTTPException(status_code=401, detail="missing bearer token")
+    if from_cookie and request.method not in _SAFE_METHODS and not _is_web_client(request):
+        raise HTTPException(status_code=403, detail="cookie sessions must send the X-OTRI-Client header on state-changing requests")
     try:
-        return _with_flags(decode_access_token(credentials.credentials))
+        return _with_flags(decode_access_token(token))
     except AuthError as error:
         raise HTTPException(status_code=401, detail=str(error)) from error
 
@@ -232,12 +293,15 @@ def require_admin(organizer: Organizer = Depends(require_organizer)) -> Organize
     return organizer
 
 
-def _optional_organizer(credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme)) -> Organizer | None:
+def _optional_organizer(request: Request, credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme)) -> Organizer | None:
     """Like require_organizer, but returns None instead of raising when no/invalid token is given."""
-    if credentials is None:
+    token, from_cookie = _token_from_request(request, credentials)
+    if token is None:
+        return None
+    if from_cookie and request.method not in _SAFE_METHODS and not _is_web_client(request):
         return None
     try:
-        return _with_flags(decode_access_token(credentials.credentials))
+        return _with_flags(decode_access_token(token))
     except AuthError:
         return None
 
@@ -281,7 +345,7 @@ def register(payload: OrganizerRegistration, request: Request) -> MessageRespons
 
 
 @app.post("/auth/login", response_model=TokenResponse)
-def login(payload: OrganizerCredentials, request: Request) -> TokenResponse:
+def login(payload: OrganizerCredentials, request: Request, response: Response) -> TokenResponse:
     enforce_rate_limit(request, max_requests=10)
     try:
         check_account_lock(payload.email)
@@ -298,7 +362,7 @@ def login(payload: OrganizerCredentials, request: Request) -> TokenResponse:
     if organizer.email in _ADMIN_EMAILS:
         db.set_organizer_flags(organizer.email, is_admin=True)
     organizer = _with_flags(organizer, check_session=False)  # credentials, not a token: nothing to compare yet
-    return _issue_session(organizer, payload.remember)
+    return _finish_session(response, request, _issue_session(organizer, payload.remember), payload.remember)
 
 
 def _issue_session(organizer: Organizer, remember: bool) -> TokenResponse:
@@ -319,7 +383,7 @@ def _issue_session(organizer: Organizer, remember: bool) -> TokenResponse:
 
 
 @app.post("/auth/login/2fa", response_model=TokenResponse)
-def login_second_step(payload: TwoFactorLogin, request: Request) -> TokenResponse:
+def login_second_step(payload: TwoFactorLogin, request: Request, response: Response) -> TokenResponse:
     """The second step: an authenticator code, an emailed code, or a recovery code."""
     enforce_rate_limit(request, max_requests=10)
     try:
@@ -327,13 +391,13 @@ def login_second_step(payload: TwoFactorLogin, request: Request) -> TokenRespons
     except AuthError as error:
         raise HTTPException(status_code=401, detail=str(error)) from error
     organizer = _with_flags(organizer, check_session=False)
-    return TokenResponse(
+    return _finish_session(response, request, TokenResponse(
         access_token=create_access_token(organizer, remember),
         email=organizer.email,
         is_admin=organizer.is_admin,
         is_demo=organizer.is_demo,
         expires_in=_auth.token_ttl_seconds(remember),
-    )
+    ), remember)
 
 
 def _me(organizer: Organizer) -> MeResponse:
@@ -377,14 +441,21 @@ def update_profile(payload: ProfileUpdate, organizer: Organizer = Depends(requir
 
 
 @app.post("/auth/change-password", response_model=TokenResponse)
-def change_password(payload: ChangePassword, request: Request, organizer: Organizer = Depends(require_organizer)) -> TokenResponse:
+def change_password(payload: ChangePassword, request: Request, response: Response, organizer: Organizer = Depends(require_organizer)) -> TokenResponse:
     """Changes the password and signs out every other device; returns a fresh token for this one."""
     enforce_rate_limit(request, max_requests=5)
     try:
         _auth.change_password(organizer.id, payload.current_password, payload.new_password)
     except AuthError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    return _fresh_token(organizer)
+    return _finish_session(response, request, _fresh_token(organizer), False)
+
+
+@app.post("/auth/logout", response_model=MessageResponse)
+def logout(request: Request, response: Response) -> MessageResponse:
+    """Ends the cookie session on this device (bearer tokens simply expire or are revoked)."""
+    _clear_session_cookie(response, request)
+    return MessageResponse(message="signed out")
 
 
 def _fresh_token(organizer: Organizer) -> TokenResponse:
@@ -398,12 +469,13 @@ def _fresh_token(organizer: Organizer) -> TokenResponse:
 
 
 @app.post("/auth/logout-all", response_model=MessageResponse)
-def logout_everywhere(payload: PasswordConfirm, organizer: Organizer = Depends(require_organizer)) -> MessageResponse:
+def logout_everywhere(payload: PasswordConfirm, request: Request, response: Response, organizer: Organizer = Depends(require_organizer)) -> MessageResponse:
     """Invalidates every token for this account, this one included."""
     try:
         _auth.revoke_all_sessions(organizer.id, payload.password)
     except AuthError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    _clear_session_cookie(response, request)
     return MessageResponse(message="signed out everywhere")
 
 
@@ -417,13 +489,14 @@ def export_account(organizer: Organizer = Depends(require_organizer)) -> Respons
 
 
 @app.delete("/auth/account", response_model=MessageResponse)
-def delete_own_account(payload: PasswordConfirm, organizer: Organizer = Depends(require_organizer)) -> MessageResponse:
+def delete_own_account(payload: PasswordConfirm, request: Request, response: Response, organizer: Organizer = Depends(require_organizer)) -> MessageResponse:
     """Deletes the account with every event, race and result it owns. Published leaderboards
     disappear and runner profiles lose those results. Cannot be undone."""
     try:
         _auth.delete_own_account(organizer.id, payload.password)
     except AuthError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    _clear_session_cookie(response, request)
     return MessageResponse(message="account deleted")
 
 
@@ -461,13 +534,13 @@ def email_two_factor_enable(payload: TwoFactorCode, organizer: Organizer = Depen
 
 
 @app.post("/auth/2fa/disable", response_model=TokenResponse)
-def two_factor_disable(payload: PasswordConfirm, organizer: Organizer = Depends(require_organizer)) -> TokenResponse:
+def two_factor_disable(payload: PasswordConfirm, request: Request, response: Response, organizer: Organizer = Depends(require_organizer)) -> TokenResponse:
     """Turns two-factor off and signs out every other device; returns a fresh token for this one."""
     try:
         _auth.disable_two_factor(organizer.id, payload.password)
     except AuthError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    return _fresh_token(organizer)
+    return _finish_session(response, request, _fresh_token(organizer), False)
 
 
 @app.post("/auth/2fa/recovery-codes", response_model=RecoveryCodesOut)
@@ -513,13 +586,13 @@ def request_password_reset(payload: PasswordResetRequest, request: Request) -> M
 
 
 @app.post("/auth/reset-password", response_model=TokenResponse)
-def confirm_password_reset(payload: PasswordResetConfirm, request: Request) -> TokenResponse:
+def confirm_password_reset(payload: PasswordResetConfirm, request: Request, response: Response) -> TokenResponse:
     enforce_rate_limit(request, max_requests=10)
     try:
         organizer = reset_password(payload.token, payload.new_password)
     except AuthError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    return TokenResponse(access_token=create_access_token(organizer), email=organizer.email, expires_in=_auth.token_ttl_seconds(False))
+    return _finish_session(response, request, TokenResponse(access_token=create_access_token(organizer), email=organizer.email, expires_in=_auth.token_ttl_seconds(False)), False)
 
 
 # --- Events ------------------------------------------------------------------

@@ -60,7 +60,7 @@ Every event/race mutation (create/edit/delete, GPX attach, result submission) re
 
 ## Authentication
 
-Organizer accounts live in the `organizers` table (PostgreSQL), passwords hashed with `bcrypt`. Every mutating event/race/GPX/result endpoint requires an `Authorization: Bearer <token>` header, obtained from `/auth/login` or `/auth/reset-password` (see `api/auth.py`). **Registering does not log you in** — organizers must verify their email (via the link sent by `/auth/register`) before `/auth/login` will succeed.
+Organizer accounts live in the `organizers` table (PostgreSQL), passwords hashed with `bcrypt`. Every mutating event/race/GPX/result endpoint requires a session: either an `Authorization: Bearer <token>` header (API clients, scripts, tests; the token is in the login response body) or, for the organizer web app, the `otri_session` cookie. The app sends `X-OTRI-Client: web` on every request; login-type endpoints then set an HttpOnly, SameSite=Lax cookie (Secure behind HTTPS) and leave `access_token` empty, so page scripts never hold the token. Cookie-authenticated state-changing requests must carry that header (the CSRF guard; `POST /auth/logout` clears the cookie). **Registering does not log you in** — organizers must verify their email (via the link sent by `/auth/register`) before `/auth/login` will succeed.
 
 **Set `OTRI_API_JWT_SECRET`** for any deployment that should survive a restart:
 

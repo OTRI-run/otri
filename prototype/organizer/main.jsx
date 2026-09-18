@@ -4,7 +4,7 @@ import { ArrowUpRight, ChevronDown, Mail } from 'lucide-react'
 import '../../src/styles.css'
 import Logo from '../../src/components/Logo'
 import UnitsMenu from '../../src/components/UnitsMenu'
-import { getMe } from '../apiClient'
+import { logoutOrganizer, getMe } from '../apiClient'
 import BuildBanner from '../../src/components/BuildBanner'
 import ErrorBoundary from '../../src/components/ErrorBoundary'
 import SharedNotFound from '../../src/components/NotFound'
@@ -194,6 +194,7 @@ function App() {
     setSession({ token, email, isAdmin })
   }
   function signOut() {
+    logoutOrganizer()
     clearSession()
     setSession(null)
     navigate('/', { replace: true })
@@ -203,15 +204,23 @@ function App() {
   // welcome page go straight to their events.
   // Admin/demo flags can change server-side; refresh them for a stored session.
   useEffect(() => {
-    if (!session?.token) return
-    const token = session.token
+    if (!session) return
+    const { token, email } = session
     getMe(token)
       .then((me) => {
         writeSession(token, me.email, me.is_admin)
-        setSession((current) => (current && current.token === token ? { ...current, isAdmin: me.is_admin } : current))
+        setSession((current) => (current && current.email === email ? { ...current, isAdmin: me.is_admin } : current))
       })
-      .catch(() => {})
-  }, [session?.token])
+      .catch((err) => {
+        // The cookie expired or was revoked (sign out everywhere, password change elsewhere):
+        // forget the remembered sign-in instead of showing a header for a dead session.
+        if (err?.status === 401) {
+          clearSession()
+          setSession(null)
+        }
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.email])
 
   const needsAuth = /^\/(events|races|admin|account)/.test(route.path)
   useEffect(() => {

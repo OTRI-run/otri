@@ -8,10 +8,18 @@
 
 export const API_BASE_URL = import.meta.env.VITE_OTRI_API_BASE_URL || 'http://localhost:8000'
 
+// The organizer app identifies itself so the API keeps the session in an HttpOnly cookie instead
+// of the response body; the same header is the CSRF guard on state-changing requests.
+const CLIENT_HEADERS = { 'X-OTRI-Client': 'web' }
+
+function withCredentials(options = {}) {
+  return { credentials: 'include', ...options, headers: { ...CLIENT_HEADERS, ...(options.headers || {}) } }
+}
+
 async function request(path, options) {
   let response
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, options)
+    response = await fetch(`${API_BASE_URL}${path}`, withCredentials(options))
   } catch (networkError) {
     throw new Error(`Could not reach the API at ${API_BASE_URL} (${networkError.message}). Is it running?`)
   }
@@ -33,7 +41,12 @@ async function request(path, options) {
 }
 
 function authHeaders(token, extra) {
-  return { Authorization: `Bearer ${token}`, ...extra }
+  // A stored bearer token (older sign-ins) still works; new sign-ins rely on the cookie alone.
+  return token ? { Authorization: `Bearer ${token}`, ...extra } : { ...extra }
+}
+
+export function logoutOrganizer() {
+  return request('/auth/logout', { method: 'POST' }).catch(() => null)
 }
 
 export function registerOrganizer(email, password, { acceptTerms = false, marketingOptIn = false } = {}) {
@@ -66,7 +79,7 @@ function sessionToken() {
   }
 }
 export function fetchNewsletterCsv() {
-  return fetch(`${API_BASE_URL}/admin/newsletter.csv`, { headers: authHeaders(sessionToken()) }).then((r) => (r.ok ? r.blob() : Promise.reject(new Error(r.statusText))))
+  return fetch(`${API_BASE_URL}/admin/newsletter.csv`, withCredentials({ headers: authHeaders(sessionToken()) })).then((r) => (r.ok ? r.blob() : Promise.reject(new Error(r.statusText))))
 }
 export function updateProfile(profile) {
   return request('/auth/profile', { method: 'PATCH', ...json(sessionToken(), profile) })
@@ -81,7 +94,7 @@ export function deleteOwnAccount(password) {
   return request('/auth/account', { method: 'DELETE', ...json(sessionToken(), { password }) })
 }
 export function fetchAccountExport() {
-  return fetch(`${API_BASE_URL}/auth/export`, { headers: authHeaders(sessionToken()) }).then((r) => (r.ok ? r.blob() : Promise.reject(new Error(r.statusText))))
+  return fetch(`${API_BASE_URL}/auth/export`, withCredentials({ headers: authHeaders(sessionToken()) })).then((r) => (r.ok ? r.blob() : Promise.reject(new Error(r.statusText))))
 }
 export function totpSetup() {
   return request('/auth/2fa/totp/setup', { method: 'POST', headers: authHeaders(sessionToken()) })
@@ -329,7 +342,7 @@ export function getMe(token) {
 /** Scored results for a race; resolves to [] when none have been submitted yet. Unpublished
  * races need the owner's (or an admin's) token. */
 export async function getRaceResults(raceId, token) {
-  const response = await fetch(`${API_BASE_URL}/races/${encodeURIComponent(raceId)}/results`, token ? { headers: authHeaders(token) } : undefined)
+  const response = await fetch(`${API_BASE_URL}/races/${encodeURIComponent(raceId)}/results`, withCredentials({ headers: authHeaders(token) }))
   if (response.status === 404) return []
   if (response.status === 403) throw new Error('This race has not been published by its organizer.')
   if (!response.ok) throw new Error(response.statusText)
@@ -349,7 +362,7 @@ export function getApiStatus() {
 /** Fetches a race's attached GPX as a File, so it can be reused with analyzeGpx()
  * exactly like a user-uploaded file (used by the "search existing race" calculator path). */
 export async function fetchRaceGpxFile(raceId, token) {
-  const response = await fetch(`${API_BASE_URL}/races/${encodeURIComponent(raceId)}/gpx`, token ? { headers: authHeaders(token) } : undefined)
+  const response = await fetch(`${API_BASE_URL}/races/${encodeURIComponent(raceId)}/gpx`, withCredentials({ headers: authHeaders(token) }))
   if (!response.ok) {
     throw new Error(`Could not load the course for this race (HTTP ${response.status}).`)
   }
