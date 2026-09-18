@@ -20,3 +20,7 @@ data/demo/gpx/*.gpx
 
 # Measurement cache written by the API (see api/app.py); content-addressed, safe to delete.
 data/cache/
+
+# Course files collected for race listings, with the CSVs imported alongside them. Third-party GPX
+# stays local (DATA_POLICY.md); a file reaches OTRI only through the admin upload, with its permission.
+gpx courses/
