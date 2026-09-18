@@ -200,6 +200,7 @@ export function CourseStep({ session, raceId }) {
   const [analysis, setAnalysis] = useState(null)
   const [existing, setExisting] = useState(null) // { gpxText, measurement, features }
   const [busy, setBusy] = useState(null) // 'analyzing' | 'attaching' | null
+  const [permission, setPermission] = useState('')
   const [error, setError] = useState(null)
 
   // Show the course already on file, if any.
@@ -241,7 +242,7 @@ export function CourseStep({ session, raceId }) {
     setError(null)
     setBusy('attaching')
     try {
-      await attachRaceGpx(race.race_id, file, session.token)
+      await attachRaceGpx(race.race_id, file, session.token, race.is_claimed === false ? permission.trim() : undefined)
       navigate(`/races/${encodeURIComponent(race.race_id)}/results`)
     } catch (err) {
       setError(err.message)
@@ -286,6 +287,21 @@ export function CourseStep({ session, raceId }) {
 
         <Card>
           <Eyebrow>{race.has_gpx ? 'REPLACE THE COURSE' : 'UPLOAD THE COURSE'}</Eyebrow>
+          {race.is_claimed === false && (
+            <div className="mt-3">
+              <Notice kind="warning" title="Nobody has claimed this race.">
+                A course file found online is not ours to publish (DATA_POLICY.md). Record why OTRI may show this one: its open licence and source, or the organizer's written yes.
+              </Notice>
+              <input
+                value={permission}
+                onChange={(event) => setPermission(event.target.value)}
+                maxLength={500}
+                placeholder="e.g. CC BY 4.0, https://…  ·  or  ·  email from the race director, 2026-09-18"
+                aria-label="Course permission"
+                className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+              />
+            </div>
+          )}
           <p className="mt-1 text-sm text-slate-600">
             Upload the official route as a GPX. OTRI measures it — every 10 m, elevation from verified terrain data where available — and shows how it compares with the figures you entered before anything is saved.
           </p>

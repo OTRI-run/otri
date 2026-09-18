@@ -111,8 +111,10 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false
     listRaces()
-      .then(async (rows) => {
+      .then(async (all) => {
         if (cancelled) return
+        // The home page counts and previews scored races; listings without results live on the races page.
+        const rows = all.filter((race) => race.is_published)
         setRaces(rows)
         // A few scored finishers from the newest published races, for the card's ticker.
         const sample = rows.filter((race) => (race.finisher_count ?? 0) > 0).slice(0, 4)

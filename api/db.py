@@ -150,6 +150,20 @@ CREATE INDEX IF NOT EXISTS races_event_id_idx ON races (event_id);
 CREATE INDEX IF NOT EXISTS races_published_at_idx ON races (published_at) WHERE published_at IS NOT NULL;
 CREATE INDEX IF NOT EXISTS events_organizer_id_idx ON events (organizer_id);
 
+-- Listings: a race shown publicly before anyone has uploaded results (docs/product/race-listings.md).
+-- listed_at makes the race facts and any authorized course public; published_at still gates results.
+ALTER TABLE events ADD COLUMN IF NOT EXISTS website TEXT;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS source_url TEXT;
+ALTER TABLE races ADD COLUMN IF NOT EXISTS listed_at TIMESTAMPTZ;
+ALTER TABLE races ADD COLUMN IF NOT EXISTS course_permission TEXT;
+CREATE INDEX IF NOT EXISTS races_listed_at_idx ON races (listed_at) WHERE listed_at IS NOT NULL;
+CREATE TABLE IF NOT EXISTS score_requests (
+    race_id TEXT NOT NULL REFERENCES races(race_id) ON DELETE CASCADE,
+    visitor_key TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (race_id, visitor_key)
+);
+
 CREATE TABLE IF NOT EXISTS reports (
     id SERIAL PRIMARY KEY,
     kind TEXT NOT NULL,
@@ -181,6 +195,8 @@ class Event:
     organizer_email: str | None = None
     location: str | None = None
     country: str | None = None
+    website: str | None = None
+    source_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -206,6 +222,11 @@ class Race:
     organizer_website: str | None = None
     # Known only once a course file has been measured (the official figures carry no descent).
     elevation_loss_m: float | None = None
+    # A listing: public without results. `course_permission` records why OTRI may show the course
+    # file of a race nobody has claimed (licence or the organizer's consent); see DATA_POLICY.md.
+    listed_at: datetime | None = None
+    course_permission: str | None = None
+    event_website: str | None = None
 
     def to_race_record(self) -> RaceRecord:
         """Adapt to the shape ``scoring.score_race()`` expects."""
@@ -285,7 +306,7 @@ def _new_id(prefix: str) -> str:
 def list_events() -> list[Event]:
     with get_connection() as connection:
         rows = connection.execute(
-            "SELECT e.event_id, e.event_name, e.event_date, e.organizer_id, o.email AS organizer_email, e.location, e.country "
+            "SELECT e.event_id, e.event_name, e.event_date, e.organizer_id, o.email AS organizer_email, e.location, e.country, e.website, e.source_url "
             "FROM events e LEFT JOIN organizers o ON o.id = e.organizer_id ORDER BY e.event_date"
         ).fetchall()
     return [Event(**row) for row in rows]
@@ -294,7 +315,7 @@ def list_events() -> list[Event]:
 def find_event(event_id: str) -> Event | None:
     with get_connection() as connection:
         row = connection.execute(
-            "SELECT e.event_id, e.event_name, e.event_date, e.organizer_id, o.email AS organizer_email, e.location, e.country "
+            "SELECT e.event_id, e.event_name, e.event_date, e.organizer_id, o.email AS organizer_email, e.location, e.country, e.website, e.source_url "
             "FROM events e LEFT JOIN organizers o ON o.id = e.organizer_id WHERE e.event_id = %s",
             (event_id,),
         ).fetchone()
@@ -309,14 +330,16 @@ def create_event(
     *,
     location: str | None = None,
     country: str | None = None,
+    website: str | None = None,
+    source_url: str | None = None,
 ) -> Event:
     event_id = event_id or _new_id("evt")
     with get_connection() as connection:
         connection.execute(
-            "INSERT INTO events (event_id, event_name, event_date, organizer_id, location, country) VALUES (%s, %s, %s, %s, %s, %s)",
-            (event_id, event_name, event_date_, organizer_id, location, country),
+            "INSERT INTO events (event_id, event_name, event_date, organizer_id, location, country, website, source_url) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            (event_id, event_name, event_date_, organizer_id, location, country, website, source_url),
         )
-    return Event(event_id=event_id, event_name=event_name, event_date=event_date_, organizer_id=organizer_id, location=location, country=country)
+    return Event(event_id=event_id, event_name=event_name, event_date=event_date_, organizer_id=organizer_id, location=location, country=country, website=website, source_url=source_url)
 
 
 def update_event(
@@ -355,6 +378,7 @@ _RACE_JOIN_SELECT = """
            r.measurement->>'version' AS measurement_version,
            r.measurement->>'status' AS measurement_status,
            (r.measurement->'snapshot'->>'loss_m')::double precision AS elevation_loss_m,
+           r.listed_at, r.course_permission, NULLIF(e.website, '') AS event_website,
            r.published_at, COALESCE(o.is_demo, FALSE) AS is_demo, r.created_at,
            e.event_name, e.event_date, e.organizer_id, e.location AS event_location, e.country AS event_country,
            COALESCE(NULLIF(o.organization, ''), NULLIF(o.display_name, '')) AS organizer_display, NULLIF(o.website, '') AS organizer_website
@@ -364,7 +388,8 @@ _RACE_JOIN_SELECT = """
 
 
 def list_races(published_only: bool = False) -> list[Race]:
-    where = " WHERE r.published_at IS NOT NULL" if published_only else ""
+    """``published_only`` means public: races with published results, and listings awaiting them."""
+    where = " WHERE (r.published_at IS NOT NULL OR r.listed_at IS NOT NULL)" if published_only else ""
     with get_connection() as connection:
         rows = connection.execute(_RACE_JOIN_SELECT + where + " ORDER BY e.event_date DESC, r.distance_km").fetchall()
     return [Race(**row) for row in rows]
@@ -517,6 +542,55 @@ def get_results(race_id: str) -> list[ResultRecord]:
         )
         for row in rows
     ]
+
+
+def set_race_listed(race_id: str, listed: bool, course_permission: str | None = None) -> Race:
+    """List a race publicly without results (or take the listing down). Results stay gated by publishing."""
+    with get_connection() as connection:
+        cursor = connection.execute(
+            "UPDATE races SET listed_at = CASE WHEN %s THEN COALESCE(listed_at, now()) ELSE NULL END, "
+            "course_permission = COALESCE(%s, course_permission), updated_at = now() WHERE race_id = %s",
+            (listed, course_permission, race_id),
+        )
+        if cursor.rowcount == 0:
+            raise NotFoundError(f"race {race_id!r} not found")
+    race = find_race(race_id)
+    assert race is not None
+    return race
+
+
+def assign_event(event_id: str, organizer_id: int | None) -> Event:
+    """Hand an event (a claimed listing) to an organizer account, or release it again."""
+    with get_connection() as connection:
+        cursor = connection.execute("UPDATE events SET organizer_id = %s, updated_at = now() WHERE event_id = %s", (organizer_id, event_id))
+        if cursor.rowcount == 0:
+            raise NotFoundError(f"event {event_id!r} not found")
+    event = find_event(event_id)
+    assert event is not None
+    return event
+
+
+def add_score_request(race_id: str, visitor_key: str) -> bool:
+    """Record that one visitor wants this race scored. False when that visitor already asked."""
+    with get_connection() as connection:
+        cursor = connection.execute(
+            "INSERT INTO score_requests (race_id, visitor_key) VALUES (%s, %s) ON CONFLICT DO NOTHING", (race_id, visitor_key)
+        )
+    return cursor.rowcount == 1
+
+
+def count_score_requests_for_address(race_id: str, address_key: str) -> int:
+    with get_connection() as connection:
+        row = connection.execute(
+            "SELECT COUNT(*) AS n FROM score_requests WHERE race_id = %s AND visitor_key LIKE %s", (race_id, f"{address_key}:%")
+        ).fetchone()
+    return int(row["n"])
+
+
+def count_score_requests_by_race() -> dict[str, int]:
+    with get_connection() as connection:
+        rows = connection.execute("SELECT race_id, COUNT(*) AS n FROM score_requests GROUP BY race_id").fetchall()
+    return {row["race_id"]: int(row["n"]) for row in rows}
 
 
 def count_results_by_race() -> dict[str, int]:

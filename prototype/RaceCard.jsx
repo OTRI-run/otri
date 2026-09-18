@@ -1,6 +1,7 @@
 import { ArrowUpRight, Mountain, TrendingUp } from 'lucide-react'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import Flag from '../src/components/Flag'
+import { ListingBadge, requestCountLabel } from './RaceListing'
 
 export function DemoBadge({ className = '' }) {
   return (
@@ -30,6 +31,7 @@ export default function RaceCard({ race }) {
       <div className="flex items-center justify-between gap-2">
         <p className="truncate font-mono text-[10px] tracking-[.08em] text-blue-600">{race.event_date}</p>
         <span className="flex shrink-0 items-center gap-2">
+          <ListingBadge status={race.listing_status} />
           {race.is_vertical && <VerticalBadge />}
           {race.is_demo && <DemoBadge />}
           <ArrowUpRight size={14} className="text-slate-300 transition group-hover:text-blue-600" />
@@ -57,8 +59,8 @@ export default function RaceCard({ race }) {
         {race.has_gpx && <span className="text-blue-600">VERIFIED COURSE</span>}
       </div>
       <div className="mt-4 flex items-center justify-between text-xs font-semibold text-blue-600">
-        <span>{race.finisher_count ?? 0} {race.is_vertical ? 'finishers' : 'scored'}</span>
-        <span className="text-slate-400 transition group-hover:text-blue-600">Leaderboard →</span>
+        <span>{race.is_published === false ? requestCountLabel(race.request_count) : `${race.finisher_count ?? 0} ${race.is_vertical ? 'finishers' : 'scored'}`}</span>
+        <span className="text-slate-400 transition group-hover:text-blue-600">{race.is_published === false ? 'Course and details →' : 'Leaderboard →'}</span>
       </div>
     </a>
   )
