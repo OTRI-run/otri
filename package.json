@@ -11,14 +11,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tailwindcss/vite": "latest",
     "@vitejs/plugin-react": "latest",
+    "flag-icons": "^7.5.0",
+    "i18n-iso-countries": "^7.14.0",
     "lucide-react": "latest",
     "maplibre-gl": "latest",
     "react": "latest",
     "react-dom": "latest",
     "tailwindcss": "latest",
-    "@tailwindcss/vite": "latest",
     "vite": "latest"
-  },
-  "devDependencies": {}
+  }
 }

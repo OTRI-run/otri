@@ -889,6 +889,7 @@ def test_results_create_runners_matched_by_name_gender_and_birth_year():
     assert any(k["result_count"] == 1 and k["index"] is None and k["provisional"] for k in kellers), "a DNF alone lists the runner but gives no index"
     leaderboard = client.get(f"/races/{race_a}/results").json()
     assert all(row["runner_id"] for row in leaderboard), "leaderboard rows link to runner profiles"
+    assert [(row["gender"], row["nationality"]) for row in leaderboard] == [("F", "THA"), ("M", "SGP"), ("M", "SGP")]
     assert race_b
 
 

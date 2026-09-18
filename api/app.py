@@ -665,7 +665,15 @@ def _score_results(race: db.Race, results: list) -> list[RunnerScoreOut]:
     for score in scores:
         data = score.to_dict()
         source = by_key.get((str(data.get("rank")), data.get("family_name"), data.get("first_name")))
-        out.append(RunnerScoreOut(**data, finish_time_seconds=source.finish_time_seconds if source else None, runner_id=source.runner_id if source else None))
+        out.append(
+            RunnerScoreOut(
+                **data,
+                finish_time_seconds=source.finish_time_seconds if source else None,
+                runner_id=source.runner_id if source else None,
+                gender=source.gender if source else None,
+                nationality=source.nationality if source else None,
+            )
+        )
     return out
 
 

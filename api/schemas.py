@@ -80,6 +80,8 @@ class RunnerScoreOut(BaseModel):
     quality_flags: list[str] = []
     finish_time_seconds: int | None = None
     runner_id: str | None = None
+    gender: str | None = None
+    nationality: str | None = None
 
 
 class ValidationIssueOut(BaseModel):

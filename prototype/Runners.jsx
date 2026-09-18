@@ -4,6 +4,7 @@ import NextSteps from './NextSteps'
 import { DemoBadge } from './RaceCard'
 import { getRunner, listRunners } from './apiClient'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
+import Flag from '../src/components/Flag'
 
 const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
 const METHOD_URL = 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/RUNNER-INDEX-v1.md'
@@ -39,8 +40,9 @@ function RunnerRow({ runner, rank }) {
       <span className="font-mono text-xs text-slate-400">{rank}</span>
       <span className="min-w-0">
         <span className="block truncate text-sm font-semibold text-[#0b1220]">{runnerName(runner)}</span>
-        <span className="block font-mono text-[10px] text-slate-500">
-          {[runner.gender, runner.age_category, runner.nationality].filter(Boolean).join(' · ')}
+        <span className="flex items-center gap-2 font-mono text-[10px] text-slate-500">
+          {runner.nationality && <Flag code={runner.nationality} />}
+          <span>{[runner.gender, runner.age_category].filter(Boolean).join(' · ')}</span>
         </span>
       </span>
       <span className="hidden font-mono text-[10px] text-slate-500 sm:block">
@@ -222,8 +224,9 @@ export function RunnerProfilePage({ runnerId, onBack }) {
           <>
             <div className="mt-6 grid min-w-0 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
               <div className="min-w-0">
-                <p className="font-mono text-[9px] tracking-[.08em] text-blue-600">
-                  {[profile.gender === 'F' ? 'WOMAN' : profile.gender === 'M' ? 'MAN' : 'RUNNER', profile.age_category, profile.nationality].filter(Boolean).join(' · ')}
+                <p className="flex items-center gap-2 font-mono text-[9px] tracking-[.08em] text-blue-600">
+                  {profile.nationality && <Flag code={profile.nationality} />}
+                  <span>{[profile.gender === 'F' ? 'WOMAN' : profile.gender === 'M' ? 'MAN' : 'RUNNER', profile.age_category].filter(Boolean).join(' · ')}</span>
                 </p>
                 <h1 className="mt-2 text-[clamp(32px,4.5vw,52px)] font-bold leading-[.98] tracking-[-.05em] text-[#0b1220]">{runnerName(profile)}</h1>
                 <p className="mt-3 text-sm text-slate-500">

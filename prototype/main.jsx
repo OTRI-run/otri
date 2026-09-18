@@ -10,6 +10,7 @@ import RaceCard, { DemoBadge } from './RaceCard'
 import ScoreCalculator from './ScoreCalculator'
 import { RunnerProfilePage, RunnersPage } from './Runners'
 import CourseMap from '../src/components/CourseMap'
+import Flag from '../src/components/Flag'
 import { fetchRaceGpxFile, getApiStatus, getRace, getRaceMeasurement, getRaceResults, listRaces } from './apiClient'
 import '../src/styles.css'
 
@@ -281,9 +282,10 @@ function Leaderboard({ raceId, onBack }) {
                 <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
                   <th className="px-4 py-3">Rank</th>
                   <th className="px-4 py-3">Runner</th>
+                  <th className="px-4 py-3">Country</th>
+                  <th className="px-4 py-3">Gender</th>
                   <th className="px-4 py-3">Time</th>
                   <th className="px-4 py-3">OTRI score</th>
-                  <th className="px-4 py-3">Confidence</th>
                 </tr>
               </thead>
               <tbody>
@@ -301,14 +303,15 @@ function Leaderboard({ raceId, onBack }) {
                         </>
                       )}
                     </td>
+                    <td className="px-4 py-3">{row.nationality ? <Flag code={row.nationality} /> : <span className="text-slate-300">—</span>}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-slate-500">{row.gender ?? '—'}</td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-500">{formatHms(row.finish_time_seconds)}</td>
                     <td className="px-4 py-3 font-mono text-sm font-bold text-blue-600">{row.otri_score}</td>
-                    <td className="px-4 py-3 text-xs text-slate-500">{row.confidence}</td>
                   </tr>
                 ))}
                 {results?.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-6 text-center text-sm text-slate-500">
+                    <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">
                       No results published yet.
                     </td>
                   </tr>
