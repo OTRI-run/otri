@@ -13,7 +13,9 @@ from dataclasses import dataclass
 import math
 from datetime import datetime
 from pathlib import Path
-from xml.etree import ElementTree
+from xml.etree import ElementTree  # element types only; parsing goes through defusedxml
+from defusedxml import ElementTree as SafeElementTree
+from defusedxml import DefusedXmlException
 
 
 class GpxParseError(ValueError):
@@ -54,8 +56,8 @@ def parse_track_points(gpx_text: str) -> list[TrackPoint]:
     if '<!DOCTYPE' in gpx_text.upper() or '<!ENTITY' in gpx_text.upper():
         raise GpxParseError('GPX must not contain DTD or entity declarations')
     try:
-        root = ElementTree.fromstring(gpx_text)
-    except ElementTree.ParseError as error:
+        root = SafeElementTree.fromstring(gpx_text)
+    except (ElementTree.ParseError, DefusedXmlException) as error:  # malformed, or an entity/DTD trick
         raise GpxParseError(f"not well-formed XML: {error}") from error
 
     ns = _tag_namespace(root.tag)

@@ -18,12 +18,27 @@ fi
 
 echo "==> Writing Nginx site for ${DOMAIN}"
 tee /etc/nginx/sites-available/otri-api >/dev/null <<EOF
+# Per-IP request budget in front of the API's own (per-endpoint) limits: 20 requests/second
+# sustained with a burst of 40 absorbs a real user's page load and stops a flood at the edge.
+limit_req_zone \$binary_remote_addr zone=otri_api:10m rate=20r/s;
+limit_conn_zone \$binary_remote_addr zone=otri_conn:10m;
+
 server {
     listen 80;
     server_name ${DOMAIN};
 
+    # Only meaningful over TLS (certbot adds the 443 server below); harmless on the redirect.
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options DENY always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
     location / {
+        limit_req zone=otri_api burst=40 nodelay;
+        limit_conn otri_conn 20;
+        limit_req_status 429;
         proxy_pass http://127.0.0.1:8000;
+        proxy_read_timeout 120s;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;

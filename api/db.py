@@ -345,6 +345,12 @@ def set_race_published(race_id: str, published: bool) -> Race:
     return race
 
 
+def count_races_by_event() -> dict[str, int]:
+    with get_connection() as connection:
+        rows = connection.execute("SELECT event_id, COUNT(*) AS n FROM races GROUP BY event_id").fetchall()
+    return {row["event_id"]: int(row["n"]) for row in rows}
+
+
 def list_races_for_event(event_id: str) -> list[Race]:
     with get_connection() as connection:
         rows = connection.execute(
@@ -626,8 +632,10 @@ def search_runners(query: str, limit: int = 25) -> list[Runner]:
     words = [w for w in runner_name_key(query, "", "").split("|")[0].split() if w]
     if not words:
         return []
-    clauses = " AND ".join("ru.name_key LIKE %s" for _ in words)
-    params = tuple(f"%{word}%" for word in words) + (limit,)
+    clauses = " AND ".join("ru.name_key LIKE %s ESCAPE '\\'" for _ in words)
+    # A literal % or _ in the query must not turn into a wildcard that matches every runner.
+    escaped = (word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") for word in words)
+    params = tuple(f"%{word}%" for word in escaped) + (limit,)
     with get_connection() as connection:
         rows = connection.execute(
             _RUNNER_SELECT + f" WHERE {clauses} GROUP BY ru.runner_id ORDER BY result_count DESC, ru.family_name, ru.first_name LIMIT %s",

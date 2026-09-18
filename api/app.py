@@ -165,6 +165,46 @@ app.add_middleware(
 )
 
 
+_MAX_BODY_BYTES = 20_000_000
+
+
+@app.middleware("http")
+async def _guardrails(request: Request, call_next):
+    """Reject oversized bodies before reading them, and add the response headers every API
+    should carry (no MIME sniffing, no framing, no caching of anything personal)."""
+    length = request.headers.get("content-length")
+    if length and length.isdigit() and int(length) > _MAX_BODY_BYTES:
+        return Response(content='{"detail":"Upload exceeds 20 MB"}', status_code=413, media_type="application/json")
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    if request.url.path.startswith(("/auth", "/admin")) or "authorization" in request.headers or _SESSION_COOKIE in request.cookies:
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+def _discard_temp(path: Path) -> None:
+    """Delete an upload's temp file. On Windows a parser that failed mid-file can still hold it
+    open through the pending exception; collect, retry once, otherwise leave it to the OS."""
+    import gc
+
+    try:
+        path.unlink(missing_ok=True)
+    except PermissionError:
+        gc.collect()
+        try:
+            path.unlink(missing_ok=True)
+        except PermissionError:
+            pass
+
+
+def _safe_suffix(filename: str | None, default: str) -> str:
+    """Only a plain extension ever reaches a temp-file name."""
+    suffix = Path(filename or "").suffix.lower()
+    return suffix if re.fullmatch(r"\.[a-z0-9]{1,8}", suffix) else default
+
+
 @app.get("/")
 def root() -> dict:
     return {"name": "OTRI API", "status": "in development", "docs": "/docs", "started_at": _STARTED_AT.isoformat()}
@@ -656,12 +696,13 @@ def list_events(mine: bool = False, organizer: Organizer | None = Depends(_optio
         if organizer is None:
             raise HTTPException(status_code=401, detail="missing bearer token")
         events = [event for event in events if event.organizer_id == organizer.id]
+    race_counts = db.count_races_by_event()
     return [
         EventSummary(
             event_id=event.event_id,
             event_name=event.event_name,
             event_date=event.event_date,
-            race_count=len(db.list_races_for_event(event.event_id)),
+            race_count=race_counts.get(event.event_id, 0),
             location=event.location,
             country=event.country,
         )
@@ -941,7 +982,7 @@ async def attach_race_gpx(
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
 
-    suffix = Path(file.filename or "").suffix or ".gpx"
+    suffix = _safe_suffix(file.filename, ".gpx")
     contents = await file.read(20_000_001)
     if len(contents) > 20_000_000:
         raise HTTPException(status_code=413, detail="Upload exceeds 20 MB")
@@ -955,7 +996,7 @@ async def attach_race_gpx(
     except (GpxParseError, ValueError, UnicodeError) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     finally:
-        temp_path.unlink(missing_ok=True)
+        _discard_temp(temp_path)
 
     updated = db.attach_gpx(
         race_id,
@@ -1073,7 +1114,7 @@ async def submit_race_results(
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
 
-    suffix = Path(file.filename or "").suffix or ".csv"
+    suffix = _safe_suffix(file.filename, ".csv")
     contents = await file.read(20_000_001)
     if len(contents) > 20_000_000:
         raise HTTPException(status_code=413, detail="Upload exceeds 20 MB")
@@ -1082,7 +1123,10 @@ async def submit_race_results(
         temp_path = Path(temp_file.name)
 
     try:
-        report = validate_result_file(temp_path)
+        try:
+            report = await run_in_threadpool(validate_result_file, temp_path)
+        except (ValueError, OSError) as error:  # unreadable, wrong type, too many rows
+            raise HTTPException(status_code=422, detail=str(error)) from error
         if not report.is_valid:
             return SubmissionResult(
                 is_valid=False,
@@ -1091,12 +1135,12 @@ async def submit_race_results(
                 scores=[],
             )
 
-        results = result_records(temp_path)
+        results = await run_in_threadpool(result_records, temp_path)
         db.replace_results(race_id, results)
 
         try:
             # Score the stored rows, which now carry runner ids, so the response matches a later replay.
-            scores = _score_results(race, db.get_results(race_id))
+            scores = await run_in_threadpool(_score_results, race, db.get_results(race_id))
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
 
@@ -1107,7 +1151,7 @@ async def submit_race_results(
             scores=scores,
         )
     finally:
-        temp_path.unlink(missing_ok=True)
+        _discard_temp(temp_path)
 
 
 # --- Runners ---------------------------------------------------------------------
@@ -1242,14 +1286,15 @@ def get_runner(runner_id: str) -> RunnerProfile:
 
 
 @app.post("/gpx/analyze", response_model=GpxAnalysis)
-async def analyze_gpx(file: UploadFile, finish_time_seconds: int | None = Form(default=None)) -> GpxAnalysis:
+async def analyze_gpx(request: Request, file: UploadFile, finish_time_seconds: int | None = Form(default=None)) -> GpxAnalysis:
     """Parse an uploaded GPX file and, optionally, predict its Course Standard score for a given time.
 
     Uses the exact same formula as the real post-race scorer (no competitor
     assumption needed) — see ``scoring.estimator``'s module docstring and
     ``docs/gpx-predictor.md``.
     """
-    suffix = Path(file.filename or "").suffix or ".gpx"
+    enforce_rate_limit(request, max_requests=60)  # public and CPU-heavy: one call per slider move is fine, a flood is not
+    suffix = _safe_suffix(file.filename, ".gpx")
     contents = await file.read(20_000_001)
     if len(contents) > 20_000_000:
         raise HTTPException(status_code=413, detail="Upload exceeds 20 MB")
@@ -1263,7 +1308,7 @@ async def analyze_gpx(file: UploadFile, finish_time_seconds: int | None = Form(d
     except (GpxParseError, ValueError, UnicodeError) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     finally:
-        temp_path.unlink(missing_ok=True)
+        _discard_temp(temp_path)
 
     estimate = None
     if finish_time_seconds is not None:
@@ -1330,7 +1375,7 @@ async def share_gpx(request: Request, file: UploadFile, name: str | None = Form(
     if len(contents) > _SHARED_COURSE_MAX_FILE_BYTES:
         raise HTTPException(status_code=413, detail=f"A shared course may be at most {_SHARED_COURSE_MAX_FILE_BYTES // 1_000_000} MB")
     try:
-        points = parse_track_points(contents.decode("utf-8"))
+        points = await run_in_threadpool(parse_track_points, contents.decode("utf-8"))
     except (GpxParseError, ValueError, UnicodeError) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     if len(points) < 2:

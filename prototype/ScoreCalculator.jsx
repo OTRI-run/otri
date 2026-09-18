@@ -38,8 +38,29 @@ function publishedAnchorsFor(scoringVersion) {
 const DEFAULT_TARGET_SCORE = 500
 const POWER_EXPONENT = 0.85 // V0.8: score = 1000 × (rate / ceiling rate)^0.85
 
+// Absolute sanity bounds for a finish time (multi-day events exist; nothing runs 200 hours).
+const ABS_MIN_SECONDS = 60
+const ABS_MAX_SECONDS = 200 * 3600
+// The slider spans the scores that make sense on a course: from the human ceiling (1000) down to
+// a slow finish (SLIDER_MIN_SCORE), so a 10 km and a 100-mile course each get a range in
+// proportion to their own best time instead of one fixed 10 min to 24 h.
+const SLIDER_MIN_SCORE = 200
+
 function clampSeconds(seconds) {
-  return Math.min(86400, Math.max(600, Math.round(seconds / 30) * 30))
+  return Math.min(ABS_MAX_SECONDS, Math.max(ABS_MIN_SECONDS, Math.round(seconds / 30) * 30))
+}
+
+function sliderRange(ceilingSeconds, targetSeconds) {
+  if (!ceilingSeconds) {
+    const max = Math.max(86400, targetSeconds || 0)
+    return { min: Math.min(600, targetSeconds || 600), max, step: max > 86400 ? 300 : 30, known: false }
+  }
+  const slowest = ceilingSeconds / Math.pow(SLIDER_MIN_SCORE / 1000, 1 / POWER_EXPONENT)
+  const span = slowest - ceilingSeconds
+  const step = span > 86400 ? 300 : span > 21600 ? 60 : 30
+  const min = Math.floor(ceilingSeconds / step) * step
+  const max = Math.ceil(slowest / step) * step
+  return { min: Math.min(min, targetSeconds || min), max: Math.max(max, targetSeconds || max), step, known: true }
 }
 
 // The finish time that would score `score` on the course an estimate was made for. Uses the
@@ -468,7 +489,7 @@ function readCalculatorQuery() {
     race: params.get('race'),
     gpx: params.get('gpx'),
     name: params.get('name'),
-    seconds: Number.isFinite(t) && t > 0 ? Math.min(86400, Math.max(600, Math.round(t))) : null,
+    seconds: Number.isFinite(t) && t > 0 ? Math.min(ABS_MAX_SECONDS, Math.max(ABS_MIN_SECONDS, Math.round(t))) : null,
   }
 }
 
@@ -788,8 +809,9 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
 
 // ----------------------------------------------------------------------------- hero
 
-function TargetTimeControls({ targetSeconds, timeInput, onSlider, onInput, distanceKm, analysisError }) {
+function TargetTimeControls({ targetSeconds, timeInput, onSlider, onInput, distanceKm, analysisError, ceilingSeconds }) {
   const units = useUnits()
+  const range = sliderRange(ceilingSeconds, targetSeconds)
   return (
     <div className="mt-8 rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] backdrop-blur">
       <label htmlFor="calc-time-input" className="font-mono text-[9px] tracking-[.08em] text-blue-600">
@@ -809,18 +831,24 @@ function TargetTimeControls({ targetSeconds, timeInput, onSlider, onInput, dista
       </div>
       <input
         type="range"
-        min={600}
-        max={86400}
-        step={30}
+        min={range.min}
+        max={range.max}
+        step={range.step}
         value={targetSeconds}
         onChange={(event) => onSlider(Number(event.target.value))}
         aria-label="Target finish time"
         className="mt-4 w-full accent-blue-600"
       />
       <div className="mt-1 flex justify-between font-mono text-[8px] tracking-[.08em] text-slate-400">
-        <span>10 MIN</span>
-        <span>24 H</span>
+        <span>{range.known ? `${formatHms(range.min)} · SCORE 1000 · BEST HUMAN` : formatHms(range.min)}</span>
+        <span>{range.known ? `${formatHms(range.max)} · SCORE ${SLIDER_MIN_SCORE}` : formatHms(range.max)}</span>
       </div>
+      {range.known && (
+        <p className="mt-2 text-[11px] leading-5 text-slate-500">
+          The slider runs from the fastest a human has ever covered a course this hard (1000) to a slow finish ({SLIDER_MIN_SCORE}). Type a
+          time to go outside it.
+        </p>
+      )}
       {analysisError && <p className="mt-2 text-xs text-red-600">{analysisError}</p>}
     </div>
   )
@@ -1016,7 +1044,7 @@ export default function ScoreCalculator() {
     setTimeInput(value)
     const seconds = parseHmsToSeconds(value)
     if (seconds !== null && seconds > 0) {
-      setTargetSeconds(Math.min(86400, seconds))
+      setTargetSeconds(Math.min(ABS_MAX_SECONDS, Math.max(ABS_MIN_SECONDS, seconds)))
     }
   }
 
@@ -1059,6 +1087,7 @@ export default function ScoreCalculator() {
                   onInput={updateTimeInput}
                   distanceKm={features.distance_km}
                   analysisError={analysisError}
+                  ceilingSeconds={estimate?.breakdown?.world_best_time_seconds}
                 />
                 <ShareBox courseLabel={courseLabel} courseFile={courseFile} targetSeconds={targetSeconds} shareId={shareId} onShared={setShareId} />
               </>

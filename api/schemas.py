@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class EventSummary(BaseModel):
@@ -21,17 +21,17 @@ class EventSummary(BaseModel):
 
 
 class EventCreate(BaseModel):
-    event_name: str
+    event_name: str = Field(max_length=200)
     event_date: date
-    location: str | None = None
-    country: str | None = None
+    location: str | None = Field(default=None, max_length=200)
+    country: str | None = Field(default=None, max_length=8)
 
 
 class EventUpdate(BaseModel):
-    event_name: str | None = None
+    event_name: str | None = Field(default=None, max_length=200)
     event_date: date | None = None
-    location: str | None = None
-    country: str | None = None
+    location: str | None = Field(default=None, max_length=200)
+    country: str | None = Field(default=None, max_length=8)
 
 
 class RaceSummary(BaseModel):
@@ -61,17 +61,17 @@ class EventDetail(EventSummary):
 
 
 class RaceCreate(BaseModel):
-    course_name: str
+    course_name: str = Field(max_length=200)
     distance_km: float
     elevation_gain_m: float
-    scoring_version: str | None = None
+    scoring_version: str | None = Field(default=None, max_length=80)
 
 
 class RaceUpdate(BaseModel):
-    course_name: str | None = None
+    course_name: str | None = Field(default=None, max_length=200)
     distance_km: float | None = None
     elevation_gain_m: float | None = None
-    scoring_version: str | None = None
+    scoring_version: str | None = Field(default=None, max_length=80)
 
 
 class RunnerScoreOut(BaseModel):
@@ -231,13 +231,13 @@ class SharedCourseAdminOut(BaseModel):
 
 
 class ReportCreate(BaseModel):
-    kind: str
-    subject_id: str
-    subject_label: str | None = None
-    reason: str | None = None
-    message: str
-    reporter_email: str | None = None
-    page_url: str | None = None
+    kind: str = Field(max_length=40)
+    subject_id: str = Field(max_length=200)
+    subject_label: str | None = Field(default=None, max_length=300)
+    reason: str | None = Field(default=None, max_length=80)
+    message: str = Field(max_length=4000)
+    reporter_email: str | None = Field(default=None, max_length=320)
+    page_url: str | None = Field(default=None, max_length=1000)
 
 
 class ReportOut(BaseModel):
@@ -364,8 +364,8 @@ class OrganizerCredentials(BaseModel):
 
 
 class OrganizerRegistration(BaseModel):
-    email: str
-    password: str
+    email: str = Field(max_length=320)
+    password: str = Field(max_length=1024)
     accept_terms: bool = False
     marketing_opt_in: bool = False
 
@@ -396,9 +396,9 @@ class ResendVerificationRequest(BaseModel):
 
 
 class PasswordResetRequest(BaseModel):
-    email: str
+    email: str = Field(max_length=320)
 
 
 class PasswordResetConfirm(BaseModel):
-    token: str
-    new_password: str
+    token: str = Field(max_length=512)
+    new_password: str = Field(max_length=1024)
