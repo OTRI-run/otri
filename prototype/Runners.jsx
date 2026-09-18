@@ -30,9 +30,6 @@ function IndexBadge({ index, provisional, size = 'sm' }) {
   return (
     <span className={`inline-flex items-baseline gap-1 font-mono font-bold tabular-nums text-blue-600 ${size === 'lg' ? 'text-3xl' : 'text-base'}`}>
       {index}
-      {size !== 'lg' && (
-        <span className={`inline-block w-[34px] font-mono text-[10px] font-medium tracking-[.08em] text-amber-600 ${provisional ? '' : 'invisible'}`}>PROV.</span>
-      )}
       {size === 'lg' && provisional && <span className="font-mono text-[10px] font-medium tracking-[.08em] text-amber-600">PROV.</span>}
     </span>
   )
@@ -42,7 +39,7 @@ function RunnerRow({ runner, rank }) {
   return (
     <a
       href={`#runners/${encodeURIComponent(runner.runner_id)}`}
-      className="group grid grid-cols-[32px_minmax(0,1fr)_112px] items-center gap-3 px-4 py-3 no-underline transition odd:bg-white even:bg-slate-50/70 hover:bg-blue-50/60 sm:grid-cols-[32px_minmax(0,1fr)_88px_96px_112px]"
+      className="group grid grid-cols-[32px_minmax(0,1fr)_80px] items-center gap-3 px-4 py-3 no-underline transition odd:bg-white even:bg-slate-50/70 hover:bg-blue-50/60 sm:grid-cols-[32px_minmax(0,1fr)_88px_96px_80px]"
     >
       <span className="font-mono text-xs text-slate-400">{rank}</span>
       <span className="min-w-0">
