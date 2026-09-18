@@ -13,6 +13,7 @@ import {
   getRaceResults,
   listScoringModels,
   publishRace,
+  setRaceListed,
   submitRaceResults,
   unpublishRace,
 } from '../../apiClient'
@@ -679,6 +680,20 @@ export function ReviewStep({ session, raceId }) {
     }
   }
 
+  // Listing shows the race (facts and course, never results) on the public page ahead of its results.
+  async function toggleListed(listed) {
+    setPublishing(true)
+    setError(null)
+    try {
+      await setRaceListed(raceId, listed, session.token)
+      reload()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setPublishing(false)
+    }
+  }
+
   async function remove() {
     if (!window.confirm(`Delete "${race.course_name}" and its results? This cannot be undone.`)) return
     setBusy(true)
@@ -731,7 +746,7 @@ export function ReviewStep({ session, raceId }) {
             <ChecklistRow
               ok={race.is_published}
               label="Published"
-              detail={race.is_published ? `On the public races page since ${formatDate(String(race.published_at).slice(0, 10))}.` : 'Not on the public site yet.'}
+              detail={race.is_published ? `On the public races page since ${formatDate(String(race.published_at).slice(0, 10))}.` : race.is_listed ? `Listed on the public races page without results · ${race.request_count ?? 0} runner(s) asked for scores.` : 'Not on the public site yet.'}
             />
           </ul>
           <div className="mt-5">
@@ -756,6 +771,18 @@ export function ReviewStep({ session, raceId }) {
             ) : (
               <Notice kind="info">Finish the items marked above, then publish.</Notice>
             )}
+            {!race.is_published && (
+              <p className="mt-3 text-xs leading-5 text-slate-500">
+                {race.is_listed ? (
+                  <>
+                    Listed: runners can find this race, see its course and ask for scores.{' '}
+                    <a href={`../#races/${encodeURIComponent(raceId)}`} className="font-semibold text-blue-600">View the listing</a>. Results stay private until you publish.
+                  </>
+                ) : (
+                  'Race day still ahead, or results not ready? List the race now: runners can find it, see the course and try target times, and results stay private until you publish.'
+                )}
+              </p>
+            )}
           </div>
           {error && <div className="mt-3"><Notice kind="error">{error}</Notice></div>}
           <div className="mt-5 flex flex-wrap gap-3">
@@ -766,6 +793,11 @@ export function ReviewStep({ session, raceId }) {
             ) : (
               <Button busy={publishing} disabled={!hasResults} onClick={() => togglePublish(true)}>
                 <Eye size={15} /> Publish results
+              </Button>
+            )}
+            {!race.is_published && (
+              <Button variant="secondary" busy={publishing} onClick={() => toggleListed(!race.is_listed)}>
+                {race.is_listed ? <EyeOff size={15} /> : <Eye size={15} />} {race.is_listed ? 'Remove listing' : 'List without results'}
               </Button>
             )}
             <Button variant="secondary" onClick={() => navigate(`/events/${encodeURIComponent(race.event_id)}`)}>
