@@ -70,7 +70,7 @@ export default function BuildBanner() {
         <span className="font-semibold text-white">{COMMIT}</span>
       )}
       {timeAgo ? ` · ${timeAgo}` : ''}
-      {apiStartedAt && ` · API last restarted ${apiTimeAgo}`}
+      {apiStartedAt && <span className="hidden sm:inline">{` · API last restarted ${apiTimeAgo}`}</span>}
       {apiUnreachable && ' · API unreachable'}
     </div>
   )

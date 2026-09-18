@@ -50,7 +50,7 @@ export function Page({ title, eyebrow, intro, back, children, aside, headline })
 }
 
 export function Card({ children, className = '' }) {
-  return <div className={`rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] sm:p-6 ${className}`}>{children}</div>
+  return <div className={`min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] sm:p-6 ${className}`}>{children}</div>
 }
 
 export function Field({ label, hint, error, children, htmlFor }) {

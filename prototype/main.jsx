@@ -232,13 +232,13 @@ function Leaderboard({ raceId, onBack }) {
             </div>
           )}
           <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
-            <table className="w-full min-w-[520px] border-collapse text-left text-sm">
+            <table className="w-full border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
                   <th className="px-4 py-3">Rank</th>
                   <th className="px-4 py-3">Runner</th>
-                  <th className="px-4 py-3">Country</th>
-                  <th className="px-4 py-3">Gender</th>
+                  <th className="hidden px-4 py-3 sm:table-cell">Country</th>
+                  <th className="hidden px-4 py-3 sm:table-cell">Gender</th>
                   <th className="px-4 py-3">Time</th>
                   <th className="px-4 py-3">OTRI score</th>
                 </tr>
@@ -257,9 +257,13 @@ function Leaderboard({ raceId, onBack }) {
                           {row.first_name} {row.family_name}
                         </>
                       )}
+                      <span className="mt-0.5 flex items-center gap-2 font-mono text-[10px] font-normal text-slate-500 sm:hidden">
+                        {row.nationality && <Flag code={row.nationality} />}
+                        {row.gender && <span>{row.gender}</span>}
+                      </span>
                     </td>
-                    <td className="px-4 py-3">{row.nationality ? <Flag code={row.nationality} /> : <span className="text-slate-300">—</span>}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-500">{row.gender ?? '—'}</td>
+                    <td className="hidden px-4 py-3 sm:table-cell">{row.nationality ? <Flag code={row.nationality} /> : <span className="text-slate-300">—</span>}</td>
+                    <td className="hidden px-4 py-3 font-mono text-xs text-slate-500 sm:table-cell">{row.gender ?? '—'}</td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-500">{formatHms(row.finish_time_seconds)}</td>
                     <td className="px-4 py-3 font-mono text-sm font-bold text-blue-600">{row.otri_score ?? <span className="text-slate-300">—</span>}</td>
                   </tr>
@@ -274,7 +278,7 @@ function Leaderboard({ raceId, onBack }) {
               </tbody>
             </table>
           </div>
-          <p className="mt-3 font-mono text-[9px] tracking-[.05em] text-slate-400">
+          <p className="mt-3 font-mono text-[10px] tracking-[.05em] text-slate-400">
             {modelLabel(race.scoring_version)} · depends only on the course and each runner's own finish time, never the field
           </p>
           <ReportForm kind="race" subjectId={race.race_id} subjectLabel={`${race.event_name} · ${race.course_name}`} prompt="Wrong result, wrong course, or your name should not be here?" />

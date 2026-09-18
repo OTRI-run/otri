@@ -291,6 +291,17 @@ export function Register() {
         <Button type="submit" busy={busy} disabled={!email || !password || tooShort || mismatch || !acceptTerms}>
           Create account <ArrowRight size={15} />
         </Button>
+        {!busy && (!email || !password || tooShort || mismatch || !acceptTerms) && (
+          <p className="text-xs text-slate-500">
+            {!email
+              ? 'Enter your work email to continue.'
+              : !password || tooShort
+                ? 'Choose a password of at least 10 characters.'
+                : mismatch
+                  ? 'The two passwords do not match yet.'
+                  : 'Tick the terms box to continue.'}
+          </p>
+        )}
       </form>
     </AuthCard>
   )

@@ -230,7 +230,7 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
 function Stat({ label, value, mono = true }) {
   return (
     <div>
-      <dt className="font-mono text-[9px] uppercase text-slate-400">{label}</dt>
+      <dt className="font-mono text-[10px] uppercase text-slate-500">{label}</dt>
       <dd className={`font-semibold text-[#0b1220] ${mono ? 'font-mono' : ''}`}>{value}</dd>
     </div>
   )
@@ -588,8 +588,8 @@ function ShareBox({ courseLabel, courseFile, targetSeconds, shareId, onShared })
         <div className="mt-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
           <Link2 size={14} className="shrink-0 text-blue-600" />
           <input readOnly value={url} onFocus={(event) => event.target.select()} aria-label="Share link" className="min-w-0 flex-1 bg-transparent font-mono text-[11px] text-slate-600 outline-none" />
-          <button type="button" onClick={() => copy(url)} className="shrink-0 text-xs font-semibold text-blue-600 hover:underline" aria-label="Copy link">
-            <Copy size={14} />
+          <button type="button" onClick={() => copy(url)} className="-mr-2 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-blue-600 hover:bg-blue-50" aria-label="Copy link">
+            <Copy size={16} />
           </button>
         </div>
       ) : null}
@@ -839,8 +839,8 @@ function TargetTimeControls({ targetSeconds, timeInput, onSlider, onInput, dista
         aria-label="Target finish time"
         className="mt-4 w-full accent-blue-600"
       />
-      <div className="mt-1 flex justify-between font-mono text-[8px] tracking-[.08em] text-slate-400">
-        <span>{range.known ? `${formatHms(range.min)} · SCORE 1000 · BEST HUMAN` : formatHms(range.min)}</span>
+      <div className="mt-1 flex justify-between gap-3 font-mono text-[11px] tracking-[.04em] text-slate-500">
+        <span>{range.known ? `${formatHms(range.min)} · SCORE 1000` : formatHms(range.min)}{range.known && <span className="hidden sm:inline"> · BEST HUMAN</span>}</span>
         <span>{range.known ? `${formatHms(range.max)} · SCORE ${SLIDER_MIN_SCORE}` : formatHms(range.max)}</span>
       </div>
       {range.known && (

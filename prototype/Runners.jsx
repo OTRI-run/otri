@@ -29,7 +29,7 @@ function IndexBadge({ index, provisional, size = 'sm' }) {
   return (
     <span className={`inline-flex items-baseline gap-1 font-mono font-bold text-blue-600 ${size === 'lg' ? 'text-3xl' : 'text-base'}`}>
       {index}
-      {provisional && <span className="font-mono text-[8px] font-medium tracking-[.08em] text-amber-600">PROV.</span>}
+      {provisional && <span className="font-mono text-[10px] font-medium tracking-[.08em] text-amber-600">PROV.</span>}
     </span>
   )
 }
@@ -165,7 +165,7 @@ function ResultRow({ result, units }) {
   const tone = result.status === 'counting' ? 'text-[#0b1220]' : result.status === 'expired' ? 'text-slate-400' : 'text-slate-600'
   return (
     <tr className={`border-b border-slate-100 last:border-0 ${result.status === 'expired' ? 'opacity-70' : ''}`}>
-      <td className="px-4 py-3 font-mono text-xs text-slate-500">{result.event_date}</td>
+      <td className="hidden px-4 py-3 font-mono text-xs text-slate-500 md:table-cell">{result.event_date}</td>
       <td className={`px-4 py-3 ${tone}`}>
         <a href={`#races/${encodeURIComponent(result.race_id)}`} className="font-medium no-underline hover:underline">
           {result.event_name}
@@ -174,20 +174,24 @@ function ResultRow({ result, units }) {
           {result.course_name} · {formatDistance(result.distance_km, units)} · {formatElevation(result.elevation_gain_m, units, { sign: '+' })}
           {result.is_demo ? ' · demo' : ''}{modelShort(result.scoring_version) !== '0.1.0' ? ` · ${modelShort(result.scoring_version)}` : ''}
         </span>
+        <span className="mt-1 block font-mono text-[10px] text-slate-500 md:hidden">
+          {result.event_date} ·{' '}
+          {result.status === 'counting' ? `counts ${Math.round(result.weight * 100)}%` : result.status === 'eligible' ? 'eligible' : 'expired'}
+        </span>
       </td>
       <td className="px-4 py-3 font-mono text-xs text-slate-500">
         {result.rank}
         <span className="text-slate-400"> · {formatHms(result.finish_time_seconds)}</span>
       </td>
       <td className={`px-4 py-3 font-mono text-sm font-bold ${result.status === 'counting' ? 'text-blue-600' : 'text-slate-500'}`}>{result.otri_score}</td>
-      <td className="px-4 py-3 font-mono text-[10px] text-slate-500">
+      <td className="hidden px-4 py-3 font-mono text-[10px] text-slate-500 md:table-cell">
         {result.status === 'counting' && (
-          <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[.06em] text-white">
+          <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[.06em] text-white">
             counts · {Math.round(result.weight * 100)}%
           </span>
         )}
-        {result.status === 'eligible' && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] uppercase tracking-[.06em] text-slate-600">eligible · {Math.round(result.weight * 100)}%</span>}
-        {result.status === 'expired' && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] uppercase tracking-[.06em] text-slate-500">expired</span>}
+        {result.status === 'eligible' && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-[.06em] text-slate-600">eligible · {Math.round(result.weight * 100)}%</span>}
+        {result.status === 'expired' && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-[.06em] text-slate-500">expired</span>}
         <span className="mt-1 block">
           {result.status === 'expired' ? `expired ${result.expires_on}` : `full until ${result.full_until} · expires ${result.expires_on}`}
         </span>
@@ -263,14 +267,14 @@ export function RunnerProfilePage({ runnerId, onBack }) {
             </div>
 
             <div className="mt-8 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
-              <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+              <table className="w-full border-collapse text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
-                    <th className="px-4 py-3">Date</th>
+                    <th className="hidden px-4 py-3 md:table-cell">Date</th>
                     <th className="px-4 py-3">Race</th>
                     <th className="px-4 py-3">Rank · time</th>
                     <th className="px-4 py-3">Score</th>
-                    <th className="px-4 py-3">In the index</th>
+                    <th className="hidden px-4 py-3 md:table-cell">In the index</th>
                   </tr>
                 </thead>
                 <tbody>

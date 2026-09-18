@@ -580,6 +580,7 @@ export function ResultsStep({ session, raceId }) {
             <Button busy={busy} disabled={!file} onClick={submit}>
               Validate and score <ArrowRight size={15} />
             </Button>
+            {!file && <span className="text-xs text-slate-500">Choose a file first.</span>}
           </div>
           {error && <div className="mt-3"><Notice kind="error">{error}</Notice></div>}
         </Card>

@@ -31,9 +31,11 @@ export function Dashboard({ session }) {
         <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">
           {events ? `${events.length} EVENT${events.length === 1 ? '' : 'S'}` : ''}
         </p>
-        <Button onClick={() => navigate('/events/new')}>
-          <Plus size={15} /> Create event
-        </Button>
+        {events?.length !== 0 && (
+          <Button onClick={() => navigate('/events/new')}>
+            <Plus size={15} /> Create event
+          </Button>
+        )}
       </div>
       {error && (
         <div className="mt-4">
