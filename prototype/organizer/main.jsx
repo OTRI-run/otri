@@ -5,13 +5,17 @@ import '../../src/styles.css'
 import Logo from '../../src/components/Logo'
 import UnitsMenu from '../../src/components/UnitsMenu'
 import { getMe } from '../apiClient'
+import BuildBanner from '../../src/components/BuildBanner'
+import ErrorBoundary from '../../src/components/ErrorBoundary'
+import SharedNotFound from '../../src/components/NotFound'
+import { AccountPage } from './pages/Account'
 import { AdminEvents } from './pages/Admin'
 import { CheckEmail, Forgot, Login, Register, Reset, Verify, Welcome } from './pages/Auth'
 import { Dashboard, EventPage, NewEvent } from './pages/Events'
 import { CourseStep, NewRace, ResultsStep, ReviewStep } from './pages/Race'
 import { Link, match, navigate, useRoute } from './router'
 import { clearSession, readSession, writeSession } from './session'
-import { Button, CONTAINER } from './ui'
+import { CONTAINER } from './ui'
 
 const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 
@@ -69,6 +73,9 @@ function AccountMenu({ session, onSignOut }) {
           <div className="my-1 border-t border-slate-100" />
           <Link to="/events" className={item} onClick={() => setOpen(false)}>
             Your events
+          </Link>
+          <Link to="/account" className={item} onClick={() => setOpen(false)}>
+            Account settings
           </Link>
           {session.isAdmin && (
             <Link to="/admin" className={item} onClick={() => setOpen(false)}>
@@ -206,11 +213,11 @@ function App() {
       .catch(() => {})
   }, [session?.token])
 
-  const needsAuth = /^\/(events|races|admin)/.test(route.path)
+  const needsAuth = /^\/(events|races|admin|account)/.test(route.path)
   useEffect(() => {
     // Read the live hash, not the rendered route: signing out navigates to '/' and clears the
     // session in the same tick, and the render in between still carries the old route.
-    const liveNeedsAuth = /^#\/(events|races|admin)/.test(window.location.hash)
+    const liveNeedsAuth = /^#\/(events|races|admin|account)/.test(window.location.hash)
     if (liveNeedsAuth && !session) navigate('/login', { replace: true })
     if (route.path === '/' && session) navigate('/events', { replace: true })
   }, [route.path, needsAuth, session])
@@ -225,6 +232,7 @@ function App() {
   else if (route.path === '/verify') page = <Verify token={route.query.token} />
   else if (route.path === '/reset') page = <Reset token={route.query.token} onSignedIn={signIn} />
   else if (session && route.path === '/admin') page = session.isAdmin ? <AdminEvents session={session} /> : <NotFound />
+  else if (session && route.path === '/account') page = <AccountPage session={session} />
   else if (session && route.path === '/events') page = <Dashboard session={session} />
   else if (session && route.path === '/events/new') page = <NewEvent session={session} />
   else if (session && (params = match('/events/:id/races/new', route.path))) page = <NewRace session={session} eventId={params.id} />
@@ -240,22 +248,23 @@ function App() {
       <Header session={session} onSignOut={signOut} />
       <main className="flex-1">{page}</main>
       <Footer />
+      <BuildBanner />
     </div>
   )
 }
 
 function NotFound() {
   return (
-    <section className="py-16">
+    <section className="py-4">
       <div className={CONTAINER}>
-        <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">404</p>
-        <h1 className="mt-3 text-[clamp(32px,4.5vw,52px)] font-bold leading-[.98] tracking-[-.05em] text-[#0b1220]">Page not found.</h1>
-        <div className="mt-6">
-          <Button onClick={() => navigate('/')}>Back to the start</Button>
-        </div>
+        <SharedNotFound where={window.location.hash} home="#/" homeLabel="Back to the start" secondaryHref="../#calculator" note="Organizer pages need you to be signed in; admin pages need an admin account." />
       </div>
     </section>
   )
 }
 
-createRoot(document.getElementById('root')).render(<App />)
+createRoot(document.getElementById('root')).render(
+  <ErrorBoundary home="./">
+    <App />
+  </ErrorBoundary>,
+)

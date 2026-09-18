@@ -4,6 +4,8 @@ import NextSteps from './NextSteps'
 import { DemoBadge } from './RaceCard'
 import { getRunner, listRunners } from './apiClient'
 import ReportForm from './ReportForm'
+import { modelShort } from '../src/lib/model'
+import NotFound from '../src/components/NotFound'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import Flag from '../src/components/Flag'
 
@@ -170,7 +172,7 @@ function ResultRow({ result, units }) {
         </a>
         <span className="block font-mono text-[10px] text-slate-500">
           {result.course_name} · {formatDistance(result.distance_km, units)} · {formatElevation(result.elevation_gain_m, units, { sign: '+' })}
-          {result.is_demo ? ' · demo' : ''}
+          {result.is_demo ? ' · demo' : ''}{modelShort(result.scoring_version) !== '0.1.0' ? ` · ${modelShort(result.scoring_version)}` : ''}
         </span>
       </td>
       <td className="px-4 py-3 font-mono text-xs text-slate-500">
@@ -205,7 +207,7 @@ export function RunnerProfilePage({ runnerId, onBack }) {
     setError(null)
     getRunner(runnerId)
       .then((data) => !cancelled && setProfile(data))
-      .catch((err) => !cancelled && setError(err.message))
+      .catch((err) => !cancelled && setError(err))
     return () => {
       cancelled = true
     }
@@ -219,7 +221,10 @@ export function RunnerProfilePage({ runnerId, onBack }) {
         <button onClick={onBack} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600">
           <ArrowLeft size={13} /> All runners
         </button>
-        {error && <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</p>}
+        {error && error.status === 404 && (
+          <NotFound eyebrow="RUNNER NOT FOUND" title="No runner with that id." where={runnerId} home="#runners" homeLabel="All runners" note="Runners appear here once an organizer publishes results that include them; profiles are removed on request." />
+        )}
+        {error && error.status !== 404 && <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error.message}</p>}
         {!profile && !error && <p className="mt-6 text-sm text-slate-500">Loading…</p>}
         {profile && (
           <>

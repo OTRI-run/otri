@@ -4,6 +4,7 @@ import CourseMap from '../src/components/CourseMap'
 import { analyzeGpx, fetchRaceGpxFile, fetchSharedGpxFile, getRace, listRaces, shareGpx } from './apiClient'
 import NextSteps from './NextSteps'
 import ReportForm from './ReportForm'
+import { modelLabel, modelShort } from '../src/lib/model'
 import { distanceUnit, formatDistance, formatElevation, formatPace as formatPaceUnits, formatRate, kmToUnit, useUnits } from '../src/lib/units'
 
 // Published anchor tables, shown for context in the "why this score" breakdown. The actual
@@ -81,8 +82,7 @@ function fmt1(value) {
 }
 
 function shortVersion(scoringVersion) {
-  const match = scoringVersion?.match(/^(\d+\.\d+)/)
-  return match ? `v${match[1]}` : scoringVersion || 'v0.x'
+  return `model ${modelShort(scoringVersion)}`
 }
 
 const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
@@ -388,7 +388,8 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
               {b?.fraction_of_ceiling != null && <Stat label="Fraction of ceiling" value={`${(b.fraction_of_ceiling * 100).toFixed(2)}%`} />}
               {b?.lookup_rate != null && <Stat label="Rate looked up in table" value={`${b.lookup_rate} demand-km/h`} />}
               <Stat label="Raw score (unrounded)" value={estimate.otri_raw} />
-              <Stat label="Score version" value={estimate.scoring_version} />
+              <Stat label="Model" value={modelLabel(estimate.scoring_version)} />
+              <Stat label="Build id" value={estimate.scoring_version} />
             </dl>
 
             {publishedAnchors.length > 0 ? (

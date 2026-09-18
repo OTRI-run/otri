@@ -56,10 +56,12 @@ class Organizer:
     is_demo: bool = False
 
 
-def register_organizer(email: str, password: str) -> Organizer:
+def register_organizer(email: str, password: str, *, accept_terms: bool = True, marketing_opt_in: bool = False) -> Organizer:
     email = email.strip().lower()
     if not email or "@" not in email:
         raise AuthError("a valid email is required")
+    if not accept_terms:
+        raise AuthError("you need to accept the terms of service and privacy policy to create an account")
     require_acceptable_password(password, email)
 
     password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -69,8 +71,9 @@ def register_organizer(email: str, password: str) -> Organizer:
         if existing is not None:
             raise AuthError(f"an account for {email!r} already exists")
         row = connection.execute(
-            "INSERT INTO organizers (email, password_hash) VALUES (%s, %s) RETURNING id",
-            (email, password_hash),
+            "INSERT INTO organizers (email, password_hash, terms_accepted_at, marketing_opt_in, marketing_opt_in_at)"
+            " VALUES (%s, %s, NOW(), %s, CASE WHEN %s THEN NOW() ELSE NULL END) RETURNING id",
+            (email, password_hash, bool(marketing_opt_in), bool(marketing_opt_in)),
         ).fetchone()
         return Organizer(id=row["id"], email=email)
 

@@ -1,6 +1,6 @@
 # OTRI Power Curve — V0.8
 
-**Status:** Current default scoring model
+**Status:** Development build, consolidated as **OTRI model 0.1.0** — see [`../OTRI-MODEL-0.1.0.md`](../OTRI-MODEL-0.1.0.md) for the current specification. This build id is what the API stores; the website shows it as model 0.1.0.
 **Model identifier:** `0.8.0-course-standard-power` · **Processing version:** `course-measurement-v3`
 **Extends:** [`../v0.7/OTRI-DEM-GATED-MEASUREMENT.md`](../v0.7/OTRI-DEM-GATED-MEASUREMENT.md) — measurement, terrain adjustment, endurance reference and confidence gating are V0.7's, unchanged. V0.8 changes only the **shape of the score curve**, and it changes it everywhere.
 **Depends on:** [`../v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md`](../v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md) §21

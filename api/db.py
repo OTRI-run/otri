@@ -93,6 +93,9 @@ ALTER TABLE organizers ADD COLUMN IF NOT EXISTS two_factor_method TEXT;
 ALTER TABLE organizers ADD COLUMN IF NOT EXISTS email_code_hash TEXT;
 ALTER TABLE organizers ADD COLUMN IF NOT EXISTS email_code_expires_at TIMESTAMPTZ;
 ALTER TABLE organizers ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ;
+ALTER TABLE organizers ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ;
+ALTER TABLE organizers ADD COLUMN IF NOT EXISTS marketing_opt_in BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE organizers ADD COLUMN IF NOT EXISTS marketing_opt_in_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS recovery_codes (
     id SERIAL PRIMARY KEY,
@@ -663,13 +666,13 @@ def published_results_grouped_by_race() -> dict[str, list[dict]]:
 
 # --- Organizer profile ---------------------------------------------------------
 
-PROFILE_FIELDS = ("display_name", "organization", "website", "phone", "country", "bio")
+PROFILE_FIELDS = ("display_name", "organization", "website", "phone", "country", "bio", "marketing_opt_in")
 
 
 def get_profile(organizer_id: int) -> dict:
     with get_connection() as connection:
         row = connection.execute(
-            f"SELECT {', '.join(PROFILE_FIELDS)}, two_factor_method, password_changed_at FROM organizers WHERE id = %s", (organizer_id,)
+            f"SELECT {', '.join(PROFILE_FIELDS)}, marketing_opt_in_at, terms_accepted_at, two_factor_method, password_changed_at FROM organizers WHERE id = %s", (organizer_id,)
         ).fetchone()
     return dict(row) if row else {}
 
@@ -678,9 +681,24 @@ def update_profile(organizer_id: int, values: dict) -> dict:
     fields = [f for f in PROFILE_FIELDS if f in values]
     if fields:
         assignments = ", ".join(f"{f} = %s" for f in fields)
+        params = [values[f] for f in fields]
+        if "marketing_opt_in" in values:
+            # Consent is a dated fact: keep when it was given, clear it when it is withdrawn.
+            assignments += ", marketing_opt_in_at = CASE WHEN %s THEN COALESCE(marketing_opt_in_at, NOW()) ELSE NULL END"
+            params.append(bool(values["marketing_opt_in"]))
         with get_connection() as connection:
-            connection.execute(f"UPDATE organizers SET {assignments} WHERE id = %s", tuple(values[f] for f in fields) + (organizer_id,))
+            connection.execute(f"UPDATE organizers SET {assignments} WHERE id = %s", tuple(params) + (organizer_id,))
     return get_profile(organizer_id)
+
+
+def list_newsletter_subscribers() -> list[dict]:
+    """Verified accounts that opted in to OTRI news, for a marketing audience export."""
+    with get_connection() as connection:
+        rows = connection.execute(
+            "SELECT email, display_name, organization, country, marketing_opt_in_at FROM organizers"
+            " WHERE marketing_opt_in AND email_verified AND NOT is_demo ORDER BY marketing_opt_in_at"
+        ).fetchall()
+    return [dict(row) for row in rows]
 
 
 # --- Reports (corrections and removal requests from the public site) ----------
@@ -770,6 +788,8 @@ class OrganizerAccount:
     display_name: str | None = None
     organization: str | None = None
     two_factor_method: str | None = None
+    marketing_opt_in: bool = False
+    terms_accepted_at: datetime | None = None
 
 
 def list_organizer_accounts() -> list[OrganizerAccount]:
@@ -778,7 +798,7 @@ def list_organizer_accounts() -> list[OrganizerAccount]:
             """
             SELECT o.id, o.email, o.email_verified, o.is_admin, o.is_demo, o.created_at,
                    COUNT(DISTINCT e.event_id) AS event_count, COUNT(DISTINCT r.race_id) AS race_count,
-                   o.display_name, o.organization, o.two_factor_method
+                   o.display_name, o.organization, o.two_factor_method, o.marketing_opt_in, o.terms_accepted_at
             FROM organizers o
             LEFT JOIN events e ON e.organizer_id = o.id
             LEFT JOIN races r ON r.event_id = e.event_id
@@ -823,6 +843,7 @@ def platform_stats() -> dict:
             "verified": one("SELECT COUNT(*) AS n FROM organizers WHERE email_verified"),
             "unverified": one("SELECT COUNT(*) AS n FROM organizers WHERE NOT email_verified"),
             "admins": one("SELECT COUNT(*) AS n FROM organizers WHERE is_admin"),
+            "newsletter": one("SELECT COUNT(*) AS n FROM organizers WHERE marketing_opt_in AND email_verified AND NOT is_demo"),
             "events": one("SELECT COUNT(*) AS n FROM events"),
             "orphan_events": one("SELECT COUNT(*) AS n FROM events WHERE organizer_id IS NULL"),
             "races": one("SELECT COUNT(*) AS n FROM races"),

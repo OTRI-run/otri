@@ -12,82 +12,14 @@ import { RunnerProfilePage, RunnersPage } from './Runners'
 import CourseMap from '../src/components/CourseMap'
 import ReportForm from './ReportForm'
 import Flag from '../src/components/Flag'
-import { fetchRaceGpxFile, getApiStatus, getRace, getRaceMeasurement, getRaceResults, listRaces } from './apiClient'
+import { fetchRaceGpxFile, getRace, getRaceMeasurement, getRaceResults, listRaces } from './apiClient'
+import BuildBanner from '../src/components/BuildBanner'
+import ErrorBoundary from '../src/components/ErrorBoundary'
+import NotFound from '../src/components/NotFound'
+import { modelLabel } from '../src/lib/model'
 import '../src/styles.css'
 
-// Injected at build time by vite.config.js from `git rev-parse`/`git log` — see there for the
-// fallback when no .git is available (e.g. a tarball deploy).
-const COMMIT = typeof __OTRI_COMMIT__ !== 'undefined' ? __OTRI_COMMIT__ : 'unknown'
-const COMMIT_FULL = typeof __OTRI_COMMIT_FULL__ !== 'undefined' ? __OTRI_COMMIT_FULL__ : ''
-const COMMIT_DATE = typeof __OTRI_COMMIT_DATE__ !== 'undefined' ? __OTRI_COMMIT_DATE__ : ''
-const COMMIT_URL = COMMIT_FULL ? `https://github.com/OTRI-run/otri/commit/${COMMIT_FULL}` : null
 const GITHUB_URL = 'https://github.com/OTRI-run/otri'
-
-function formatTimeAgo(isoDate) {
-  if (!isoDate) return null
-  const seconds = Math.max(0, Math.floor((Date.now() - new Date(isoDate).getTime()) / 1000))
-  const units = [
-    ['year', 31536000],
-    ['month', 2592000],
-    ['day', 86400],
-    ['hour', 3600],
-    ['minute', 60],
-  ]
-  for (const [label, secondsInUnit] of units) {
-    const value = Math.floor(seconds / secondsInUnit)
-    if (value >= 1) return `${value} ${label}${value > 1 ? 's' : ''} ago`
-  }
-  return 'just now'
-}
-
-function BuildBanner() {
-  const [timeAgo, setTimeAgo] = useState(() => formatTimeAgo(COMMIT_DATE))
-  const [apiStartedAt, setApiStartedAt] = useState(null)
-  const [apiTimeAgo, setApiTimeAgo] = useState(null)
-  const [apiUnreachable, setApiUnreachable] = useState(false)
-
-  useEffect(() => {
-    const id = setInterval(() => setTimeAgo(formatTimeAgo(COMMIT_DATE)), 60_000)
-    return () => clearInterval(id)
-  }, [])
-
-  useEffect(() => {
-    let cancelled = false
-    getApiStatus()
-      .then((status) => {
-        if (!cancelled) setApiStartedAt(status.started_at)
-      })
-      .catch(() => {
-        if (!cancelled) setApiUnreachable(true)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!apiStartedAt) return undefined
-    setApiTimeAgo(formatTimeAgo(apiStartedAt))
-    const id = setInterval(() => setApiTimeAgo(formatTimeAgo(apiStartedAt)), 60_000)
-    return () => clearInterval(id)
-  }, [apiStartedAt])
-
-  return (
-    <div className="h-7 bg-[#0b1220] text-center font-mono text-[10px] leading-7 text-slate-300">
-      Built from commit{' '}
-      {COMMIT_URL ? (
-        <a href={COMMIT_URL} target="_blank" rel="noreferrer" className="font-semibold text-white underline underline-offset-2">
-          {COMMIT}
-        </a>
-      ) : (
-        <span className="font-semibold text-white">{COMMIT}</span>
-      )}
-      {timeAgo ? ` · ${timeAgo}` : ''}
-      {apiStartedAt && ` · API last restarted ${apiTimeAgo}`}
-      {apiUnreachable && ' · API unreachable'}
-    </div>
-  )
-}
 
 // ------------------------------------------------------------------------------------ routing
 // Hash routes so every screen has a URL: #home (default), #races, #races/<race_id>, #runners,
@@ -102,7 +34,8 @@ function parseHash(hash) {
   const runnerMatch = path.match(/^runners\/(.+)$/)
   if (runnerMatch) return { tab: 'runners', raceId: null, runnerId: decodeURIComponent(runnerMatch[1]) }
   if (path.startsWith('runners')) return { tab: 'runners', raceId: null, runnerId: null }
-  return { tab: 'home', raceId: null }
+  if (path === '' || path === 'home' || path === 'top') return { tab: 'home', raceId: null }
+  return { tab: 'notfound', raceId: null }
 }
 
 function useRoute() {
@@ -244,7 +177,7 @@ function Leaderboard({ raceId, onBack }) {
         }
       })
       .catch((err) => {
-        if (!cancelled) setError(err.message)
+        if (!cancelled) setError(err)
       })
     return () => {
       cancelled = true
@@ -256,7 +189,10 @@ function Leaderboard({ raceId, onBack }) {
       <button onClick={onBack} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600">
         <ArrowLeft size={13} /> All races
       </button>
-      {error && <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</p>}
+      {error && error.status === 404 && (
+        <NotFound eyebrow="RACE NOT FOUND" title="No race with that id." where={raceId} home="#races" homeLabel="All races" note="It may have been unpublished by its organizer or removed after a report." />
+      )}
+      {error && error.status !== 404 && <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error.message}</p>}
       {!race && !error && <p className="mt-6 text-sm text-slate-500">Loading…</p>}
       {race && (
         <>
@@ -275,6 +211,18 @@ function Leaderboard({ raceId, onBack }) {
             {race.course_name} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
             {race.has_gpx ? ' · Verified course' : ' · Official figures, no course file'}
           </p>
+          {race.organizer_display && (
+            <p className="mt-2 text-xs text-slate-500">
+              Organized by{' '}
+              {race.organizer_website ? (
+                <a href={race.organizer_website} target="_blank" rel="noreferrer" className="font-semibold text-blue-600 no-underline hover:underline">
+                  {race.organizer_display} ↗
+                </a>
+              ) : (
+                <span className="font-semibold text-[#0b1220]">{race.organizer_display}</span>
+              )}
+            </p>
+          )}
           {race.is_demo && (
             <p className="mt-2 text-xs text-slate-500">Demo data: synthetic runners and results, here to show what a scored race looks like.</p>
           )}
@@ -327,8 +275,7 @@ function Leaderboard({ raceId, onBack }) {
             </table>
           </div>
           <p className="mt-3 font-mono text-[9px] tracking-[.05em] text-slate-400">
-            scoring_version {race.scoring_version} · Course Standard model — depends only on the course and each runner's own
-            finish time, never the field
+            {modelLabel(race.scoring_version)} · depends only on the course and each runner's own finish time, never the field
           </p>
           <ReportForm kind="race" subjectId={race.race_id} subjectLabel={`${race.event_name} · ${race.course_name}`} prompt="Wrong result, wrong course, or your name should not be here?" />
           <NextSteps
@@ -424,17 +371,22 @@ function App() {
 
   return (
     <div id="top" className="min-h-screen max-w-full overflow-x-clip bg-[#f7f9fc] text-[#0b1220]">
-      <BuildBanner />
       <Header tab={route.tab} />
       <main>
         {route.tab === 'home' && <Home />}
         {route.tab === 'races' && <RacesPage raceId={route.raceId} />}
         {route.tab === 'runners' && (route.runnerId ? <RunnerProfilePage runnerId={route.runnerId} onBack={() => navigate('#runners')} /> : <RunnersPage />)}
         {route.tab === 'calculator' && <ScoreCalculator />}
+        {route.tab === 'notfound' && <NotFound where={window.location.hash} home="#home" />}
       </main>
       <Footer />
+      <BuildBanner />
     </div>
   )
 }
 
-createRoot(document.getElementById('root')).render(<App />)
+createRoot(document.getElementById('root')).render(
+  <ErrorBoundary home="./">
+    <App />
+  </ErrorBoundary>,
+)

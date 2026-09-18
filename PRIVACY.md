@@ -12,6 +12,8 @@ This page describes what personal data OTRI collects and why. For race-result da
 - Account creation timestamp
 - Optional profile details the organizer chooses to add (name, organization, website, country, phone, short bio). Organization and website are shown next to the organizer's published races; the rest is visible only to admins.
 - If two-factor authentication is switched on: an authenticator secret or the hash of a one-time email code, and hashed recovery codes.
+- The time you accepted `TERMS.md` and this policy at sign-up.
+- Whether you asked for OTRI news, and when. This is off unless you tick the box at sign-up or in your account settings, and you can untick it there at any time; the timestamp is cleared when you do.
 
 **Race/result submissions**: race metadata and result files organizers choose to submit (see `DATA_POLICY.md` for how athlete data within those files is handled). From a results file OTRI keeps each finisher's names, gender, finish time and rank, and, when supplied, the **year** of birth and a country code, never the full date of birth.
 
@@ -28,10 +30,11 @@ We do not use cookies, third-party analytics, or advertising trackers.
 - **Email + password**: to authenticate organizers and let them manage their races/results.
 - **Race/result data**: to compute and publish OTRI scores, per `HANDBOOK.md`'s core purpose.
 - **IP address (transient, in logs/rate-limiter)**: to prevent abuse (e.g. brute-force login attempts).
+- **Newsletter consent**: so that marketing email about OTRI goes only to organizers who asked for it. Admins can export the list of consenting, verified accounts (`GET /admin/newsletter.csv`) to send such email; it is never shared beyond the email provider below.
 
 ## Who else sees it
 
-- **[Resend](https://resend.com)** — sends verification and password-reset emails on our behalf. Resend receives the organizer's email address and the email content (see Resend's own privacy policy for how they handle it).
+- **[Resend](https://resend.com)** — sends verification, password-reset, sign-in-code and, for organizers who opted in, news emails on our behalf. Resend receives the organizer's email address and the email content (see Resend's own privacy policy for how they handle it).
 - **Hosting provider** (e.g. DigitalOcean) — stores the database and server logs as part of running the service.
 - We do not sell or share personal data with anyone else.
 

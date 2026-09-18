@@ -1,8 +1,8 @@
 # How an OTRI score is calculated — and how to question it
 
-**Status:** Explainer for the model running in production (`0.8.0-course-standard-power`, `course-measurement-v3`)
+**Status:** Explainer for **OTRI model 0.1.0**, the model running in production — specified in [`OTRI-MODEL-0.1.0.md`](OTRI-MODEL-0.1.0.md) (internal build id `0.8.0-course-standard-power`, measurement `course-measurement-v3`)
 **Audience:** Runners, race organizers, and anyone who wants to check whether the number deserves trust
-**Source of truth:** the versioned notes under [`v0.1/`](v0.1/) … [`v0.8/`](v0.8/) and the code in `scoring/` and `course/`. If this page and the code disagree, the code wins — and that is a bug in this page.
+**Source of truth:** [`OTRI-MODEL-0.1.0.md`](OTRI-MODEL-0.1.0.md) and the code in `scoring/` and `course/`; the development notes under [`v0.1/`](v0.1/) … [`v0.8/`](v0.8/) are history. If this page and the code disagree, the code wins — and that is a bug in this page.
 
 ---
 
@@ -77,13 +77,13 @@ Nothing in the model is fitted to a field of results, and nothing is referenced 
 6. **A sparse recording still cannot be fixed.** The gate labels it; only route-snapping could rebuild the missing switchbacks, and that is not built.
 7. **No conditions.** Heat, mud, snow, night — none of it enters. Two editions of the same race in different weather are not comparable, by design.
 8. **Courses beyond 320 flat-km extrapolate** the 24-hour segment of the ceiling, which is conservative for multi-day events with sleep stops. They are flagged.
-9. **Scores changed across versions.** V0.4 through V0.8 were released in one day. Every version is selectable and every stored measurement replays byte-for-byte; a race's score is only comparable to another under the same model version. This is policy ([`v0.1`](v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md) §21), not an accident.
+9. **Scores changed during development.** Model 0.1.0 is the consolidation of eight development builds. Every build is selectable by its id and every stored measurement replays byte-for-byte; a race's score is only comparable to another under the same model. This is policy ([`v0.1`](v0.1/OTRI-SCORING-SYSTEM-V0-CODE-SPEC.md) §21), not an accident.
 
 ### 2.4 Hard questions, answered straight
 
 **"My other index gives me a different number."** It should. OTRI is not calibrated to any other index and never will be; sameness would be a coincidence. What you can check is *consistency within OTRI*: the same course, time and version give the same score anywhere, and the reasons for the number are all on the page.
 
-**"Why did my score drop today?"** Because the model changed version. Under V0.6/V0.7 the middle of the scale was concave — 53% of the ceiling scored 643; under V0.8 it scores 581. Your performance did not change; the scale did, and the old number is still reproducible under the old version.
+**"Why did my score drop today?"** Because the model changed. Under the development builds before 0.1.0 the middle of the scale was concave — 53% of the ceiling scored 643; under model 0.1.0 it scores 581. Your performance did not change; the scale did, and the old number is still reproducible under the old build id. The next such change will be model 0.2.0, announced in `CHANGELOG.md`.
 
 **"Is 1000 achievable?"** By definition, only by matching the best rate ever sustained over that much demand. A 5 km world record scores 1000; so does the 24-hour record. A mountain 100-mile winner scores 984 because the ceiling is road-referenced and a mountain course costs more than its gradient says (limitation 1).
 

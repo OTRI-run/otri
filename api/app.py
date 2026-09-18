@@ -102,6 +102,8 @@ from .schemas import (
     IllustrativeEstimateOut,
     MessageResponse,
     OrganizerCredentials,
+    OrganizerRegistration,
+    NewsletterSubscriber,
     PasswordResetConfirm,
     PasswordResetRequest,
     RaceCreate,
@@ -217,12 +219,12 @@ def _require_race_visible(race: db.Race, organizer: Organizer | None) -> None:
 
 
 @app.post("/auth/register", response_model=MessageResponse, status_code=201)
-def register(payload: OrganizerCredentials, request: Request) -> MessageResponse:
+def register(payload: OrganizerRegistration, request: Request) -> MessageResponse:
     """Creates an unverified account and emails a verification link. No access token yet —
     organizers can't log in until they verify their email (see /auth/login)."""
     enforce_rate_limit(request, max_requests=5)
     try:
-        organizer = register_organizer(payload.email, payload.password)
+        organizer = register_organizer(payload.email, payload.password, accept_terms=payload.accept_terms, marketing_opt_in=payload.marketing_opt_in)
     except AuthError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
@@ -288,7 +290,7 @@ def _me(organizer: Organizer) -> MeResponse:
         email=organizer.email,
         is_admin=organizer.is_admin,
         is_demo=organizer.is_demo,
-        profile=ProfileOut(**{k: profile.get(k) for k in db.PROFILE_FIELDS}),
+        profile=ProfileOut(**{k: profile.get(k) for k in (*db.PROFILE_FIELDS, "marketing_opt_in_at", "terms_accepted_at")}),
         two_factor=TwoFactorStatus(**_auth.two_factor_status(organizer.id)),
         password_changed_at=profile.get("password_changed_at"),
     )
@@ -307,6 +309,9 @@ def update_profile(payload: ProfileUpdate, organizer: Organizer = Depends(requir
     for field in db.PROFILE_FIELDS:
         value = getattr(payload, field)
         if value is None:
+            continue
+        if field == "marketing_opt_in":
+            values[field] = bool(value)
             continue
         value = value.strip()
         if field == "website" and value and not re.match(r"^https?://", value):
@@ -1278,6 +1283,32 @@ def admin_overview(organizer: Organizer = Depends(require_admin)) -> AdminOvervi
         admin_accounts=[account.email for account in accounts if account.is_admin],
         recent_signups=[_account_out(account) for account in accounts[:8]],
         recent_races=[_race_summary(race, counts.get(race.race_id, 0)) for race in recent_races],
+    )
+
+
+@app.get("/admin/newsletter", response_model=list[NewsletterSubscriber])
+def admin_newsletter(organizer: Organizer = Depends(require_admin)) -> list[NewsletterSubscriber]:
+    """Verified organizers who ticked "send me OTRI news": the audience for a marketing email.
+    Demo accounts are excluded. Withdrawing consent on the account page drops them from this list."""
+    return [NewsletterSubscriber(**row) for row in db.list_newsletter_subscribers()]
+
+
+@app.get("/admin/newsletter.csv")
+def admin_newsletter_csv(organizer: Organizer = Depends(require_admin)) -> Response:
+    """The same audience as a CSV (email, name, organization, country, consented_at) for a Resend
+    audience import or any mail tool."""
+    import csv
+    import io
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["email", "name", "organization", "country", "consented_at"])
+    for row in db.list_newsletter_subscribers():
+        writer.writerow([row["email"], row.get("display_name") or "", row.get("organization") or "", row.get("country") or "", row["marketing_opt_in_at"].isoformat() if row.get("marketing_opt_in_at") else ""])
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="otri-newsletter.csv"'},
     )
 
 

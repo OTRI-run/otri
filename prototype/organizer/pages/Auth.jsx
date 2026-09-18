@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight, ArrowUpRight, CalendarDays, FileSpreadsheet, Mountain, ShieldCheck, UserRound } from 'lucide-react'
-import { loginOrganizer, registerOrganizer, requestPasswordReset, resendVerification, resetPassword, verifyEmail } from '../../apiClient'
+import { completeTwoFactor, loginOrganizer, registerOrganizer, requestPasswordReset, resendVerification, resetPassword, verifyEmail } from '../../apiClient'
+import PasswordStrength, { assessPassword } from '../../../src/components/PasswordStrength'
 import { Link, navigate } from '../router'
 import { Button, CONTAINER, Card, Eyebrow, Field, Gradient, Notice, Page, inputClass } from '../ui'
 
 const DOCS = 'https://github.com/OTRI-run/otri/blob/main'
-const MIN_PASSWORD = 8
+const MIN_PASSWORD = 10
 
 const STEPS = [
   [UserRound, 'ACCOUNT', 'Create an organizer account and confirm your email.'],
@@ -207,16 +208,19 @@ export function Register() {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
-  const tooShort = password.length > 0 && password.length < MIN_PASSWORD
+  const [acceptTerms, setAcceptTerms] = useState(false)
+  const [news, setNews] = useState(false)
+  const check = assessPassword(password, email)
+  const tooShort = password.length > 0 && !check.ok
   const mismatch = confirm.length > 0 && confirm !== password
 
   async function submit(event) {
     event.preventDefault()
-    if (tooShort || mismatch) return
+    if (tooShort || mismatch || !acceptTerms) return
     setError(null)
     setBusy(true)
     try {
-      await registerOrganizer(email, password)
+      await registerOrganizer(email, password, { acceptTerms, marketingOptIn: news })
       navigate(`/check-email?email=${encodeURIComponent(email)}`)
     } catch (err) {
       setError(err.message)
@@ -249,23 +253,44 @@ export function Register() {
         <Field label="Work email" htmlFor="reg-email" hint="We send the verification link and race notifications here.">
           <input id="reg-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
         </Field>
-        <Field label="Password" htmlFor="reg-pw" hint={`At least ${MIN_PASSWORD} characters.`} error={tooShort ? `Use at least ${MIN_PASSWORD} characters.` : null}>
+        <Field label="Password" htmlFor="reg-pw">
           <input id="reg-pw" type="password" required autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+          <PasswordStrength password={password} email={email} />
         </Field>
         <Field label="Confirm password" htmlFor="reg-pw2" error={mismatch ? 'Passwords do not match.' : null}>
           <input id="reg-pw2" type="password" required autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inputClass} />
         </Field>
+        <div className="grid gap-2 rounded-xl bg-slate-50 px-4 py-3">
+          <label className="flex items-start gap-2 text-sm text-slate-700">
+            <input id="reg-terms" type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600" />
+            <span>
+              I agree to the{' '}
+              <a className="font-semibold text-blue-600 underline" href={`${DOCS}/TERMS.md`} target="_blank" rel="noreferrer">
+                terms of service
+              </a>{' '}
+              and the{' '}
+              <a className="font-semibold text-blue-600 underline" href={`${DOCS}/PRIVACY.md`} target="_blank" rel="noreferrer">
+                privacy policy
+              </a>
+              , and I confirm I may share the race data I upload (
+              <a className="underline" href={`${DOCS}/DATA_POLICY.md`} target="_blank" rel="noreferrer">
+                data policy
+              </a>
+              ). <span className="text-slate-500">Required.</span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-sm text-slate-700">
+            <input id="reg-news" type="checkbox" checked={news} onChange={(e) => setNews(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600" />
+            <span>
+              Email me OTRI news: new features, scoring-model updates, organizer tips. A few times a year, unsubscribe any time in your account settings.{' '}
+              <span className="text-slate-500">Optional.</span>
+            </span>
+          </label>
+        </div>
         {error && <Notice kind="error">{error}</Notice>}
-        <Button type="submit" busy={busy} disabled={!email || !password || tooShort || mismatch}>
+        <Button type="submit" busy={busy} disabled={!email || !password || tooShort || mismatch || !acceptTerms}>
           Create account <ArrowRight size={15} />
         </Button>
-        <p className="text-xs leading-5 text-slate-500">
-          By creating an account you confirm you have the right to share the race data you upload. See the{' '}
-          <a className="underline" href={`${DOCS}/DATA_POLICY.md`} target="_blank" rel="noreferrer">
-            data policy
-          </a>
-          .
-        </p>
       </form>
     </AuthCard>
   )
@@ -370,6 +395,9 @@ export function Login({ onSignedIn }) {
   const [needsVerification, setNeedsVerification] = useState(false)
   const [resent, setResent] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [remember, setRemember] = useState(true)
+  const [challenge, setChallenge] = useState(null) // { challenge, method }
+  const [code, setCode] = useState('')
 
   async function submit(event) {
     event.preventDefault()
@@ -377,7 +405,11 @@ export function Login({ onSignedIn }) {
     setNeedsVerification(false)
     setBusy(true)
     try {
-      const result = await loginOrganizer(email, password)
+      const result = await loginOrganizer(email, password, remember)
+      if (result.requires_2fa) {
+        setChallenge({ challenge: result.challenge, method: result.method })
+        return
+      }
       onSignedIn(result.access_token, result.email, result.is_admin)
       navigate('/events', { replace: true })
     } catch (err) {
@@ -391,6 +423,55 @@ export function Login({ onSignedIn }) {
   async function resend() {
     await resendVerification(email)
     setResent(true)
+  }
+
+  async function submitCode(event) {
+    event.preventDefault()
+    setError(null)
+    setBusy(true)
+    try {
+      const result = await completeTwoFactor(challenge.challenge, code)
+      onSignedIn(result.access_token, result.email, result.is_admin)
+      navigate('/events', { replace: true })
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (challenge) {
+    return (
+      <AuthCard
+        eyebrow="SECOND STEP"
+        title={
+          <>
+            One more
+            <br />
+            <Gradient>code.</Gradient>
+          </>
+        }
+        intro={challenge.method === 'email' ? `We emailed a 6-digit code to ${email}. It expires in 10 minutes.` : 'Enter the 6-digit code from your authenticator app.'}
+        footer={
+          <>
+            Lost your device? Enter one of your recovery codes instead.{' '}
+            <button type="button" onClick={() => { setChallenge(null); setCode('') }} className="font-semibold text-blue-600">
+              Start over
+            </button>
+          </>
+        }
+      >
+        <form onSubmit={submitCode} className="grid gap-4" noValidate>
+          <Field label="Code" htmlFor="login-code">
+            <input id="login-code" autoFocus inputMode="text" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} className={`${inputClass} font-mono tracking-[.3em]`} />
+          </Field>
+          {error && <Notice kind="error">{error}</Notice>}
+          <Button type="submit" busy={busy} disabled={code.trim().length < 6}>
+            Sign in <ArrowRight size={15} />
+          </Button>
+        </form>
+      </AuthCard>
+    )
   }
 
   return (
@@ -435,6 +516,10 @@ export function Login({ onSignedIn }) {
             )}
           </Notice>
         )}
+        <label className="flex items-center gap-2 text-sm text-slate-600">
+          <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-4 w-4 accent-blue-600" />
+          Remember me on this device for 30 days
+        </label>
         <Button type="submit" busy={busy} disabled={!email || !password}>
           Sign in <ArrowRight size={15} />
         </Button>
@@ -500,7 +585,7 @@ export function Reset({ token, onSignedIn }) {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
-  const tooShort = password.length > 0 && password.length < MIN_PASSWORD
+  const tooShort = password.length > 0 && !assessPassword(password).ok
   const mismatch = confirm.length > 0 && confirm !== password
 
   async function submit(event) {
@@ -543,8 +628,9 @@ export function Reset({ token, onSignedIn }) {
   return (
     <AuthCard title={title}>
       <form onSubmit={submit} className="grid gap-4" noValidate>
-        <Field label="New password" htmlFor="reset-pw" hint={`At least ${MIN_PASSWORD} characters.`} error={tooShort ? `Use at least ${MIN_PASSWORD} characters.` : null}>
+        <Field label="New password" htmlFor="reset-pw">
           <input id="reset-pw" type="password" required autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+          <PasswordStrength password={password} />
         </Field>
         <Field label="Confirm new password" htmlFor="reset-pw2" error={mismatch ? 'Passwords do not match.' : null}>
           <input id="reset-pw2" type="password" required autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inputClass} />

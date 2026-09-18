@@ -24,9 +24,9 @@ STEEP_GPX = REPO_ROOT / "tests" / "fixtures" / "gpx" / "impossibly-steep.gpx"
 client = TestClient(app)
 
 
-def _register_and_verify(email: str, password: str) -> None:
+def _register_and_verify(email: str, password: str, marketing_opt_in: bool = False) -> None:
     """Register an organizer and mark them verified directly via the DB (tests can't click email links)."""
-    response = client.post("/auth/register", json={"email": email, "password": password})
+    response = client.post("/auth/register", json={"accept_terms": True, "email": email, "password": password, "marketing_opt_in": marketing_opt_in})
     assert response.status_code == 201, response.text
     with db.get_connection() as connection:
         connection.execute("UPDATE organizers SET email_verified = TRUE WHERE email = %s", (email,))
@@ -601,7 +601,7 @@ def test_analyze_gpx_with_out_of_domain_gradient_still_estimates_with_a_notice()
 
 def test_register_returns_message_not_a_token():
     response = client.post(
-        "/auth/register", json={"email": "roundtrip@example.com", "password": "correct horse battery"}
+        "/auth/register", json={"accept_terms": True, "email": "roundtrip@example.com", "password": "correct horse battery"}
     )
     assert response.status_code == 201
     assert "access_token" not in response.json()
@@ -609,7 +609,7 @@ def test_register_returns_message_not_a_token():
 
 
 def test_login_before_verification_returns_403():
-    client.post("/auth/register", json={"email": "unverified@example.com", "password": "correct horse battery"})
+    client.post("/auth/register", json={"accept_terms": True, "email": "unverified@example.com", "password": "correct horse battery"})
     response = client.post("/auth/login", json={"email": "unverified@example.com", "password": "correct horse battery"})
     assert response.status_code == 403
 
@@ -634,8 +634,8 @@ def test_login_with_wrong_password_returns_401():
 
 
 def test_register_duplicate_email_returns_400():
-    client.post("/auth/register", json={"email": "dupe@example.com", "password": "correct horse battery"})
-    response = client.post("/auth/register", json={"email": "dupe@example.com", "password": "correct horse battery"})
+    client.post("/auth/register", json={"accept_terms": True, "email": "dupe@example.com", "password": "correct horse battery"})
+    response = client.post("/auth/register", json={"accept_terms": True, "email": "dupe@example.com", "password": "correct horse battery"})
     assert response.status_code == 400
 
 
@@ -956,7 +956,7 @@ def test_admin_overview_reports_stats_api_and_security_without_secrets(monkeypat
 
 def test_admin_can_verify_and_delete_accounts_but_not_itself(monkeypatch):
     admin = _admin_headers(monkeypatch)
-    response = client.post("/auth/register", json={"email": "pending@example.com", "password": "correct horse battery"})
+    response = client.post("/auth/register", json={"accept_terms": True, "email": "pending@example.com", "password": "correct horse battery"})
     assert response.status_code == 201
     accounts = {a["email"]: a for a in client.get("/admin/organizers", headers=admin).json()}
     pending = accounts["pending@example.com"]
@@ -1079,7 +1079,7 @@ def test_admin_can_delete_a_runner_and_their_results(monkeypatch):
 
 def test_registration_refuses_weak_passwords_with_a_reason():
     for password, fragment in (("short1", "at least 10"), ("password1234", "attacker"), ("weak-alice-2026", "email address")):
-        response = client.post("/auth/register", json={"email": "alice@example.com", "password": password})
+        response = client.post("/auth/register", json={"accept_terms": True, "email": "alice@example.com", "password": password})
         assert response.status_code == 400, password
         assert fragment in response.json()["detail"], response.json()
 
@@ -1165,3 +1165,32 @@ def test_change_password_and_profile():
     public = client.get(f"/races/{race['race_id']}").json()
     assert public["organizer_display"] == "Doi Trail Club" and public["organizer_website"] == "https://doitrail.example"
     assert "phone" not in public
+
+
+def test_register_requires_accepting_the_terms():
+    response = client.post("/auth/register", json={"email": "no-terms@example.com", "password": "correct horse battery"})
+    assert response.status_code == 400
+    assert "terms" in response.json()["detail"]
+
+
+def test_newsletter_consent_is_recorded_and_revocable(monkeypatch):
+    _register_and_verify("news@example.com", "correct horse battery", marketing_opt_in=True)
+    login = client.post("/auth/login", json={"email": "news@example.com", "password": "correct horse battery"})
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    me = client.get("/auth/me", headers=headers).json()
+    assert me["profile"]["marketing_opt_in"] is True
+    assert me["profile"]["marketing_opt_in_at"] is not None
+    assert me["profile"]["terms_accepted_at"] is not None
+
+    admin_headers = _admin_headers(monkeypatch)
+    subscribers = client.get("/admin/newsletter", headers=admin_headers).json()
+    assert [row["email"] for row in subscribers] == ["news@example.com"]
+    csv_body = client.get("/admin/newsletter.csv", headers=admin_headers).text
+    assert csv_body.splitlines()[0] == "email,name,organization,country,consented_at"
+    assert "news@example.com" in csv_body
+
+    updated = client.patch("/auth/profile", json={"marketing_opt_in": False}, headers=headers).json()["profile"]
+    assert updated["marketing_opt_in"] is False and updated["marketing_opt_in_at"] is None
+    assert client.get("/admin/newsletter", headers=admin_headers).json() == []
+    # An organizer who never opted in is not on the list either
+    assert client.get("/admin/organizers", headers=admin_headers).status_code == 200

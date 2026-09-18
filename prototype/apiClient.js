@@ -24,7 +24,9 @@ async function request(path, options) {
     } catch {
       // response had no JSON body; keep statusText
     }
-    throw new Error(detail)
+    const error = new Error(detail)
+    error.status = response.status
+    throw error
   }
   if (response.status === 204) return null
   return response.json()
@@ -34,20 +36,61 @@ function authHeaders(token, extra) {
   return { Authorization: `Bearer ${token}`, ...extra }
 }
 
-export function registerOrganizer(email, password) {
+export function registerOrganizer(email, password, { acceptTerms = false, marketingOptIn = false } = {}) {
   return request('/auth/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, accept_terms: acceptTerms, marketing_opt_in: marketingOptIn }),
   })
 }
 
-export function loginOrganizer(email, password) {
+export function loginOrganizer(email, password, remember = false) {
   return request('/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, remember }),
   })
+}
+
+/** Second step of sign-in: an authenticator code, an emailed code, or a recovery code. */
+export function completeTwoFactor(challenge, code) {
+  return request('/auth/login/2fa', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ challenge, code }) })
+}
+
+const json = (token, body) => ({ headers: authHeaders(token, { 'Content-Type': 'application/json' }), body: JSON.stringify(body) })
+function sessionToken() {
+  try {
+    return localStorage.getItem('otri_organizer_token')
+  } catch {
+    return null
+  }
+}
+export function fetchNewsletterCsv() {
+  return fetch(`${API_BASE_URL}/admin/newsletter.csv`, { headers: authHeaders(sessionToken()) }).then((r) => (r.ok ? r.blob() : Promise.reject(new Error(r.statusText))))
+}
+export function updateProfile(profile) {
+  return request('/auth/profile', { method: 'PATCH', ...json(sessionToken(), profile) })
+}
+export function changePassword(currentPassword, newPassword) {
+  return request('/auth/change-password', { method: 'POST', ...json(sessionToken(), { current_password: currentPassword, new_password: newPassword }) })
+}
+export function totpSetup() {
+  return request('/auth/2fa/totp/setup', { method: 'POST', headers: authHeaders(sessionToken()) })
+}
+export function totpEnable(code) {
+  return request('/auth/2fa/totp/enable', { method: 'POST', ...json(sessionToken(), { code }) })
+}
+export function emailTwoFactorStart() {
+  return request('/auth/2fa/email/start', { method: 'POST', headers: authHeaders(sessionToken()) })
+}
+export function emailTwoFactorEnable(code) {
+  return request('/auth/2fa/email/enable', { method: 'POST', ...json(sessionToken(), { code }) })
+}
+export function disableTwoFactor(password) {
+  return request('/auth/2fa/disable', { method: 'POST', ...json(sessionToken(), { password }) })
+}
+export function regenerateRecoveryCodes(password) {
+  return request('/auth/2fa/recovery-codes', { method: 'POST', ...json(sessionToken(), { password }) })
 }
 
 export function verifyEmail(token) {

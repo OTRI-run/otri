@@ -21,6 +21,8 @@ import {
   verifyAdminOrganizer,
 } from '../../apiClient'
 import { formatDistance, formatElevation, useUnits } from '../../../src/lib/units'
+import { modelLabel } from '../../../src/lib/model'
+import { fetchNewsletterCsv } from '../../apiClient'
 import { Link } from '../router'
 import { Button, Gradient, Notice, Page, StatusChip, formatDate, raceStatus } from '../ui'
 
@@ -93,7 +95,7 @@ function Overview({ session }) {
   return (
     <div className="grid gap-6">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <Tile label="ACCOUNTS" value={stats.organizers} sub={`${stats.verified} verified · ${stats.unverified} pending`} />
+        <Tile label="ACCOUNTS" value={stats.organizers} sub={`${stats.verified} verified · ${stats.unverified} pending · ${stats.newsletter ?? 0} on the newsletter`} />
         <Tile label="EVENTS" value={stats.events} sub={`${stats.orphan_events} without owner`} />
         <Tile label="RACES" value={stats.races} sub={`${stats.published_races} published · ${stats.races_with_gpx} with course`} />
         <Tile label="RESULTS" value={stats.results} sub={`${stats.finishers} finishers`} />
@@ -113,7 +115,7 @@ function Overview({ session }) {
           rows={[
             ['Version', api.version],
             ['Started', when(api.started_at)],
-            ['Scoring model (default)', api.scoring_version],
+            ['Scoring model (default)', `${modelLabel(api.scoring_version)} · build ${api.scoring_version}`],
             ['Course measurement', api.measurement_version],
             ['Terrain model (DEM)', ...(api.dem_configured ? [`configured · ${api.dem_manifest}`, 'ok'] : ['not configured → every course scores Low confidence', 'bad'])],
             ['Measurement cache', `${api.measurement_cache_entries} entries (max ${api.measurement_cache_max})`],
@@ -373,8 +375,32 @@ function Accounts({ session }) {
 
   if (error && !rows) return <Notice kind="error">{error}</Notice>
   if (!rows) return <p className="text-sm text-slate-500">Loading…</p>
+  async function exportNewsletter() {
+    setError(null)
+    try {
+      const blob = await fetchNewsletterCsv()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'otri-newsletter.csv'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const subscribers = rows.filter((o) => o.marketing_opt_in && o.email_verified && !o.is_demo).length
   return (
     <div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        <span>
+          <span className="font-semibold text-[#0b1220]">{subscribers}</span> verified {subscribers === 1 ? 'account' : 'accounts'} agreed to receive OTRI news. Only those may get marketing email; the export is the audience for a Resend broadcast.
+        </span>
+        <Button variant="secondary" className="min-h-9 px-3 text-xs" onClick={exportNewsletter} disabled={subscribers === 0}>
+          Download newsletter list (CSV)
+        </Button>
+      </div>
       {error && (
         <div className="mb-4">
           <Notice kind="error">{error}</Notice>
@@ -385,6 +411,7 @@ function Accounts({ session }) {
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
               <th className="px-4 py-3">Email</th>
+              <th className="px-4 py-3">Who</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Created</th>
               <th className="px-4 py-3">Events</th>
@@ -399,8 +426,20 @@ function Accounts({ session }) {
                   {o.email}
                   {o.email === session.email && <span className="ml-2 text-slate-400">(you)</span>}
                 </td>
+                <td className="px-4 py-3 text-xs text-slate-600">
+                  {o.display_name || o.organization ? (
+                    <>
+                      <span className="font-semibold text-[#0b1220]">{o.display_name ?? '—'}</span>
+                      {o.organization && <span className="block text-slate-500">{o.organization}</span>}
+                    </>
+                  ) : (
+                    <span className="text-slate-400">no profile yet</span>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <span className="flex flex-wrap items-center gap-1.5">
+                    {o.two_factor_method && <span className="rounded-full bg-emerald-600 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-white">2FA</span>}
+                    {o.marketing_opt_in && <span className="rounded-full bg-blue-50 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-blue-700">news</span>}
                     {o.email_verified ? (
                       <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-emerald-700">verified</span>
                     ) : (
@@ -489,7 +528,7 @@ function AdminRaceRow({ race, token, onChanged }) {
           <p className="text-sm font-semibold text-[#0b1220]">{race.course_name}</p>
           <p className="font-mono text-[10px] text-slate-500">
             {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })} · {race.finisher_count ?? 0} scored ·{' '}
-            {race.scoring_version}
+            {modelLabel(race.scoring_version)}
             {race.has_gpx ? ` · ${race.measurement_version ?? 'course attached'}` : ' · no course file'}
           </p>
           {error && <p className="mt-1 text-xs text-red-600">{error}</p>}

@@ -2,6 +2,7 @@ import { ArrowRight, ArrowUpRight, Calculator, Database, FileText, GitBranch, Mo
 import { useEffect, useState } from 'react'
 import RaceCard from './RaceCard'
 import { getRaceResults, listRaces } from './apiClient'
+import { modelLabel } from '../src/lib/model'
 
 const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 const DOCS = {
@@ -98,7 +99,7 @@ function EngineCard({ raceCount, resultCount, scoringVersion, ticker }) {
       </div>
       <div className="flex justify-between gap-3 pt-4 font-mono text-[8px] tracking-[.08em]">
         <b>OTRI INDEX</b>
-        <span className="text-right text-blue-300">{scoringVersion ? scoringVersion.toUpperCase() : 'VERSIONED · REPRODUCIBLE'}</span>
+        <span className="text-right text-blue-300">{scoringVersion ? modelLabel(scoringVersion).toUpperCase() : 'VERSIONED · REPRODUCIBLE'}</span>
       </div>
     </div>
   )

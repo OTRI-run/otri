@@ -5,7 +5,7 @@ A separate, working demonstration of the full pipeline built so far — kept apa
 ## What it wires together
 
 - **`ingestion/`** — validates the synthetic demo race/result files.
-- **`scoring/`** — computes each finisher's OTRI score (baseline model, `scoring_version 0.1.0`).
+- **`scoring/`** — computes each finisher's OTRI score under OTRI model 0.1.0 (`docs/methodology/OTRI-MODEL-0.1.0.md`).
 - **`course/`** — parses a sample GPX file and extracts distance/elevation features.
 - **`src/components/CourseMap.jsx`** — renders that GPX as a map + elevation profile (Phase 3 component, now actually used somewhere).
 - **`api/`** — the live FastAPI backend, called directly by the "GPX tester" and "Organizer upload" tabs below.

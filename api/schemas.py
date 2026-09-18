@@ -210,6 +210,16 @@ class AdminOrganizerOut(BaseModel):
     display_name: str | None = None
     organization: str | None = None
     two_factor_method: str | None = None
+    marketing_opt_in: bool = False
+    terms_accepted_at: datetime | None = None
+
+
+class NewsletterSubscriber(BaseModel):
+    email: str
+    display_name: str | None = None
+    organization: str | None = None
+    country: str | None = None
+    marketing_opt_in_at: datetime | None = None
 
 
 class SharedCourseAdminOut(BaseModel):
@@ -266,10 +276,19 @@ class ProfileOut(BaseModel):
     phone: str | None = None
     country: str | None = None
     bio: str | None = None
+    marketing_opt_in: bool = False
+    marketing_opt_in_at: datetime | None = None
+    terms_accepted_at: datetime | None = None
 
 
-class ProfileUpdate(ProfileOut):
-    pass
+class ProfileUpdate(BaseModel):
+    display_name: str | None = None
+    organization: str | None = None
+    website: str | None = None
+    phone: str | None = None
+    country: str | None = None
+    bio: str | None = None
+    marketing_opt_in: bool | None = None
 
 
 class TwoFactorStatus(BaseModel):
@@ -342,6 +361,13 @@ class OrganizerCredentials(BaseModel):
     email: str
     password: str
     remember: bool = False
+
+
+class OrganizerRegistration(BaseModel):
+    email: str
+    password: str
+    accept_terms: bool = False
+    marketing_opt_in: bool = False
 
 
 

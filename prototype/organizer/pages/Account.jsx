@@ -43,13 +43,17 @@ function RecoveryCodes({ codes, method }) {
 }
 
 function ProfileForm({ me, onSaved }) {
-  const [form, setForm] = useState({ display_name: '', organization: '', website: '', country: '', phone: '', bio: '' })
+  const [form, setForm] = useState({ display_name: '', organization: '', website: '', country: '', phone: '', bio: '', marketing_opt_in: false })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [saved, setSaved] = useState(false)
+  // Fill the form only once the profile has arrived, and never wipe what the organizer is typing:
+  // the inputs stay disabled until then, so a fast typist cannot lose a field to a late response.
+  const ready = Boolean(me)
   useEffect(() => {
-    const p = me?.profile ?? {}
-    setForm({ display_name: p.display_name ?? '', organization: p.organization ?? '', website: p.website ?? '', country: p.country ?? '', phone: p.phone ?? '', bio: p.bio ?? '' })
+    if (!me) return
+    const p = me.profile ?? {}
+    setForm({ display_name: p.display_name ?? '', organization: p.organization ?? '', website: p.website ?? '', country: p.country ?? '', phone: p.phone ?? '', bio: p.bio ?? '', marketing_opt_in: Boolean(p.marketing_opt_in) })
   }, [me])
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
 
@@ -71,6 +75,7 @@ function ProfileForm({ me, onSaved }) {
 
   return (
     <form onSubmit={submit} className="grid gap-4" noValidate>
+      <fieldset disabled={!ready} className="contents">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Your name" htmlFor="pf-name" hint="Shown to admins; not public.">
           <input id="pf-name" value={form.display_name} onChange={set('display_name')} className={inputClass} placeholder="Ann Organizer" />
@@ -93,13 +98,21 @@ function ProfileForm({ me, onSaved }) {
       <Field label="About" htmlFor="pf-bio" hint="A sentence or two about the races you organize.">
         <textarea id="pf-bio" rows={3} maxLength={1000} value={form.bio} onChange={set('bio')} className={inputClass} />
       </Field>
+      <label className="flex items-start gap-2 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
+        <input id="pf-news" type="checkbox" checked={form.marketing_opt_in} onChange={(e) => setForm((f) => ({ ...f, marketing_opt_in: e.target.checked }))} className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600" />
+        <span>
+          <span className="font-semibold text-[#0b1220]">Email me OTRI news.</span> New features, scoring-model updates, organizer tips; a few times a year.
+          {me?.profile?.marketing_opt_in_at && <span className="block text-xs text-slate-500">Subscribed since {new Date(me.profile.marketing_opt_in_at).toLocaleDateString()}.</span>}
+        </span>
+      </label>
       {error && <Notice kind="error">{error}</Notice>}
       {saved && <Notice kind="success">Profile saved.</Notice>}
       <div>
-        <Button type="submit" busy={busy}>
+        <Button type="submit" busy={busy} disabled={!ready}>
           Save profile
         </Button>
       </div>
+      </fieldset>
     </form>
   )
 }
@@ -369,6 +382,7 @@ export function AccountPage({ session }) {
             <p className="mt-4 text-[11px] leading-5 text-slate-500">
               Sessions last 12 hours, or 30 days when you tick "remember me" at sign-in. Password last changed:{' '}
               {me?.password_changed_at ? new Date(me.password_changed_at).toLocaleDateString() : 'never'}.
+              {me?.profile?.terms_accepted_at && <> Terms accepted {new Date(me.profile.terms_accepted_at).toLocaleDateString()}.</>}
             </p>
           </Card>
           <Card>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import CourseMap from '../../../src/components/CourseMap'
 import { formatDistance, formatElevation, useUnits } from '../../../src/lib/units'
+import { modelLabel } from '../../../src/lib/model'
 import {
   analyzeGpx,
   attachRaceGpx,
@@ -115,8 +116,7 @@ export function NewRace({ session, eventId }) {
             </Field>
           </div>
           <div className="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-600">
-            Scoring model: <span className="font-mono font-semibold text-[#0b1220]">{current ? current.name : 'current OTRI model'}</span>
-            {current && <span className="font-mono"> · {current.version}</span>}
+            Scoring model: <span className="font-mono font-semibold text-[#0b1220]">{modelLabel(current?.version)}</span>
             <p className="mt-1">Scores depend only on the course and each finisher's own time — never on who else raced.</p>
           </div>
           {error && <Notice kind="error">{error}</Notice>}
@@ -688,7 +688,7 @@ export function ReviewStep({ session, raceId }) {
               fixTo={`${base}/results`}
               fixLabel="Upload results"
             />
-            <ChecklistRow ok label="Scoring model" detail={race.scoring_version} />
+            <ChecklistRow ok label="Scoring model" detail={modelLabel(race.scoring_version)} />
             <ChecklistRow
               ok={race.is_published}
               label="Published"
@@ -706,7 +706,7 @@ export function ReviewStep({ session, raceId }) {
               </Notice>
             ) : complete ? (
               <Notice kind="success" title="Ready to publish.">
-                Every finisher has an OTRI score under {race.scoring_version}. Publishing puts the leaderboard on the public races page and the
+                Every finisher has an OTRI score under {modelLabel(race.scoring_version)}. Publishing puts the leaderboard on the public races page and the
                 course in the calculator's race list.
               </Notice>
             ) : hasResults ? (
