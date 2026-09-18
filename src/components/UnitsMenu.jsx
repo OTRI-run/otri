@@ -60,7 +60,7 @@ export default function UnitsMenu({ align = 'right' }) {
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label="Display units"
-        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-[11px] font-semibold text-[#0b1220] hover:border-blue-300"
+        className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-[11px] font-semibold text-[#0b1220] hover:border-blue-300"
       >
         {unitsSummary(units)}
         <ChevronDown size={12} className={`transition ${open ? 'rotate-180' : ''}`} />

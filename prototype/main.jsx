@@ -121,7 +121,7 @@ function Header({ tab }) {
       </header>
       {/* Small screens: the section links live in their own row under the header. */}
       <div className="border-b border-slate-200 bg-white md:hidden">
-        <div className="mx-auto flex w-[min(1120px,calc(100%-28px))] items-center gap-5">
+        <div className="mx-auto flex w-[min(1120px,calc(100%-28px))] items-center gap-4">
           {NAV.map((item) => (
             <NavLink
               key={item.id}
