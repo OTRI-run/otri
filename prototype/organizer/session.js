@@ -1,35 +1,30 @@
-// What the browser remembers about a sign-in. The session itself is an HttpOnly cookie set by the
-// API, which page scripts cannot read; localStorage only keeps the email and the admin flag so the
-// header can render before /auth/me answers. No token is ever written to storage.
-const LEGACY_TOKEN_KEY = 'otri_organizer_token'
-const EMAIL_KEY = 'otri_organizer_email'
-const ADMIN_KEY = 'otri_organizer_admin'
+// What the browser remembers about a sign-in: only that one exists. The session itself is an
+// HttpOnly cookie set by the API, which page scripts cannot read; who is signed in (email, admin)
+// is asked from /auth/me on every load. Nothing personal is ever written to browser storage.
+const SIGNED_IN_KEY = 'otri_organizer_signed_in'
+const LEGACY_KEYS = ['otri_organizer_token', 'otri_organizer_email', 'otri_organizer_admin']
 
 export function readSession() {
   try {
-    localStorage.removeItem(LEGACY_TOKEN_KEY) // sign-ins from before the cookie migration
-    const email = localStorage.getItem(EMAIL_KEY)
-    const isAdmin = localStorage.getItem(ADMIN_KEY) === '1'
-    return email ? { token: '', email, isAdmin } : null
+    for (const key of LEGACY_KEYS) localStorage.removeItem(key) // sign-ins from before this change
+    return localStorage.getItem(SIGNED_IN_KEY) === '1' ? { token: '', email: '', isAdmin: false, pending: true } : null
   } catch {
     return null
   }
 }
 
-export function writeSession(_token, email, isAdmin = false) {
+export function writeSession() {
   try {
-    localStorage.setItem(EMAIL_KEY, email)
-    localStorage.setItem(ADMIN_KEY, isAdmin ? '1' : '0')
+    localStorage.setItem(SIGNED_IN_KEY, '1')
   } catch {
-    // Private mode or blocked storage: the header just shows nothing until the next sign-in.
+    // Private mode or blocked storage: the next load simply starts signed out.
   }
 }
 
 export function clearSession() {
   try {
-    localStorage.removeItem(LEGACY_TOKEN_KEY)
-    localStorage.removeItem(EMAIL_KEY)
-    localStorage.removeItem(ADMIN_KEY)
+    localStorage.removeItem(SIGNED_IN_KEY)
+    for (const key of LEGACY_KEYS) localStorage.removeItem(key)
   } catch {
     // ignore
   }
