@@ -276,7 +276,8 @@ export function listAdminEvents(token) {
 
 /** Runners with published results: all (by index) or a name search. */
 export function listRunners(query) {
-  const params = query ? `?q=${encodeURIComponent(query)}` : ''
+  // Up to the API's maximum so the page's search and filters cover every runner; the page renders 25 at a time.
+  const params = query ? `?q=${encodeURIComponent(query)}&limit=500` : '?limit=500'
   return request(`/runners${params}`)
 }
 

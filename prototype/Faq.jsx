@@ -213,7 +213,8 @@ export default function FaqPage({ initialQuery = '' }) {
           </p>
         </div>
 
-        <div className="relative mt-10 max-w-[640px]">
+        <div className="mt-10 max-w-[640px]">
+          <div className="relative">
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="search"
@@ -224,6 +225,7 @@ export default function FaqPage({ initialQuery = '' }) {
             autoFocus={Boolean(initialQuery)}
             className="w-full rounded-lg border border-slate-300 bg-white py-3 pl-9 pr-3 text-sm text-[#0b1220] outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
+          </div>
           <p className="mt-2 font-mono text-[11px] text-slate-500" aria-live="polite">
             {query ? `${matches.length} of ${ALL.length} questions match` : `${ALL.length} questions`}
           </p>
