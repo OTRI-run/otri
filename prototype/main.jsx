@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowLeft, ArrowUpRight, Mail } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, Mail, Search } from 'lucide-react'
+import { countryName } from '../src/components/CountrySelect'
 import Logo from '../src/components/Logo'
 import UnitsMenu from '../src/components/UnitsMenu'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
@@ -317,9 +318,52 @@ function Leaderboard({ raceId, onBack }) {
   )
 }
 
+const RACE_PAGE_SIZE = 12
+const DISTANCE_BUCKETS = [
+  { id: 'all', label: 'All', test: () => true },
+  { id: 'short', label: 'Up to 21 km', test: (km) => km <= 21.2 },
+  { id: 'mid', label: '21–50 km', test: (km) => km > 21.2 && km <= 50 },
+  { id: 'long', label: '50–100 km', test: (km) => km > 50 && km <= 100 },
+  { id: 'ultra', label: '100 km+', test: (km) => km > 100 },
+]
+const RACE_SORTS = {
+  newest: { label: 'Newest first', by: (a, b) => (b.event_date ?? '').localeCompare(a.event_date ?? '') },
+  oldest: { label: 'Oldest first', by: (a, b) => (a.event_date ?? '').localeCompare(b.event_date ?? '') },
+  finishers: { label: 'Most finishers', by: (a, b) => (b.finisher_count ?? 0) - (a.finisher_count ?? 0) },
+  longest: { label: 'Longest', by: (a, b) => (b.distance_km ?? 0) - (a.distance_km ?? 0) },
+  shortest: { label: 'Shortest', by: (a, b) => (a.distance_km ?? 0) - (b.distance_km ?? 0) },
+  climb: { label: 'Most climb', by: (a, b) => (b.elevation_gain_m ?? 0) - (a.elevation_gain_m ?? 0) },
+  name: { label: 'Name A–Z', by: (a, b) => `${a.event_name} ${a.course_name}`.localeCompare(`${b.event_name} ${b.course_name}`) },
+}
+const normalise = (text) => String(text ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
 function RacesPage({ raceId }) {
   const [races, setRaces] = useState(null)
   const [error, setError] = useState(null)
+  const [query, setQuery] = useState('')
+  const [bucket, setBucket] = useState('all')
+  const [country, setCountry] = useState('all')
+  const [sort, setSort] = useState('newest')
+  const [visible, setVisible] = useState(RACE_PAGE_SIZE)
+  useEffect(() => setVisible(RACE_PAGE_SIZE), [query, bucket, country, sort])
+
+  const countryOptions = useMemo(() => {
+    const codes = [...new Set((races ?? []).map((race) => race.event_country).filter(Boolean))]
+    return codes.map((code) => ({ code, name: countryName(code) })).sort((a, b) => a.name.localeCompare(b.name))
+  }, [races])
+  const shown = useMemo(() => {
+    const words = normalise(query).split(/\s+/).filter(Boolean)
+    const test = DISTANCE_BUCKETS.find((b) => b.id === bucket)?.test ?? (() => true)
+    return (races ?? [])
+      .filter((race) => test(race.distance_km ?? 0))
+      .filter((race) => country === 'all' || race.event_country === country)
+      .filter((race) => {
+        if (!words.length) return true
+        const hay = normalise(`${race.event_name} ${race.course_name} ${race.event_location ?? ''} ${countryName(race.event_country)} ${race.event_date ?? ''}`)
+        return words.every((word) => hay.includes(word))
+      })
+      .sort(RACE_SORTS[sort]?.by ?? RACE_SORTS.newest.by)
+  }, [races, query, bucket, country, sort])
 
   // Refetch whenever the list is shown (also on the way back from a leaderboard), so a race
   // published or taken down meanwhile is reflected.
@@ -362,11 +406,79 @@ function RacesPage({ raceId }) {
             {error && <p className="mt-8 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</p>}
             {races === null && !error && <p className="mt-8 text-sm text-slate-500">Loading races…</p>}
             {races?.length === 0 && <p className="mt-8 text-sm text-slate-500">No races have been published yet.</p>}
-            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {(races ?? []).map((race) => (
+            {races?.length > 0 && (
+              <div className="mt-10 flex flex-col gap-3 lg:flex-row lg:items-center">
+                <div className="relative min-w-0 flex-1">
+                  <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="search"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search by race, place or year…"
+                    aria-label="Search races"
+                    className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-sm text-[#0b1220] outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="inline-flex max-w-full overflow-x-auto rounded-lg border border-slate-300 bg-white" role="group" aria-label="Distance">
+                    {DISTANCE_BUCKETS.map((b) => (
+                      <button
+                        key={b.id}
+                        type="button"
+                        onClick={() => setBucket(b.id)}
+                        aria-pressed={bucket === b.id}
+                        className={`whitespace-nowrap px-3 py-2 text-xs font-semibold ${bucket === b.id ? 'bg-[#0b1220] text-white' : 'text-slate-500 hover:text-[#0b1220]'}`}
+                      >
+                        {b.label}
+                      </button>
+                    ))}
+                  </div>
+                  {countryOptions.length > 1 && (
+                    <select value={country} onChange={(event) => setCountry(event.target.value)} aria-label="Country" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-[#0b1220]">
+                      <option value="all">All countries</option>
+                      {countryOptions.map((option) => (
+                        <option key={option.code} value={option.code}>{option.name}</option>
+                      ))}
+                    </select>
+                  )}
+                  <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort races" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-[#0b1220]">
+                    {Object.entries(RACE_SORTS).map(([id, option]) => (
+                      <option key={id} value={id}>{option.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+            {races?.length > 0 && (
+              <p className="mt-3 font-mono text-[11px] text-slate-500" aria-live="polite">
+                {shown.length === races.length ? `${races.length} races` : `${shown.length} of ${races.length} races match`}
+              </p>
+            )}
+            {races?.length > 0 && shown.length === 0 && (
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+                No race matches. Try fewer words, another distance, or{' '}
+                <button type="button" onClick={() => { setQuery(''); setBucket('all'); setCountry('all') }} className="font-semibold text-blue-600 hover:underline">clear the filters</button>.
+              </div>
+            )}
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {shown.slice(0, visible).map((race) => (
                 <RaceCard key={race.race_id} race={race} />
               ))}
             </div>
+            {shown.length > 0 && (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <p className="font-mono text-[11px] text-slate-500">Showing {Math.min(visible, shown.length)} of {shown.length}</p>
+                {shown.length > visible && (
+                  <button
+                    type="button"
+                    onClick={() => setVisible((n) => n + RACE_PAGE_SIZE)}
+                    className="inline-flex min-h-[40px] items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-[#0b1220] hover:border-blue-300"
+                  >
+                    Show {Math.min(RACE_PAGE_SIZE, shown.length - visible)} more
+                  </button>
+                )}
+              </div>
+            )}
             <NextSteps
               items={[
                 ['Your race is not here?', 'Score any course yourself: pick a verified one or upload a GPX.', 'Calculate your score', '#calculator'],
