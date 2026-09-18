@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import CourseMap from '../../../src/components/CourseMap'
 import { formatDistance, formatElevation, useUnits } from '../../../src/lib/units'
-import { modelLabel } from '../../../src/lib/model'
+import { modelLabel, notScoredReason } from '../../../src/lib/model'
 import {
   analyzeGpx,
   attachRaceGpx,
@@ -467,7 +467,7 @@ export function ScoresTable({ rows, limit, compact = false }) {
               <td className="px-3 py-2 font-mono text-xs text-slate-500">{row.rank}</td>
               <td className="px-3 py-2 font-medium text-[#0b1220]">{row.first_name} {row.family_name}</td>
               {!compact && <td className="px-3 py-2 font-mono text-xs text-slate-500">{row.bib_number ?? '—'}</td>}
-              <td className="px-3 py-2 text-right font-mono font-bold text-blue-600">{row.otri_score ?? <span className="font-normal text-slate-400">{row.status}</span>}</td>
+              <td className="px-3 py-2 text-right font-mono font-bold text-blue-600">{row.otri_score ?? <span className="font-normal text-slate-400">{row.status === 'finisher' ? 'not scored' : row.status}</span>}</td>
             </tr>
           ))}
         </tbody>
@@ -683,6 +683,7 @@ export function ReviewStep({ session, raceId }) {
   const hasResults = results.length > 0
   const status = raceStatus(race, hasResults)
   const lowConfidence = results.filter((r) => r.confidence === 'Low').length
+  const notScored = notScoredReason(results)
   const complete = race.has_gpx && hasResults
 
   return (
@@ -706,7 +707,7 @@ export function ReviewStep({ session, raceId }) {
             <ChecklistRow
               ok={hasResults}
               label="Results"
-              detail={hasResults ? `${finishers.length} finishers scored${results.length > finishers.length ? ` · ${results.length - finishers.length} DNF/DSQ` : ''}${lowConfidence ? ` · ${lowConfidence} at Low confidence (no terrain model for this region; the score is unaffected)` : ''}` : 'No results uploaded.'}
+              detail={hasResults ? `${finishers.length} finishers ${notScored ? 'listed with their times' : 'scored'}${results.length > finishers.length ? ` · ${results.length - finishers.length} DNF/DSQ` : ''}${lowConfidence ? ` · ${lowConfidence} at Low confidence (no terrain model for this region; the score is unaffected)` : ''}${notScored ? ` · ${notScored}` : ''}` : 'No results uploaded.'}
               fixTo={`${base}/results`}
               fixLabel="Upload results"
             />

@@ -54,6 +54,9 @@ class RaceSummary(BaseModel):
     event_country: str | None = None
     organizer_display: str | None = None
     organizer_website: str | None = None
+    elevation_loss_m: float | None = None
+    # Uphill-only course (course/discipline.py). A label for finding races; never enters a score.
+    is_vertical: bool = False
 
 
 class EventDetail(EventSummary):

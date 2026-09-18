@@ -40,7 +40,9 @@ SCALE_MAX = 1000
 
 @dataclass(frozen=True)
 class ScoreBreakdown:
-    otri_score: int
+    # None when the course is outside what the model scores (course_standard.not_scored_reason):
+    # the finish time stands, no score is given, and `quality_flags` carries the reason.
+    otri_score: int | None
     base_performance: float
     course_adjustment: float
     field_adjustment: float

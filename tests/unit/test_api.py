@@ -74,6 +74,7 @@ def test_list_scoring_models_includes_all_options():
     assert response.status_code == 200
     versions = {model["version"] for model in response.json()}
     assert versions == {
+        "0.9.0-course-standard-domain-gated",
         "0.8.0-course-standard-power",
         "0.7.0-course-standard-dem-gated",
         "0.6.0-course-standard-smoothed-upper",
@@ -92,7 +93,7 @@ def test_new_race_defaults_to_course_standard_scoring():
     headers = _organizer_auth_headers()
     _, race_id = _create_event_and_race(headers)
     response = client.get(f"/races/{race_id}")
-    assert response.json()["scoring_version"] == "0.8.0-course-standard-power"
+    assert response.json()["scoring_version"] == "0.9.0-course-standard-domain-gated"
 
 
 def test_race_can_be_created_with_explicit_scoring_version():
@@ -251,9 +252,10 @@ def test_submit_results_for_race_you_do_not_own_returns_403():
 
 def test_submit_results_for_race_with_out_of_domain_gradient_gpx_still_scores_with_a_notice():
     """Spec section 9.1's "quality_flag" concept: an out-of-domain segment is clamped and
-    flagged rather than aborting the whole course's scoring."""
+    flagged rather than aborting the whole course's scoring. Pinned to build 0.8.0: the fixture
+    is uphill-only, which later builds list without a score (next test)."""
     headers = _organizer_auth_headers()
-    _, race_id = _create_event_and_race(headers)
+    _, race_id = _create_event_and_race(headers, scoring_version="0.8.0-course-standard-power")
     with STEEP_GPX.open("rb") as handle:
         client.post(
             f"/races/{race_id}/gpx",
@@ -271,6 +273,27 @@ def test_submit_results_for_race_with_out_of_domain_gradient_gpx_still_scores_wi
     scores = response.json()["scores"]
     assert scores
     assert any("gradient_out_of_supported_domain" in flag for flag in scores[0]["quality_flags"])
+
+
+def test_vertical_race_lists_finish_times_without_scores():
+    """An uphill-only course is over-scored by the steep-terrain term, so it is not scored yet
+    (OEP-002): every finisher keeps their time, none gets a score, and the reason is on the row."""
+    headers = _organizer_auth_headers()
+    _, race_id = _create_event_and_race(headers)
+    with STEEP_GPX.open("rb") as handle:
+        attached = client.post(f"/races/{race_id}/gpx", files={"file": ("steep.gpx", handle, "application/gpx+xml")}, headers=headers)
+    assert attached.json()["is_vertical"] is True
+
+    with DEMO_RESULT_001.open("rb") as handle:
+        response = client.post(f"/races/{race_id}/results", files={"file": ("OTRI-DEMO-001.csv", handle, "text/csv")}, headers=headers)
+    assert response.status_code == 200, response.text
+    rows = client.get(f"/races/{race_id}/results", headers=headers).json()
+    finishers = [row for row in rows if row["status"] == "finisher"]
+    assert finishers
+    for row in finishers:
+        assert row["otri_score"] is None
+        assert row["finish_time_seconds"] > 0
+        assert row["quality_flags"][0].startswith("course_not_scored: vertical races are not scored yet")
 
 
 # --- Events ------------------------------------------------------------------
@@ -458,6 +481,28 @@ def test_attach_gpx_updates_course_stats_and_flags_has_gpx():
     assert b"<gpx" in gpx_response.content
 
 
+def test_race_summary_labels_vertical_races():
+    """From the official figures until a course file is measured, then from its real descent."""
+    headers = _organizer_auth_headers()
+    event_id, race_id = _create_event_and_race(headers)
+    summary = client.get(f"/races/{race_id}", headers=headers).json()
+    assert summary["is_vertical"] is False and summary["elevation_loss_m"] is None
+
+    created = client.post(
+        f"/events/{event_id}/races", json={"course_name": "VK", "distance_km": 3.8, "elevation_gain_m": 1000.0}, headers=headers
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["is_vertical"] is True
+
+    with SINGLE_CLIMB_GPX.open("rb") as handle:
+        attached = client.post(
+            f"/races/{created.json()['race_id']}/gpx", files={"file": ("single-climb.gpx", handle, "application/gpx+xml")}, headers=headers
+        )
+    assert attached.status_code == 200
+    assert attached.json()["elevation_loss_m"] > 0
+    assert attached.json()["is_vertical"] is False, "the measured course descends two thirds of what it climbs"
+
+
 def test_get_gpx_for_race_without_one_returns_404():
     headers = _organizer_auth_headers()
     _, race_id = _create_event_and_race(headers)
@@ -538,7 +583,7 @@ def test_analyze_gpx_with_finish_time_returns_predicted_score():
     assert estimate is not None
     assert "predicted_score" in estimate
     assert estimate["predicted_score"] < 1000
-    assert estimate["scoring_version"] == "0.8.0-course-standard-power"
+    assert estimate["scoring_version"] == "0.9.0-course-standard-domain-gated"
     # The explanation the prototype renders comes from the API, not from client-side maths.
     # No DEM manifest in the test environment, so V0.7 must say Low and say why.
     assert estimate["confidence"] == "Low"
@@ -582,18 +627,19 @@ def test_analyze_invalid_gpx_returns_422():
     assert response.status_code == 422
 
 
-def test_analyze_gpx_with_out_of_domain_gradient_still_estimates_with_a_notice():
-    """Spec section 9.1: grades beyond +/-45% are clamped for that segment and flagged,
-    rather than blocking the whole estimate."""
+def test_analyze_vertical_gpx_measures_the_course_and_explains_why_there_is_no_score():
+    """The course still loads (features, measurement); asking for a score gets the plain reason."""
+    with STEEP_GPX.open("rb") as handle:
+        measured = client.post("/gpx/analyze", files={"file": ("steep.gpx", handle, "application/gpx+xml")})
+    assert measured.status_code == 200 and measured.json()["estimate"] is None
     with STEEP_GPX.open("rb") as handle:
         response = client.post(
             "/gpx/analyze",
             files={"file": ("steep.gpx", handle, "application/gpx+xml")},
             data={"finish_time_seconds": "3600"},
         )
-    assert response.status_code == 200
-    estimate = response.json()["estimate"]
-    assert any("gradient_out_of_supported_domain" in flag for flag in estimate["quality_flags"])
+    assert response.status_code == 422
+    assert "vertical races are not scored yet" in response.json()["detail"]
 
 
 # --- Auth ------------------------------------------------------------------

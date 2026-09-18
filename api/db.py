@@ -204,6 +204,8 @@ class Race:
     event_country: str | None = None
     organizer_display: str | None = None
     organizer_website: str | None = None
+    # Known only once a course file has been measured (the official figures carry no descent).
+    elevation_loss_m: float | None = None
 
     def to_race_record(self) -> RaceRecord:
         """Adapt to the shape ``scoring.score_race()`` expects."""
@@ -352,6 +354,7 @@ _RACE_JOIN_SELECT = """
            (r.gpx_content IS NOT NULL) AS has_gpx, r.scoring_version,
            r.measurement->>'version' AS measurement_version,
            r.measurement->>'status' AS measurement_status,
+           (r.measurement->'snapshot'->>'loss_m')::double precision AS elevation_loss_m,
            r.published_at, COALESCE(o.is_demo, FALSE) AS is_demo, r.created_at,
            e.event_name, e.event_date, e.organizer_id, e.location AS event_location, e.country AS event_country,
            COALESCE(NULLIF(o.organization, ''), NULLIF(o.display_name, '')) AS organizer_display, NULLIF(o.website, '') AS organizer_website

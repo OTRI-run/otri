@@ -104,6 +104,9 @@ class CourseDemand:
     # the V0.1 pipeline, which does not measure them — so V0.1/V0.2 demand is unaffected.
     steep_distance_fraction: float = 0.0
     altitude_excess_m: float = 0.0
+    # Share of `course_demand_km` that came from segments clamped to the +/-45% domain. Measured
+    # by the V0.2+ pipeline only (zero on V0.1); V0.9 grades confidence on it.
+    clamped_demand_fraction: float = 0.0
 
     def to_dict(self) -> dict:
         return {
@@ -117,6 +120,7 @@ class CourseDemand:
             "quality_flags": list(self.quality_flags),
             "steep_distance_fraction": self.steep_distance_fraction,
             "altitude_excess_m": self.altitude_excess_m,
+            "clamped_demand_fraction": self.clamped_demand_fraction,
         }
 
 
@@ -324,11 +328,28 @@ def equivalent_flat_distance_km(points: list[TrackPoint]) -> float:
     return compute_course_demand(points).course_demand_km
 
 
-def equivalent_flat_distance_from_totals(distance_km: float, elevation_gain_m: float) -> float:
+def demand_from_totals(distance_km: float, elevation_gain_m: float) -> tuple[float, tuple[str, ...]]:
     """Non-spec fallback for a race with no GPX attached yet (see module docstring):
     approximates the whole course as one constant average grade. Materially less accurate
-    than ``equivalent_flat_distance_km`` — no segment structure, no descent data."""
+    than ``equivalent_flat_distance_km`` — no segment structure, no descent data.
+
+    An average grade beyond the Minetti domain (a vertical kilometre steeper than 45%) is
+    clamped and flagged like any GPX segment, rather than leaving the race unscorable."""
     if distance_km <= 0:
         raise ValueError("distance_km must be greater than 0")
     average_grade = (elevation_gain_m / 1000.0) / distance_km
-    return round(distance_km * gradient_ratio(average_grade), 3)
+    if not math.isfinite(average_grade):
+        raise ValueError("grade must be finite")
+    clamped_grade = max(MIN_GRADE, min(MAX_GRADE, average_grade))
+    flags: tuple[str, ...] = ()
+    if clamped_grade != average_grade:
+        flags = (
+            f"gradient_out_of_supported_domain: average grade {average_grade:+.0%} from the official "
+            f"figures, clamped to {clamped_grade:+.0%} for scoring",
+        )
+    return round(distance_km * gradient_ratio(clamped_grade), 3), flags
+
+
+def equivalent_flat_distance_from_totals(distance_km: float, elevation_gain_m: float) -> float:
+    """The demand figure of ``demand_from_totals`` alone."""
+    return demand_from_totals(distance_km, elevation_gain_m)[0]

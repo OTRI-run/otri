@@ -48,8 +48,13 @@ const FAQ = [
       },
       {
         q: 'What do High and Low confidence mean?',
-        a: 'Whether another device recording the same route would have produced the same number. High needs elevation from the terrain model and a track dense enough that switchbacks are not cut short (a point at least every 30 m on average). Anything else is Low, and the page says why. Confidence affects trust, never the number.',
+        a: 'Whether another device recording the same route would have produced the same number. High needs elevation from the terrain model and a track dense enough that switchbacks are not cut short (a point at least every 30 m on average). Anything else is Low, and the page says why; so is a course mostly steeper than 45% or shorter than 1.5 flat-km, where the model has nothing to check itself against. Confidence affects trust, never the number.',
         tags: 'confidence high low trust reproducible sparse',
+      },
+      {
+        q: 'Why does a vertical race have finish times but no scores?',
+        a: 'Because the model would get it wrong. One part of the score prices sustained steep ground, and it was tuned on mountain courses where up to a quarter of the distance is that steep and much of it is descent. On an uphill-only course, such as a vertical kilometre, nearly all of it is, and that factor over-scores everyone by about 60%: a mid-pack 50 minutes would score like a world best. Until it is recalibrated on vertical-race data, a course with more than half its distance at 20% or steeper is listed with ranks and times only, and it does not count toward a runner index.',
+        tags: 'vertical kilometer kilometre vk uphill only not scored no score steep',
       },
       {
         q: 'Another index gives me a different number. Which is right?',

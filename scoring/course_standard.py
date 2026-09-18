@@ -18,11 +18,12 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, replace
 
+from course.discipline import is_vertical
 from course.gpx import TrackPoint
 from course.measurement import CONFIDENCE_BLOCKING_FLAGS
 from ingestion.records import RaceRecord, ResultRecord
 
-from .course_demand import CourseDemand, compute_course_demand, equivalent_flat_distance_from_totals
+from .course_demand import CourseDemand, compute_course_demand, demand_from_totals
 from .model import RunnerScore, ScoreBreakdown
 from .terrain import TERRAIN_MODEL, TerrainModel
 
@@ -371,6 +372,39 @@ POWER_CURVE = replace(
     anchor_qs=(),
 )
 
+# V0.9 changes no number either. It extends what V0.7 started - the score saying how far it can be
+# trusted - to the two places the model itself runs out of evidence, which vertical races reach:
+#
+# - The gradient-cost polynomial was measured to +/-45%. Steeper segments are clamped, which
+#   under-credits them by an unknown amount (about 13% at 50% and 19% at 52% if the polynomial is
+#   extrapolated, which is itself a guess). A few such pitches on a mountain course are noise
+#   (0.7% of the demand of a real alpine 100-miler) and stay `High`, exactly as under V0.7. When more than a
+#   fifth of the course's demand comes from clamped ground, the demand figure is mostly the
+#   clamp's and the under-credit passes the 3% that `High` claims.
+# - The ceiling is validated against world bests down to 1500 m (102.4% of the curve). Below that
+#   the events are anaerobic and the real records run far above the extrapolated curve (800 m
+#   107%, 400 m 121%), so a score there would flatter every runner.
+#
+# Both are `Low` with the reason, never a refusal.
+#
+# The third limit is a refusal, because there the number itself is wrong rather than uncertain.
+# The steep-terrain coefficient was calibrated on one mountain course with 18% of its distance at
+# or above 20% grade, and real mountain courses measure 0-25%. An uphill-only course is ~100%
+# steep, so the linear term multiplies its demand by about 1.6 and a mid-pack 50-minute vertical
+# kilometre scores 1000. Until that term is recalibrated for such courses, a course with more
+# than half its distance that steep is *not scored*: finish times stand, `otri_score` is None,
+# the reason is on every row, and nothing reaches a runner index. With no course file the steep
+# share is unknown and the vertical label's average-grade rule (`course.discipline`) decides.
+# See OEP-002 and docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md section 7.4.
+MAX_CLAMPED_DEMAND_FRACTION = 0.20
+MIN_VALIDATED_DEMAND_KM = 1.5
+MAX_SCORED_STEEP_FRACTION = 0.50
+DOMAIN_GATED_CURVE = replace(POWER_CURVE, version='0.9.0-course-standard-domain-gated')
+
+# Builds that grade their own confidence (V0.7's rule), and those that also apply V0.9's.
+DEM_CONFIDENCE_VERSIONS = frozenset({DEM_GATED_CURVE.version, POWER_CURVE.version, DOMAIN_GATED_CURVE.version})
+DOMAIN_CONFIDENCE_VERSIONS = frozenset({DOMAIN_GATED_CURVE.version})
+
 # Curves scored from the V0.2 measured-demand pipeline rather than the raw V0.1 integral.
 MEASURED_DEMAND_VERSIONS = frozenset(
     {
@@ -381,6 +415,7 @@ MEASURED_DEMAND_VERSIONS = frozenset(
         SMOOTHED_UPPER_CURVE.version,
         DEM_GATED_CURVE.version,
         POWER_CURVE.version,
+        DOMAIN_GATED_CURVE.version,
     }
 )
 
@@ -401,7 +436,45 @@ def measured_demand_for(gpx_points, measurement, curve: ScoreCurve):
     return compute_measured_demand(measurement=measurement), measurement
 
 
-def confidence_for(measurement, curve: ScoreCurve, has_gpx: bool) -> tuple[str, tuple[str, ...]]:
+class CourseNotScoredError(ValueError):
+    """Raised by the estimator for a course the model does not score; the message is the reason."""
+
+
+def not_scored_reason(
+    curve: ScoreCurve,
+    demand: CourseDemand | None = None,
+    distance_km: float | None = None,
+    elevation_gain_m: float | None = None,
+) -> str | None:
+    """Why `curve` gives this course no score, or None when it scores it (always None before V0.9).
+
+    Pass `demand` for a measured course, or the official figures when there is no course file.
+    """
+    if curve.version not in DOMAIN_CONFIDENCE_VERSIONS:
+        return None
+    if demand is not None:
+        if demand.steep_distance_fraction <= MAX_SCORED_STEEP_FRACTION:
+            return None
+        measured = f"{demand.steep_distance_fraction:.0%} of this course is at or above 20% grade"
+    elif distance_km and elevation_gain_m and is_vertical(distance_km, elevation_gain_m):
+        measured = f"this course averages {elevation_gain_m / (distance_km * 1000.0):.0%} grade"
+    else:
+        return None
+    return (
+        f"course_not_scored: vertical races are not scored yet. {measured}; the model's steep-terrain "
+        "adjustment was calibrated on mountain courses with at most about a quarter of their distance that "
+        "steep, and it over-scores an uphill-only course. Finish times are listed, no OTRI score is given "
+        "and the result does not count toward a runner index"
+    )
+
+
+def confidence_for(
+    measurement,
+    curve: ScoreCurve,
+    has_gpx: bool,
+    demand: CourseDemand | None = None,
+    equivalent_km: float | None = None,
+) -> tuple[str, tuple[str, ...]]:
     """Confidence label plus the flags that explain it.
 
     Pre-V0.7 curves keep their historical rule (Medium with a GPX, Low without). V0.7 earns
@@ -409,8 +482,12 @@ def confidence_for(measurement, curve: ScoreCurve, has_gpx: bool) -> tuple[str, 
     (`Measurement.blocks_confidence`), and says exactly why otherwise. A measurement can be
     `needs_review` for an organizer's attention and still `High` here - review and
     reproducibility are different questions.
+
+    V0.9 adds the model's own limits: `Low` when more than `MAX_CLAMPED_DEMAND_FRACTION` of
+    `demand` came from ground steeper than the gradient domain, or when `equivalent_km` (the
+    demand the ceiling is looked up at) is below `MIN_VALIDATED_DEMAND_KM`.
     """
-    if curve.version not in (DEM_GATED_CURVE.version, POWER_CURVE.version) or measurement is None:
+    if curve.version not in DEM_CONFIDENCE_VERSIONS or measurement is None:
         return _confidence_for_course(has_gpx), ()
     reasons = []
     if not measurement.dem_sourced:
@@ -427,6 +504,19 @@ def confidence_for(measurement, curve: ScoreCurve, has_gpx: bool) -> tuple[str, 
                 "switchbacks and measure the course short)"
             )
         reasons.append(f"route_not_reproducible: {detail}")
+    if curve.version in DOMAIN_CONFIDENCE_VERSIONS:
+        if demand is not None and demand.clamped_demand_fraction > MAX_CLAMPED_DEMAND_FRACTION:
+            reasons.append(
+                f"gradient_domain_exceeded: {demand.clamped_demand_fraction:.0%} of this course's demand comes "
+                "from ground steeper than 45%, beyond what the gradient-cost model was measured on; those "
+                "sections are scored as if they were 45% and are under-credited by an unknown amount"
+            )
+        if equivalent_km is not None and equivalent_km < MIN_VALIDATED_DEMAND_KM:
+            reasons.append(
+                f"course_below_validated_range: {equivalent_km:.3f} flat-km is shorter than the shortest "
+                f"performance the ceiling is validated against ({MIN_VALIDATED_DEMAND_KM} flat-km); "
+                "shorter efforts are anaerobic and score too high"
+            )
     return ('High' if not reasons else 'Low'), tuple(reasons)
 
 
@@ -498,6 +588,7 @@ def score_race_course_standard(
     if not finishers:
         return []
 
+    demand = None
     if gpx_points is not None:
         if curve.version in MEASURED_DEMAND_VERSIONS:
             demand, measurement = measured_demand_for(gpx_points, measurement, curve)
@@ -505,11 +596,13 @@ def score_race_course_standard(
             demand = compute_course_demand(gpx_points)
         equivalent_km, quality_flags = adjusted_demand(demand, curve)
     else:
-        equivalent_km = equivalent_flat_distance_from_totals(race.distance_km, race.elevation_gain_m)
-        quality_flags = ()
+        equivalent_km, quality_flags = demand_from_totals(race.distance_km, race.elevation_gain_m)
 
-    confidence, confidence_flags = confidence_for(measurement if gpx_points is not None else None, curve, gpx_points is not None)
+    confidence, confidence_flags = confidence_for(
+        measurement if gpx_points is not None else None, curve, gpx_points is not None, demand, equivalent_km
+    )
     quality_flags = tuple(quality_flags) + confidence_flags
+    not_scored = not_scored_reason(curve, demand, race.distance_km, race.elevation_gain_m)
     ordered = sorted(
         finishers,
         key=lambda result: (
@@ -525,6 +618,27 @@ def score_race_course_standard(
 
     scores = []
     for result in ordered:
+        if not_scored is not None:
+            breakdown = ScoreBreakdown(
+                otri_score=None,
+                base_performance=0.0,
+                course_adjustment=0.0,
+                field_adjustment=0.0,
+                environmental_factor=0.0,
+                confidence="n/a",
+                scoring_version=curve.version,
+                quality_flags=(not_scored,),
+            )
+            scores.append(
+                RunnerScore(
+                    rank=result.rank,
+                    bib_number=result.bib_number,
+                    family_name=result.family_name,
+                    first_name=result.first_name,
+                    score=breakdown,
+                )
+            )
+            continue
         computed = score_for_time(equivalent_km, result.finish_time_seconds, curve=curve)
         breakdown = ScoreBreakdown(
             otri_score=computed["otri_score"],

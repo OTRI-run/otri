@@ -34,6 +34,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.concurrency import run_in_threadpool
 
 from course import GpxParseError, extract_features, parse_track_points, read_track_points
+from course.discipline import is_vertical
 from course.measurement import Measurement, measure_course
 from course.features import features_from_measurement
 from course.elevation import configured_provider
@@ -690,6 +691,8 @@ def _race_summary(race: db.Race, finisher_count: int | None = None) -> RaceSumma
         event_country=race.event_country,
         organizer_display=race.organizer_display,
         organizer_website=race.organizer_website,
+        elevation_loss_m=race.elevation_loss_m,
+        is_vertical=is_vertical(race.distance_km, race.elevation_gain_m, race.elevation_loss_m),
     )
 
 
@@ -1226,7 +1229,8 @@ def _scored_rows_for_race(race_id: str) -> dict[str, RunnerScoreOut]:
         scored = _score_results(race, db.get_results(race_id))
     except ValueError:
         return {}
-    return {row.runner_id: row for row in scored if row.runner_id and row.status == "finisher"}
+    # A finisher on a course the model does not score (a vertical race) has a time and no score.
+    return {row.runner_id: row for row in scored if row.runner_id and row.status == "finisher" and row.otri_score is not None}
 
 
 def _runner_profile(runner: db.Runner, as_of: date) -> RunnerProfile:

@@ -7,7 +7,7 @@ import UnitsMenu from '../src/components/UnitsMenu'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import Home from './Home'
 import NextSteps from './NextSteps'
-import RaceCard, { DemoBadge } from './RaceCard'
+import RaceCard, { DemoBadge, VerticalBadge } from './RaceCard'
 import ScoreCalculator from './ScoreCalculator'
 import FaqPage from './Faq'
 import { RunnerProfilePage, RunnersPage } from './Runners'
@@ -31,7 +31,7 @@ import { fetchRaceGpxFile, getRace, getRaceMeasurement, getRaceResults, listRace
 import BuildBanner from '../src/components/BuildBanner'
 import ErrorBoundary from '../src/components/ErrorBoundary'
 import NotFound from '../src/components/NotFound'
-import { modelLabel } from '../src/lib/model'
+import { modelLabel, notScoredReason } from '../src/lib/model'
 import '../src/styles.css'
 
 const GITHUB_URL = 'https://github.com/OTRI-run/otri'
@@ -227,6 +227,7 @@ function Leaderboard({ raceId, onBack }) {
                 {[race.event_location, race.event_country].filter(Boolean).join(' · ').toUpperCase()}
               </span>
             )}
+            {race.is_vertical && <VerticalBadge />}
             {race.is_demo && <DemoBadge />}
           </p>
           <h2 className="mt-2 text-[clamp(32px,4.5vw,52px)] font-bold leading-[.98] tracking-[-.05em] text-[#0b1220]">{race.event_name}</h2>
@@ -253,6 +254,11 @@ function Leaderboard({ raceId, onBack }) {
             <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
               <CourseMap gpxText={course.gpxText} measurement={course.measurement} className="p-3" />
             </div>
+          )}
+          {notScoredReason(results) && (
+            <p className="mt-6 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-6 text-slate-700">
+              <strong className="text-[#0b1220]">Finish times only.</strong> {notScoredReason(results)}
+            </p>
           )}
           <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
             <table className="w-full border-collapse text-left text-sm">
@@ -321,10 +327,12 @@ function Leaderboard({ raceId, onBack }) {
 const RACE_PAGE_SIZE = 12
 const DISTANCE_BUCKETS = [
   { id: 'all', label: 'All', test: () => true },
-  { id: 'short', label: 'Up to 21 km', test: (km) => km <= 21.2 },
-  { id: 'mid', label: '21–50 km', test: (km) => km > 21.2 && km <= 50 },
-  { id: 'long', label: '50–100 km', test: (km) => km > 50 && km <= 100 },
-  { id: 'ultra', label: '100 km+', test: (km) => km > 100 },
+  { id: 'short', label: 'Up to 21 km', test: (race) => (race.distance_km ?? 0) <= 21.2 },
+  { id: 'mid', label: '21–50 km', test: (race) => race.distance_km > 21.2 && race.distance_km <= 50 },
+  { id: 'long', label: '50–100 km', test: (race) => race.distance_km > 50 && race.distance_km <= 100 },
+  { id: 'ultra', label: '100 km+', test: (race) => race.distance_km > 100 },
+  // Uphill-only courses, whatever their length: a category of its own, as race calendars list them.
+  { id: 'vertical', label: 'Vertical', test: (race) => Boolean(race.is_vertical) },
 ]
 const RACE_SORTS = {
   newest: { label: 'Newest first', by: (a, b) => (b.event_date ?? '').localeCompare(a.event_date ?? '') },
@@ -355,7 +363,7 @@ function RacesPage({ raceId }) {
     const words = normalise(query).split(/\s+/).filter(Boolean)
     const test = DISTANCE_BUCKETS.find((b) => b.id === bucket)?.test ?? (() => true)
     return (races ?? [])
-      .filter((race) => test(race.distance_km ?? 0))
+      .filter(test)
       .filter((race) => country === 'all' || race.event_country === country)
       .filter((race) => {
         if (!words.length) return true
