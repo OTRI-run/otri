@@ -209,6 +209,17 @@ export function listAdminEvents(token) {
   return request('/admin/events', { headers: authHeaders(token) })
 }
 
+/** Runners with published results: all (by index) or a name search. */
+export function listRunners(query) {
+  const params = query ? `?q=${encodeURIComponent(query)}` : ''
+  return request(`/runners${params}`)
+}
+
+/** A runner's profile: published results with the index and each result's weight. */
+export function getRunner(runnerId) {
+  return request(`/runners/${encodeURIComponent(runnerId)}`)
+}
+
 /** The signed-in organizer with current admin/demo flags. */
 export function getMe(token) {
   return request('/auth/me', { headers: authHeaders(token) })

@@ -8,6 +8,7 @@ import Home from './Home'
 import NextSteps from './NextSteps'
 import RaceCard, { DemoBadge } from './RaceCard'
 import ScoreCalculator from './ScoreCalculator'
+import { RunnerProfilePage, RunnersPage } from './Runners'
 import CourseMap from '../src/components/CourseMap'
 import { fetchRaceGpxFile, getApiStatus, getRace, getRaceMeasurement, getRaceResults, listRaces } from './apiClient'
 import '../src/styles.css'
@@ -87,7 +88,8 @@ function BuildBanner() {
 }
 
 // ------------------------------------------------------------------------------------ routing
-// Hash routes so every screen has a URL: #home (default), #races, #races/<race_id>, #calculator.
+// Hash routes so every screen has a URL: #home (default), #races, #races/<race_id>, #runners,
+// #runners/<runner_id>, #calculator.
 
 function parseHash(hash) {
   const path = hash.replace(/^#\/?/, '')
@@ -95,6 +97,9 @@ function parseHash(hash) {
   const raceMatch = path.match(/^races\/(.+)$/)
   if (raceMatch) return { tab: 'races', raceId: decodeURIComponent(raceMatch[1]) }
   if (path.startsWith('races')) return { tab: 'races', raceId: null }
+  const runnerMatch = path.match(/^runners\/(.+)$/)
+  if (runnerMatch) return { tab: 'runners', raceId: null, runnerId: decodeURIComponent(runnerMatch[1]) }
+  if (path.startsWith('runners')) return { tab: 'runners', raceId: null, runnerId: null }
   return { tab: 'home', raceId: null }
 }
 
@@ -118,6 +123,7 @@ function navigate(hash) {
 const NAV = [
   { id: 'calculator', label: 'Calculate score', href: '#calculator' },
   { id: 'races', label: 'Races', href: '#races' },
+  { id: 'runners', label: 'Runners', href: '#runners' },
 ]
 
 function NavLink({ item, active, className = '' }) {
@@ -285,7 +291,15 @@ function Leaderboard({ raceId, onBack }) {
                   <tr key={`${row.rank}-${row.bib_number ?? row.family_name}-${row.first_name}`} className="border-b border-slate-100 last:border-0">
                     <td className="px-4 py-3 font-mono text-xs text-slate-500">{row.rank}</td>
                     <td className="px-4 py-3 font-medium text-[#0b1220]">
-                      {row.first_name} {row.family_name}
+                      {row.runner_id ? (
+                        <a href={`#runners/${encodeURIComponent(row.runner_id)}`} className="no-underline hover:underline">
+                          {row.first_name} {row.family_name}
+                        </a>
+                      ) : (
+                        <>
+                          {row.first_name} {row.family_name}
+                        </>
+                      )}
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-500">{formatHms(row.finish_time_seconds)}</td>
                     <td className="px-4 py-3 font-mono text-sm font-bold text-blue-600">{row.otri_score}</td>
@@ -404,6 +418,7 @@ function App() {
       <main>
         {route.tab === 'home' && <Home />}
         {route.tab === 'races' && <RacesPage raceId={route.raceId} />}
+        {route.tab === 'runners' && (route.runnerId ? <RunnerProfilePage runnerId={route.runnerId} onBack={() => navigate('#runners')} /> : <RunnersPage />)}
         {route.tab === 'calculator' && <ScoreCalculator />}
       </main>
       <Footer />

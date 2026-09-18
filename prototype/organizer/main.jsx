@@ -35,6 +35,9 @@ function Header({ session, onSignOut }) {
             <a href="../#races" className="text-[13px] font-medium text-slate-500 no-underline hover:text-slate-950">
               Races
             </a>
+            <a href="../#runners" className="text-[13px] font-medium text-slate-500 no-underline hover:text-slate-950">
+              Runners
+            </a>
             {session && (
               <Link to="/events" className="text-[13px] font-semibold text-[#0b1220] no-underline">
                 Your events

@@ -3,6 +3,7 @@
 Run with: pytest tests/unit
 """
 
+from datetime import date
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -849,3 +850,74 @@ def test_demo_flag_marks_races_from_a_demo_account():
     assert db.set_organizer_flags("demo-account@example.com", is_demo=True)
     assert client.get(f"/races/{race_id}").json()["is_demo"] is True
     assert client.post("/auth/login", json={"email": "demo-account@example.com", "password": "correct horse battery"}).json()["is_demo"] is True
+
+
+# ----------------------------------------------------------------------------- runners
+
+
+def _publish_results(headers, csv_text, event_date="2026-06-01"):
+    event = client.post("/events", json={"event_name": f"Runners {event_date}", "event_date": event_date}, headers=headers)
+    assert event.status_code == 201, event.text
+    race = client.post(f"/events/{event.json()['event_id']}/races", json={"course_name": "21K", "distance_km": 21.0, "elevation_gain_m": 900}, headers=headers)
+    race_id = race.json()["race_id"]
+    submitted = client.post(f"/races/{race_id}/results", files={"file": ("r.csv", csv_text.encode(), "text/csv")}, headers=headers)
+    assert submitted.status_code == 200, submitted.text
+    assert client.post(f"/races/{race_id}/publish", headers=headers).status_code == 200
+    return race_id
+
+
+def test_results_create_runners_matched_by_name_gender_and_birth_year():
+    headers = _organizer_auth_headers()
+    race_a = _publish_results(
+        headers,
+        "Rank,Time,Last name,First name,Gender,DOB,Nat\n1,2:00:00,Srisuk,Anong,F,1991-03-04,THA\n2,2:10:00,Wongsmith,Daniel,M,1987-08-03,SGP\n3,2:20:00,Wongsmith,Daniel,M,1999-01-01,SGP\n",
+        "2026-03-01",
+    )
+    race_b = _publish_results(
+        headers,
+        "Rank,Time,Last name,First name,Gender,YOB\n1,2:05:00,SRISUK,anong,F,1991\n2,2:30:00,Wongsmith,Daniel,M,1987\nDNF,,Keller,Nina,F,1995\n",
+        "2026-06-01",
+    )
+    found = client.get("/runners", params={"q": "anong srisuk"}).json()
+    assert len(found) == 1 and found[0]["result_count"] == 2, "case and accent-insensitive; same birth year"
+    assert found[0]["age_category"] == "F30" and found[0]["nationality"] == "THA"
+    wongs = client.get("/runners", params={"q": "wongsmith"}).json()
+    assert len(wongs) == 2, "same name and gender, different birth years: two runners"
+    counts = sorted(w["result_count"] for w in wongs)
+    assert counts == [1, 2]
+    kellers = client.get("/runners", params={"q": "keller nina"}).json()
+    assert any(k["result_count"] == 1 and k["index"] is None and k["provisional"] for k in kellers), "a DNF alone lists the runner but gives no index"
+    leaderboard = client.get(f"/races/{race_a}/results").json()
+    assert all(row["runner_id"] for row in leaderboard), "leaderboard rows link to runner profiles"
+    assert race_b
+
+
+def test_runner_profile_carries_the_index_with_counting_and_expiry_details():
+    headers = _organizer_auth_headers()
+    for months_ago, seconds in ((1, "2:00:00"), (6, "2:04:00"), (14, "1:58:00"), (20, "2:10:00"), (30, "1:50:00")):
+        from scoring.runner_index import add_months
+
+        day = add_months(date.today(), -months_ago).isoformat()
+        _publish_results(headers, f"Rank,Time,Last name,First name,Gender,YOB\n1,{seconds},Profile,Pat,M,1990\n", day)
+    runner = client.get("/runners", params={"q": "pat profile"}).json()[0]
+    profile = client.get(f"/runners/{runner['runner_id']}").json()
+    assert profile["index_details"]["version"] == "runner-index-v1"
+    assert profile["index"] is not None and profile["provisional"] is False
+    statuses = [r["status"] for r in profile["results"]]
+    assert statuses.count("counting") == 3 and "expired" in statuses
+    assert all(r["expires_on"] > r["full_until"] for r in profile["results"])
+    counting = [r for r in profile["results"] if r["counts"]]
+    weights = sum(r["weight"] for r in counting)
+    expected = round(sum(r["otri_score"] * r["weight"] for r in counting) / weights)
+    assert profile["index"] == expected
+    assert runner["index"] == profile["index"], "search summary and profile agree"
+    assert client.get("/runners/run-doesnotexist").status_code == 404
+
+
+def test_unpublished_results_do_not_appear_on_runner_profiles():
+    headers = _organizer_auth_headers()
+    race_id = _publish_results(headers, "Rank,Time,Last name,First name,Gender\n1,2:00:00,Hidden,Harriet,F\n")
+    runner = client.get("/runners", params={"q": "harriet"}).json()[0]
+    assert client.delete(f"/races/{race_id}/publish", headers=headers).status_code == 200
+    assert client.get("/runners", params={"q": "harriet"}).json() == []
+    assert client.get(f"/runners/{runner['runner_id']}").status_code == 404

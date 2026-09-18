@@ -79,6 +79,7 @@ class RunnerScoreOut(BaseModel):
     performance_rate: float = 0.0
     quality_flags: list[str] = []
     finish_time_seconds: int | None = None
+    runner_id: str | None = None
 
 
 class ValidationIssueOut(BaseModel):
@@ -129,6 +130,57 @@ class GpxAnalysis(BaseModel):
     measurement: dict = {}
     features: dict
     estimate: IllustrativeEstimateOut | None = None
+
+
+class RunnerIndexOut(BaseModel):
+    version: str
+    as_of: date
+    index: int | None
+    provisional: bool
+    counted: int
+    window_months: int
+    full_weight_months: int
+
+
+class RunnerSummary(BaseModel):
+    runner_id: str
+    family_name: str
+    first_name: str
+    gender: str
+    nationality: str | None = None
+    age_category: str | None = None
+    result_count: int = 0
+    last_race_date: date | None = None
+    index: int | None = None
+    provisional: bool = True
+
+
+class RunnerResultOut(BaseModel):
+    result_id: str
+    race_id: str
+    event_id: str
+    event_name: str
+    event_date: date
+    course_name: str
+    distance_km: float
+    elevation_gain_m: float
+    has_gpx: bool
+    is_demo: bool = False
+    rank: int
+    finish_time_seconds: int | None = None
+    otri_score: int
+    confidence: str
+    scoring_version: str
+    weight: float
+    counts: bool
+    status: str
+    full_until: date
+    expires_on: date
+
+
+class RunnerProfile(RunnerSummary):
+    index_details: RunnerIndexOut
+    results: list[RunnerResultOut] = []
 
 
 class MeResponse(BaseModel):

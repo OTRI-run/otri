@@ -1,4 +1,4 @@
-import { ArrowRight, ArrowUpRight, Calculator, Database, FileText, GitBranch, Mountain, ShieldCheck, Timer, Upload } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Calculator, Database, FileText, GitBranch, Mountain, ShieldCheck, Timer, Upload, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import RaceCard from './RaceCard'
 import { listRaces } from './apiClient'
@@ -36,6 +36,7 @@ function EngineCard({ raceCount, resultCount, scoringVersion }) {
   const rows = [
     [Calculator, 'CALCULATE', 'any course · any time', '#calculator'],
     [Database, 'RACES', `${raceCount} scored · ${resultCount} results`, '#races'],
+    [Users, 'RUNNERS', 'search · profiles · index', '#runners'],
     [Upload, 'ORGANIZERS', 'upload official results', 'organizer/'],
   ]
   return (

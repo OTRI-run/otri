@@ -21,7 +21,7 @@ import json
 import os
 from dataclasses import asdict, replace
 from hashlib import sha256
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import re
 import tempfile
 from contextlib import asynccontextmanager
@@ -47,6 +47,7 @@ if not os.environ.get("OTRI_DEM_MANIFEST"):
 from ingestion import result_records, validate_result_file
 from scoring import available_scoring_models, estimate_score, get_scoring_model_info, score_race
 from scoring.course_standard import MEASURED_DEMAND_VERSIONS
+from scoring.runner_index import IndexInput, compute_runner_index
 
 from . import db
 from .auth import (
@@ -66,6 +67,10 @@ from .auth import (
 from .email import send_password_reset_email, send_verification_email
 from .rate_limit import enforce_rate_limit
 from .schemas import (
+    RunnerIndexOut,
+    RunnerProfile,
+    RunnerResultOut,
+    RunnerSummary,
     AdminEventOut,
     MeResponse,
     SharedCourseOut,
@@ -655,12 +660,12 @@ def _score_results(race: db.Race, results: list) -> list[RunnerScoreOut]:
     measurement = Measurement(**stored_measurement["snapshot"]) if stored_measurement else None
     scores = score_race(race.to_race_record(), results, model_version=race.scoring_version, gpx_points=gpx_points, measurement=measurement)
     # Finish times ride along for the public leaderboard; scores carry the runner's identity only.
-    finish_times = {(str(r.rank), r.family_name, r.first_name): r.finish_time_seconds for r in results}
+    by_key = {(str(r.rank), r.family_name, r.first_name): r for r in results}
     out = []
     for score in scores:
         data = score.to_dict()
-        key = (str(data.get("rank")), data.get("family_name"), data.get("first_name"))
-        out.append(RunnerScoreOut(**data, finish_time_seconds=finish_times.get(key)))
+        source = by_key.get((str(data.get("rank")), data.get("family_name"), data.get("first_name")))
+        out.append(RunnerScoreOut(**data, finish_time_seconds=source.finish_time_seconds if source else None, runner_id=source.runner_id if source else None))
     return out
 
 
@@ -715,7 +720,8 @@ async def submit_race_results(
         db.replace_results(race_id, results)
 
         try:
-            scores = _score_results(race, results)
+            # Score the stored rows, which now carry runner ids, so the response matches a later replay.
+            scores = _score_results(race, db.get_results(race_id))
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
 
@@ -727,6 +733,137 @@ async def submit_race_results(
         )
     finally:
         temp_path.unlink(missing_ok=True)
+
+
+# --- Runners ---------------------------------------------------------------------
+#
+# A runner is whoever the results files say raced: identity comes from name, gender and year
+# of birth (docs/methodology/RUNNER-INDEX-v1.md §3). Profiles and the index use published races
+# only, and are computed on request so they are always consistent with what organizers show.
+
+
+def _age_category(gender: str, birth_year: int | None, as_of: date) -> str | None:
+    if not birth_year:
+        return None
+    age = as_of.year - birth_year
+    band = "U20" if age < 20 else f"{(age // 10) * 10}"
+    prefix = {"M": "M", "F": "F"}.get((gender or "").upper()[:1], "X")
+    return f"{prefix}{band}"
+
+
+def _scored_rows_for_race(race_id: str) -> dict[str, RunnerScoreOut]:
+    """Every scored result of a race keyed by runner_id. Non-finishers carry no score."""
+    race = db.find_race(race_id)
+    if race is None:
+        return {}
+    try:
+        scored = _score_results(race, db.get_results(race_id))
+    except ValueError:
+        return {}
+    return {row.runner_id: row for row in scored if row.runner_id}
+
+
+def _runner_profile(runner: db.Runner, as_of: date) -> RunnerProfile:
+    entries = db.published_results_for_runner(runner.runner_id)
+    scored_by_race = {race_id: _scored_rows_for_race(race_id) for race_id in {e["race_id"] for e in entries}}
+    inputs = []
+    details = {}
+    for entry in entries:
+        row = scored_by_race.get(entry["race_id"], {}).get(runner.runner_id)
+        if row is None:
+            continue  # DNF/DNS/DSQ rows have no score and no place in the index
+        result_id = str(entry["result_id"])
+        inputs.append(IndexInput(result_id=result_id, event_date=entry["event_date"], score=row.otri_score))
+        details[result_id] = (entry["race_id"], row)
+    index = compute_runner_index(inputs, as_of)
+    races = {race_id: db.find_race(race_id) for race_id in {race_id for race_id, _ in details.values()}}
+    results = []
+    for item in index.results:
+        race_id, row = details[item.result_id]
+        race = races[race_id]
+        results.append(
+            RunnerResultOut(
+                result_id=item.result_id,
+                race_id=race_id,
+                event_id=race.event_id,
+                event_name=race.event_name or "",
+                event_date=item.event_date,
+                course_name=race.course_name,
+                distance_km=race.distance_km,
+                elevation_gain_m=race.elevation_gain_m,
+                has_gpx=race.has_gpx,
+                is_demo=race.is_demo,
+                rank=row.rank,
+                finish_time_seconds=row.finish_time_seconds,
+                otri_score=row.otri_score,
+                confidence=row.confidence,
+                scoring_version=row.scoring_version,
+                weight=item.weight,
+                counts=item.counts,
+                status=item.status,
+                full_until=item.full_until,
+                expires_on=item.expires_on,
+            )
+        )
+    return RunnerProfile(
+        **_runner_summary_fields(runner, as_of),
+        index=index.index,
+        provisional=index.provisional,
+        index_details=RunnerIndexOut(**index.to_dict()),
+        results=results,
+    )
+
+
+def _runner_summary_fields(runner: db.Runner, as_of: date) -> dict:
+    return {
+        "runner_id": runner.runner_id,
+        "family_name": runner.family_name,
+        "first_name": runner.first_name,
+        "gender": runner.gender,
+        "nationality": runner.nationality,
+        "age_category": _age_category(runner.gender, runner.birth_year, as_of),
+        "result_count": runner.result_count,
+        "last_race_date": runner.last_race_date,
+    }
+
+
+def _runner_summaries(runners: list[db.Runner], as_of: date) -> list[RunnerSummary]:
+    """Summaries with indexes for a set of runners, scoring each involved race once."""
+    grouped = db.published_results_grouped_by_race()
+    wanted = {runner.runner_id for runner in runners}
+    inputs: dict[str, list[IndexInput]] = {runner.runner_id: [] for runner in runners}
+    for race_id, entries in grouped.items():
+        if not any(entry["runner_id"] in wanted for entry in entries):
+            continue
+        scored = _scored_rows_for_race(race_id)
+        for entry in entries:
+            row = scored.get(entry["runner_id"])
+            if row is not None and entry["runner_id"] in wanted:
+                inputs[entry["runner_id"]].append(IndexInput(result_id=str(entry["result_id"]), event_date=entry["event_date"], score=row.otri_score))
+    out = []
+    for runner in runners:
+        index = compute_runner_index(inputs[runner.runner_id], as_of)
+        out.append(RunnerSummary(**_runner_summary_fields(runner, as_of), index=index.index, provisional=index.provisional))
+    return out
+
+
+@app.get("/runners", response_model=list[RunnerSummary])
+def list_runners(q: str | None = None, limit: int = 100) -> list[RunnerSummary]:
+    """Search runners by name (``q``), or list every runner with a published result, indexed."""
+    as_of = date.today()
+    limit = max(1, min(limit, 500))
+    runners = db.search_runners(q, limit) if q and q.strip() else db.list_runners(limit)
+    summaries = _runner_summaries(runners, as_of)
+    summaries.sort(key=lambda r: (r.index is None, -(r.index or 0), r.family_name, r.first_name))
+    return summaries
+
+
+@app.get("/runners/{runner_id}", response_model=RunnerProfile)
+def get_runner(runner_id: str) -> RunnerProfile:
+    runner = db.find_runner(runner_id)
+    if runner is None:
+        raise HTTPException(status_code=404, detail="no runner with published results has that id")
+    return _runner_profile(runner, date.today())
 
 
 @app.post("/gpx/analyze", response_model=GpxAnalysis)

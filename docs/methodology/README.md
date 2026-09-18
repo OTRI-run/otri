@@ -19,3 +19,4 @@ Draft work should remain clearly marked as research until adopted into a publish
 Each scoring-model version's spec lives in its own `docs/methodology/v<major>.<minor>/` folder so historical specs stay intact when a new version is published.
 
 Earlier research drafts that led up to this spec (foundational-formula proposals, standalone course-demand and score-scale papers, and the original course-based candidate designs) have been retired now that the code spec above supersedes them; see git history if you need that research trail.
+- [Runner index v1](RUNNER-INDEX-v1.md) — one number per runner from the best 3 published scores of the last 24 months, recency-weighted; the research behind the rule.

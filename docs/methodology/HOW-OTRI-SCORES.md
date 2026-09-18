@@ -37,6 +37,10 @@ Three things follow from the definition, and each is tested in the code:
 
 ---
 
+### And the runner index?
+
+One number per runner, from their best three published race scores of the last 24 months, recency-weighted so results fade rather than vanish. It is a separate, versioned rule: [`RUNNER-INDEX-v1.md`](RUNNER-INDEX-v1.md).
+
 ## Part 2 — For the skeptical
 
 The right question to ask of any index is: *which numbers were measured, which were taken from the literature, which were calibrated, and which were simply chosen?* Here is every constant in the model, sorted by that question.

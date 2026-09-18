@@ -80,6 +80,18 @@ ALTER TABLE races ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ;
 ALTER TABLE organizers ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE organizers ADD COLUMN IF NOT EXISTS is_demo BOOLEAN NOT NULL DEFAULT FALSE;
 
+CREATE TABLE IF NOT EXISTS runners (
+    runner_id TEXT PRIMARY KEY,
+    family_name TEXT NOT NULL,
+    first_name TEXT NOT NULL,
+    gender TEXT NOT NULL,
+    birth_year INTEGER,
+    nationality TEXT,
+    name_key TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS runners_name_key_idx ON runners (name_key);
+
 CREATE TABLE IF NOT EXISTS results (
     id SERIAL PRIMARY KEY,
     race_id TEXT NOT NULL REFERENCES races(race_id) ON DELETE CASCADE,
@@ -91,6 +103,10 @@ CREATE TABLE IF NOT EXISTS results (
     bib_number TEXT,
     submitted_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE results ADD COLUMN IF NOT EXISTS birth_year INTEGER;
+ALTER TABLE results ADD COLUMN IF NOT EXISTS nationality TEXT;
+ALTER TABLE results ADD COLUMN IF NOT EXISTS runner_id TEXT REFERENCES runners(runner_id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS results_runner_id_idx ON results (runner_id);
 """
 
 
@@ -154,6 +170,7 @@ def init_db() -> None:
     """Create all tables if they don't already exist. Safe to call on every startup."""
     with get_connection() as connection:
         connection.execute(_SCHEMA)
+    assign_missing_runners()
 
 
 def _new_id(prefix: str) -> str:
@@ -356,7 +373,7 @@ def _rank_from_db(rank: str) -> int | str:
 def get_results(race_id: str) -> list[ResultRecord]:
     with get_connection() as connection:
         rows = connection.execute(
-            "SELECT rank, finish_time_seconds, family_name, first_name, gender, bib_number "
+            "SELECT rank, finish_time_seconds, family_name, first_name, gender, bib_number, birth_year, nationality, runner_id "
             "FROM results WHERE race_id = %s ORDER BY id",
             (race_id,),
         ).fetchall()
@@ -368,6 +385,9 @@ def get_results(race_id: str) -> list[ResultRecord]:
             first_name=row["first_name"],
             gender=row["gender"],
             bib_number=row["bib_number"],
+            birth_year=row["birth_year"],
+            nationality=row["nationality"],
+            runner_id=row["runner_id"],
         )
         for row in rows
     ]
@@ -386,14 +406,18 @@ def has_results(race_id: str) -> bool:
 
 
 def replace_results(race_id: str, results: list[ResultRecord]) -> None:
-    """Overwrite all results for a race in one transaction (re-submission replaces prior data)."""
+    """Overwrite all results for a race in one transaction (re-submission replaces prior data).
+
+    Each result is attached to a runner (matched or created) as it is inserted, so runner
+    profiles are consistent the moment a submission lands."""
     with get_connection() as connection:
         connection.execute("DELETE FROM results WHERE race_id = %s", (race_id,))
         with connection.cursor() as cursor:
-            cursor.executemany(
-                "INSERT INTO results (race_id, rank, finish_time_seconds, family_name, first_name, gender, bib_number) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                [
+            for result in results:
+                runner_id = _match_runner(connection, result)
+                cursor.execute(
+                    "INSERT INTO results (race_id, rank, finish_time_seconds, family_name, first_name, gender, bib_number, "
+                    "birth_year, nationality, runner_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (
                         race_id,
                         _rank_to_db(result.rank),
@@ -402,10 +426,167 @@ def replace_results(race_id: str, results: list[ResultRecord]) -> None:
                         result.first_name,
                         result.gender,
                         result.bib_number,
-                    )
-                    for result in results
-                ],
+                        result.birth_year,
+                        result.nationality,
+                        runner_id,
+                    ),
+                )
+
+
+# --- Runners (identity across races) ------------------------------------------
+#
+# See docs/methodology/RUNNER-INDEX-v1.md §3 for the matching rule. Only the year of birth is
+# ever stored, never the full date; nationality is a 3-letter code or NULL.
+
+
+def runner_name_key(family_name: str, first_name: str, gender: str) -> str:
+    def norm(text: str) -> str:
+        import unicodedata
+
+        folded = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+        return " ".join(folded.lower().split())
+
+    return f"{norm(family_name)}|{norm(first_name)}|{(gender or '').strip().upper()[:1]}"
+
+
+@dataclass(frozen=True)
+class Runner:
+    runner_id: str
+    family_name: str
+    first_name: str
+    gender: str
+    birth_year: int | None
+    nationality: str | None
+    result_count: int = 0
+    last_race_date: date | None = None
+
+
+def _match_runner(connection, result: ResultRecord) -> str:
+    """The runner_id for a result, matching an existing runner or creating one (see the note)."""
+    key = runner_name_key(result.family_name, result.first_name, result.gender)
+    candidates = connection.execute(
+        "SELECT runner_id, birth_year, nationality FROM runners WHERE name_key = %s ORDER BY created_at, runner_id",
+        (key,),
+    ).fetchall()
+    nat = result.nationality
+
+    def compatible_nationality(row) -> bool:
+        return row["nationality"] is None or nat is None or row["nationality"] == nat
+
+    chosen = None
+    if result.birth_year is not None:
+        exact = [row for row in candidates if row["birth_year"] == result.birth_year]
+        if exact:
+            chosen = exact[0]["runner_id"]
+        else:
+            unknown = [row for row in candidates if row["birth_year"] is None and compatible_nationality(row)]
+            if len(unknown) == 1:
+                chosen = unknown[0]["runner_id"]
+                connection.execute("UPDATE runners SET birth_year = %s WHERE runner_id = %s", (result.birth_year, chosen))
+    else:
+        pool = [row for row in candidates if compatible_nationality(row)]
+        if len(pool) == 1:
+            chosen = pool[0]["runner_id"]
+    if chosen is not None:
+        if nat is not None:
+            connection.execute(
+                "UPDATE runners SET nationality = COALESCE(nationality, %s) WHERE runner_id = %s", (nat, chosen)
             )
+        return chosen
+
+    runner_id = _new_id("run")
+    connection.execute(
+        "INSERT INTO runners (runner_id, family_name, first_name, gender, birth_year, nationality, name_key) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+        (runner_id, result.family_name.strip(), result.first_name.strip(), (result.gender or "").strip().upper()[:1] or "X", result.birth_year, nat, key),
+    )
+    return runner_id
+
+
+def assign_missing_runners() -> int:
+    """Attach results that predate the runners table. Idempotent; returns how many were attached."""
+    with get_connection() as connection:
+        rows = connection.execute(
+            "SELECT id, family_name, first_name, gender, bib_number, birth_year, nationality FROM results "
+            "WHERE runner_id IS NULL ORDER BY id"
+        ).fetchall()
+        for row in rows:
+            record = ResultRecord(
+                rank=1,
+                finish_time_seconds=None,
+                family_name=row["family_name"],
+                first_name=row["first_name"],
+                gender=row["gender"],
+                bib_number=row["bib_number"],
+                birth_year=row["birth_year"],
+                nationality=row["nationality"],
+            )
+            connection.execute("UPDATE results SET runner_id = %s WHERE id = %s", (_match_runner(connection, record), row["id"]))
+    return len(rows)
+
+
+_RUNNER_SELECT = """
+    SELECT ru.runner_id, ru.family_name, ru.first_name, ru.gender, ru.birth_year, ru.nationality,
+           COUNT(res.id) AS result_count, MAX(e.event_date) AS last_race_date
+    FROM runners ru
+    JOIN results res ON res.runner_id = ru.runner_id
+    JOIN races ra ON ra.race_id = res.race_id AND ra.published_at IS NOT NULL
+    JOIN events e ON e.event_id = ra.event_id
+"""
+
+
+def find_runner(runner_id: str) -> Runner | None:
+    with get_connection() as connection:
+        row = connection.execute(_RUNNER_SELECT + " WHERE ru.runner_id = %s GROUP BY ru.runner_id", (runner_id,)).fetchone()
+    return Runner(**row) if row else None
+
+
+def search_runners(query: str, limit: int = 25) -> list[Runner]:
+    """Runners with at least one published result whose name contains every word of the query."""
+    words = [w for w in runner_name_key(query, "", "").split("|")[0].split() if w]
+    if not words:
+        return []
+    clauses = " AND ".join("ru.name_key LIKE %s" for _ in words)
+    params = tuple(f"%{word}%" for word in words) + (limit,)
+    with get_connection() as connection:
+        rows = connection.execute(
+            _RUNNER_SELECT + f" WHERE {clauses} GROUP BY ru.runner_id ORDER BY result_count DESC, ru.family_name, ru.first_name LIMIT %s",
+            params,
+        ).fetchall()
+    return [Runner(**row) for row in rows]
+
+
+def list_runners(limit: int = 500) -> list[Runner]:
+    """Every runner with a published result (for the runner index table; bounded)."""
+    with get_connection() as connection:
+        rows = connection.execute(_RUNNER_SELECT + " GROUP BY ru.runner_id ORDER BY ru.family_name, ru.first_name LIMIT %s", (limit,)).fetchall()
+    return [Runner(**row) for row in rows]
+
+
+def published_results_for_runner(runner_id: str) -> list[dict]:
+    """(race_id, event_date) pairs of the runner's results in published races, newest first."""
+    with get_connection() as connection:
+        rows = connection.execute(
+            "SELECT res.id AS result_id, res.race_id, e.event_date FROM results res "
+            "JOIN races ra ON ra.race_id = res.race_id AND ra.published_at IS NOT NULL "
+            "JOIN events e ON e.event_id = ra.event_id WHERE res.runner_id = %s ORDER BY e.event_date DESC, res.id",
+            (runner_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+def published_results_grouped_by_race() -> dict[str, list[dict]]:
+    """For the runner table: every result in a published race, keyed by race. One query."""
+    with get_connection() as connection:
+        rows = connection.execute(
+            "SELECT res.id AS result_id, res.race_id, res.runner_id, e.event_date FROM results res "
+            "JOIN races ra ON ra.race_id = res.race_id AND ra.published_at IS NOT NULL "
+            "JOIN events e ON e.event_id = ra.event_id WHERE res.runner_id IS NOT NULL"
+        ).fetchall()
+    grouped: dict[str, list[dict]] = {}
+    for row in rows:
+        grouped.setdefault(row["race_id"], []).append(dict(row))
+    return grouped
 
 
 # --- Organizer flags (admin / demo) ------------------------------------------

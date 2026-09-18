@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+import re
 from pathlib import Path
 
 from .reader import read_rows
@@ -38,6 +39,11 @@ class ResultRecord:
     first_name: str
     gender: str
     bib_number: str | None
+    # Optional, from the results file: only the year of birth is kept, never the full date.
+    birth_year: int | None = None
+    nationality: str | None = None
+    # Set by the database once the result is attached to a runner; never read from a file.
+    runner_id: str | None = None
 
     @property
     def is_finisher(self) -> bool:
@@ -80,6 +86,19 @@ def race_records(path: str | Path) -> list[RaceRecord]:
     ]
 
 
+def _birth_year_of(row: dict[str, str], mapping: dict[str, str]) -> int | None:
+    """The year from a birthdate (YYYY-MM-DD) or a year-of-birth column, when plausible."""
+    for field in ("birthdate", "birth_year"):
+        header = mapping.get(field)
+        if not header:
+            continue
+        raw = clean_cell(row.get(header, ""))
+        match = re.match(r"^(19|20)\d\d", raw)
+        if match:
+            return int(match.group(0))
+    return None
+
+
 def result_records(path: str | Path) -> list[ResultRecord]:
     """Parse and validate a result file, returning one record per row.
 
@@ -108,6 +127,9 @@ def result_records(path: str | Path) -> list[ResultRecord]:
         bib_raw = clean_cell(row.get(bib_header, "")) if bib_header else ""
 
         gender_raw = row[mapping["gender"]]
+        birth_year = _birth_year_of(row, mapping)
+        nationality_header = mapping.get("nationality")
+        nationality_raw = clean_cell(row.get(nationality_header, "")) if nationality_header else ""
         records.append(
             ResultRecord(
                 rank=rank,
@@ -116,6 +138,8 @@ def result_records(path: str | Path) -> list[ResultRecord]:
                 first_name=row[mapping["first_name"]].strip(),
                 gender=normalize_gender(gender_raw) or gender_raw.strip().upper(),
                 bib_number=bib_raw or None,
+                birth_year=birth_year,
+                nationality=nationality_raw.upper() if re.fullmatch(r"[A-Za-z]{3}", nationality_raw) else None,
             )
         )
     return records
