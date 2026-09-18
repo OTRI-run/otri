@@ -220,6 +220,30 @@ export function getRunner(runnerId) {
   return request(`/runners/${encodeURIComponent(runnerId)}`)
 }
 
+export function getAdminOverview(token) {
+  return request('/admin/overview', { headers: authHeaders(token) })
+}
+
+export function listAdminOrganizers(token) {
+  return request('/admin/organizers', { headers: authHeaders(token) })
+}
+
+export function verifyAdminOrganizer(organizerId, token) {
+  return request(`/admin/organizers/${organizerId}/verify`, { method: 'POST', headers: authHeaders(token) })
+}
+
+export function deleteAdminOrganizer(organizerId, token) {
+  return request(`/admin/organizers/${organizerId}`, { method: 'DELETE', headers: authHeaders(token) })
+}
+
+export function listSharedCourses(token) {
+  return request('/admin/shared-courses', { headers: authHeaders(token) })
+}
+
+export function deleteSharedCourse(shareId, token) {
+  return request(`/admin/shared-courses/${encodeURIComponent(shareId)}`, { method: 'DELETE', headers: authHeaders(token) })
+}
+
 /** The signed-in organizer with current admin/demo flags. */
 export function getMe(token) {
   return request('/auth/me', { headers: authHeaders(token) })

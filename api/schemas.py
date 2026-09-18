@@ -185,6 +185,33 @@ class RunnerProfile(RunnerSummary):
     results: list[RunnerResultOut] = []
 
 
+class AdminOrganizerOut(BaseModel):
+    id: int
+    email: str
+    email_verified: bool
+    is_admin: bool
+    is_demo: bool
+    created_at: datetime
+    event_count: int = 0
+    race_count: int = 0
+
+
+class SharedCourseAdminOut(BaseModel):
+    share_id: str
+    name: str | None = None
+    filename: str | None = None
+    created_at: str | None = None
+    size_bytes: int = 0
+
+
+class AdminOverview(BaseModel):
+    stats: dict
+    api: dict
+    security: dict
+    recent_signups: list[AdminOrganizerOut] = []
+    recent_races: list[RaceSummary] = []
+
+
 class MeResponse(BaseModel):
     email: str
     is_admin: bool = False

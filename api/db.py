@@ -139,6 +139,7 @@ class Race:
     measurement_status: str | None = None
     published_at: datetime | None = None
     is_demo: bool = False
+    created_at: datetime | None = None
 
     def to_race_record(self) -> RaceRecord:
         """Adapt to the shape ``scoring.score_race()`` expects."""
@@ -236,7 +237,7 @@ _RACE_JOIN_SELECT = """
            (r.gpx_content IS NOT NULL) AS has_gpx, r.scoring_version,
            r.measurement->>'version' AS measurement_version,
            r.measurement->>'status' AS measurement_status,
-           r.published_at, COALESCE(o.is_demo, FALSE) AS is_demo,
+           r.published_at, COALESCE(o.is_demo, FALSE) AS is_demo, r.created_at,
            e.event_name, e.event_date, e.organizer_id
     FROM races r JOIN events e ON e.event_id = r.event_id
     LEFT JOIN organizers o ON o.id = e.organizer_id
@@ -587,6 +588,73 @@ def published_results_grouped_by_race() -> dict[str, list[dict]]:
     for row in rows:
         grouped.setdefault(row["race_id"], []).append(dict(row))
     return grouped
+
+
+# --- Admin: accounts and platform statistics ---------------------------------
+
+
+@dataclass(frozen=True)
+class OrganizerAccount:
+    id: int
+    email: str
+    email_verified: bool
+    is_admin: bool
+    is_demo: bool
+    created_at: datetime
+    event_count: int = 0
+    race_count: int = 0
+
+
+def list_organizer_accounts() -> list[OrganizerAccount]:
+    with get_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT o.id, o.email, o.email_verified, o.is_admin, o.is_demo, o.created_at,
+                   COUNT(DISTINCT e.event_id) AS event_count, COUNT(DISTINCT r.race_id) AS race_count
+            FROM organizers o
+            LEFT JOIN events e ON e.organizer_id = o.id
+            LEFT JOIN races r ON r.event_id = e.event_id
+            GROUP BY o.id ORDER BY o.created_at DESC
+            """
+        ).fetchall()
+    return [OrganizerAccount(**row) for row in rows]
+
+
+def find_organizer_account(organizer_id: int) -> OrganizerAccount | None:
+    return next((account for account in list_organizer_accounts() if account.id == organizer_id), None)
+
+
+def set_organizer_verified(organizer_id: int) -> bool:
+    with get_connection() as connection:
+        cursor = connection.execute("UPDATE organizers SET email_verified = TRUE WHERE id = %s", (organizer_id,))
+        return cursor.rowcount > 0
+
+
+def delete_organizer(organizer_id: int) -> bool:
+    """Delete an account and everything it owns (events cascade to races and results)."""
+    with get_connection() as connection:
+        connection.execute("DELETE FROM events WHERE organizer_id = %s", (organizer_id,))
+        cursor = connection.execute("DELETE FROM organizers WHERE id = %s", (organizer_id,))
+        return cursor.rowcount > 0
+
+
+def platform_stats() -> dict:
+    with get_connection() as connection:
+        one = lambda sql: int(connection.execute(sql).fetchone()["n"])  # noqa: E731
+        return {
+            "organizers": one("SELECT COUNT(*) AS n FROM organizers"),
+            "verified": one("SELECT COUNT(*) AS n FROM organizers WHERE email_verified"),
+            "unverified": one("SELECT COUNT(*) AS n FROM organizers WHERE NOT email_verified"),
+            "admins": one("SELECT COUNT(*) AS n FROM organizers WHERE is_admin"),
+            "events": one("SELECT COUNT(*) AS n FROM events"),
+            "orphan_events": one("SELECT COUNT(*) AS n FROM events WHERE organizer_id IS NULL"),
+            "races": one("SELECT COUNT(*) AS n FROM races"),
+            "published_races": one("SELECT COUNT(*) AS n FROM races WHERE published_at IS NOT NULL"),
+            "races_with_gpx": one("SELECT COUNT(*) AS n FROM races WHERE gpx_content IS NOT NULL"),
+            "results": one("SELECT COUNT(*) AS n FROM results"),
+            "finishers": one("SELECT COUNT(*) AS n FROM results WHERE finish_time_seconds IS NOT NULL"),
+            "runners": one("SELECT COUNT(*) AS n FROM runners"),
+        }
 
 
 # --- Organizer flags (admin / demo) ------------------------------------------

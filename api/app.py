@@ -23,6 +23,7 @@ from dataclasses import asdict, replace
 from hashlib import sha256
 from datetime import date, datetime, timezone
 import re
+import sys
 import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -50,6 +51,7 @@ from scoring.course_standard import MEASURED_DEMAND_VERSIONS
 from scoring.runner_index import IndexInput, compute_runner_index
 
 from . import db
+from . import auth as _auth
 from .auth import (
     AuthError,
     EmailNotVerifiedError,
@@ -64,9 +66,13 @@ from .auth import (
     reset_password,
     verify_email,
 )
+from . import email as _email
 from .email import send_password_reset_email, send_verification_email
 from .rate_limit import enforce_rate_limit
 from .schemas import (
+    AdminOrganizerOut,
+    AdminOverview,
+    SharedCourseAdminOut,
     RunnerIndexOut,
     RunnerProfile,
     RunnerResultOut,
@@ -1003,3 +1009,120 @@ def get_shared_gpx(share_id: str) -> Response:
     except (OSError, EOFError, gzip.BadGzipFile) as error:
         raise HTTPException(status_code=404, detail="No shared course with that id") from error
     return Response(content=contents, media_type="application/gpx+xml")
+
+
+# --- Admin dashboard -----------------------------------------------------------------
+
+
+def _account_out(account: db.OrganizerAccount) -> AdminOrganizerOut:
+    return AdminOrganizerOut(**vars(account))
+
+
+def _shared_course_rows() -> list[SharedCourseAdminOut]:
+    rows = []
+    if not _SHARED_COURSE_DIR.exists():
+        return rows
+    for path in sorted(_SHARED_COURSE_DIR.glob("*.gpx.gz"), key=lambda p: p.stat().st_mtime, reverse=True):
+        share_id = path.name[: -len(".gpx.gz")]
+        meta = _shared_course_meta(share_id)
+        rows.append(
+            SharedCourseAdminOut(
+                share_id=share_id,
+                name=meta.get("name"),
+                filename=meta.get("filename"),
+                created_at=meta.get("created_at"),
+                size_bytes=path.stat().st_size,
+            )
+        )
+    return rows
+
+
+@app.get("/admin/overview", response_model=AdminOverview)
+def admin_overview(organizer: Organizer = Depends(require_admin)) -> AdminOverview:
+    """Platform statistics plus the API's configuration and security posture (no secrets)."""
+    from course.measurement import VERSION as MEASUREMENT_VERSION
+    from scoring import DEFAULT_SCORING_VERSION
+
+    stats = db.platform_stats()
+    shared = _shared_course_rows()
+    stats.update(
+        {
+            "shared_courses": len(shared),
+            "shared_bytes": sum(row.size_bytes for row in shared),
+            "shared_budget_mb": _SHARED_COURSE_MAX_TOTAL_BYTES // 1_000_000,
+        }
+    )
+    provider = None
+    try:
+        provider = configured_provider()
+    except Exception:  # noqa: BLE001 - a misconfigured DEM must not break the dashboard
+        provider = None
+    manifest = os.environ.get("OTRI_DEM_MANIFEST", "")
+    cache_entries = len(list(_MEASUREMENT_CACHE_DIR.glob("*.json"))) if _MEASUREMENT_CACHE_DIR.exists() else 0
+    accounts = db.list_organizer_accounts()
+    counts = db.count_results_by_race()
+    recent_races = sorted(db.list_races(published_only=False), key=lambda race: race.created_at or datetime.min.replace(tzinfo=timezone.utc), reverse=True)[:8]
+    return AdminOverview(
+        stats=stats,
+        api={
+            "version": app.version,
+            "started_at": _STARTED_AT.isoformat(),
+            "scoring_version": DEFAULT_SCORING_VERSION,
+            "measurement_version": MEASUREMENT_VERSION,
+            "dem_configured": provider is not None,
+            "dem_manifest": Path(manifest).name if manifest else None,
+            "measurement_cache_entries": cache_entries,
+            "measurement_cache_max": _MEASUREMENT_CACHE_MAX_ENTRIES,
+            "python": sys.version.split()[0],
+        },
+        security={
+            "token_ttl_hours": round(_auth._TOKEN_TTL_SECONDS / 3600),
+            "email_configured": bool(_email.RESEND_API_KEY),
+            "email_from": _email.EMAIL_FROM,
+            "rate_limits": {"register": 5, "login": 10, "password_reset": 5, "share": 10, "window_seconds": 60},
+            "allowed_origins": [origin.strip() for origin in _allowed_origins.split(",") if origin.strip()],
+            "admin_emails": sorted(_ADMIN_EMAILS),
+            "shared_course_max_mb": _SHARED_COURSE_MAX_FILE_BYTES // 1_000_000,
+            "upload_max_mb": 20,
+        },
+        recent_signups=[_account_out(account) for account in accounts[:8]],
+        recent_races=[_race_summary(race, counts.get(race.race_id, 0)) for race in recent_races],
+    )
+
+
+@app.get("/admin/organizers", response_model=list[AdminOrganizerOut])
+def admin_list_organizers(organizer: Organizer = Depends(require_admin)) -> list[AdminOrganizerOut]:
+    return [_account_out(account) for account in db.list_organizer_accounts()]
+
+
+@app.post("/admin/organizers/{organizer_id}/verify", response_model=AdminOrganizerOut)
+def admin_verify_organizer(organizer_id: int, organizer: Organizer = Depends(require_admin)) -> AdminOrganizerOut:
+    """Mark an account's email as verified by hand (when the verification mail did not arrive)."""
+    if not db.set_organizer_verified(organizer_id):
+        raise HTTPException(status_code=404, detail="no account with that id")
+    return _account_out(db.find_organizer_account(organizer_id))
+
+
+@app.delete("/admin/organizers/{organizer_id}", status_code=204)
+def admin_delete_organizer(organizer_id: int, organizer: Organizer = Depends(require_admin)) -> Response:
+    """Delete an account with everything it owns. Admins cannot delete themselves."""
+    if organizer_id == organizer.id:
+        raise HTTPException(status_code=422, detail="you cannot delete your own account from here")
+    if not db.delete_organizer(organizer_id):
+        raise HTTPException(status_code=404, detail="no account with that id")
+    return Response(status_code=204)
+
+
+@app.get("/admin/shared-courses", response_model=list[SharedCourseAdminOut])
+def admin_list_shared_courses(organizer: Organizer = Depends(require_admin)) -> list[SharedCourseAdminOut]:
+    return _shared_course_rows()
+
+
+@app.delete("/admin/shared-courses/{share_id}", status_code=204)
+def admin_delete_shared_course(share_id: str, organizer: Organizer = Depends(require_admin)) -> Response:
+    if not _SHARE_ID_RE.match(share_id) or not _shared_course_path(share_id).exists():
+        raise HTTPException(status_code=404, detail="No shared course with that id")
+    _shared_course_path(share_id).unlink(missing_ok=True)
+    (_SHARED_COURSE_DIR / f"{share_id}.gpx").unlink(missing_ok=True)  # pre-gzip layout
+    _shared_course_meta_path(share_id).unlink(missing_ok=True)
+    return Response(status_code=204)

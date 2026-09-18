@@ -54,7 +54,7 @@ function Header({ session, onSignOut }) {
             <UnitsMenu />
             {session ? (
               <span className="flex items-center gap-2">
-                <span className="hidden max-w-[180px] truncate text-xs text-slate-500 xl:inline" title={session.email}>
+                <span className="hidden max-w-[200px] truncate text-xs text-slate-500 2xl:inline" title={session.email}>
                   {session.email}
                 </span>
                 {session.isAdmin && (

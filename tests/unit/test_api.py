@@ -922,3 +922,70 @@ def test_unpublished_results_do_not_appear_on_runner_profiles():
     assert client.delete(f"/races/{race_id}/publish", headers=headers).status_code == 200
     assert client.get("/runners", params={"q": "harriet"}).json() == []
     assert client.get(f"/runners/{runner['runner_id']}").status_code == 404
+
+
+# ----------------------------------------------------------------------------- admin dashboard
+
+
+def _admin_headers(monkeypatch, email="dash-admin@example.com"):
+    import importlib
+
+    api_module = importlib.import_module("api.app")
+    _register_and_verify(email, "correct horse battery")
+    monkeypatch.setattr(api_module, "_ADMIN_EMAILS", {email})
+    login = client.post("/auth/login", json={"email": email, "password": "correct horse battery"})
+    assert login.json()["is_admin"] is True
+    return {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+
+def test_admin_overview_reports_stats_api_and_security_without_secrets(monkeypatch):
+    admin = _admin_headers(monkeypatch)
+    assert client.get("/admin/overview").status_code == 401
+    plain = _organizer_auth_headers("plain@example.com")
+    assert client.get("/admin/overview", headers=plain).status_code == 403
+    body = client.get("/admin/overview", headers=admin).json()
+    assert body["stats"]["races"] >= 6 and body["stats"]["published_races"] >= 6 and body["stats"]["organizers"] >= 2
+    assert body["api"]["scoring_version"].startswith("0.") and body["api"]["measurement_version"].startswith("course-measurement")
+    assert body["security"]["admin_emails"] == ["dash-admin@example.com"]
+    assert "rate_limits" in body["security"] and "token_ttl_hours" in body["security"]
+    dumped = str(body)
+    assert "re_" not in dumped and "secret" not in dumped.lower(), "no secrets in the overview"
+    assert any(o["email"] == "plain@example.com" for o in body["recent_signups"])
+
+
+def test_admin_can_verify_and_delete_accounts_but_not_itself(monkeypatch):
+    admin = _admin_headers(monkeypatch)
+    response = client.post("/auth/register", json={"email": "pending@example.com", "password": "correct horse battery"})
+    assert response.status_code == 201
+    accounts = {a["email"]: a for a in client.get("/admin/organizers", headers=admin).json()}
+    pending = accounts["pending@example.com"]
+    assert pending["email_verified"] is False
+    assert client.post("/auth/login", json={"email": "pending@example.com", "password": "correct horse battery"}).status_code == 403
+    verified = client.post(f"/admin/organizers/{pending['id']}/verify", headers=admin).json()
+    assert verified["email_verified"] is True
+    assert client.post("/auth/login", json={"email": "pending@example.com", "password": "correct horse battery"}).status_code == 200
+
+    owner = _organizer_auth_headers("doomed@example.com")
+    race_id = _scored_race(owner)
+    doomed = {a["email"]: a for a in client.get("/admin/organizers", headers=admin).json()}["doomed@example.com"]
+    assert doomed["event_count"] == 1 and doomed["race_count"] == 1
+    assert client.delete(f"/admin/organizers/{doomed['id']}", headers=admin).status_code == 204
+    assert client.get(f"/races/{race_id}").status_code == 404, "the account's races go with it"
+    me = {a["email"]: a for a in client.get("/admin/organizers", headers=admin).json()}["dash-admin@example.com"]
+    assert client.delete(f"/admin/organizers/{me['id']}", headers=admin).status_code == 422
+
+
+def test_admin_lists_and_deletes_shared_courses(tmp_path, monkeypatch):
+    import importlib
+
+    api_module = importlib.import_module("api.app")
+    monkeypatch.setattr(api_module, "_SHARED_COURSE_DIR", tmp_path / "shared")
+    admin = _admin_headers(monkeypatch)
+    with FLAT_LOOP_GPX.open("rb") as handle:
+        shared = client.post("/gpx/share", files={"file": ("flat-loop.gpx", handle, "application/gpx+xml")}, data={"name": "Flat loop"}).json()
+    rows = client.get("/admin/shared-courses", headers=admin).json()
+    assert [r["share_id"] for r in rows] == [shared["share_id"]] and rows[0]["name"] == "Flat loop" and rows[0]["size_bytes"] > 0
+    assert client.delete(f"/admin/shared-courses/{shared['share_id']}", headers=admin).status_code == 204
+    assert client.get(f"/gpx/shared/{shared['share_id']}").status_code == 404
+    assert client.get("/admin/shared-courses", headers=admin).json() == []
+    assert client.delete("/admin/shared-courses/0123456789abcdef", headers=admin).status_code == 404
