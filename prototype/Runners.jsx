@@ -61,11 +61,16 @@ function RunnerRow({ runner, rank }) {
   )
 }
 
+const PAGE_SIZE = 25
+
 export function RunnersPage({ initialQuery = '' }) {
   const [query, setQuery] = useState(initialQuery)
   const [runners, setRunners] = useState(null)
   const [error, setError] = useState(null)
   const [gender, setGender] = useState('all')
+  // Long lists render a page at a time; search and the gender filter still cover everything loaded.
+  const [visible, setVisible] = useState(PAGE_SIZE)
+  useEffect(() => setVisible(PAGE_SIZE), [query, gender])
 
   useEffect(() => {
     let cancelled = false
@@ -145,7 +150,7 @@ export function RunnersPage({ initialQuery = '' }) {
         {runners === null && !error && <p className="mt-6 text-sm text-slate-500">Loading…</p>}
         {runners && shown.length === 0 && <p className="mt-6 text-sm text-slate-500">No runner matches that yet.</p>}
         <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
-          <div className="hidden grid-cols-[32px_minmax(0,1fr)_88px_96px_112px] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500 sm:grid">
+          <div className="hidden grid-cols-[32px_minmax(0,1fr)_88px_96px_80px] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500 sm:grid">
             <span>#</span>
             <span>Runner</span>
             <span className="text-right">Results</span>
@@ -153,11 +158,27 @@ export function RunnersPage({ initialQuery = '' }) {
             <span className="text-right">Index</span>
           </div>
           <div className="divide-y divide-slate-100">
-            {shown.map((runner, index) => (
+            {shown.slice(0, visible).map((runner, index) => (
               <RunnerRow key={runner.runner_id} runner={runner} rank={index + 1} />
             ))}
           </div>
         </div>
+        {shown.length > 0 && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="font-mono text-[11px] text-slate-500">
+              Showing {Math.min(visible, shown.length)} of {shown.length}
+            </p>
+            {shown.length > visible && (
+              <button
+                type="button"
+                onClick={() => setVisible((n) => n + PAGE_SIZE)}
+                className="inline-flex min-h-[40px] items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-[#0b1220] hover:border-blue-300"
+              >
+                Show {Math.min(PAGE_SIZE, shown.length - visible)} more
+              </button>
+            )}
+          </div>
+        )}
 
         <NextSteps
           items={[
