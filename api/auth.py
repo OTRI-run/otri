@@ -48,6 +48,8 @@ class EmailNotVerifiedError(AuthError):
 class Organizer:
     id: int
     email: str
+    is_admin: bool = False
+    is_demo: bool = False
 
 
 def register_organizer(email: str, password: str) -> Organizer:

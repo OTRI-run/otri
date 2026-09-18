@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight, ArrowUpRight, CalendarDays, Plus } from 'lucide-react'
-import { createEvent, deleteEvent, getEvent, getRaceResults, listMyEvents, updateEvent } from '../../apiClient'
+import { createEvent, deleteEvent, getEvent, listMyEvents, updateEvent } from '../../apiClient'
 import { Link, navigate } from '../router'
 import { formatDistance, formatElevation, useUnits } from '../../../src/lib/units'
 import { Button, Card, EmptyState, Eyebrow, Field, Gradient, Notice, Page, StatusChip, formatDate, inputClass, raceStatus } from '../ui'
@@ -138,24 +138,9 @@ export function NewEvent({ session }) {
   )
 }
 
-function useHasResults(raceId) {
-  const [has, setHas] = useState(null)
-  useEffect(() => {
-    let cancelled = false
-    getRaceResults(raceId)
-      .then((rows) => !cancelled && setHas(rows.length > 0))
-      .catch(() => !cancelled && setHas(false))
-    return () => {
-      cancelled = true
-    }
-  }, [raceId])
-  return has
-}
-
 function RaceRow({ race }) {
   const units = useUnits()
-  const hasResults = useHasResults(race.race_id)
-  const status = raceStatus(race, hasResults === true)
+  const status = raceStatus(race, (race.finisher_count ?? 0) > 0)
   const next = status === 'draft' ? 'course' : status === 'course' ? 'results' : 'review'
   return (
     <Link

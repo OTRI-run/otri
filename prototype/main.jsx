@@ -6,10 +6,10 @@ import UnitsMenu from '../src/components/UnitsMenu'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import Home from './Home'
 import NextSteps from './NextSteps'
-import RaceCard from './RaceCard'
+import RaceCard, { DemoBadge } from './RaceCard'
 import ScoreCalculator from './ScoreCalculator'
-import { getApiStatus } from './apiClient'
-import racesData from './data/races.json'
+import CourseMap from '../src/components/CourseMap'
+import { fetchRaceGpxFile, getApiStatus, getRace, getRaceMeasurement, getRaceResults, listRaces } from './apiClient'
 import '../src/styles.css'
 
 // Injected at build time by vite.config.js from `git rev-parse`/`git log` — see there for the
@@ -198,72 +198,151 @@ function Footer() {
 }
 
 // ------------------------------------------------------------------------------------- races
+// Published races come straight from the API: what an organizer publishes is what the public sees.
 
-function Leaderboard({ race, onBack }) {
+function formatHms(totalSeconds) {
+  if (totalSeconds == null) return '—'
+  const s = Math.max(0, Math.round(totalSeconds))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  return `${h}:${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+}
+
+function Leaderboard({ raceId, onBack }) {
   const units = useUnits()
+  const [race, setRace] = useState(null)
+  const [results, setResults] = useState(null)
+  const [course, setCourse] = useState(null)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setRace(null)
+    setResults(null)
+    setCourse(null)
+    setError(null)
+    Promise.all([getRace(raceId), getRaceResults(raceId)])
+      .then(([loaded, rows]) => {
+        if (cancelled) return
+        setRace(loaded)
+        setResults(rows)
+        if (loaded.has_gpx) {
+          Promise.all([fetchRaceGpxFile(raceId), getRaceMeasurement(raceId)])
+            .then(async ([file, measurement]) => {
+              const gpxText = await file.text()
+              if (!cancelled) setCourse({ gpxText, measurement })
+            })
+            .catch(() => {})
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [raceId])
+
   return (
     <div>
       <button onClick={onBack} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600">
         <ArrowLeft size={13} /> All races
       </button>
-      <p className="mt-6 font-mono text-[9px] tracking-[.08em] text-blue-600">{race.race_id}</p>
-      <h2 className="mt-2 text-[clamp(32px,4.5vw,52px)] font-bold leading-[.98] tracking-[-.05em] text-[#0b1220]">{race.race_name}</h2>
-      <p className="mt-3 text-sm text-slate-500">
-        {race.course_name} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })} ·{' '}
-        {race.event_date}
-      </p>
-      {race.non_finishers > 0 && (
-        <p className="mt-2 text-xs text-slate-500">{race.non_finishers} runner(s) did not finish (excluded from scoring).</p>
+      {error && <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</p>}
+      {!race && !error && <p className="mt-6 text-sm text-slate-500">Loading…</p>}
+      {race && (
+        <>
+          <p className="mt-6 flex items-center gap-3 font-mono text-[9px] tracking-[.08em] text-blue-600">
+            {race.event_date}
+            {race.is_demo && <DemoBadge />}
+          </p>
+          <h2 className="mt-2 text-[clamp(32px,4.5vw,52px)] font-bold leading-[.98] tracking-[-.05em] text-[#0b1220]">{race.event_name}</h2>
+          <p className="mt-3 text-sm text-slate-500">
+            {race.course_name} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
+            {race.has_gpx ? ' · Verified course' : ' · Official figures, no course file'}
+          </p>
+          {race.is_demo && (
+            <p className="mt-2 text-xs text-slate-500">Demo data: synthetic runners and results, here to show what a scored race looks like.</p>
+          )}
+          {course && (
+            <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+              <CourseMap gpxText={course.gpxText} measurement={course.measurement} className="p-3" />
+            </div>
+          )}
+          <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+            <table className="w-full min-w-[520px] border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
+                  <th className="px-4 py-3">Rank</th>
+                  <th className="px-4 py-3">Runner</th>
+                  <th className="px-4 py-3">Time</th>
+                  <th className="px-4 py-3">OTRI score</th>
+                  <th className="px-4 py-3">Confidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(results ?? []).map((row) => (
+                  <tr key={`${row.rank}-${row.bib_number ?? row.family_name}-${row.first_name}`} className="border-b border-slate-100 last:border-0">
+                    <td className="px-4 py-3 font-mono text-xs text-slate-500">{row.rank}</td>
+                    <td className="px-4 py-3 font-medium text-[#0b1220]">
+                      {row.first_name} {row.family_name}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-slate-500">{formatHms(row.finish_time_seconds)}</td>
+                    <td className="px-4 py-3 font-mono text-sm font-bold text-blue-600">{row.otri_score}</td>
+                    <td className="px-4 py-3 text-xs text-slate-500">{row.confidence}</td>
+                  </tr>
+                ))}
+                {results?.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-6 text-center text-sm text-slate-500">
+                      No results published yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 font-mono text-[9px] tracking-[.05em] text-slate-400">
+            scoring_version {race.scoring_version} · Course Standard model — depends only on the course and each runner's own
+            finish time, never the field
+          </p>
+          <NextSteps
+            items={[
+              ['Where would you land?', race.has_gpx ? 'Try a target time on this exact course.' : 'Pick a course and a target time. The score updates live.', race.has_gpx ? 'Calculate your score here' : 'Calculate your score', race.has_gpx ? `#calculator?race=${encodeURIComponent(race.race_id)}` : '#calculator'],
+              ['Organize a race like this?', 'Upload official results and the course file; every finisher gets a score.', 'For organizers', 'organizer/'],
+              ['Why these numbers?', 'The plain-language explainer, then every constant in the model.', 'How a score is made', 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/HOW-OTRI-SCORES.md'],
+            ]}
+          />
+        </>
       )}
-      <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
-        <table className="w-full min-w-[520px] border-collapse text-left text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
-              <th className="px-4 py-3">Rank</th>
-              <th className="px-4 py-3">Runner</th>
-              <th className="px-4 py-3">Time</th>
-              <th className="px-4 py-3">OTRI score</th>
-              <th className="px-4 py-3">Confidence</th>
-            </tr>
-          </thead>
-          <tbody>
-            {race.leaderboard.map((row) => (
-              <tr key={row.bib_number ?? `${row.family_name}-${row.first_name}`} className="border-b border-slate-100 last:border-0">
-                <td className="px-4 py-3 font-mono text-xs text-slate-500">{row.rank}</td>
-                <td className="px-4 py-3 font-medium text-[#0b1220]">
-                  {row.first_name} {row.family_name}
-                </td>
-                <td className="px-4 py-3 font-mono text-xs text-slate-500">{row.finish_time ?? '—'}</td>
-                <td className="px-4 py-3 font-mono text-sm font-bold text-blue-600">{row.otri_score}</td>
-                <td className="px-4 py-3 text-xs text-slate-500">{row.confidence}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="mt-3 font-mono text-[9px] tracking-[.05em] text-slate-400">
-        scoring_version {race.leaderboard[0]?.scoring_version ?? 'n/a'} · Course Standard model — depends only on the course and
-        each runner's own finish time, never the field
-      </p>
-      <NextSteps
-        items={[
-          ['Where would you land?', 'Pick a course and a target time. The score updates live.', 'Calculate your score', '#calculator'],
-          ['Organize a race like this?', 'Upload official results and the course file; every finisher gets a score.', 'For organizers', 'organizer/'],
-          ['Why these numbers?', 'The plain-language explainer, then every constant in the model.', 'How a score is made', 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/HOW-OTRI-SCORES.md'],
-        ]}
-      />
     </div>
   )
 }
 
 function RacesPage({ raceId }) {
-  const selectedRace = useMemo(() => racesData.races.find((race) => race.race_id === raceId) ?? null, [raceId])
+  const [races, setRaces] = useState(null)
+  const [error, setError] = useState(null)
+
+  // Refetch whenever the list is shown (also on the way back from a leaderboard), so a race
+  // published or taken down meanwhile is reflected.
+  useEffect(() => {
+    if (raceId) return undefined
+    let cancelled = false
+    listRaces()
+      .then((rows) => !cancelled && setRaces(rows))
+      .catch((err) => !cancelled && setError(err.message))
+    return () => {
+      cancelled = true
+    }
+  }, [raceId])
+
+  const hasDemo = races?.some((race) => race.is_demo)
 
   return (
     <section className="bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] py-14 sm:py-20">
       <div className="mx-auto w-[min(1120px,calc(100%-28px))]">
-        {selectedRace ? (
-          <Leaderboard race={selectedRace} onBack={() => navigate('#races')} />
+        {raceId ? (
+          <Leaderboard raceId={raceId} onBack={() => navigate('#races')} />
         ) : (
           <>
             <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
@@ -277,12 +356,16 @@ function RacesPage({ raceId }) {
                 </h1>
               </div>
               <p className="min-w-0 text-sm leading-7 text-slate-500">
-                Demonstration races scored under the Course Standard model. Each score depends only on the course and the
-                runner's own finish time — never on who else raced. Open a race to see its leaderboard.
+                Races their organizers have published, scored under the Course Standard model. Each score depends only on the
+                course and the runner's own finish time — never on who else raced.
+                {hasDemo ? ' Races marked DEMO DATA are synthetic examples.' : ''}
               </p>
             </div>
+            {error && <p className="mt-8 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</p>}
+            {races === null && !error && <p className="mt-8 text-sm text-slate-500">Loading races…</p>}
+            {races?.length === 0 && <p className="mt-8 text-sm text-slate-500">No races have been published yet.</p>}
             <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {racesData.races.map((race) => (
+              {(races ?? []).map((race) => (
                 <RaceCard key={race.race_id} race={race} />
               ))}
             </div>

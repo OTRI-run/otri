@@ -23,15 +23,14 @@ pip install -r requirements-dev.txt
 uvicorn api.app:app --reload
 ```
 
-## Why the Races tab is static, not a live API call
+## Where the races come from
 
-`otri.run` is static GitHub Pages hosting — by default nothing runs the Python `api/` service for it. So instead of calling the API at runtime for the main race list, [`scripts/build_prototype_data.py`](../scripts/build_prototype_data.py) runs the real `ingestion` → `scoring` → `course` pipeline once and writes the result to [`data/races.json`](data/races.json), which this page imports directly. The GPX tester and organizer tabs, by contrast, *do* call a live API — point them at a real deployed backend (see `docs/operations/digitalocean-deployment.md`) to make them fully functional in production.
-
-Regenerate the static snapshot after changing demo data, the scoring model, or course features:
-
-```powershell
-python scripts/build_prototype_data.py
-```
+The Races page and every leaderboard read the live API (`GET /races` lists races their organizers have
+published; `GET /races/{id}/results` is public once published). Nothing is baked into the site at build
+time. The synthetic demo races belong to a flagged demo account seeded by `scripts/seed_demo_data.py`
+(run by the deploy script) and are labelled DEMO DATA. Organizers publish and unpublish from the race
+wizard's review step; accounts listed in `OTRI_ADMIN_EMAILS` see every event under "Admin · all events"
+in the organizer app and can take a race down.
 
 ## Data
 

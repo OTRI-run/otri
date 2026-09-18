@@ -19,7 +19,7 @@ from psycopg.types.json import Jsonb
 import secrets
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from typing import Iterator
 
 import psycopg
@@ -76,6 +76,9 @@ CREATE TABLE IF NOT EXISTS races (
 );
 
 ALTER TABLE races ADD COLUMN IF NOT EXISTS measurement JSONB;
+ALTER TABLE races ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ;
+ALTER TABLE organizers ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE organizers ADD COLUMN IF NOT EXISTS is_demo BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE TABLE IF NOT EXISTS results (
     id SERIAL PRIMARY KEY,
@@ -101,6 +104,7 @@ class Event:
     event_name: str
     event_date: date
     organizer_id: int | None
+    organizer_email: str | None = None
 
 
 @dataclass(frozen=True)
@@ -117,6 +121,8 @@ class Race:
     organizer_id: int | None = None
     measurement_version: str | None = None
     measurement_status: str | None = None
+    published_at: datetime | None = None
+    is_demo: bool = False
 
     def to_race_record(self) -> RaceRecord:
         """Adapt to the shape ``scoring.score_race()`` expects."""
@@ -160,7 +166,8 @@ def _new_id(prefix: str) -> str:
 def list_events() -> list[Event]:
     with get_connection() as connection:
         rows = connection.execute(
-            "SELECT event_id, event_name, event_date, organizer_id FROM events ORDER BY event_date"
+            "SELECT e.event_id, e.event_name, e.event_date, e.organizer_id, o.email AS organizer_email "
+            "FROM events e LEFT JOIN organizers o ON o.id = e.organizer_id ORDER BY e.event_date"
         ).fetchall()
     return [Event(**row) for row in rows]
 
@@ -168,7 +175,9 @@ def list_events() -> list[Event]:
 def find_event(event_id: str) -> Event | None:
     with get_connection() as connection:
         row = connection.execute(
-            "SELECT event_id, event_name, event_date, organizer_id FROM events WHERE event_id = %s", (event_id,)
+            "SELECT e.event_id, e.event_name, e.event_date, e.organizer_id, o.email AS organizer_email "
+            "FROM events e LEFT JOIN organizers o ON o.id = e.organizer_id WHERE e.event_id = %s",
+            (event_id,),
         ).fetchone()
     return Event(**row) if row else None
 
@@ -210,15 +219,33 @@ _RACE_JOIN_SELECT = """
            (r.gpx_content IS NOT NULL) AS has_gpx, r.scoring_version,
            r.measurement->>'version' AS measurement_version,
            r.measurement->>'status' AS measurement_status,
+           r.published_at, COALESCE(o.is_demo, FALSE) AS is_demo,
            e.event_name, e.event_date, e.organizer_id
     FROM races r JOIN events e ON e.event_id = r.event_id
+    LEFT JOIN organizers o ON o.id = e.organizer_id
 """
 
 
-def list_races() -> list[Race]:
+def list_races(published_only: bool = False) -> list[Race]:
+    where = " WHERE r.published_at IS NOT NULL" if published_only else ""
     with get_connection() as connection:
-        rows = connection.execute(_RACE_JOIN_SELECT + " ORDER BY e.event_date").fetchall()
+        rows = connection.execute(_RACE_JOIN_SELECT + where + " ORDER BY e.event_date DESC, r.distance_km").fetchall()
     return [Race(**row) for row in rows]
+
+
+def set_race_published(race_id: str, published: bool) -> Race:
+    """Publishing makes a race's results, course and measurement public; unpublishing hides them again."""
+    with get_connection() as connection:
+        cursor = connection.execute(
+            "UPDATE races SET published_at = CASE WHEN %s THEN COALESCE(published_at, now()) ELSE NULL END, "
+            "updated_at = now() WHERE race_id = %s",
+            (published, race_id),
+        )
+        if cursor.rowcount == 0:
+            raise NotFoundError(f"race {race_id!r} not found")
+    race = find_race(race_id)
+    assert race is not None
+    return race
 
 
 def list_races_for_event(event_id: str) -> list[Race]:
@@ -346,6 +373,12 @@ def get_results(race_id: str) -> list[ResultRecord]:
     ]
 
 
+def count_results_by_race() -> dict[str, int]:
+    with get_connection() as connection:
+        rows = connection.execute("SELECT race_id, COUNT(*) AS n FROM results GROUP BY race_id").fetchall()
+    return {row["race_id"]: int(row["n"]) for row in rows}
+
+
 def has_results(race_id: str) -> bool:
     with get_connection() as connection:
         row = connection.execute("SELECT 1 FROM results WHERE race_id = %s LIMIT 1", (race_id,)).fetchone()
@@ -373,6 +406,41 @@ def replace_results(race_id: str, results: list[ResultRecord]) -> None:
                     for result in results
                 ],
             )
+
+
+# --- Organizer flags (admin / demo) ------------------------------------------
+
+
+def get_organizer_flags(organizer_id: int) -> dict:
+    with get_connection() as connection:
+        row = connection.execute("SELECT is_admin, is_demo FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
+    return {"is_admin": bool(row["is_admin"]), "is_demo": bool(row["is_demo"])} if row else {"is_admin": False, "is_demo": False}
+
+
+def set_organizer_flags(email: str, *, is_admin: bool | None = None, is_demo: bool | None = None) -> bool:
+    """Returns False when no account with that email exists."""
+    with get_connection() as connection:
+        cursor = connection.execute(
+            "UPDATE organizers SET is_admin = COALESCE(%s, is_admin), is_demo = COALESCE(%s, is_demo) WHERE email = %s",
+            (is_admin, is_demo, email.strip().lower()),
+        )
+        return cursor.rowcount > 0
+
+
+def find_organizer_id(email: str) -> int | None:
+    with get_connection() as connection:
+        row = connection.execute("SELECT id FROM organizers WHERE email = %s", (email.strip().lower(),)).fetchone()
+    return int(row["id"]) if row else None
+
+
+def adopt_events(organizer_id: int, event_id_prefix: str) -> int:
+    """Give ownerless events whose id starts with the prefix to an organizer (used for the demo account)."""
+    with get_connection() as connection:
+        cursor = connection.execute(
+            "UPDATE events SET organizer_id = %s WHERE organizer_id IS NULL AND event_id LIKE %s",
+            (organizer_id, f"{event_id_prefix}%"),
+        )
+        return cursor.rowcount
 
 
 def get_measurement(race_id: str) -> dict | None:

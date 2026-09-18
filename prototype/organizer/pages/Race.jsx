@@ -11,10 +11,12 @@ import {
   getRaceMeasurement,
   getRaceResults,
   listScoringModels,
+  publishRace,
   submitRaceResults,
+  unpublishRace,
 } from '../../apiClient'
 import { Link, navigate } from '../router'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { Button, Card, ChecklistRow, Dropzone, Eyebrow, Field, Gradient, Notice, Page, StatusChip, Stepper, formatDate, inputClass, raceStatus } from '../ui'
 
 function raceSteps(raceId) {
@@ -201,7 +203,7 @@ export function CourseStep({ session, raceId }) {
   useEffect(() => {
     if (!race?.has_gpx) return
     let cancelled = false
-    Promise.all([fetchRaceGpxFile(race.race_id), getRaceMeasurement(race.race_id)])
+    Promise.all([fetchRaceGpxFile(race.race_id, session.token), getRaceMeasurement(race.race_id, session.token)])
       .then(async ([gpxFile, measurement]) => {
         const text = await gpxFile.text()
         if (!cancelled) setExisting({ gpxText: text, measurement, features: { distance_km: race.distance_km, elevation_gain_m: race.elevation_gain_m, elevation_loss_m: measurement?.profile ? null : null } })
@@ -391,7 +393,7 @@ export function ResultsStep({ session, raceId }) {
   const [showGuide, setShowGuide] = useState(false)
 
   useEffect(() => {
-    getRaceResults(raceId).then(setExisting).catch(() => setExisting([]))
+    getRaceResults(raceId, session.token).then(setExisting).catch(() => setExisting([]))
   }, [raceId])
 
   async function submit() {
@@ -504,14 +506,29 @@ export function ResultsStep({ session, raceId }) {
 
 export function ReviewStep({ session, raceId }) {
   const units = useUnits()
-  const { race, error: loadError } = useRace(raceId)
+  const { race, error: loadError, reload } = useRace(raceId)
   const [results, setResults] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    getRaceResults(raceId).then(setResults).catch(() => setResults([]))
-  }, [raceId])
+    getRaceResults(raceId, session.token).then(setResults).catch(() => setResults([]))
+  }, [raceId, session.token])
+
+  async function togglePublish(publish) {
+    setPublishing(true)
+    setError(null)
+    try {
+      if (publish) await publishRace(raceId, session.token)
+      else await unpublishRace(raceId, session.token)
+      reload()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setPublishing(false)
+    }
+  }
 
   async function remove() {
     if (!window.confirm(`Delete "${race.course_name}" and its results? This cannot be undone.`)) return
@@ -560,18 +577,46 @@ export function ReviewStep({ session, raceId }) {
               fixLabel="Upload results"
             />
             <ChecklistRow ok label="Scoring model" detail={race.scoring_version} />
+            <ChecklistRow
+              ok={race.is_published}
+              label="Published"
+              detail={race.is_published ? `On the public races page since ${formatDate(String(race.published_at).slice(0, 10))}.` : 'Not on the public site yet.'}
+            />
           </ul>
           <div className="mt-5">
-            {complete ? (
-              <Notice kind="success" title="This race is complete.">
-                Every finisher has an OTRI score under {race.scoring_version}. A public race page you can link from your own site is the next thing being built; until then, results are available through the OTRI API.
+            {race.is_published ? (
+              <Notice kind="success" title="Published.">
+                This race is on the public races page{race.has_gpx ? ' and its course is offered in the score calculator' : ''}.{' '}
+                <a href={`../#races/${encodeURIComponent(raceId)}`} className="font-semibold underline">
+                  View the public page
+                </a>
+                . Unpublish at any time to take it down.
+              </Notice>
+            ) : complete ? (
+              <Notice kind="success" title="Ready to publish.">
+                Every finisher has an OTRI score under {race.scoring_version}. Publishing puts the leaderboard on the public races page and the
+                course in the calculator's race list.
+              </Notice>
+            ) : hasResults ? (
+              <Notice kind="warning" title="Scored without a course file.">
+                Results are scored from the official distance and climb only. You can publish, but adding the GPX first gives every
+                finisher a measured, reproducible score.
               </Notice>
             ) : (
-              <Notice kind="info">Finish the items marked above and this race is done.</Notice>
+              <Notice kind="info">Finish the items marked above, then publish.</Notice>
             )}
           </div>
           {error && <div className="mt-3"><Notice kind="error">{error}</Notice></div>}
           <div className="mt-5 flex flex-wrap gap-3">
+            {race.is_published ? (
+              <Button variant="secondary" busy={publishing} onClick={() => togglePublish(false)}>
+                <EyeOff size={15} /> Unpublish
+              </Button>
+            ) : (
+              <Button busy={publishing} disabled={!hasResults} onClick={() => togglePublish(true)}>
+                <Eye size={15} /> Publish results
+              </Button>
+            )}
             <Button variant="secondary" onClick={() => navigate(`/events/${encodeURIComponent(race.event_id)}`)}>
               Back to event
             </Button>

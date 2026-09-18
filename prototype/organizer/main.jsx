@@ -4,6 +4,8 @@ import { ArrowUpRight, Mail } from 'lucide-react'
 import '../../src/styles.css'
 import Logo from '../../src/components/Logo'
 import UnitsMenu from '../../src/components/UnitsMenu'
+import { getMe } from '../apiClient'
+import { AdminEvents } from './pages/Admin'
 import { CheckEmail, Forgot, Login, Register, Reset, Verify, Welcome } from './pages/Auth'
 import { Dashboard, EventPage, NewEvent } from './pages/Events'
 import { CourseStep, NewRace, ResultsStep, ReviewStep } from './pages/Race'
@@ -36,6 +38,11 @@ function Header({ session, onSignOut }) {
             {session && (
               <Link to="/events" className="text-[13px] font-semibold text-[#0b1220] no-underline">
                 Your events
+              </Link>
+            )}
+            {session?.isAdmin && (
+              <Link to="/admin" className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-mono text-[9px] tracking-[.08em] text-amber-700 no-underline">
+                ADMIN · ALL EVENTS
               </Link>
             )}
             <a className="flex items-center gap-1 text-[13px] font-semibold text-[#0b1220] no-underline" href={GITHUB_URL}>
@@ -79,6 +86,11 @@ function Header({ session, onSignOut }) {
               Your events
             </Link>
           )}
+          {session?.isAdmin && (
+            <Link to="/admin" className="py-3 font-mono text-[9px] tracking-[.08em] text-amber-700 no-underline">
+              ADMIN
+            </Link>
+          )}
           <div className="ml-auto py-1.5">
             <UnitsMenu />
           </div>
@@ -107,9 +119,9 @@ function App() {
   const route = useRoute()
   const [session, setSession] = useState(() => readSession())
 
-  function signIn(token, email) {
-    writeSession(token, email)
-    setSession({ token, email })
+  function signIn(token, email, isAdmin = false) {
+    writeSession(token, email, isAdmin)
+    setSession({ token, email, isAdmin })
   }
   function signOut() {
     clearSession()
@@ -119,11 +131,23 @@ function App() {
 
   // Signed-out visitors hitting an authenticated route go to sign-in; signed-in visitors on the
   // welcome page go straight to their events.
-  const needsAuth = /^\/(events|races)/.test(route.path)
+  // Admin/demo flags can change server-side; refresh them for a stored session.
+  useEffect(() => {
+    if (!session?.token) return
+    const token = session.token
+    getMe(token)
+      .then((me) => {
+        writeSession(token, me.email, me.is_admin)
+        setSession((current) => (current && current.token === token ? { ...current, isAdmin: me.is_admin } : current))
+      })
+      .catch(() => {})
+  }, [session?.token])
+
+  const needsAuth = /^\/(events|races|admin)/.test(route.path)
   useEffect(() => {
     // Read the live hash, not the rendered route: signing out navigates to '/' and clears the
     // session in the same tick, and the render in between still carries the old route.
-    const liveNeedsAuth = /^#\/(events|races)/.test(window.location.hash)
+    const liveNeedsAuth = /^#\/(events|races|admin)/.test(window.location.hash)
     if (liveNeedsAuth && !session) navigate('/login', { replace: true })
     if (route.path === '/' && session) navigate('/events', { replace: true })
   }, [route.path, needsAuth, session])
@@ -137,6 +161,7 @@ function App() {
   else if (route.path === '/check-email') page = <CheckEmail email={route.query.email} />
   else if (route.path === '/verify') page = <Verify token={route.query.token} />
   else if (route.path === '/reset') page = <Reset token={route.query.token} onSignedIn={signIn} />
+  else if (session && route.path === '/admin') page = session.isAdmin ? <AdminEvents session={session} /> : <NotFound />
   else if (session && route.path === '/events') page = <Dashboard session={session} />
   else if (session && route.path === '/events/new') page = <NewEvent session={session} />
   else if (session && (params = match('/events/:id/races/new', route.path))) page = <NewRace session={session} eventId={params.id} />

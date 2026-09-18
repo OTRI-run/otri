@@ -378,7 +378,7 @@ export function Login({ onSignedIn }) {
     setBusy(true)
     try {
       const result = await loginOrganizer(email, password)
-      onSignedIn(result.access_token, result.email)
+      onSignedIn(result.access_token, result.email, result.is_admin)
       navigate('/events', { replace: true })
     } catch (err) {
       setError(err.message)
@@ -510,7 +510,7 @@ export function Reset({ token, onSignedIn }) {
     setBusy(true)
     try {
       const result = await resetPassword(token, password)
-      onSignedIn(result.access_token, result.email)
+      onSignedIn(result.access_token, result.email, result.is_admin)
       navigate('/events', { replace: true })
     } catch (err) {
       setError(err.message)

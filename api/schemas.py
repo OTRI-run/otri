@@ -6,7 +6,7 @@ wire format can evolve independently of internal representations.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -40,6 +40,10 @@ class RaceSummary(BaseModel):
     scoring_version: str
     measurement_version: str | None = None
     measurement_status: str | None = None
+    published_at: datetime | None = None
+    is_published: bool = False
+    is_demo: bool = False
+    finisher_count: int | None = None
 
 
 class EventDetail(EventSummary):
@@ -74,6 +78,7 @@ class RunnerScoreOut(BaseModel):
     scoring_version: str
     performance_rate: float = 0.0
     quality_flags: list[str] = []
+    finish_time_seconds: int | None = None
 
 
 class ValidationIssueOut(BaseModel):
@@ -126,6 +131,20 @@ class GpxAnalysis(BaseModel):
     estimate: IllustrativeEstimateOut | None = None
 
 
+class MeResponse(BaseModel):
+    email: str
+    is_admin: bool = False
+    is_demo: bool = False
+
+
+class AdminEventOut(EventSummary):
+    """An event as the admin sees it: who owns it and every race with its publish state."""
+
+    organizer_email: str | None = None
+    published_count: int = 0
+    races: list[RaceSummary] = []
+
+
 class SharedCourseOut(BaseModel):
     """A course file stored, with the uploader's consent, so a calculator link can reopen it."""
 
@@ -147,6 +166,8 @@ class OrganizerCredentials(BaseModel):
 
 
 class TokenResponse(BaseModel):
+    is_admin: bool = False
+    is_demo: bool = False
     access_token: str
     token_type: str = "bearer"
     email: str

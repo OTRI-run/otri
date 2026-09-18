@@ -109,6 +109,8 @@ These are necessary before any real public deployment and are tracked as future 
 
 The additive startup migration creates `races.measurement JSONB`. GPX attachment saves an immutable measurement snapshot for that attachment; V0.2 scoring reuses it. Existing GPX content is not automatically recalculated. PATCH cannot replace measured totals on a GPX race. The predictor and stored-race scoring agree when they share the same measurement and model version; legacy models intentionally preserve their previous processing.
 
+Publishing: a race's results, course and measurement are private to its organizer until `POST /races/{id}/publish` (needs scored results); `DELETE /races/{id}/publish` hides it again. `GET /races` lists published races only. Accounts in `OTRI_ADMIN_EMAILS` (comma-separated) become admins at sign-in: `GET /admin/events` lists everything with owners, `GET /races?all=true` lists every race, and admins may unpublish or delete any race. `scripts/seed_demo_data.py` owns the demo races through the flagged `demo@otri.run` account, so the site can label them DEMO DATA.
+
 `POST /gpx/share` stores a calculator upload (with the user's consent) so a share link can reopen it: rate limited per IP, 10 MB per file, gzip on disk under `data/cache/shared-courses/`, and capped in total by `OTRI_SHARED_COURSES_MAX_MB` (default 2048) with oldest-first eviction. `GET /gpx/shared/{id}` serves it back.
 
 Without `OTRI_DEM_MANIFEST`, elevations come from the cleaned uploaded GPX and remain provisional. To enable checksum-pinned local raster terrain correction, follow [course setup](../course/README.md). No remote DEM service or third-party upload is performed by default.

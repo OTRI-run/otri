@@ -450,7 +450,8 @@ def test_attach_gpx_updates_course_stats_and_flags_has_gpx():
     assert body["has_gpx"] is True
     assert body["distance_km"] > 0
 
-    gpx_response = client.get(f"/races/{race_id}/gpx")
+    assert client.get(f"/races/{race_id}/gpx").status_code == 403, "unpublished: the course is the owner's until published"
+    gpx_response = client.get(f"/races/{race_id}/gpx", headers=headers)
     assert gpx_response.status_code == 200
     assert b"<gpx" in gpx_response.content
 
@@ -458,7 +459,7 @@ def test_attach_gpx_updates_course_stats_and_flags_has_gpx():
 def test_get_gpx_for_race_without_one_returns_404():
     headers = _organizer_auth_headers()
     _, race_id = _create_event_and_race(headers)
-    assert client.get(f"/races/{race_id}/gpx").status_code == 404
+    assert client.get(f"/races/{race_id}/gpx", headers=headers).status_code == 404
 
 
 def test_attach_gpx_you_do_not_own_returns_403():
@@ -496,7 +497,7 @@ def test_attached_measurement_is_persisted_and_totals_cannot_diverge(monkeypatch
         attached = client.post(f'/races/{race_id}/gpx', files={'file': ('flat.gpx', handle, 'application/gpx+xml')}, headers=headers)
     assert attached.status_code == 200
     assert attached.json()['measurement_version'] == 'course-measurement-v3'
-    saved = client.get(f'/races/{race_id}/measurement')
+    saved = client.get(f'/races/{race_id}/measurement', headers=headers)
     assert saved.status_code == 200
     assert 'snapshot' not in saved.json()
     assert saved.json()['profile']
@@ -507,7 +508,7 @@ def test_attached_measurement_is_persisted_and_totals_cannot_diverge(monkeypatch
     csv = 'Ranking,Time,Family name,First Name,Gender\n1,01:00:00,Runner,Test,M\n'
     submitted = client.post(f'/races/{race_id}/results', files={'file': ('results.csv', csv.encode(), 'text/csv')}, headers=headers)
     assert submitted.status_code == 200
-    replay = client.get(f'/races/{race_id}/results')
+    replay = client.get(f'/races/{race_id}/results', headers=headers)
     assert replay.status_code == 200
     assert replay.json() == submitted.json()['scores']
 
@@ -748,3 +749,103 @@ def test_share_gpx_caps_file_size_and_rate_limits(tmp_path, monkeypatch):
         statuses.append(client.post("/gpx/share", files={"file": ("f.gpx", variant, "application/gpx+xml")}).status_code)
     assert statuses[:10] == [200] * 10 and statuses[10:] == [429, 429]
     rate_limit._hits.clear()
+
+
+# ----------------------------------------------------------------------------- publishing & admin
+
+
+def _scored_race(headers, email_suffix=""):
+    _, race_id = _create_event_and_race(headers)
+    csv = "Ranking,Time,Family name,First Name,Gender\n1,01:00:00,Runner,Test,M\n2,01:10:00,Second,Sam,F\n"
+    submitted = client.post(f"/races/{race_id}/results", files={"file": ("results.csv", csv.encode(), "text/csv")}, headers=headers)
+    assert submitted.status_code == 200, submitted.text
+    return race_id
+
+
+def test_publishing_controls_what_the_public_sees():
+    headers = _organizer_auth_headers()
+    race_id = _scored_race(headers)
+
+    # Unpublished: metadata is public, results are the owner's.
+    assert client.get(f"/races/{race_id}").json()["is_published"] is False
+    assert client.get(f"/races/{race_id}/results").status_code == 403
+    assert client.get(f"/races/{race_id}/results", headers=headers).status_code == 200
+    assert race_id not in {r["race_id"] for r in client.get("/races").json()}
+
+    published = client.post(f"/races/{race_id}/publish", headers=headers)
+    assert published.status_code == 200, published.text
+    assert published.json()["is_published"] is True and published.json()["published_at"]
+    assert published.json()["finisher_count"] == 2
+
+    listed = {r["race_id"]: r for r in client.get("/races").json()}
+    assert race_id in listed and listed[race_id]["finisher_count"] == 2
+    public = client.get(f"/races/{race_id}/results")
+    assert public.status_code == 200
+    assert public.json()[0]["finish_time_seconds"] == 3600, "the public leaderboard carries finish times"
+
+    unpublished = client.delete(f"/races/{race_id}/publish", headers=headers)
+    assert unpublished.status_code == 200 and unpublished.json()["is_published"] is False
+    assert client.get(f"/races/{race_id}/results").status_code == 403
+
+
+def test_publish_needs_results_and_ownership():
+    headers = _organizer_auth_headers()
+    _, race_id = _create_event_and_race(headers)
+    assert client.post(f"/races/{race_id}/publish", headers=headers).status_code == 422
+    other = _organizer_auth_headers("someone-else@example.com")
+    scored = _scored_race(headers)
+    assert client.post(f"/races/{scored}/publish", headers=other).status_code == 403
+    assert client.post(f"/races/{scored}/publish").status_code == 401
+
+
+def test_demo_races_are_published_and_list_newest_first():
+    listed = client.get("/races").json()
+    assert {r["race_id"] for r in listed} >= {"OTRI-DEMO-001", "OTRI-DEMO-006"}
+    dates = [r["event_date"] for r in listed]
+    assert dates == sorted(dates, reverse=True)
+    assert all(r["is_published"] for r in listed)
+
+
+def test_admin_flag_comes_from_the_environment_and_unlocks_moderation(monkeypatch):
+    import importlib
+
+    api_module = importlib.import_module("api.app")
+    owner = _organizer_auth_headers("owner@example.com")
+    race_id = _scored_race(owner)
+    assert client.post(f"/races/{race_id}/publish", headers=owner).status_code == 200
+
+    # Not an admin yet: the admin listing and other people's races are off limits.
+    plain = _organizer_auth_headers("mod@example.com")
+    assert client.get("/admin/events", headers=plain).status_code == 403
+    assert client.get("/races?all=true", headers=plain).status_code == 403
+    assert client.delete(f"/races/{race_id}/publish", headers=plain).status_code == 403
+
+    # Listed in OTRI_ADMIN_EMAILS: the flag is set at the next sign-in.
+    monkeypatch.setattr(api_module, "_ADMIN_EMAILS", {"mod@example.com"})
+    login = client.post("/auth/login", json={"email": "mod@example.com", "password": "correct horse battery"})
+    assert login.status_code == 200 and login.json()["is_admin"] is True
+    admin = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    assert client.get("/auth/me", headers=admin).json()["is_admin"] is True
+
+    events = client.get("/admin/events", headers=admin).json()
+    mine = [e for e in events if any(r["race_id"] == race_id for r in e["races"])]
+    assert mine and mine[0]["organizer_email"] == "owner@example.com" and mine[0]["published_count"] == 1
+    assert race_id in {r["race_id"] for r in client.get("/races?all=true", headers=admin).json()}
+
+    # An admin can take a race down; the owner still owns it.
+    assert client.delete(f"/races/{race_id}/publish", headers=admin).json()["is_published"] is False
+    assert client.get(f"/races/{race_id}/results", headers=admin).status_code == 200
+    assert client.get(f"/races/{race_id}/results").status_code == 403
+
+    # Revoked: the flag is read per request, so the old token loses admin as soon as the flag is cleared.
+    db.set_organizer_flags("mod@example.com", is_admin=False)
+    assert client.get("/admin/events", headers=admin).status_code == 403
+
+
+def test_demo_flag_marks_races_from_a_demo_account():
+    headers = _organizer_auth_headers("demo-account@example.com")
+    race_id = _scored_race(headers)
+    assert client.get(f"/races/{race_id}").json()["is_demo"] is False
+    assert db.set_organizer_flags("demo-account@example.com", is_demo=True)
+    assert client.get(f"/races/{race_id}").json()["is_demo"] is True
+    assert client.post("/auth/login", json={"email": "demo-account@example.com", "password": "correct horse battery"}).json()["is_demo"] is True

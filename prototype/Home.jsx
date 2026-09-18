@@ -1,6 +1,7 @@
 import { ArrowRight, ArrowUpRight, Calculator, Database, FileText, GitBranch, Mountain, ShieldCheck, Timer, Upload } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import RaceCard from './RaceCard'
-import racesData from './data/races.json'
+import { listRaces } from './apiClient'
 
 const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 const DOCS = {
@@ -76,9 +77,12 @@ function EngineCard({ raceCount, resultCount, scoringVersion }) {
 }
 
 export default function Home() {
-  const races = racesData.races
-  const resultCount = races.reduce((sum, race) => sum + race.leaderboard.length, 0)
-  const scoringVersion = races[0]?.leaderboard[0]?.scoring_version ?? ''
+  const [races, setRaces] = useState([])
+  useEffect(() => {
+    listRaces().then(setRaces).catch(() => {})
+  }, [])
+  const resultCount = races.reduce((sum, race) => sum + (race.finisher_count ?? 0), 0)
+  const scoringVersion = races[0]?.scoring_version ?? ''
 
   return (
     <>

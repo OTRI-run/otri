@@ -55,5 +55,6 @@ def clean_state():
         result_path = RESULTS_DIR / f"{race.race_id}.csv"
         if result_path.exists():
             db.replace_results(race.race_id, result_records(result_path))
+            db.set_race_published(race.race_id, True)  # demo races are public, as in production
     rate_limit._hits.clear()
     yield

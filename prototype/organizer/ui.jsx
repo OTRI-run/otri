@@ -147,9 +147,11 @@ export const RACE_STATUS = {
   draft: { label: 'Draft', cls: 'bg-slate-100 text-slate-600' },
   course: { label: 'Course ready', cls: 'bg-blue-50 text-blue-700' },
   scored: { label: 'Results scored', cls: 'bg-emerald-50 text-emerald-700' },
+  published: { label: 'Published', cls: 'bg-blue-600 text-white' },
 }
 
 export function raceStatus(race, hasResults) {
+  if (race.is_published) return 'published'
   if (hasResults) return 'scored'
   if (race.has_gpx) return 'course'
   return 'draft'

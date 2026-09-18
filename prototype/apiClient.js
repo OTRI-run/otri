@@ -191,14 +191,35 @@ export function getRace(raceId) {
 }
 
 /** The stored, versioned measurement for a race with an attached GPX (404 if none). */
-export function getRaceMeasurement(raceId) {
-  return request(`/races/${encodeURIComponent(raceId)}/measurement`)
+export function getRaceMeasurement(raceId, token) {
+  return request(`/races/${encodeURIComponent(raceId)}/measurement`, token ? { headers: authHeaders(token) } : undefined)
 }
 
-/** Scored results for a race; resolves to [] when none have been submitted yet. */
-export async function getRaceResults(raceId) {
-  const response = await fetch(`${API_BASE_URL}/races/${encodeURIComponent(raceId)}/results`)
+/** Make a race's results, course and measurement public (owner or admin). */
+export function publishRace(raceId, token) {
+  return request(`/races/${encodeURIComponent(raceId)}/publish`, { method: 'POST', headers: authHeaders(token) })
+}
+
+export function unpublishRace(raceId, token) {
+  return request(`/races/${encodeURIComponent(raceId)}/publish`, { method: 'DELETE', headers: authHeaders(token) })
+}
+
+/** Every event on the platform with owners and publish state. Admin only. */
+export function listAdminEvents(token) {
+  return request('/admin/events', { headers: authHeaders(token) })
+}
+
+/** The signed-in organizer with current admin/demo flags. */
+export function getMe(token) {
+  return request('/auth/me', { headers: authHeaders(token) })
+}
+
+/** Scored results for a race; resolves to [] when none have been submitted yet. Unpublished
+ * races need the owner's (or an admin's) token. */
+export async function getRaceResults(raceId, token) {
+  const response = await fetch(`${API_BASE_URL}/races/${encodeURIComponent(raceId)}/results`, token ? { headers: authHeaders(token) } : undefined)
   if (response.status === 404) return []
+  if (response.status === 403) throw new Error('This race has not been published by its organizer.')
   if (!response.ok) throw new Error(response.statusText)
   return response.json()
 }
@@ -215,8 +236,8 @@ export function getApiStatus() {
 
 /** Fetches a race's attached GPX as a File, so it can be reused with analyzeGpx()
  * exactly like a user-uploaded file (used by the "search existing race" calculator path). */
-export async function fetchRaceGpxFile(raceId) {
-  const response = await fetch(`${API_BASE_URL}/races/${encodeURIComponent(raceId)}/gpx`)
+export async function fetchRaceGpxFile(raceId, token) {
+  const response = await fetch(`${API_BASE_URL}/races/${encodeURIComponent(raceId)}/gpx`, token ? { headers: authHeaders(token) } : undefined)
   if (!response.ok) {
     throw new Error(`Could not load the course for this race (HTTP ${response.status}).`)
   }

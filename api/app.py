@@ -19,7 +19,7 @@ from __future__ import annotations
 import gzip
 import json
 import os
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from hashlib import sha256
 from datetime import datetime, timezone
 import re
@@ -66,6 +66,8 @@ from .auth import (
 from .email import send_password_reset_email, send_verification_email
 from .rate_limit import enforce_rate_limit
 from .schemas import (
+    AdminEventOut,
+    MeResponse,
     SharedCourseOut,
     EmailVerificationRequest,
     EventCreate,
@@ -131,14 +133,31 @@ def root() -> dict:
 _bearer_scheme = HTTPBearer(auto_error=False)
 
 
+# Admin accounts: a comma-separated list of emails. The flag is written to the account at sign-in,
+# so it survives token refreshes and can be revoked by removing the email and restarting.
+_ADMIN_EMAILS = {email.strip().lower() for email in os.environ.get("OTRI_ADMIN_EMAILS", "").split(",") if email.strip()}
+
+
+def _with_flags(organizer: Organizer) -> Organizer:
+    """The token carries identity; the admin/demo flags are read from the account on every request,
+    so revoking admin takes effect immediately."""
+    return replace(organizer, **db.get_organizer_flags(organizer.id))
+
+
 def require_organizer(credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme)) -> Organizer:
     """FastAPI dependency: requires a valid 'Authorization: Bearer <token>' header."""
     if credentials is None:
         raise HTTPException(status_code=401, detail="missing bearer token")
     try:
-        return decode_access_token(credentials.credentials)
+        return _with_flags(decode_access_token(credentials.credentials))
     except AuthError as error:
         raise HTTPException(status_code=401, detail=str(error)) from error
+
+
+def require_admin(organizer: Organizer = Depends(require_organizer)) -> Organizer:
+    if not organizer.is_admin:
+        raise HTTPException(status_code=403, detail="admin access required")
+    return organizer
 
 
 def _optional_organizer(credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme)) -> Organizer | None:
@@ -146,19 +165,28 @@ def _optional_organizer(credentials: HTTPAuthorizationCredentials | None = Depen
     if credentials is None:
         return None
     try:
-        return decode_access_token(credentials.credentials)
+        return _with_flags(decode_access_token(credentials.credentials))
     except AuthError:
         return None
 
 
 def _require_event_owner(event: db.Event, organizer: Organizer) -> None:
-    if event.organizer_id != organizer.id:
+    if event.organizer_id != organizer.id and not organizer.is_admin:
         raise HTTPException(status_code=403, detail="you do not have permission to modify this event")
 
 
 def _require_race_owner(race: db.Race, organizer: Organizer) -> None:
-    if race.organizer_id != organizer.id:
+    if race.organizer_id != organizer.id and not organizer.is_admin:
         raise HTTPException(status_code=403, detail="you do not have permission to modify this race")
+
+
+def _require_race_visible(race: db.Race, organizer: Organizer | None) -> None:
+    """Results, course and measurement are public once published; until then only the owner and admins see them."""
+    if race.published_at is not None:
+        return
+    if organizer is not None and (organizer.id == race.organizer_id or organizer.is_admin):
+        return
+    raise HTTPException(status_code=403, detail="this race has not been published by its organizer")
 
 
 # --- Auth ------------------------------------------------------------------
@@ -189,7 +217,16 @@ def login(payload: OrganizerCredentials, request: Request) -> TokenResponse:
         raise HTTPException(status_code=403, detail=str(error)) from error
     except AuthError as error:
         raise HTTPException(status_code=401, detail=str(error)) from error
-    return TokenResponse(access_token=create_access_token(organizer), email=organizer.email)
+    if organizer.email in _ADMIN_EMAILS:
+        db.set_organizer_flags(organizer.email, is_admin=True)
+    organizer = _with_flags(organizer)
+    return TokenResponse(access_token=create_access_token(organizer), email=organizer.email, is_admin=organizer.is_admin, is_demo=organizer.is_demo)
+
+
+@app.get("/auth/me", response_model=MeResponse)
+def me(organizer: Organizer = Depends(require_organizer)) -> MeResponse:
+    """Who the token belongs to, with the current admin/demo flags."""
+    return MeResponse(email=organizer.email, is_admin=organizer.is_admin, is_demo=organizer.is_demo)
 
 
 @app.post("/auth/verify-email", response_model=MessageResponse)
@@ -237,7 +274,7 @@ def confirm_password_reset(payload: PasswordResetConfirm, request: Request) -> T
 # --- Events ------------------------------------------------------------------
 
 
-def _race_summary(race: db.Race) -> RaceSummary:
+def _race_summary(race: db.Race, finisher_count: int | None = None) -> RaceSummary:
     return RaceSummary(
         race_id=race.race_id,
         event_id=race.event_id,
@@ -250,6 +287,10 @@ def _race_summary(race: db.Race) -> RaceSummary:
         scoring_version=race.scoring_version,
         measurement_version=race.measurement_version,
         measurement_status=race.measurement_status,
+        published_at=race.published_at,
+        is_published=race.published_at is not None,
+        is_demo=race.is_demo,
+        finisher_count=finisher_count,
     )
 
 
@@ -294,13 +335,36 @@ def get_event(event_id: str) -> EventDetail:
     if event is None:
         raise HTTPException(status_code=404, detail=f"event {event_id!r} not found")
     races = db.list_races_for_event(event_id)
+    counts = db.count_results_by_race()
     return EventDetail(
         event_id=event.event_id,
         event_name=event.event_name,
         event_date=event.event_date,
         race_count=len(races),
-        races=[_race_summary(race) for race in races],
+        races=[_race_summary(race, counts.get(race.race_id, 0)) for race in races],
     )
+
+
+@app.get("/admin/events", response_model=list[AdminEventOut])
+def admin_list_events(organizer: Organizer = Depends(require_admin)) -> list[AdminEventOut]:
+    """Every event on the platform with its owner and each race's publish state. Admin only."""
+    counts = db.count_results_by_race()
+    out = []
+    for event in db.list_events():
+        races = db.list_races_for_event(event.event_id)
+        out.append(
+            AdminEventOut(
+                event_id=event.event_id,
+                event_name=event.event_name,
+                event_date=event.event_date,
+                race_count=len(races),
+                organizer_email=event.organizer_email,
+                published_count=sum(1 for race in races if race.published_at is not None),
+                races=[_race_summary(race, counts.get(race.race_id, 0)) for race in races],
+            )
+        )
+    out.sort(key=lambda e: e.event_date, reverse=True)
+    return out
 
 
 @app.post("/events", response_model=EventSummary, status_code=201)
@@ -343,8 +407,13 @@ def remove_event(event_id: str, organizer: Organizer = Depends(require_organizer
 
 
 @app.get("/races", response_model=list[RaceSummary])
-def list_races() -> list[RaceSummary]:
-    return [_race_summary(race) for race in db.list_races()]
+def list_races(all: bool = False, organizer: Organizer | None = Depends(_optional_organizer)) -> list[RaceSummary]:
+    """Published races, newest event first, with finisher counts. ``?all=true`` (admin) lists every race."""
+    if all:
+        if organizer is None or not organizer.is_admin:
+            raise HTTPException(status_code=403, detail="admin access required")
+    counts = db.count_results_by_race()
+    return [_race_summary(race, counts.get(race.race_id, 0)) for race in db.list_races(published_only=not all)]
 
 
 @app.get("/races/{race_id}", response_model=RaceSummary)
@@ -352,7 +421,29 @@ def get_race(race_id: str) -> RaceSummary:
     race = db.find_race(race_id)
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
-    return _race_summary(race)
+    return _race_summary(race, db.count_results_by_race().get(race_id, 0))
+
+
+@app.post("/races/{race_id}/publish", response_model=RaceSummary)
+def publish_race(race_id: str, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
+    """Make the race's results, course and measurement public. Owner or admin; needs scored results."""
+    race = db.find_race(race_id)
+    if race is None:
+        raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
+    _require_race_owner(race, organizer)
+    if not db.has_results(race_id):
+        raise HTTPException(status_code=422, detail="upload results before publishing")
+    return _race_summary(db.set_race_published(race_id, True), db.count_results_by_race().get(race_id, 0))
+
+
+@app.delete("/races/{race_id}/publish", response_model=RaceSummary)
+def unpublish_race(race_id: str, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
+    """Hide the race again. Owner or admin."""
+    race = db.find_race(race_id)
+    if race is None:
+        raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
+    _require_race_owner(race, organizer)
+    return _race_summary(db.set_race_published(race_id, False), db.count_results_by_race().get(race_id, 0))
 
 
 @app.post("/events/{event_id}/races", response_model=RaceSummary, status_code=201)
@@ -522,8 +613,17 @@ async def attach_race_gpx(
     return _race_summary(updated)
 
 
+def _visible_race(race_id: str, organizer: Organizer | None) -> db.Race:
+    race = db.find_race(race_id)
+    if race is None:
+        raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
+    _require_race_visible(race, organizer)
+    return race
+
+
 @app.get("/races/{race_id}/measurement")
-def get_race_measurement(race_id: str) -> dict:
+def get_race_measurement(race_id: str, organizer: Organizer | None = Depends(_optional_organizer)) -> dict:
+    _visible_race(race_id, organizer)
     result = db.get_measurement(race_id)
     if result is None:
         raise HTTPException(status_code=404, detail="No versioned measurement stored; reattach GPX to measure it")
@@ -531,7 +631,8 @@ def get_race_measurement(race_id: str) -> dict:
 
 
 @app.get("/races/{race_id}/gpx")
-def get_race_gpx(race_id: str) -> Response:
+def get_race_gpx(race_id: str, organizer: Organizer | None = Depends(_optional_organizer)) -> Response:
+    _visible_race(race_id, organizer)
     result = db.get_gpx_content(race_id)
     if result is None:
         raise HTTPException(status_code=404, detail=f"no GPX file attached to race {race_id!r}")
@@ -553,14 +654,19 @@ def _score_results(race: db.Race, results: list) -> list[RunnerScoreOut]:
         raise ValueError('reattach the GPX to save a versioned measurement before using measured scoring')
     measurement = Measurement(**stored_measurement["snapshot"]) if stored_measurement else None
     scores = score_race(race.to_race_record(), results, model_version=race.scoring_version, gpx_points=gpx_points, measurement=measurement)
-    return [RunnerScoreOut(**score.to_dict()) for score in scores]
+    # Finish times ride along for the public leaderboard; scores carry the runner's identity only.
+    finish_times = {(str(r.rank), r.family_name, r.first_name): r.finish_time_seconds for r in results}
+    out = []
+    for score in scores:
+        data = score.to_dict()
+        key = (str(data.get("rank")), data.get("family_name"), data.get("first_name"))
+        out.append(RunnerScoreOut(**data, finish_time_seconds=finish_times.get(key)))
+    return out
 
 
 @app.get("/races/{race_id}/results", response_model=list[RunnerScoreOut])
-def get_race_results(race_id: str) -> list[RunnerScoreOut]:
-    race = db.find_race(race_id)
-    if race is None:
-        raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
+def get_race_results(race_id: str, organizer: Organizer | None = Depends(_optional_organizer)) -> list[RunnerScoreOut]:
+    race = _visible_race(race_id, organizer)
 
     if not db.has_results(race_id):
         raise HTTPException(status_code=404, detail=f"no results on file for race {race_id!r}")
