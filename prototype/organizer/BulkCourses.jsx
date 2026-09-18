@@ -6,8 +6,8 @@ import { Button } from './ui'
 
 // Admin: attach many course files in one go. Each file is matched to a race by its name (a guess
 // the admin can change), sent one at a time through the same endpoint as a single upload — the
-// server measures every course, and one at a time is what a small droplet can take — and a race
-// nobody owns still needs its permission note (DATA_POLICY.md).
+// server measures every course, and one at a time is what a small droplet can take. A permission
+// note (the licence, or the organizer's yes) is recorded with a race nobody owns when one is given.
 
 const raceLabel = (race) => `${race.event_name} · ${race.course_name} · ${String(race.event_date ?? '').slice(0, 4)}`
 
@@ -37,7 +37,6 @@ export default function BulkCourses({ races, token, onChanged }) {
     const race = byId[row.raceId]
     if (!race) return 'choose the race'
     if (rows.some((other) => other.id !== row.id && other.raceId === row.raceId && other.state !== 'done')) return 'two files for the same race'
-    if (!race.is_claimed && !permissionFor(row)) return 'needs a permission note'
     if (row.file.size > 20_000_000) return 'over 20 MB'
     return null
   }
@@ -49,7 +48,7 @@ export default function BulkCourses({ races, token, onChanged }) {
       update(row.id, { state: 'sending', message: null })
       try {
         const race = byId[row.raceId]
-        await attachRaceGpx(row.raceId, row.file, token, race.is_claimed ? undefined : permissionFor(row))
+        await attachRaceGpx(row.raceId, row.file, token, race.is_claimed ? undefined : permissionFor(row) || undefined)
         update(row.id, { state: 'done', label: raceLabel(race) })
       } catch (err) {
         update(row.id, { state: 'failed', message: err.message })
@@ -66,7 +65,7 @@ export default function BulkCourses({ races, token, onChanged }) {
         <div className="min-w-0">
           <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">COURSE FILES · {races.length} RACE{races.length === 1 ? '' : 'S'} WITHOUT ONE</p>
           <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-600">
-            Choose many .gpx files at once. Each is matched to a race by its file name (event name plus distance works best, e.g. <span className="font-mono">doi-inthanon-trail-50k.gpx</span>); check the match before sending. Only files OTRI may show: an open licence, or the organizer's yes.
+            Choose many .gpx files at once. Each is matched to a race by its file name (event name plus distance works best, e.g. <span className="font-mono">doi-inthanon-trail-50k.gpx</span>); check the match before sending. If you have the organizer's yes or an open licence, note it: it is kept with the race.
           </p>
         </div>
         <label className={`inline-flex min-h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-[#0b1220] ${running || races.length === 0 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
@@ -85,7 +84,7 @@ export default function BulkCourses({ races, token, onChanged }) {
             onChange={(event) => setDefaultPermission(event.target.value)}
             maxLength={500}
             disabled={running}
-            placeholder="Permission for every file without its own note, e.g. “Email from the organizer, 2026-09-18” or “CC BY 4.0, https://…”"
+            placeholder="Optional permission note for every file without its own, e.g. “Email from the organizer, 2026-09-18” or “CC BY 4.0, https://…”"
             aria-label="Default course permission"
             className="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs"
           />
@@ -120,7 +119,7 @@ export default function BulkCourses({ races, token, onChanged }) {
                       onChange={(event) => update(row.id, { permission: event.target.value })}
                       maxLength={500}
                       disabled={running || row.state === 'done'}
-                      placeholder={defaultPermission ? 'uses the note above' : 'permission note'}
+                      placeholder={defaultPermission ? 'uses the note above' : 'permission note (optional)'}
                       aria-label={`Permission for ${row.file.name}`}
                       className="min-w-0 rounded-lg border border-slate-300 bg-white px-2 py-1.5"
                     />

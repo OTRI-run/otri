@@ -63,7 +63,7 @@ Athlete identity matching should use the minimum necessary information and shoul
 
 ## Race listings
 
-OTRI may list a race before its organizer has joined, from facts checked against a public source (name, date, place, distance, climb, official website), with the source recorded. It does not copy the course file or the results with them: a course file on an unclaimed listing needs a recorded open licence or the organizer's consent, and results come only from the organizer. An organizer who asks for a listing to be corrected or removed gets that done. See [`docs/product/race-listings.md`](docs/product/race-listings.md).
+OTRI may list a race before its organizer has joined, from facts checked against a public source (name, date, place, distance, climb, official website), with the source recorded. It does not copy the results with them: results come only from the organizer. A course file on an unclaimed listing should rest on an open licence or the organizer's consent, recorded with the race when it exists; the software records the note but does not require it, so whoever uploads the file answers for having the right to. An organizer who asks for a listing to be corrected or removed gets that done. See [`docs/product/race-listings.md`](docs/product/race-listings.md).
 
 ## Stored course files
 

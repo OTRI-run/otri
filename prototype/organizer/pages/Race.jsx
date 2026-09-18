@@ -290,8 +290,8 @@ export function CourseStep({ session, raceId }) {
           <Eyebrow>{race.has_gpx ? 'REPLACE THE COURSE' : 'UPLOAD THE COURSE'}</Eyebrow>
           {race.is_claimed === false && (
             <div className="mt-3">
-              <Notice kind="warning" title="Nobody has claimed this race.">
-                A course file found online is not ours to publish (DATA_POLICY.md). Record why OTRI may show this one: its open licence and source, or the organizer's written yes.
+              <Notice kind="info" title="Nobody has claimed this race.">
+                If you have the organizer's yes or the file carries an open licence, note it here (optional): it is kept with the race and the public page then says the course is shown with permission.
               </Notice>
               <input
                 value={permission}
