@@ -10,6 +10,13 @@ const OPTIONS = Object.entries(countries.getNames('en', { select: 'official' }))
   .filter((option) => option.code)
   .sort((a, b) => a.name.localeCompare(b.name))
 
+/** English name for an ISO alpha-3 code, or the code itself when unknown. */
+export function countryName(code) {
+  if (!code) return ''
+  const alpha2 = countries.alpha3ToAlpha2(String(code).toUpperCase())
+  return (alpha2 && countries.getName(alpha2, 'en', { select: 'official' })) || code
+}
+
 export default function CountrySelect({ id, value, onChange, className = '', placeholder = 'Choose a country' }) {
   return (
     <select id={id} value={value || ''} onChange={(event) => onChange(event.target.value)} className={className}>
