@@ -27,6 +27,7 @@ import { formatDistance, formatElevation, useUnits } from '../../../src/lib/unit
 import { modelLabel } from '../../../src/lib/model'
 import { fetchNewsletterCsv } from '../../apiClient'
 import { Link } from '../router'
+import BulkCourses from '../BulkCourses'
 import { Button, Gradient, Notice, Page, StatusChip, formatDate, raceStatus } from '../ui'
 
 const TABS = [
@@ -604,6 +605,7 @@ function Listings({ events, session, onChanged }) {
   const waiting = events
     .flatMap((event) => event.races.map((race) => ({ ...race, owner: event.organizer_email })))
     .filter((race) => race.is_listed && !race.is_published)
+  const withoutCourse = events.flatMap((event) => event.races).filter((race) => !race.has_gpx)
   const asked = [...waiting].filter((race) => race.request_count > 0).sort((a, b) => b.request_count - a.request_count).slice(0, 10)
 
   async function upload(event) {
@@ -651,6 +653,7 @@ function Listings({ events, session, onChanged }) {
           )}
         </div>
       )}
+      {withoutCourse.length > 0 && <BulkCourses races={withoutCourse} token={session.token} onChanged={onChanged} />}
       {asked.length > 0 && (
         <div className="mt-4">
           <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">MOST ASKED FOR · WHO TO WRITE TO FIRST</p>
