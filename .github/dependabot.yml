@@ -1,0 +1,38 @@
+# Weekly dependency updates. Dependabot opens one pull request per ecosystem; the Pages build
+# runs on each so a broken update never reaches main. Security updates are enabled separately
+# in the repository settings and arrive as soon as an advisory is published.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    # Keeps the commit-hash pins in the workflow up to date (the version comment is updated too).
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      npm-minor-and-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      # Major versions of the build toolchain are upgraded deliberately, not by bot.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: pip
+    # api/requirements.txt (runtime) and requirements-dev.txt (tests) in one weekly pass.
+    directories: ["/api", "/"]
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      python-minor-and-patch:
+        update-types: ["minor", "patch"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
