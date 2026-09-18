@@ -19,7 +19,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))  # allow running as `python scripts/seed_demo_data.py`
 
-from api import db  # noqa: E402
+from api import db
+from scoring.registry import DEFAULT_SCORING_VERSION  # noqa: E402
 from api.auth import register_organizer  # noqa: E402
 from ingestion import race_records, result_records  # noqa: E402
 
@@ -56,10 +57,16 @@ def main() -> None:
         elif race.location or race.country:
             db.update_event(event_id, location=race.location, country=race.country)
 
-        if db.find_race(race.race_id) is None:
+        existing = db.find_race(race.race_id)
+        if existing is None:
             db.create_race(
                 event_id, race.course_name, race.distance_km, race.elevation_gain_m, race_id=race.race_id
             )
+        elif existing.scoring_version != DEFAULT_SCORING_VERSION and not existing.has_gpx:
+            # Demo races are synthetic and carry no course file, so they can always follow the
+            # model in production; otherwise the public demo leaderboards would keep showing a
+            # retired build's numbers after every model change.
+            db.update_race(race.race_id, scoring_version=DEFAULT_SCORING_VERSION)
 
         result_path = RESULTS_DIR / f"{race.race_id}.csv"
         if result_path.exists():

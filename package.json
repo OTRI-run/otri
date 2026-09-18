@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@sentry/browser": "^10.75.0",
     "@tailwindcss/vite": "latest",
     "@vitejs/plugin-react": "latest",
     "flag-icons": "^7.5.0",

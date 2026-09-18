@@ -14,7 +14,9 @@ Connection string via ``DATABASE_URL``, e.g.:
 
 from __future__ import annotations
 
+import atexit
 import os
+import threading
 from psycopg.types.json import Jsonb
 import secrets
 from contextlib import contextmanager
@@ -24,6 +26,7 @@ from typing import Iterator
 
 import psycopg
 from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
 
 from ingestion.records import RaceRecord, ResultRecord
 
@@ -142,6 +145,10 @@ ALTER TABLE results ADD COLUMN IF NOT EXISTS birth_year INTEGER;
 ALTER TABLE results ADD COLUMN IF NOT EXISTS nationality TEXT;
 ALTER TABLE results ADD COLUMN IF NOT EXISTS runner_id TEXT REFERENCES runners(runner_id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS results_runner_id_idx ON results (runner_id);
+CREATE INDEX IF NOT EXISTS results_race_id_idx ON results (race_id);
+CREATE INDEX IF NOT EXISTS races_event_id_idx ON races (event_id);
+CREATE INDEX IF NOT EXISTS races_published_at_idx ON races (published_at) WHERE published_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS events_organizer_id_idx ON events (organizer_id);
 
 CREATE TABLE IF NOT EXISTS reports (
     id SERIAL PRIMARY KEY,
@@ -210,18 +217,48 @@ class Race:
         )
 
 
+_POOL: ConnectionPool | None = None
+_POOL_LOCK = threading.Lock()
+# Per process (each gunicorn worker opens its own after the fork, on first use): a handful of
+# long-lived connections instead of a TCP handshake plus Postgres backend start per request.
+POOL_MAX_SIZE = int(os.environ.get("OTRI_DB_POOL_MAX", "10"))
+
+
+def _pool() -> ConnectionPool:
+    global _POOL
+    if _POOL is None or _POOL.closed:
+        with _POOL_LOCK:
+            if _POOL is None or _POOL.closed:
+                _POOL = ConnectionPool(
+                    DATABASE_URL,
+                    min_size=1,
+                    max_size=POOL_MAX_SIZE,
+                    kwargs={"row_factory": dict_row},
+                    check=ConnectionPool.check_connection,  # drop connections a Postgres restart killed
+                    name="otri",
+                    open=True,
+                )
+    return _POOL
+
+
+def close_pool() -> None:
+    """Close the pool's connections; registered for interpreter exit so short-lived processes
+    (scripts, the test runner) do not leave backends behind or trip the pool's finaliser."""
+    global _POOL
+    if _POOL is not None and not _POOL.closed:
+        _POOL.close()
+    _POOL = None
+
+
+atexit.register(close_pool)
+
+
 @contextmanager
 def get_connection() -> Iterator[psycopg.Connection]:
-    """Yield a connection with dict-style row access, committing on success."""
-    connection = psycopg.connect(DATABASE_URL, row_factory=dict_row)
-    try:
+    """Yield a pooled connection with dict-style row access: committed on success, rolled back on
+    an exception, and returned to the pool either way (never closed)."""
+    with _pool().connection() as connection:
         yield connection
-        connection.commit()
-    except Exception:
-        connection.rollback()
-        raise
-    finally:
-        connection.close()
 
 
 def init_db() -> list[str]:

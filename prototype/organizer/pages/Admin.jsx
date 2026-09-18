@@ -118,6 +118,7 @@ function Overview({ session }) {
             ['Scoring model (default)', `${modelLabel(api.scoring_version)} · build ${api.scoring_version}`],
             ['Course measurement', api.measurement_version],
             ['Terrain model (DEM)', ...(api.dem_configured ? [`configured · ${api.dem_manifest}`, 'ok'] : ['not configured → every course scores Low confidence', 'bad'])],
+            ['Terrain coverage', ...(api.dem_tiles?.length ? [`${api.dem_tiles.length} tile${api.dem_tiles.length === 1 ? '' : 's'} · ${api.dem_tiles.join(' ')} · courses outside score Low`, 'ok'] : ['no tiles installed → add regions with scripts/deploy/06-install-dem.sh', 'bad'])],
             ['Measurement cache', `${api.measurement_cache_entries} entries (max ${api.measurement_cache_max})`],
             ['Python', api.python],
           ]}

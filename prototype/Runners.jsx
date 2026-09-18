@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useDocumentTitle } from '../src/lib/title'
 import { ArrowLeft, ArrowUpRight, Search } from 'lucide-react'
 import NextSteps from './NextSteps'
 import { DemoBadge } from './RaceCard'
@@ -204,6 +205,7 @@ export function RunnerProfilePage({ runnerId, onBack }) {
   const units = useUnits()
   const [profile, setProfile] = useState(null)
   const [error, setError] = useState(null)
+  useDocumentTitle(profile ? `${profile.first_name} ${profile.family_name} · OTRI` : 'Runner · OTRI')
 
   useEffect(() => {
     let cancelled = false

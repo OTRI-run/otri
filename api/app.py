@@ -166,6 +166,7 @@ app.add_middleware(
 
 
 _MAX_BODY_BYTES = 20_000_000
+_PUBLIC_CACHE_PREFIXES = ("/races", "/runners", "/events", "/scoring/models", "/gpx/shared/")
 
 
 @app.middleware("http")
@@ -179,8 +180,16 @@ async def _guardrails(request: Request, call_next):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-    if request.url.path.startswith(("/auth", "/admin")) or "authorization" in request.headers or _SESSION_COOKIE in request.cookies:
+    personal = request.url.path.startswith(("/auth", "/admin")) or "authorization" in request.headers or _SESSION_COOKIE in request.cookies
+    if personal:
         response.headers["Cache-Control"] = "no-store"
+    elif request.method == "GET" and response.status_code == 200 and request.url.path.startswith(_PUBLIC_CACHE_PREFIXES):
+        # Public reads are identical for every anonymous visitor: let browsers and the edge (the
+        # nginx microcache in scripts/deploy/03-configure-nginx.sh) reuse them for half a minute,
+        # so one shared leaderboard link does not hit the database once per viewer. Shared
+        # courses are content-addressed and can be held for an hour.
+        ttl = 3600 if request.url.path.startswith("/gpx/shared/") else 30
+        response.headers.setdefault("Cache-Control", f"public, max-age={ttl}, stale-while-revalidate=60")
     return response
 
 
@@ -918,6 +927,22 @@ _MEASUREMENT_CACHE_DIR = Path(__file__).resolve().parents[1] / "data" / "cache" 
 _MEASUREMENT_CACHE_MAX_ENTRIES = 64
 
 
+_TILE_CODE = re.compile(r"_(N|S)(\d{2})_00_(E|W)(\d{3})_00_")
+
+
+def _dem_tile_codes(provider) -> list[str]:
+    """The installed terrain tiles as short codes (N07E098 = the 1°×1° tile north of 7°N, east of
+    98°E), for the admin overview: a course outside them scores at Low confidence."""
+    if provider is None:
+        return []
+    codes = []
+    for tile in provider.manifest.get("tiles", []):
+        name = str(tile.get("path", ""))
+        match = _TILE_CODE.search(name)
+        codes.append("".join(match.groups()) if match else Path(name).stem)
+    return sorted(codes)
+
+
 def _manifest_fingerprint(provider) -> str:
     if provider is None:
         return "no-dem"
@@ -1485,6 +1510,7 @@ def admin_overview(organizer: Organizer = Depends(require_admin)) -> AdminOvervi
             "measurement_version": MEASUREMENT_VERSION,
             "dem_configured": provider is not None,
             "dem_manifest": Path(manifest).name if manifest else None,
+            "dem_tiles": _dem_tile_codes(provider),
             "measurement_cache_entries": cache_entries,
             "measurement_cache_max": _MEASUREMENT_CACHE_MAX_ENTRIES,
             "python": sys.version.split()[0],

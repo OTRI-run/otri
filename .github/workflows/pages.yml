@@ -21,6 +21,9 @@ concurrency:
 env:
   NODE_VERSION: 22
   VITE_OTRI_API_BASE_URL: https://api.otri.run
+  # Optional browser error reporting: set the VITE_SENTRY_DSN repository variable (Settings,
+  # Secrets and variables, Actions, Variables). Empty means the SDK is never loaded.
+  VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
 
 jobs:
   build:

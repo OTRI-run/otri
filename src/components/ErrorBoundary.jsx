@@ -1,4 +1,5 @@
 import React from 'react'
+import { reportError } from '../lib/monitoring'
 
 // Last line of defence for the three React apps: a render error would otherwise leave a blank
 // page. Shows the OTRI mark, what went wrong, and the two things a visitor can do about it.
@@ -15,6 +16,7 @@ export default class ErrorBoundary extends React.Component {
   componentDidCatch(error, info) {
     // eslint-disable-next-line no-console
     console.error('OTRI page crashed', error, info?.componentStack)
+    reportError(error, { componentStack: info?.componentStack })
   }
 
   render() {

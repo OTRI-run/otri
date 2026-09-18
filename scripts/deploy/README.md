@@ -51,3 +51,12 @@ crontab -e
 - All are idempotent enough to re-run safely.
 - The API writes a bounded measurement cache to `/opt/otri/data/cache/measurements/` (one JSON per GPX content hash + terrain manifest, at most 64). It is content-addressed and safe to delete at any time; the next request just measures again.
 - `*.sh` files are forced to LF line endings via `.gitattributes` — a CRLF shell script fails on Linux.
+
+## Runbook: adding terrain coverage for a new region
+
+A course is measured at `High` confidence only where its Copernicus GLO-30 tiles are installed; anywhere else it is measured from the file's own elevations at `Low` confidence, and the admin overview's "Terrain coverage" row lists what is installed. When organizers arrive from a new area:
+
+1. Find the tile codes. Tiles are 1°×1°, named by their south-west corner: a course around Chiang Mai (18.8°N, 98.9°E) needs `N18E098`; one that crosses 19°N needs `N19E098` too. Check the course's bounding box on its map page and take every whole degree it touches (latitude `N`/`S`, two digits; longitude `E`/`W`, three digits).
+2. As the `otri` user on the Droplet: `./scripts/deploy/06-install-dem.sh N18E098 N19E098` (about 25 MB per tile, checksummed; re-running is safe). `--list` shows what is installed.
+3. Nothing to restart: the API re-reads the manifest when it changes. Confirm the new codes in the admin overview.
+4. Races measured before the tiles existed keep their stored measurement until the organizer uploads the GPX again (or you re-upload it for them from the race's course step); the calculator picks the new tiles up immediately.

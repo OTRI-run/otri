@@ -16,6 +16,16 @@ if [[ ${EUID} -ne 0 ]]; then
   exit 1
 fi
 
+echo "==> Writing the public-read microcache"
+# Anonymous GETs of public data (race lists, leaderboards, runner profiles) carry
+# "Cache-Control: public, max-age=30" from the API and are served from this cache for that long,
+# so a shared link that goes round a club hits the database once, not once per viewer. Anything
+# personal is "no-store" and is never cached; requests carrying a session are bypassed entirely.
+mkdir -p /var/cache/nginx/otri
+tee /etc/nginx/conf.d/otri-cache.conf >/dev/null <<EOF
+proxy_cache_path /var/cache/nginx/otri levels=1:2 keys_zone=otri_cache:10m max_size=200m inactive=10m use_temp_path=off;
+EOF
+
 echo "==> Writing Nginx site for ${DOMAIN}"
 tee /etc/nginx/sites-available/otri-api >/dev/null <<EOF
 # Per-IP request budget in front of the API's own (per-endpoint) limits: 20 requests/second
@@ -39,6 +49,16 @@ server {
         limit_req_status 429;
         proxy_pass http://127.0.0.1:8000;
         proxy_read_timeout 120s;
+
+        # Microcache for public reads; the API's Cache-Control decides what is cacheable and for
+        # how long, a session cookie or bearer token bypasses the cache, and a stale copy is
+        # served while one request refreshes it (no thundering herd on a popular leaderboard).
+        proxy_cache otri_cache;
+        proxy_cache_methods GET HEAD;
+        proxy_cache_bypass \$http_authorization \$cookie_otri_session;
+        proxy_no_cache \$http_authorization \$cookie_otri_session;
+        proxy_cache_lock on;
+        proxy_cache_use_stale updating error timeout;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;

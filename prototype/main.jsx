@@ -8,10 +8,24 @@ import Home from './Home'
 import NextSteps from './NextSteps'
 import RaceCard, { DemoBadge } from './RaceCard'
 import ScoreCalculator from './ScoreCalculator'
+import FaqPage from './Faq'
 import { RunnerProfilePage, RunnersPage } from './Runners'
 import CourseMap from '../src/components/CourseMap'
 import ReportForm from './ReportForm'
 import Flag from '../src/components/Flag'
+import { initMonitoring } from '../src/lib/monitoring'
+import { useDocumentTitle } from '../src/lib/title'
+
+initMonitoring()
+
+const PAGE_TITLES = {
+  home: 'OTRI — Open Trail Running Index',
+  races: 'Scored races · OTRI',
+  runners: 'Runners · OTRI',
+  calculator: 'Score calculator · OTRI',
+  faq: 'FAQ · OTRI',
+  notfound: 'Page not found · OTRI',
+}
 import { fetchRaceGpxFile, getRace, getRaceMeasurement, getRaceResults, listRaces } from './apiClient'
 import BuildBanner from '../src/components/BuildBanner'
 import ErrorBoundary from '../src/components/ErrorBoundary'
@@ -27,6 +41,7 @@ const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 
 function parseHash(hash) {
   const path = hash.replace(/^#\/?/, '')
+  if (path.startsWith('faq')) return { tab: 'faq', raceId: null, faqQuery: new URLSearchParams(path.split('?')[1] || '').get('q') || '' }
   if (path.startsWith('calculator')) return { tab: 'calculator', raceId: null }
   const raceMatch = path.match(/^races\/(.+)$/)
   if (raceMatch) return { tab: 'races', raceId: decodeURIComponent(raceMatch[1]) }
@@ -59,6 +74,7 @@ const NAV = [
   { id: 'calculator', label: 'Calculate score', href: '#calculator' },
   { id: 'races', label: 'Races', href: '#races' },
   { id: 'runners', label: 'Runners', href: '#runners' },
+  { id: 'faq', label: 'FAQ', href: '#faq' },
 ]
 
 function NavLink({ item, active, className = '' }) {
@@ -128,10 +144,14 @@ function Footer() {
     <footer className="border-t border-slate-200 bg-white py-6">
       <div className="mx-auto flex w-[min(1120px,calc(100%-28px))] flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <Logo href="../" />
-        <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">
-          <Mail size={14} />
-          hello@otri.run
-        </a>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <a href="#faq" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">FAQ</a>
+          <a href="https://github.com/OTRI-run/otri/blob/main/PRIVACY.md" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Privacy</a>
+          <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">
+            <Mail size={14} />
+            hello@otri.run
+          </a>
+        </div>
         <span className="font-mono text-[8px] tracking-[.08em] text-slate-500">OPEN · TRANSPARENT · REPRODUCIBLE · INDEPENDENT</span>
       </div>
     </footer>
@@ -155,6 +175,7 @@ function Leaderboard({ raceId, onBack }) {
   const [results, setResults] = useState(null)
   const [course, setCourse] = useState(null)
   const [error, setError] = useState(null)
+  useDocumentTitle(race ? `${race.event_name} · ${race.course_name} · OTRI` : 'Race · OTRI')
 
   useEffect(() => {
     let cancelled = false
@@ -372,6 +393,8 @@ redirectAuthLinks()
 
 function App() {
   const route = useRoute()
+  // Race and runner pages set a more specific title once their data has loaded.
+  useDocumentTitle(route.raceId || route.runnerId ? null : PAGE_TITLES[route.tab] ?? PAGE_TITLES.home)
 
   return (
     <div id="top" className="min-h-screen max-w-full overflow-x-clip bg-[#f7f9fc] text-[#0b1220]">
@@ -381,6 +404,7 @@ function App() {
         {route.tab === 'races' && <RacesPage raceId={route.raceId} />}
         {route.tab === 'runners' && (route.runnerId ? <RunnerProfilePage runnerId={route.runnerId} onBack={() => navigate('#runners')} /> : <RunnersPage />)}
         {route.tab === 'calculator' && <ScoreCalculator />}
+        {route.tab === 'faq' && <FaqPage initialQuery={route.faqQuery} />}
         {route.tab === 'notfound' && <NotFound where={window.location.hash} home="#home" />}
       </main>
       <Footer />

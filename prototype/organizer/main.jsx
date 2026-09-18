@@ -7,6 +7,8 @@ import UnitsMenu from '../../src/components/UnitsMenu'
 import { logoutOrganizer, getMe } from '../apiClient'
 import BuildBanner from '../../src/components/BuildBanner'
 import ErrorBoundary from '../../src/components/ErrorBoundary'
+import { initMonitoring } from '../../src/lib/monitoring'
+import { useDocumentTitle } from '../../src/lib/title'
 import SharedNotFound from '../../src/components/NotFound'
 import { AccountPage } from './pages/Account'
 import { AdminEvents } from './pages/Admin'
@@ -185,8 +187,25 @@ function Footer() {
   )
 }
 
+initMonitoring()
+
+function organizerTitle(path) {
+  if (path.startsWith('/login')) return 'Sign in · OTRI organizers'
+  if (path.startsWith('/register')) return 'Create account · OTRI organizers'
+  if (path.startsWith('/forgot') || path.startsWith('/reset')) return 'Reset password · OTRI organizers'
+  if (path.startsWith('/verify') || path.startsWith('/check-email')) return 'Verify email · OTRI organizers'
+  if (path.startsWith('/account')) return 'Account settings · OTRI organizers'
+  if (path.startsWith('/admin')) return 'Admin · OTRI organizers'
+  if (path.startsWith('/events/new')) return 'New event · OTRI organizers'
+  if (path.startsWith('/events/')) return 'Event · OTRI organizers'
+  if (path.startsWith('/events')) return 'Your events · OTRI organizers'
+  if (path.startsWith('/races/')) return 'Race · OTRI organizers'
+  return 'OTRI for organizers'
+}
+
 function App() {
   const route = useRoute()
+  useDocumentTitle(organizerTitle(route.path))
   const [session, setSession] = useState(() => readSession())
 
   function signIn(token, email, isAdmin = false) {
