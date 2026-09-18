@@ -65,6 +65,10 @@ Athlete identity matching should use the minimum necessary information and shoul
 
 OTRI may list a race before its organizer has joined, from facts checked against a public source (name, date, place, distance, climb, official website), with the source recorded. It does not copy the course file or the results with them: a course file on an unclaimed listing needs a recorded open licence or the organizer's consent, and results come only from the organizer. An organizer who asks for a listing to be corrected or removed gets that done. See [`docs/product/race-listings.md`](docs/product/race-listings.md).
 
+## Stored course files
+
+A course file is reduced to positions and elevations before it is stored or served (`course/sanitize.py`); the measurement is identical. This is data minimisation, not a licence: removing a notice from a file does not change who may publish the course, so the permission rules above apply unchanged. What the uploaded file said about its origin (creator, author, copyright holder, licence, links) is kept with the race's private record, together with the SHA-256 of the original upload, so that a licence's attribution terms can be honoured and a dispute can be answered.
+
 ## Licensing
 
 Software licensing and dataset licensing are separate. Code may be open-source under a software license while individual race datasets remain under their organizer's terms.

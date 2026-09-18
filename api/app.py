@@ -35,6 +35,7 @@ from starlette.concurrency import run_in_threadpool
 
 from course import GpxParseError, extract_features, parse_track_points, read_track_points
 from course.discipline import is_vertical
+from course.sanitize import sanitized_gpx, source_metadata
 from course.measurement import Measurement, measure_course
 from course.features import features_from_measurement
 from course.elevation import configured_provider
@@ -1251,13 +1252,23 @@ async def attach_race_gpx(
 
     if race.organizer_id is None:
         db.set_race_listed(race_id, race.listed_at is not None, permission)
+    # Stored and served: positions and elevations only (course/sanitize.py). What the upload said about
+    # its origin stays with the race's private record; raw_sha256 still identifies the original file.
+    stored = sanitized_gpx(points, name=f"{race.event_name or ''} {race.course_name}".strip())
     updated = db.attach_gpx(
         race_id,
         filename=file.filename or "course.gpx",
-        content=contents.decode("utf-8", errors="replace"),
+        content=stored,
         distance_km=features.distance_km,
         elevation_gain_m=features.elevation_gain_m,
-        measurement={**measurement.to_dict(), "raw_sha256": sha256(contents).hexdigest(), "processed_at": datetime.now(timezone.utc).isoformat(), "snapshot": asdict(measurement)},
+        measurement={
+            **measurement.to_dict(),
+            "raw_sha256": sha256(contents).hexdigest(),
+            "stored_sha256": sha256(stored.encode("utf-8")).hexdigest(),
+            "source_metadata": source_metadata(contents.decode("utf-8", errors="replace")),
+            "processed_at": datetime.now(timezone.utc).isoformat(),
+            "snapshot": asdict(measurement),
+        },
     )
     return _race_summary(updated)
 
@@ -1270,13 +1281,17 @@ def _visible_race(race_id: str, organizer: Organizer | None, *, results: bool = 
     return race
 
 
+# The replay snapshot is bulky; the upload's own metadata can name a person. Neither is public.
+_PRIVATE_MEASUREMENT_KEYS = {"snapshot", "source_metadata"}
+
+
 @app.get("/races/{race_id}/measurement")
 def get_race_measurement(race_id: str, organizer: Organizer | None = Depends(_optional_organizer)) -> dict:
     _visible_race(race_id, organizer)
     result = db.get_measurement(race_id)
     if result is None:
         raise HTTPException(status_code=404, detail="No versioned measurement stored; reattach GPX to measure it")
-    return {key: value for key, value in result.items() if key != "snapshot"}
+    return {key: value for key, value in result.items() if key not in _PRIVATE_MEASUREMENT_KEYS}
 
 
 @app.get("/races/{race_id}/gpx")
@@ -1629,7 +1644,8 @@ async def share_gpx(request: Request, file: UploadFile, name: str | None = Form(
     if len(contents) > _SHARED_COURSE_MAX_FILE_BYTES:
         raise HTTPException(status_code=413, detail=f"A shared course may be at most {_SHARED_COURSE_MAX_FILE_BYTES // 1_000_000} MB")
     try:
-        points = await run_in_threadpool(parse_track_points, contents.decode("utf-8"))
+        text = contents.decode("utf-8")
+        points = await run_in_threadpool(parse_track_points, text)
     except (GpxParseError, ValueError, UnicodeError) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     if len(points) < 2:
@@ -1639,7 +1655,8 @@ async def share_gpx(request: Request, file: UploadFile, name: str | None = Form(
     path = _shared_course_path(share_id)
     created = not path.exists()
     if created:
-        packed = gzip.compress(contents, compresslevel=6)
+        # The id is the upload's own hash (the same file shares one link); what is kept is the track alone.
+        packed = gzip.compress(sanitized_gpx(points).encode("utf-8"), compresslevel=6)
         clean_name = (name or Path(file.filename or "").stem or "").strip()[:120] or None
         with _SHARED_COURSE_LOCK:
             _SHARED_COURSE_DIR.mkdir(parents=True, exist_ok=True)
@@ -1648,7 +1665,7 @@ async def share_gpx(request: Request, file: UploadFile, name: str | None = Form(
             _evict_shared_courses(max(0, _SHARED_COURSE_MAX_TOTAL_BYTES - len(packed)))
             path.write_bytes(packed)
             _shared_course_meta_path(share_id).write_text(
-                json.dumps({"name": clean_name, "filename": file.filename, "created_at": datetime.now(timezone.utc).isoformat()}),
+                json.dumps({"name": clean_name, "filename": file.filename, "created_at": datetime.now(timezone.utc).isoformat(), "source_metadata": source_metadata(text)}),
                 encoding="utf-8",
             )
             _evict_shared_courses(_SHARED_COURSE_MAX_TOTAL_BYTES)
