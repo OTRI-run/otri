@@ -27,6 +27,7 @@ PASSWORD = "correct horse battery"
 PUBLIC_MUTATIONS = {
     "/auth/register", "/auth/login", "/auth/login/2fa", "/auth/logout", "/auth/verify-email",
     "/auth/resend-verification", "/auth/request-password-reset", "/auth/reset-password", "/gpx/analyze", "/gpx/share", "/reports",
+    "/races/{race_id}/score-requests",  # a runner asking for a listed race to be scored: rate limited, one per visitor
 }
 
 

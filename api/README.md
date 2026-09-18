@@ -28,7 +28,11 @@ Every event/race mutation (create/edit/delete, GPX attach, result submission) re
 | POST | `/events` | **Requires an organizer bearer token.** Creates an event owned by the caller. 422 if `event_name` is blank. |
 | PATCH | `/events/{event_id}` | **Requires ownership.** Partial update of `event_name`/`event_date`. 403 if not the owner, 404 if unknown. |
 | DELETE | `/events/{event_id}` | **Requires ownership.** Deletes the event, cascading to its race distances and their results. 403/404 as above. |
-| GET | `/races` | List all race distances across all events. |
+| GET | `/races` | Public races: those with published results and listings awaiting them (`listing_status`: `scored`, `upcoming`, `awaiting_results`; `request_count`, `is_listed`, `is_claimed`, `official_url`). `?all=true` (admin) lists every race. |
+| POST · DELETE | `/races/{race_id}/listing` | **Requires ownership.** Show the race publicly before it has results, or take the listing down. Results stay behind publishing (`docs/product/race-listings.md`). |
+| POST | `/races/{race_id}/score-requests` | Public: a runner asks for a listed race to be scored. Optional `client_id`; counted once per visitor, capped per address, rate limited. 409 once the race is scored. |
+| POST | `/admin/listings` · `/admin/listings/import` | **Admin.** Add unowned listings from race facts (JSON, or a CSV with one row per distance). Existing events and distances are skipped and reported. |
+| POST | `/admin/events/{event_id}/assign` | **Admin.** Hand an event to an organizer's account (`organizer_email`), or release it with none: how a claimed listing reaches its organizer. |
 | GET | `/races/{race_id}` | Race distance detail, 404 if unknown. |
 | GET | `/scoring/models` | List every available scoring algorithm (`version`, `name`, `description`, `uses_competitors`) a race distance can be configured to use — see `scoring/README.md`. |
 | POST | `/events/{event_id}/races` | **Requires ownership of the event.** Add a race distance. Optional `scoring_version` (defaults to OTRI model 0.1.0, build id `0.9.0-course-standard-domain-gated`), 422 if unknown, if `course_name` is blank, or if distance/elevation are invalid. |
@@ -41,7 +45,7 @@ Every event/race mutation (create/edit/delete, GPX attach, result submission) re
 | PATCH | `/races/{race_id}` | **Requires ownership.** Partial update of `course_name`/`distance_km`/`elevation_gain_m`/`scoring_version`. 422 on an unknown `scoring_version`. |
 | DELETE | `/races/{race_id}` | **Requires ownership.** Deletes the race distance, cascading to its results. |
 | GET | `/races/{race_id}/measurement` | Saved cleaned profile, measurement version, source and quality status; 404 for legacy GPX attachments without a snapshot. |
-| POST | `/races/{race_id}/gpx` | **Requires ownership.** Attach/replace a GPX file for a race distance — recomputes `distance_km`/`elevation_gain_m` from the parsed course. 422 on an unparseable GPX. |
+| POST | `/races/{race_id}/gpx` | **Requires ownership.** Attach/replace a GPX file for a race distance — recomputes `distance_km`/`elevation_gain_m` from the parsed course. 422 on an unparseable GPX. A race nobody owns (an unclaimed listing) also needs the `course_permission` form field: the licence or the organizer's consent under which OTRI may show the file. |
 | GET | `/races/{race_id}/gpx` | Raw GPX content for a race distance (`application/gpx+xml`), 404 if none attached. |
 | GET | `/races/{race_id}/results` | Scored results for a race already on file (scored with whichever model the race is configured for), 404 if unknown race or no results submitted yet. |
 | POST | `/races/{race_id}/results` | **Requires ownership of the race's event.** Upload a CSV/XLSX result file. Always validates first, then re-scores from the raw file using the race's configured scoring model — **the organizer can never supply a score directly** (`HANDBOOK.md` "Validation and anti-gaming"). A successful submission replaces any previously stored results for that race. Returns `is_valid`, `errors`, `warnings`, and `scores` (empty if invalid). |

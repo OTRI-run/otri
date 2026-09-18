@@ -8,6 +8,7 @@ import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import Home from './Home'
 import NextSteps from './NextSteps'
 import RaceCard, { DemoBadge, VerticalBadge } from './RaceCard'
+import RaceListing, { ListingBadge } from './RaceListing'
 import ScoreCalculator from './ScoreCalculator'
 import FaqPage from './Faq'
 import { RunnerProfilePage, RunnersPage } from './Runners'
@@ -185,7 +186,8 @@ function Leaderboard({ raceId, onBack }) {
     setResults(null)
     setCourse(null)
     setError(null)
-    Promise.all([getRace(raceId), getRaceResults(raceId)])
+    getRace(raceId)
+      .then(async (loaded) => [loaded, loaded.is_published ? await getRaceResults(raceId) : []])
       .then(([loaded, rows]) => {
         if (cancelled) return
         setRace(loaded)
@@ -227,13 +229,14 @@ function Leaderboard({ raceId, onBack }) {
                 {[race.event_location, race.event_country].filter(Boolean).join(' · ').toUpperCase()}
               </span>
             )}
+            <ListingBadge status={race.listing_status} />
             {race.is_vertical && <VerticalBadge />}
             {race.is_demo && <DemoBadge />}
           </p>
           <h2 className="mt-2 text-[clamp(32px,4.5vw,52px)] font-bold leading-[.98] tracking-[-.05em] text-[#0b1220]">{race.event_name}</h2>
           <p className="mt-3 text-sm text-slate-500">
             {race.course_name} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
-            {race.has_gpx ? ' · Verified course' : ' · Official figures, no course file'}
+            {race.has_gpx ? (race.is_claimed ? ' · Verified course' : ' · Course shown with permission') : ' · Official figures, no course file'}
           </p>
           {race.organizer_display && (
             <p className="mt-2 text-xs text-slate-500">
@@ -255,62 +258,67 @@ function Leaderboard({ raceId, onBack }) {
               <CourseMap gpxText={course.gpxText} measurement={course.measurement} className="p-3" />
             </div>
           )}
-          {notScoredReason(results) && (
-            <p className="mt-6 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-6 text-slate-700">
-              <strong className="text-[#0b1220]">Finish times only.</strong> {notScoredReason(results)}
+          {!race.is_published && <RaceListing race={race} />}
+          {race.is_published && (
+            <>
+            {notScoredReason(results) && (
+              <p className="mt-6 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-6 text-slate-700">
+                <strong className="text-[#0b1220]">Finish times only.</strong> {notScoredReason(results)}
+              </p>
+            )}
+            <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+              <table className="w-full border-collapse text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
+                    <th className="px-4 py-3">Rank</th>
+                    <th className="px-4 py-3">Runner</th>
+                    <th className="hidden px-4 py-3 sm:table-cell">Country</th>
+                    <th className="hidden px-4 py-3 sm:table-cell">Gender</th>
+                    <th className="px-4 py-3">Time</th>
+                    <th className="px-4 py-3">OTRI score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(results ?? []).map((row) => (
+                    <tr key={`${row.rank}-${row.bib_number ?? row.family_name}-${row.first_name}`} className={`border-b border-slate-100 last:border-0 ${row.status !== 'finisher' ? 'bg-slate-50/60 text-slate-500' : ''}`}>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-500">{row.rank}</td>
+                      <td className="px-4 py-3 font-medium text-[#0b1220]">
+                        {row.runner_id ? (
+                          <a href={`#runners/${encodeURIComponent(row.runner_id)}`} className="no-underline hover:underline">
+                            {row.first_name} {row.family_name}
+                          </a>
+                        ) : (
+                          <>
+                            {row.first_name} {row.family_name}
+                          </>
+                        )}
+                        <span className="mt-0.5 flex items-center gap-2 font-mono text-[10px] font-normal text-slate-500 sm:hidden">
+                          {row.nationality && <Flag code={row.nationality} />}
+                          {row.gender && <span>{row.gender}</span>}
+                        </span>
+                      </td>
+                      <td className="hidden px-4 py-3 sm:table-cell">{row.nationality ? <Flag code={row.nationality} /> : <span className="text-slate-300">—</span>}</td>
+                      <td className="hidden px-4 py-3 font-mono text-xs text-slate-500 sm:table-cell">{row.gender ?? '—'}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-500">{formatHms(row.finish_time_seconds)}</td>
+                      <td className="px-4 py-3 font-mono text-sm font-bold text-blue-600">{row.otri_score ?? <span className="text-slate-300">—</span>}</td>
+                    </tr>
+                  ))}
+                  {results?.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">
+                        No results published yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-3 font-mono text-[10px] tracking-[.05em] text-slate-400">
+              {modelLabel(race.scoring_version)} · depends only on the course and each runner's own finish time, never the field
             </p>
+            </>
           )}
-          <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
-            <table className="w-full border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
-                  <th className="px-4 py-3">Rank</th>
-                  <th className="px-4 py-3">Runner</th>
-                  <th className="hidden px-4 py-3 sm:table-cell">Country</th>
-                  <th className="hidden px-4 py-3 sm:table-cell">Gender</th>
-                  <th className="px-4 py-3">Time</th>
-                  <th className="px-4 py-3">OTRI score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(results ?? []).map((row) => (
-                  <tr key={`${row.rank}-${row.bib_number ?? row.family_name}-${row.first_name}`} className={`border-b border-slate-100 last:border-0 ${row.status !== 'finisher' ? 'bg-slate-50/60 text-slate-500' : ''}`}>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-500">{row.rank}</td>
-                    <td className="px-4 py-3 font-medium text-[#0b1220]">
-                      {row.runner_id ? (
-                        <a href={`#runners/${encodeURIComponent(row.runner_id)}`} className="no-underline hover:underline">
-                          {row.first_name} {row.family_name}
-                        </a>
-                      ) : (
-                        <>
-                          {row.first_name} {row.family_name}
-                        </>
-                      )}
-                      <span className="mt-0.5 flex items-center gap-2 font-mono text-[10px] font-normal text-slate-500 sm:hidden">
-                        {row.nationality && <Flag code={row.nationality} />}
-                        {row.gender && <span>{row.gender}</span>}
-                      </span>
-                    </td>
-                    <td className="hidden px-4 py-3 sm:table-cell">{row.nationality ? <Flag code={row.nationality} /> : <span className="text-slate-300">—</span>}</td>
-                    <td className="hidden px-4 py-3 font-mono text-xs text-slate-500 sm:table-cell">{row.gender ?? '—'}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-slate-500">{formatHms(row.finish_time_seconds)}</td>
-                    <td className="px-4 py-3 font-mono text-sm font-bold text-blue-600">{row.otri_score ?? <span className="text-slate-300">—</span>}</td>
-                  </tr>
-                ))}
-                {results?.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">
-                      No results published yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          <p className="mt-3 font-mono text-[10px] tracking-[.05em] text-slate-400">
-            {modelLabel(race.scoring_version)} · depends only on the course and each runner's own finish time, never the field
-          </p>
-          <ReportForm kind="race" subjectId={race.race_id} subjectLabel={`${race.event_name} · ${race.course_name}`} prompt="Wrong result, wrong course, or your name should not be here?" />
+          <ReportForm kind="race" subjectId={race.race_id} subjectLabel={`${race.event_name} · ${race.course_name}`} prompt={race.is_published ? 'Wrong result, wrong course, or your name should not be here?' : 'Wrong details, or should this race not be listed?'} />
           <NextSteps
             items={[
               ['Where would you land?', race.has_gpx ? 'Try a target time on this exact course.' : 'Pick a course and a target time. The score updates live.', race.has_gpx ? 'Calculate your score here' : 'Calculate your score', race.has_gpx ? `#calculator?race=${encodeURIComponent(race.race_id)}` : '#calculator'],
@@ -334,13 +342,31 @@ const DISTANCE_BUCKETS = [
   // Uphill-only courses, whatever their length: a category of its own, as race calendars list them.
   { id: 'vertical', label: 'Vertical', test: (race) => Boolean(race.is_vertical) },
 ]
+// Scored races first (newest), then upcoming ones (soonest), then races still waiting for results
+// (most asked for): a catalogue of listings must not bury the races that have something to show.
+const STATUS_ORDER = { scored: 0, upcoming: 1, awaiting_results: 2 }
+function featuredOrder(a, b) {
+  const byStatus = (STATUS_ORDER[a.listing_status] ?? 3) - (STATUS_ORDER[b.listing_status] ?? 3)
+  if (byStatus) return byStatus
+  if (a.listing_status === 'upcoming') return (a.event_date ?? '').localeCompare(b.event_date ?? '')
+  if (a.listing_status === 'awaiting_results') return (b.request_count ?? 0) - (a.request_count ?? 0) || (b.event_date ?? '').localeCompare(a.event_date ?? '')
+  return (b.event_date ?? '').localeCompare(a.event_date ?? '')
+}
+const RACE_STATUSES = [
+  ['all', 'Scored and listed'],
+  ['scored', 'Scored'],
+  ['upcoming', 'Upcoming'],
+  ['awaiting_results', 'Awaiting results'],
+]
 const RACE_SORTS = {
+  featured: { label: 'Scored first', by: featuredOrder },
   newest: { label: 'Newest first', by: (a, b) => (b.event_date ?? '').localeCompare(a.event_date ?? '') },
   oldest: { label: 'Oldest first', by: (a, b) => (a.event_date ?? '').localeCompare(b.event_date ?? '') },
   finishers: { label: 'Most finishers', by: (a, b) => (b.finisher_count ?? 0) - (a.finisher_count ?? 0) },
   longest: { label: 'Longest', by: (a, b) => (b.distance_km ?? 0) - (a.distance_km ?? 0) },
   shortest: { label: 'Shortest', by: (a, b) => (a.distance_km ?? 0) - (b.distance_km ?? 0) },
   climb: { label: 'Most climb', by: (a, b) => (b.elevation_gain_m ?? 0) - (a.elevation_gain_m ?? 0) },
+  requested: { label: 'Most asked for', by: (a, b) => (b.request_count ?? 0) - (a.request_count ?? 0) },
   name: { label: 'Name A–Z', by: (a, b) => `${a.event_name} ${a.course_name}`.localeCompare(`${b.event_name} ${b.course_name}`) },
 }
 const normalise = (text) => String(text ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -351,9 +377,11 @@ function RacesPage({ raceId }) {
   const [query, setQuery] = useState('')
   const [bucket, setBucket] = useState('all')
   const [country, setCountry] = useState('all')
-  const [sort, setSort] = useState('newest')
+  const [status, setStatus] = useState('all')
+  const [sort, setSort] = useState('featured')
   const [visible, setVisible] = useState(RACE_PAGE_SIZE)
-  useEffect(() => setVisible(RACE_PAGE_SIZE), [query, bucket, country, sort])
+  useEffect(() => setVisible(RACE_PAGE_SIZE), [query, bucket, country, status, sort])
+  const hasListings = races?.some((race) => race.listing_status !== 'scored')
 
   const countryOptions = useMemo(() => {
     const codes = [...new Set((races ?? []).map((race) => race.event_country).filter(Boolean))]
@@ -365,13 +393,14 @@ function RacesPage({ raceId }) {
     return (races ?? [])
       .filter(test)
       .filter((race) => country === 'all' || race.event_country === country)
+      .filter((race) => status === 'all' || race.listing_status === status)
       .filter((race) => {
         if (!words.length) return true
         const hay = normalise(`${race.event_name} ${race.course_name} ${race.event_location ?? ''} ${countryName(race.event_country)} ${race.event_date ?? ''}`)
         return words.every((word) => hay.includes(word))
       })
-      .sort(RACE_SORTS[sort]?.by ?? RACE_SORTS.newest.by)
-  }, [races, query, bucket, country, sort])
+      .sort(RACE_SORTS[sort]?.by ?? RACE_SORTS.featured.by)
+  }, [races, query, bucket, country, status, sort])
 
   // Refetch whenever the list is shown (also on the way back from a leaderboard), so a race
   // published or taken down meanwhile is reflected.
@@ -408,6 +437,7 @@ function RacesPage({ raceId }) {
               <p className="min-w-0 text-sm leading-7 text-slate-500">
                 Races their organizers have published, scored under the Course Standard model. Each score depends only on the
                 course and the runner's own finish time — never on who else raced.
+                {hasListings ? ' Races marked UPCOMING or AWAITING RESULTS are listed without scores: open one to ask for them.' : ''}
                 {hasDemo ? ' Races marked DEMO DATA are synthetic examples.' : ''}
               </p>
             </div>
@@ -449,6 +479,13 @@ function RacesPage({ raceId }) {
                       ))}
                     </select>
                   )}
+                  {hasListings && (
+                    <select value={status} onChange={(event) => setStatus(event.target.value)} aria-label="Status" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-[#0b1220]">
+                      {RACE_STATUSES.map(([id, label]) => (
+                        <option key={id} value={id}>{label}</option>
+                      ))}
+                    </select>
+                  )}
                   <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort races" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-[#0b1220]">
                     {Object.entries(RACE_SORTS).map(([id, option]) => (
                       <option key={id} value={id}>{option.label}</option>
@@ -465,7 +502,7 @@ function RacesPage({ raceId }) {
             {races?.length > 0 && shown.length === 0 && (
               <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
                 No race matches. Try fewer words, another distance, or{' '}
-                <button type="button" onClick={() => { setQuery(''); setBucket('all'); setCountry('all') }} className="font-semibold text-blue-600 hover:underline">clear the filters</button>.
+                <button type="button" onClick={() => { setQuery(''); setBucket('all'); setCountry('all'); setStatus('all') }} className="font-semibold text-blue-600 hover:underline">clear the filters</button>.
               </div>
             )}
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -96,8 +96,14 @@ from .schemas import (
     MeResponse,
     SharedCourseOut,
     EmailVerificationRequest,
+    EventAssign,
     EventCreate,
     EventDetail,
+    ListingCreate,
+    ListingImportResult,
+    RaceListingUpdate,
+    ScoreRequestIn,
+    ScoreRequestOut,
     EventSummary,
     EventUpdate,
     GpxAnalysis,
@@ -388,9 +394,10 @@ def _require_race_owner(race: db.Race, organizer: Organizer) -> None:
         raise HTTPException(status_code=403, detail="you do not have permission to modify this race")
 
 
-def _require_race_visible(race: db.Race, organizer: Organizer | None) -> None:
-    """Results, course and measurement are public once published; until then only the owner and admins see them."""
-    if race.published_at is not None:
+def _require_race_visible(race: db.Race, organizer: Organizer | None, *, results: bool = False) -> None:
+    """Results, course and measurement are public once published; until then only the owner and admins
+    see them. A listing makes the course and measurement public earlier, never the results."""
+    if race.published_at is not None or (race.listed_at is not None and not results):
         return
     if organizer is not None and (organizer.id == race.organizer_id or organizer.is_admin):
         return
@@ -670,7 +677,17 @@ def confirm_password_reset(payload: PasswordResetConfirm, request: Request, resp
 # --- Events ------------------------------------------------------------------
 
 
-def _race_summary(race: db.Race, finisher_count: int | None = None) -> RaceSummary:
+def _listing_status(race: db.Race) -> str:
+    if race.published_at is not None:
+        return "scored"
+    if race.listed_at is None:
+        return "private"
+    return "upcoming" if race.event_date and race.event_date > date.today() else "awaiting_results"
+
+
+def _race_summary(race: db.Race, finisher_count: int | None = None, request_count: int | None = None) -> RaceSummary:
+    if request_count is None:
+        request_count = db.count_score_requests_by_race().get(race.race_id, 0) if race.listed_at is not None else 0
     return RaceSummary(
         race_id=race.race_id,
         event_id=race.event_id,
@@ -693,6 +710,12 @@ def _race_summary(race: db.Race, finisher_count: int | None = None) -> RaceSumma
         organizer_website=race.organizer_website,
         elevation_loss_m=race.elevation_loss_m,
         is_vertical=is_vertical(race.distance_km, race.elevation_gain_m, race.elevation_loss_m),
+        listing_status=_listing_status(race),
+        is_listed=race.listed_at is not None,
+        is_claimed=race.organizer_id is not None,
+        request_count=request_count,
+        official_url=race.event_website,
+        course_permission=race.course_permission,
     )
 
 
@@ -751,6 +774,7 @@ def get_event(event_id: str) -> EventDetail:
         raise HTTPException(status_code=404, detail=f"event {event_id!r} not found")
     races = db.list_races_for_event(event_id)
     counts = db.count_results_by_race()
+    requests = db.count_score_requests_by_race()
     return EventDetail(
         event_id=event.event_id,
         event_name=event.event_name,
@@ -758,7 +782,7 @@ def get_event(event_id: str) -> EventDetail:
         race_count=len(races),
         location=event.location,
         country=event.country,
-        races=[_race_summary(race, counts.get(race.race_id, 0)) for race in races],
+        races=[_race_summary(race, counts.get(race.race_id, 0), requests.get(race.race_id, 0)) for race in races],
     )
 
 
@@ -766,6 +790,7 @@ def get_event(event_id: str) -> EventDetail:
 def admin_list_events(organizer: Organizer = Depends(require_admin)) -> list[AdminEventOut]:
     """Every event on the platform with its owner and each race's publish state. Admin only."""
     counts = db.count_results_by_race()
+    requests = db.count_score_requests_by_race()
     out = []
     for event in db.list_events():
         races = db.list_races_for_event(event.event_id)
@@ -778,8 +803,10 @@ def admin_list_events(organizer: Organizer = Depends(require_admin)) -> list[Adm
                 location=event.location,
                 country=event.country,
                 organizer_email=event.organizer_email,
+                website=event.website,
+                source_url=event.source_url,
                 published_count=sum(1 for race in races if race.published_at is not None),
-                races=[_race_summary(race, counts.get(race.race_id, 0)) for race in races],
+                races=[_race_summary(race, counts.get(race.race_id, 0), requests.get(race.race_id, 0)) for race in races],
             )
         )
     out.sort(key=lambda e: e.event_date, reverse=True)
@@ -843,7 +870,8 @@ def list_races(all: bool = False, organizer: Organizer | None = Depends(_optiona
         if organizer is None or not organizer.is_admin:
             raise HTTPException(status_code=403, detail="admin access required")
     counts = db.count_results_by_race()
-    return [_race_summary(race, counts.get(race.race_id, 0)) for race in db.list_races(published_only=not all)]
+    requests = db.count_score_requests_by_race()
+    return [_race_summary(race, counts.get(race.race_id, 0), requests.get(race.race_id, 0)) for race in db.list_races(published_only=not all)]
 
 
 @app.get("/races/{race_id}", response_model=RaceSummary)
@@ -874,6 +902,175 @@ def unpublish_race(race_id: str, organizer: Organizer = Depends(require_organize
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
     return _race_summary(db.set_race_published(race_id, False), db.count_results_by_race().get(race_id, 0))
+
+
+# --- Listings -----------------------------------------------------------------------
+#
+# A listing is a race shown publicly before anyone has uploaded results: the facts (name, date,
+# place, distance, climb, official site), the course when OTRI may show it, and a count of runners
+# who asked for scores. Admins add unclaimed listings; an organizer can list their own race ahead
+# of race day. Results stay behind publishing. See docs/product/race-listings.md.
+
+
+def _clean_url(value: str | None) -> str | None:
+    url = (value or "").strip()[:500]
+    if not url:
+        return None
+    if not re.match(r"^https?://[^\s]+$", url):
+        raise HTTPException(status_code=422, detail=f"{url!r} is not an http(s) link")
+    return url
+
+
+def _create_listing(payload: ListingCreate, skipped: list[str]) -> tuple[int, int]:
+    """Create the event (or reuse one with the same name and date) and its missing races, listed."""
+    name = payload.event_name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="event_name is required")
+    country, website, source_url = _clean_country(payload.country), _clean_url(payload.website), _clean_url(payload.source_url)
+    for race in payload.races:
+        if not race.course_name.strip() or race.distance_km <= 0 or race.elevation_gain_m < 0:
+            raise HTTPException(status_code=422, detail=f"{name}: each race needs a course_name, distance_km > 0 and elevation_gain_m >= 0")
+    existing = next((e for e in db.list_events() if e.event_name.strip().lower() == name.lower() and e.event_date == payload.event_date), None)
+    created_events = 0
+    if existing is None:
+        existing = db.create_event(name, payload.event_date, None, location=(payload.location or "").strip() or None, country=country, website=website, source_url=source_url)
+        created_events = 1
+    have = {race.course_name.strip().lower() for race in db.list_races_for_event(existing.event_id)}
+    created_races = 0
+    for race in payload.races:
+        course = race.course_name.strip()
+        if course.lower() in have:
+            skipped.append(f"{name} · {course}: already on OTRI")
+            continue
+        created = db.create_race(existing.event_id, course, race.distance_km, race.elevation_gain_m)
+        db.set_race_listed(created.race_id, True)
+        have.add(course.lower())
+        created_races += 1
+    return created_events, created_races
+
+
+@app.post("/admin/listings", response_model=ListingImportResult, status_code=201)
+def admin_create_listing(payload: ListingCreate, organizer: Organizer = Depends(require_admin)) -> ListingImportResult:
+    skipped: list[str] = []
+    events, races = _create_listing(payload, skipped)
+    return ListingImportResult(created_events=events, created_races=races, skipped=skipped)
+
+
+_LISTING_CSV_COLUMNS = ("event_name", "event_date", "location", "country", "website", "source_url", "course_name", "distance_km", "elevation_gain_m")
+
+
+@app.post("/admin/listings/import", response_model=ListingImportResult)
+async def admin_import_listings(file: UploadFile, organizer: Organizer = Depends(require_admin)) -> ListingImportResult:
+    """Bulk-add listings from a CSV of race facts: one row per race distance, rows of the same
+    event (name and date) grouped. A bad row is skipped with its reason; the rest are imported."""
+    import csv
+    import io
+
+    contents = await file.read(2_000_001)
+    if len(contents) > 2_000_000:
+        raise HTTPException(status_code=413, detail="Upload exceeds 2 MB")
+    try:
+        reader = csv.DictReader(io.StringIO(contents.decode("utf-8-sig")))
+    except UnicodeError as error:
+        raise HTTPException(status_code=422, detail="the file is not UTF-8 text") from error
+    missing = [column for column in ("event_name", "event_date", "course_name", "distance_km") if column not in (reader.fieldnames or [])]
+    if missing:
+        raise HTTPException(status_code=422, detail=f"missing column(s) {missing}; expected {list(_LISTING_CSV_COLUMNS)}")
+
+    grouped: dict[tuple[str, str], dict] = {}
+    skipped: list[str] = []
+    for line, row in enumerate(reader, start=2):
+        if line > 5001:
+            skipped.append("rows after the 5000th were ignored")
+            break
+        row = {key: (value or "").strip() for key, value in row.items() if key}
+        try:
+            event_date = date.fromisoformat(row["event_date"])
+            race = {"course_name": row["course_name"], "distance_km": float(row["distance_km"]), "elevation_gain_m": float(row.get("elevation_gain_m") or 0)}
+        except ValueError:
+            skipped.append(f"line {line}: event_date must be YYYY-MM-DD and distance_km / elevation_gain_m numbers")
+            continue
+        entry = grouped.setdefault((row["event_name"].lower(), row["event_date"]), {**{k: row.get(k) or None for k in ("event_name", "location", "country", "website", "source_url")}, "event_date": event_date, "races": [], "line": line})
+        entry["races"].append(race)
+
+    result = ListingImportResult(skipped=skipped)
+    for entry in grouped.values():
+        line = entry.pop("line")
+        try:
+            events, races = _create_listing(ListingCreate(**entry), result.skipped)
+        except (HTTPException, ValueError) as error:
+            result.skipped.append(f"line {line}: {getattr(error, 'detail', error)}")
+            continue
+        result.created_events += events
+        result.created_races += races
+    return result
+
+
+@app.post("/races/{race_id}/listing", response_model=RaceSummary)
+def list_race(race_id: str, payload: RaceListingUpdate | None = None, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
+    """Show this race publicly before it has results. Owner or admin."""
+    race = db.find_race(race_id)
+    if race is None:
+        raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
+    _require_race_owner(race, organizer)
+    permission = ((payload.course_permission if payload else None) or "").strip()[:500] or None
+    if race.organizer_id is None and race.has_gpx and not (permission or race.course_permission):
+        raise HTTPException(status_code=422, detail="an unclaimed listing with a course file needs course_permission")
+    return _race_summary(db.set_race_listed(race_id, True, permission), db.count_results_by_race().get(race_id, 0))
+
+
+@app.delete("/races/{race_id}/listing", response_model=RaceSummary)
+def unlist_race(race_id: str, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
+    race = db.find_race(race_id)
+    if race is None:
+        raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
+    _require_race_owner(race, organizer)
+    return _race_summary(db.set_race_listed(race_id, False), db.count_results_by_race().get(race_id, 0))
+
+
+@app.post("/admin/events/{event_id}/assign", response_model=AdminEventOut)
+def admin_assign_event(event_id: str, payload: EventAssign, organizer: Organizer = Depends(require_admin)) -> AdminEventOut:
+    """Hand a claimed listing to its organizer's account (or release it with no email)."""
+    email = (payload.organizer_email or "").strip().lower()
+    organizer_id = None
+    if email:
+        organizer_id = db.find_organizer_id(email)
+        if organizer_id is None:
+            raise HTTPException(status_code=404, detail="no organizer account with that email; they need to sign up first")
+    try:
+        event = db.assign_event(event_id, organizer_id)
+    except db.NotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    races = db.list_races_for_event(event_id)
+    counts = db.count_results_by_race()
+    return AdminEventOut(
+        event_id=event.event_id, event_name=event.event_name, event_date=event.event_date, race_count=len(races), location=event.location,
+        country=event.country, organizer_email=event.organizer_email, website=event.website, source_url=event.source_url,
+        published_count=sum(1 for race in races if race.published_at is not None),
+        races=[_race_summary(race, counts.get(race.race_id, 0)) for race in races],
+    )
+
+
+# One visitor, one request per race. The key is a salted hash of the address plus the browser's
+# own random id, so runners behind one shared mobile address still count separately; the cap per
+# address keeps a script from inflating a race. Nothing personal is stored.
+_SCORE_REQUESTS_PER_ADDRESS = 25
+
+
+@app.post("/races/{race_id}/score-requests", response_model=ScoreRequestOut)
+def request_scores(race_id: str, request: Request, payload: ScoreRequestIn | None = None) -> ScoreRequestOut:
+    enforce_rate_limit(request, max_requests=10)
+    race = db.find_race(race_id)
+    if race is None or race.listed_at is None:
+        raise HTTPException(status_code=404, detail="no listed race with that id")
+    if race.published_at is not None:
+        raise HTTPException(status_code=409, detail="this race already has scores")
+    address = sha256(f"{_auth.JWT_SECRET}:{race_id}:{request.client.host if request.client else 'unknown'}".encode()).hexdigest()[:24]
+    client = sha256(((payload.client_id if payload else None) or "").encode()).hexdigest()[:16]
+    counted = False
+    if db.count_score_requests_for_address(race_id, address) < _SCORE_REQUESTS_PER_ADDRESS:
+        counted = db.add_score_request(race_id, f"{address}:{client}")
+    return ScoreRequestOut(request_count=db.count_score_requests_by_race().get(race_id, 0), counted=counted)
 
 
 @app.post("/events/{event_id}/races", response_model=RaceSummary, status_code=201)
@@ -1023,7 +1220,7 @@ def _measure_gpx_path(path):
 
 @app.post("/races/{race_id}/gpx", response_model=RaceSummary)
 async def attach_race_gpx(
-    race_id: str, file: UploadFile, organizer: Organizer = Depends(require_organizer)
+    race_id: str, file: UploadFile, course_permission: str | None = Form(default=None), organizer: Organizer = Depends(require_organizer)
 ) -> RaceSummary:
     """Attach (or replace) a GPX file for a race distance. Recomputes distance_km/elevation_gain_m
     from the real parsed course data — the GPX becomes the authoritative source once attached."""
@@ -1031,6 +1228,10 @@ async def attach_race_gpx(
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
+    # Nobody who owns this course has uploaded it: say on what basis OTRI may publish the file.
+    permission = (course_permission or "").strip()[:500] or race.course_permission
+    if race.organizer_id is None and not permission:
+        raise HTTPException(status_code=422, detail="an unclaimed listing needs course_permission (the licence or the organizer's consent) before a course file is attached")
 
     suffix = _safe_suffix(file.filename, ".gpx")
     contents = await file.read(20_000_001)
@@ -1048,6 +1249,8 @@ async def attach_race_gpx(
     finally:
         _discard_temp(temp_path)
 
+    if race.organizer_id is None:
+        db.set_race_listed(race_id, race.listed_at is not None, permission)
     updated = db.attach_gpx(
         race_id,
         filename=file.filename or "course.gpx",
@@ -1059,11 +1262,11 @@ async def attach_race_gpx(
     return _race_summary(updated)
 
 
-def _visible_race(race_id: str, organizer: Organizer | None) -> db.Race:
+def _visible_race(race_id: str, organizer: Organizer | None, *, results: bool = False) -> db.Race:
     race = db.find_race(race_id)
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
-    _require_race_visible(race, organizer)
+    _require_race_visible(race, organizer, results=results)
     return race
 
 
@@ -1137,7 +1340,7 @@ def _score_results(race: db.Race, results: list) -> list[RunnerScoreOut]:
 
 @app.get("/races/{race_id}/results", response_model=list[RunnerScoreOut])
 def get_race_results(race_id: str, organizer: Organizer | None = Depends(_optional_organizer)) -> list[RunnerScoreOut]:
-    race = _visible_race(race_id, organizer)
+    race = _visible_race(race_id, organizer, results=True)
 
     if not db.has_results(race_id):
         raise HTTPException(status_code=404, detail=f"no results on file for race {race_id!r}")
@@ -1676,7 +1879,7 @@ async def admin_server(request: Request, organizer: Organizer = Depends(require_
 # the dashboard next to the actions that resolve them (unpublish, delete race, delete runner data,
 # delete a shared course) and mark them resolved.
 
-_REPORT_KINDS = {"runner", "race", "shared_course", "other"}
+_REPORT_KINDS = {"runner", "race", "shared_course", "claim", "other"}
 _REPORT_REASONS = {"not_me", "wrong_result", "remove_my_data", "wrong_course", "other"}
 
 

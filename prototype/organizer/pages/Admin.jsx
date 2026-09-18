@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Activity, ArrowUpRight, Check, EyeOff, Flag as FlagIcon, HardDrive, Map, Server, ShieldCheck, Trash2, UserCheck } from 'lucide-react'
+import { Activity, ArrowUpRight, Check, Eye, EyeOff, Flag as FlagIcon, HardDrive, Map, Server, ShieldCheck, Trash2, Upload, UserCheck } from 'lucide-react'
 import CourseMap from '../../../src/components/CourseMap'
 import {
+  assignEvent,
+  importListings,
+  setRaceListed,
   deleteAdminOrganizer,
   deleteAdminReport,
   deleteAdminRunner,
@@ -206,7 +209,7 @@ const REASON_LABEL = { not_me: 'not me / merged', wrong_result: 'wrong result', 
 
 function subjectLink(report) {
   if (report.kind === 'runner') return `../#runners/${encodeURIComponent(report.subject_id)}`
-  if (report.kind === 'race') return `../#races/${encodeURIComponent(report.subject_id)}`
+  if (report.kind === 'race' || report.kind === 'claim') return `../#races/${encodeURIComponent(report.subject_id)}`
   if (report.kind === 'shared_course') return `../#calculator?gpx=${encodeURIComponent(report.subject_id)}`
   return report.page_url ?? '../#home'
 }
@@ -536,7 +539,9 @@ function AdminRaceRow({ race, token, onChanged }) {
             {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })} · {race.finisher_count ?? 0} scored ·{' '}
             {modelLabel(race.scoring_version)}
             {race.has_gpx ? ` · ${race.measurement_version ?? 'course attached'}` : ' · no course file'}
+            {race.is_listed ? ` · listed · ${race.request_count ?? 0} asked for scores` : ''}
           </p>
+          {race.course_permission && <p className="mt-0.5 text-[11px] text-slate-500">Course permission: {race.course_permission}</p>}
           {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -548,6 +553,16 @@ function AdminRaceRow({ race, token, onChanged }) {
             <button type="button" onClick={() => setShowCourse((v) => !v)} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:underline">
               <Map size={12} /> {showCourse ? 'Hide course' : 'View course'}
             </button>
+          )}
+          {!race.is_published && (
+            <Button variant="secondary" busy={busy} className="min-h-9 px-3 text-xs" onClick={() => run(() => setRaceListed(race.race_id, !race.is_listed, token))}>
+              {race.is_listed ? <EyeOff size={13} /> : <Eye size={13} />} {race.is_listed ? 'Unlist' : 'List publicly'}
+            </Button>
+          )}
+          {race.is_listed && !race.is_published && (
+            <a href={`../#races/${encodeURIComponent(race.race_id)}`} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 no-underline hover:underline">
+              Public page <ArrowUpRight size={12} />
+            </a>
           )}
           {race.is_published && (
             <>
@@ -579,6 +594,86 @@ function AdminRaceRow({ race, token, onChanged }) {
   )
 }
 
+// Listings: races shown publicly before anyone has uploaded results (docs/product/race-listings.md).
+const LISTING_COLUMNS = 'event_name,event_date,location,country,website,source_url,course_name,distance_km,elevation_gain_m'
+
+function Listings({ events, session, onChanged }) {
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState(null)
+  const [error, setError] = useState(null)
+  const waiting = events
+    .flatMap((event) => event.races.map((race) => ({ ...race, owner: event.organizer_email })))
+    .filter((race) => race.is_listed && !race.is_published)
+  const asked = [...waiting].filter((race) => race.request_count > 0).sort((a, b) => b.request_count - a.request_count).slice(0, 10)
+
+  async function upload(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    setBusy(true)
+    setError(null)
+    setResult(null)
+    try {
+      setResult(await importListings(file, session.token))
+      onChanged()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-mono text-[9px] tracking-[.08em] text-blue-600">LISTINGS · {waiting.length} WITHOUT RESULTS</p>
+          <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-600">
+            Race facts only: one CSV row per distance, rows of the same event (name and date) grouped, anything already here skipped. A course file is added per race afterwards and needs a recorded licence or the organizer's yes.
+          </p>
+          <p className="mt-1 break-all font-mono text-[10px] text-slate-500">{LISTING_COLUMNS}</p>
+        </div>
+        <label className={`inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-lg bg-[#0b1220] px-3 text-xs font-semibold text-white ${busy ? 'opacity-60' : ''}`}>
+          <Upload size={13} /> {busy ? 'Importing…' : 'Import CSV'}
+          <input type="file" accept=".csv,text/csv" className="sr-only" onChange={upload} disabled={busy} />
+        </label>
+      </div>
+      {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
+      {result && (
+        <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-xs text-emerald-900">
+          Added {result.created_races} race(s) in {result.created_events} new event(s).
+          {result.skipped.length > 0 && (
+            <ul className="mt-2 list-disc pl-4 text-amber-800">
+              {result.skipped.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      {asked.length > 0 && (
+        <div className="mt-4">
+          <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">MOST ASKED FOR · WHO TO WRITE TO FIRST</p>
+          <ul className="mt-1">
+            {asked.map((race) => (
+              <li key={race.race_id} className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 py-2 text-sm">
+                <a href={`../#races/${encodeURIComponent(race.race_id)}`} className="min-w-0 truncate font-medium text-[#0b1220] no-underline hover:underline">
+                  {race.event_name} · {race.course_name}
+                </a>
+                <span className="flex items-center gap-3 font-mono text-[11px] text-slate-500">
+                  {race.owner ?? 'unclaimed'}
+                  {race.official_url && <a href={race.official_url} target="_blank" rel="noreferrer" className="font-semibold text-blue-600 no-underline hover:underline">website ↗</a>}
+                  <strong className="text-blue-600">{race.request_count} asked</strong>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  )
+}
+
 function EventsAdmin({ session }) {
   const [events, setEvents] = useState(null)
   const [error, setError] = useState(null)
@@ -601,6 +696,18 @@ function EventsAdmin({ session }) {
     }
   }
 
+  async function assign(event) {
+    const email = window.prompt(`Organizer account that should own "${event.event_name}" (leave empty to release it):`, event.organizer_email ?? '')
+    if (email === null) return
+    setError(null)
+    try {
+      await assignEvent(event.event_id, email.trim(), session.token)
+      reload()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   if (error && !events) return <Notice kind="error">{error}</Notice>
   if (!events) return <p className="text-sm text-slate-500">Loading…</p>
   const raceCount = events.reduce((n, e) => n + e.race_count, 0)
@@ -615,6 +722,7 @@ function EventsAdmin({ session }) {
       <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">
         {events.length} EVENT{events.length === 1 ? '' : 'S'} · {raceCount} RACE{raceCount === 1 ? '' : 'S'} · {publishedCount} PUBLISHED
       </p>
+      <Listings events={events} session={session} onChanged={reload} />
       <div className="mt-4 grid gap-4">
         {events.map((event) => (
           <section key={event.event_id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
@@ -631,6 +739,12 @@ function EventsAdmin({ session }) {
                 <p className="font-mono text-[10px] text-slate-500">
                   {event.organizer_email ?? 'no owner'} · {event.published_count}/{event.race_count} published
                 </p>
+                {event.website && (
+                  <a href={event.website} target="_blank" rel="noreferrer" className="text-xs font-semibold text-blue-600 no-underline hover:underline">Website ↗</a>
+                )}
+                <button type="button" onClick={() => assign(event)} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:underline">
+                  <UserCheck size={12} /> {event.organizer_email ? 'Reassign' : 'Assign to organizer'}
+                </button>
                 <button type="button" onClick={() => removeEvent(event)} className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline">
                   <Trash2 size={12} /> Delete event
                 </button>

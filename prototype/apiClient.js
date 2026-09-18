@@ -205,9 +205,11 @@ export function deleteRace(raceId, token) {
   })
 }
 
-export function attachRaceGpx(raceId, file, token) {
+export function attachRaceGpx(raceId, file, token, coursePermission) {
   const formData = new FormData()
   formData.append('file', file)
+  // Only an unclaimed listing needs it: on what basis OTRI may show a course nobody uploaded as its owner.
+  if (coursePermission) formData.append('course_permission', coursePermission)
   return request(`/races/${encodeURIComponent(raceId)}/gpx`, {
     method: 'POST',
     headers: authHeaders(token),
@@ -352,6 +354,36 @@ export async function getRaceResults(raceId, token) {
 
 export function listRaces() {
   return request('/races')
+}
+
+/** A runner asking for a listed race to be scored. Counted once per visitor by the API. */
+export function requestScores(raceId, clientId) {
+  return request(`/races/${encodeURIComponent(raceId)}/score-requests`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ client_id: clientId }),
+  })
+}
+
+/** Admin: add race listings (facts only) from a CSV file. */
+export function importListings(file, token) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request('/admin/listings/import', { method: 'POST', headers: authHeaders(token), body: formData })
+}
+
+/** Admin: hand an event to an organizer's account (a claimed listing); no email releases it. */
+export function assignEvent(eventId, organizerEmail, token) {
+  return request(`/admin/events/${encodeURIComponent(eventId)}/assign`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ organizer_email: organizerEmail || null }),
+  })
+}
+
+/** Owner or admin: show a race publicly before it has results, or take the listing down. */
+export function setRaceListed(raceId, listed, token) {
+  return request(`/races/${encodeURIComponent(raceId)}/listing`, { method: listed ? 'POST' : 'DELETE', headers: authHeaders(token) })
 }
 
 /** The live API's root status, including `started_at` — the last time this API process
