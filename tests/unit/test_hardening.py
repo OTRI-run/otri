@@ -193,6 +193,20 @@ def test_health_is_503_when_the_database_is_unreachable(monkeypatch):
     assert response.status_code == 503 and response.json()["checks"]["database"]["ok"] is False
 
 
+def test_health_details_are_hidden_from_the_public(monkeypatch):
+    """Through nginx every outside request carries X-Forwarded-For; the answer is then the status
+    alone. The watchdog on the droplet (direct, no proxy header) still sees the individual checks."""
+    import shutil
+    from collections import namedtuple
+
+    usage = namedtuple("usage", "total used free")
+    monkeypatch.setattr(shutil, "disk_usage", lambda _path: usage(100, 40, 60))
+    public = client.get("/health", headers={"X-Forwarded-For": "203.0.113.9"})
+    assert public.status_code == 200 and set(public.json()) == {"status", "started_at"}
+    local = client.get("/health")
+    assert "checks" in local.json()
+
+
 # --- export and self-service deletion -------------------------------------------
 
 

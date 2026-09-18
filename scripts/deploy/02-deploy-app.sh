@@ -11,6 +11,8 @@ set -euo pipefail
 REPO_URL="${1:-https://github.com/OTRI-run/otri.git}"
 BRANCH="${2:-main}"
 APP_DIR="${3:-/opt/otri}"
+# One gunicorn worker per CPU plus one: enough to keep serving while a GPX analysis occupies a core.
+GUNICORN_WORKERS="${GUNICORN_WORKERS:-$(( $(nproc) + 1 ))}"
 SERVICE_USER="$(whoami)"
 
 if [[ ${EUID} -eq 0 ]]; then
@@ -134,7 +136,7 @@ EnvironmentFile=${APP_DIR}/.env
 # ProtectHome hides /home; newer gunicorn wants a writable HOME for its control socket.
 Environment=HOME=${APP_DIR}/data
 ExecStart=${APP_DIR}/venv/bin/gunicorn api.app:app \\
-    --workers 2 \\
+    --workers ${GUNICORN_WORKERS} \\
     --worker-class uvicorn.workers.UvicornWorker \\
     --bind 127.0.0.1:8000 \\
     --access-logfile - \\
