@@ -24,7 +24,7 @@ metres at best, the measurement pipeline denoises with a +/-10 m rolling median 
 any undulation that survives at 50 m scale is *already* priced by the gradient integral, so
 counting it again would be double-counting. `STEEP_COEFFICIENT` therefore absorbs the average
 technicality of steep mountain terrain rather than measuring any particular course's footing.
-See docs/methodology/OTRI-MODEL-0.1.0.md sections 4 and 12.
+See docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md sections 4 and 12.
 """
 
 from __future__ import annotations

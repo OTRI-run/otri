@@ -72,7 +72,7 @@ A major planned capability is the **GPX Target Performance Predictor**: upload a
 - `SECURITY.md` — security reporting and data-security principles
 - `TERMS.md` — terms of service for organizer accounts (draft)
 - `PRIVACY.md` — what personal data OTRI keeps and why (draft)
-- `docs/methodology/OTRI-MODEL-0.1.0.md` — the scoring model in production, in one page
+- `docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md` — the scoring model in production, in one page
 - `docs/gpx-predictor.md` — GPX prediction design
 
 ## Frontend

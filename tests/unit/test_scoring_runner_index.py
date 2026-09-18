@@ -1,4 +1,4 @@
-"""Runner index v1: window, fade, best-3 selection, provisional flag (docs/methodology/RUNNER-INDEX-v1.md)."""
+"""Runner index v1: window, fade, best-3 selection, provisional flag (docs/methodology/runner-index/RUNNER-INDEX-v1.md)."""
 
 from datetime import date
 

@@ -286,7 +286,7 @@ function Leaderboard({ raceId, onBack }) {
             items={[
               ['Where would you land?', race.has_gpx ? 'Try a target time on this exact course.' : 'Pick a course and a target time. The score updates live.', race.has_gpx ? 'Calculate your score here' : 'Calculate your score', race.has_gpx ? `#calculator?race=${encodeURIComponent(race.race_id)}` : '#calculator'],
               ['Organize a race like this?', 'Upload official results and the course file; every finisher gets a score.', 'For organizers', 'organizer/'],
-              ['Why these numbers?', 'The plain-language explainer, then every constant in the model.', 'How a score is made', 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/HOW-OTRI-SCORES.md'],
+              ['Why these numbers?', 'The plain-language explainer, then every constant in the model.', 'How a score is made', 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/0.1.0/HOW-OTRI-SCORES.md'],
             ]}
           />
         </>
@@ -349,7 +349,7 @@ function RacesPage({ raceId }) {
               items={[
                 ['Your race is not here?', 'Score any course yourself: pick a verified one or upload a GPX.', 'Calculate your score', '#calculator'],
                 ['Organize a race?', 'Upload official results and the course file; every finisher gets a score.', 'For organizers', 'organizer/'],
-                ['Why these numbers?', 'The plain-language explainer, then every constant in the model.', 'How a score is made', 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/HOW-OTRI-SCORES.md'],
+                ['Why these numbers?', 'The plain-language explainer, then every constant in the model.', 'How a score is made', 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/0.1.0/HOW-OTRI-SCORES.md'],
               ]}
             />
           </>

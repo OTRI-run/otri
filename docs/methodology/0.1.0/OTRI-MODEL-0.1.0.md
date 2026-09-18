@@ -35,7 +35,7 @@ Competitor times, finishing position, winner time, field strength, participant c
 | Elevation | Copernicus GLO-30 (30 m grid, pinned by SHA-256) when the region is installed; otherwise the file's own elevations | the page says which was used |
 | Finish time | official result, or the calculator's target time | seconds |
 
-Measurement is specified in [`REAL-WORLD-COURSE-MEASUREMENT-SPEC.md`](REAL-WORLD-COURSE-MEASUREMENT-SPEC.md) and validated in [`COURSE-MEASUREMENT-V1-VALIDATION.md`](COURSE-MEASUREMENT-V1-VALIDATION.md). The parts the score depends on:
+Measurement is specified in [`REAL-WORLD-COURSE-MEASUREMENT-SPEC.md`](../course-measurement/REAL-WORLD-COURSE-MEASUREMENT-SPEC.md) and validated in [`COURSE-MEASUREMENT-V1-VALIDATION.md`](../course-measurement/COURSE-MEASUREMENT-V1-VALIDATION.md). The parts the score depends on:
 
 - Distance along the WGS84 ellipsoid (Karney geodesics via `pyproj.Geod`).
 - Elevation sampled on a 10 m grid, then a rolling median and a rolling mean over ±10 m windows measured in distance, not point count, because real tracks are dense on bends and sparse on straights. Climbs count only when they exceed 8 m of prominence.
@@ -151,7 +151,7 @@ The inverse, for target times: `Q_lookup = Q_1000 × (score / 1000)^(1/0.85)`, t
 
 ### 6.1 Why 0.85
 
-`k = 1` would make the score literally the runner's percentage of the world-best rate, times ten, with no constant at all, but it drops the back of the field by about 40 % relative to the development curve. `k = 0.692` is the concave shape the development builds had, which gave the middle of the field more than its share (53 % of the ceiling scored 643, 64 % of the scale). 0.85 is a stated judgement between the two: the top of the scale holds, the middle comes down materially, the back comes down less than under 1.0. It is not fitted to any field data and not referenced to any third-party index; it will be revisited only when licensed field data exists, and never to track another index ([`DATA_POLICY.md`](../../DATA_POLICY.md)).
+`k = 1` would make the score literally the runner's percentage of the world-best rate, times ten, with no constant at all, but it drops the back of the field by about 40 % relative to the development curve. `k = 0.692` is the concave shape the development builds had, which gave the middle of the field more than its share (53 % of the ceiling scored 643, 64 % of the scale). 0.85 is a stated judgement between the two: the top of the scale holds, the middle comes down materially, the back comes down less than under 1.0. It is not fitted to any field data and not referenced to any third-party index; it will be revisited only when licensed field data exists, and never to track another index ([`DATA_POLICY.md`](../../../DATA_POLICY.md)).
 
 ### 6.2 What the scale looks like
 
@@ -285,8 +285,8 @@ What would make the model non-provisional: real, licensed finish data on real co
 ## 13. Versioning
 
 - The public model name changes (`0.2.0`, …) only when a score can change for the same course and time. Anything that leaves every score identical (engine speed-ups, caching, a new measurement build with identical output) keeps the name.
-- Every change to a formula or constant above needs an OEP ([`../governance/`](../governance/)) and a new build id in `scoring/`. Old build ids stay selectable so historical scores replay; a historical score is never rewritten under a new formula. The ceiling anchors are frozen constants of this version: refreshing them when a record falls is a new version.
-- The plain-language companion to this page is [`HOW-OTRI-SCORES.md`](HOW-OTRI-SCORES.md); the runner index that combines scores into one number per runner is [`RUNNER-INDEX-v1.md`](RUNNER-INDEX-v1.md).
+- Every change to a formula or constant above needs an OEP ([`../governance/`](../../governance/)) and a new build id in `scoring/`. Old build ids stay selectable so historical scores replay; a historical score is never rewritten under a new formula. The ceiling anchors are frozen constants of this version: refreshing them when a record falls is a new version.
+- The plain-language companion to this page is [`HOW-OTRI-SCORES.md`](HOW-OTRI-SCORES.md); the runner index that combines scores into one number per runner is [`RUNNER-INDEX-v1.md`](../runner-index/RUNNER-INDEX-v1.md).
 
 ## 14. Development history
 
@@ -302,4 +302,4 @@ Model 0.1.0 is the consolidation of eight development builds. Each remains selec
 | `0.7.0-course-standard-dem-gated` | terrain-model elevation, the spacing gate and the confidence label (§7) |
 | `0.8.0-course-standard-power` | the single power curve (§6); this build **is** model 0.1.0 |
 
-The retired baseline `0.1.0-field-relative` (`scoring/model.py`, [OEP-001](../governance/oep/OEP-001-baseline-scoring-model.md)) shares the number but is a different, competitor-relative rule kept only for reproducibility; it is not model 0.1.0.
+The retired baseline `0.1.0-field-relative` (`scoring/model.py`, [OEP-001](../../governance/oep/OEP-001-baseline-scoring-model.md)) shares the number but is a different, competitor-relative rule kept only for reproducibility; it is not model 0.1.0.

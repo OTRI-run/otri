@@ -1,6 +1,6 @@
 # Calibration Fixtures (Synthetic)
 
-**All data in this directory is fictional** — synthetic GPX courses and synthetic result rows generated for scoring-model calibration/validation testing (see `docs/methodology/OTRI-MODEL-0.1.0.md` §12, "what would make the model non-provisional").
+**All data in this directory is fictional** — synthetic GPX courses and synthetic result rows generated for scoring-model calibration/validation testing (see `docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md` §12, "what would make the model non-provisional").
 
 ## Why synthetic, not real race data
 
@@ -29,4 +29,4 @@ python scripts/calibration_report.py              # run the real scoring pipelin
 
 ## Known limitation
 
-Because this is synthetic, it validates that the **pipeline and duration-scaling math behave sensibly** across distances (e.g. short-course scores drop slightly under V0.3, long-course scores rise) — it does not and cannot replace real calibration data. Real calibration still requires real, properly-licensed results (see `docs/methodology/OTRI-MODEL-0.1.0.md` §12).
+Because this is synthetic, it validates that the **pipeline and duration-scaling math behave sensibly** across distances (e.g. short-course scores drop slightly under V0.3, long-course scores rise) — it does not and cannot replace real calibration data. Real calibration still requires real, properly-licensed results (see `docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md` §12).

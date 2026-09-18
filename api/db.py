@@ -521,7 +521,7 @@ def replace_results(race_id: str, results: list[ResultRecord]) -> None:
 
 # --- Runners (identity across races) ------------------------------------------
 #
-# See docs/methodology/RUNNER-INDEX-v1.md §3 for the matching rule. Only the year of birth is
+# See docs/methodology/runner-index/RUNNER-INDEX-v1.md §3 for the matching rule. Only the year of birth is
 # ever stored, never the full date; nationality is a 3-letter code or NULL.
 
 

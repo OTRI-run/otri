@@ -1157,7 +1157,7 @@ async def submit_race_results(
 # --- Runners ---------------------------------------------------------------------
 #
 # A runner is whoever the results files say raced: identity comes from name, gender and year
-# of birth (docs/methodology/RUNNER-INDEX-v1.md §3). Profiles and the index use published races
+# of birth (docs/methodology/runner-index/RUNNER-INDEX-v1.md §3). Profiles and the index use published races
 # only, and are computed on request so they are always consistent with what organizers show.
 
 

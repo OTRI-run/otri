@@ -566,7 +566,7 @@ Before implementing any UI or backend logic, the AI must read:
 - `docs/organizer-upload.md`
 - `docs/product/organizer-onboarding.md`
 - `docs/product/pre-race-score-calculator.md`
-- `docs/methodology/overall-runner-index.md`
+- `docs/methodology/runner-index/overall-runner-index.md`
 - `docs/research/platform-product-patterns.md`
 - the authoritative current scoring methodology/version if one exists.
 

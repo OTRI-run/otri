@@ -13,7 +13,7 @@ import { distanceUnit, formatDistance, formatElevation, formatPace as formatPace
 //   - V0.1-V0.3: 692 kept, 1000-anchor is V0.1's extrapolated 17.940
 //   - V0.4-V0.5: 692 kept, 1000-anchor is the measured human ceiling 21.533
 //   - V0.6+:     692 dropped
-//   - V0.8:      one power law, no anchor table (docs/methodology/OTRI-MODEL-0.1.0.md section 6)
+//   - V0.8:      one power law, no anchor table (docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md section 6)
 const ANCHOR_0 = { score: 0, q: 1.0 }
 const ANCHOR_349 = { score: 349, q: 4.240362424138815 }
 const ANCHOR_544 = { score: 544, q: 8.935158501440922 }
@@ -21,7 +21,7 @@ const ANCHOR_692 = { score: 692, q: 11.769395017793594 }
 const ANCHOR_1000_LEGACY = { score: 1000, q: 17.93986234619293 }
 const ANCHOR_1000 = { score: 1000, q: 21.5331347785071 }
 
-const METHODOLOGY_URL = 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/HOW-OTRI-SCORES.md'
+const METHODOLOGY_URL = 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/0.1.0/HOW-OTRI-SCORES.md'
 
 function publishedAnchorsFor(scoringVersion) {
   if (scoringVersion.includes('-power')) return []
@@ -453,7 +453,7 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
             )}
 
             <p className="mt-5 text-[11px] text-slate-500">
-              Methodology: <code>docs/methodology/OTRI-MODEL-0.1.0.md</code> — course demand §3, terrain §4, human ceiling §5,
+              Methodology: <code>docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md</code> — course demand §3, terrain §4, human ceiling §5,
               curve §6, measurement and confidence §7.
             </p>
           </div>

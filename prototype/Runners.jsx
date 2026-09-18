@@ -10,7 +10,7 @@ import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import Flag from '../src/components/Flag'
 
 const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
-const METHOD_URL = 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/RUNNER-INDEX-v1.md'
+const METHOD_URL = 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/runner-index/RUNNER-INDEX-v1.md'
 
 function formatHms(totalSeconds) {
   if (totalSeconds == null) return '—'

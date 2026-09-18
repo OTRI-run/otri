@@ -1,7 +1,7 @@
 """Runner index v1: one number per runner from their best recent race scores.
 
 The rule, chosen after comparing how established ranking systems in other sports handle the
-same problem (docs/methodology/RUNNER-INDEX-v1.md):
+same problem (docs/methodology/runner-index/RUNNER-INDEX-v1.md):
 
 - Only results from the last 24 months are eligible (the window).
 - Each result carries a recency weight: 1.0 for the first 12 months after the race, then a

@@ -37,7 +37,7 @@ Spatial smoothing is conditional on terrain input or measured GPX anomalies, rat
 
 Large missing elevation spans and missing endpoints are rejected instead of returning partial ascent. There is no automatic multi-provider ranking, barometer fusion, field-survey ingestion, GPS-wander correction, snapping, uncertainty interval or surface-distance estimate. There is no separate isolated-spike deletion step: anomalous segments are smoothed and flagged for review. These limits remain explicit rather than inventing missing data or silently changing the route.
 
-No live Phuket DEM was downloaded or enabled. The optional provider is tested against synthetic rasters, including zero elevations, nodata, seams and checksum changes. Production terrain correction requires installing tiles and setting `OTRI_DEM_MANIFEST` as described in [course setup](../../course/README.md). Provider failures stop that measurement; they never become zero ascent or an unannounced fallback.
+No live Phuket DEM was downloaded or enabled. The optional provider is tested against synthetic rasters, including zero elevations, nodata, seams and checksum changes. Production terrain correction requires installing tiles and setting `OTRI_DEM_MANIFEST` as described in [course setup](../../../course/README.md). Provider failures stop that measurement; they never become zero ascent or an unannounced fallback.
 
 ## Verification
 

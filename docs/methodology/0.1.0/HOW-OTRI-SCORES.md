@@ -37,7 +37,7 @@ Three things follow from the definition, and each is tested in the code:
 
 ### And the runner index?
 
-One number per runner, from their best three published race scores of the last 24 months, recency-weighted so results fade rather than vanish. It is a separate, versioned rule: [`RUNNER-INDEX-v1.md`](RUNNER-INDEX-v1.md).
+One number per runner, from their best three published race scores of the last 24 months, recency-weighted so results fade rather than vanish. It is a separate, versioned rule: [`RUNNER-INDEX-v1.md`](../runner-index/RUNNER-INDEX-v1.md).
 
 ## Part 2 — For the skeptical
 
@@ -57,7 +57,7 @@ The right question to ask of any index is: *which numbers were measured, which w
 | Measurement details | 10 m grid, ±10 m smoothing, 8 m prominence, 50 m segments | **chosen**, sensitivity documented, not field-validated | affects every ascent figure |
 | Terrain data | Copernicus GLO-30 (30 m) | **public dataset**, pinned by checksum | replaces watch elevation where installed |
 
-Nothing in the model is fitted to a field of results, and nothing is referenced to any other index. That is a deliberate policy ([`DATA_POLICY.md`](../../DATA_POLICY.md)), and it is also why the calibration basis is thin: OTRI does not yet hold licensed real result sets to fit against.
+Nothing in the model is fitted to a field of results, and nothing is referenced to any other index. That is a deliberate policy ([`DATA_POLICY.md`](../../../DATA_POLICY.md)), and it is also why the calibration basis is thin: OTRI does not yet hold licensed real result sets to fit against.
 
 ### 2.2 Evidence that the shape is right
 
@@ -72,7 +72,7 @@ Nothing in the model is fitted to a field of results, and nothing is referenced 
 1. **Technical footing is invisible.** A GPX cannot see rock, roots, mud or exposure. Two courses with the same gradient profile get the same steep-terrain factor whether one is a fire road and the other an alpine scramble. This is the single largest reason a mountain-ultra winner sits at 98% of a *road-referenced* ceiling rather than 100%.
 2. **One constant is calibrated to one performance.** The steep-terrain coefficient was set so that one strong, real trail performance (a 2026 alpine 100-mile win, 18:16:29) scored 970. Calibrating to a good trail run rather than a road record is deliberate: the constant exists to price mountain ground. Calibrating to a single one is provisional by definition.
 3. **The curve exponent is a judgement.** 0.85 was chosen, not measured. Its consequence is stated plainly: the further from the top, the larger the relative drop compared with the previous shape.
-4. **The terrain model is a surface model.** GLO-30 includes tree canopy and buildings; on forested alpine ground it can read ascent high. `High` confidence means *reproducible against a named dataset*, not *validated against the ground*. The benchmarking programme in [`REAL-WORLD-COURSE-MEASUREMENT-SPEC.md`](REAL-WORLD-COURSE-MEASUREMENT-SPEC.md) has not been run.
+4. **The terrain model is a surface model.** GLO-30 includes tree canopy and buildings; on forested alpine ground it can read ascent high. `High` confidence means *reproducible against a named dataset*, not *validated against the ground*. The benchmarking programme in [`REAL-WORLD-COURSE-MEASUREMENT-SPEC.md`](../course-measurement/REAL-WORLD-COURSE-MEASUREMENT-SPEC.md) has not been run.
 5. **Terrain coverage is per region.** A course outside the installed tiles is measured from its own file, at `Low` confidence, and says so.
 6. **A sparse recording still cannot be fixed.** The gate labels it; only route-snapping could rebuild the missing switchbacks, and that is not built.
 7. **No conditions.** Heat, mud, snow, night — none of it enters. Two editions of the same race in different weather are not comparable, by design.

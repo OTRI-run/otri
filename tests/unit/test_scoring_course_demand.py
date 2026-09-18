@@ -1,4 +1,4 @@
-"""Unit tests for the spec-compliant course-demand engine (docs/methodology/OTRI-MODEL-0.1.0.md section 3).
+"""Unit tests for the spec-compliant course-demand engine (docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md section 3).
 
 Run with: pytest tests/unit
 """

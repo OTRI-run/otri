@@ -5,7 +5,7 @@ reproducible. The current default is Course Standard V0.4
 (`0.4.0-course-standard-endurance-referenced`): the measured course-demand
 pipeline plus an endurance-referenced score curve, so a score means the same
 thing on a short race and on a multi-hour mountain ultra
-(`docs/methodology/OTRI-MODEL-0.1.0.md`).
+(`docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md`).
 """
 
 from __future__ import annotations
@@ -61,7 +61,7 @@ _MODEL_INFO: dict[str, ScoringModelInfo] = {
             'the score curve reduced to one power law: score = 1000 x (fraction of the human-ceiling '
             'rate) ** 0.85. Retires the last V0.1 demo anchors; the top of the scale is unchanged and '
             'everything below it is lower, more so further down '
-            '(docs/methodology/OTRI-MODEL-0.1.0.md: this build is OTRI model 0.1.0).'
+            '(docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md: this build is OTRI model 0.1.0).'
         ),
         uses_competitors=False,
     ),
@@ -73,7 +73,7 @@ _MODEL_INFO: dict[str, ScoringModelInfo] = {
             'dataset when one is configured, and a median-point-spacing gate so tracks too sparse '
             'to measure the route are marked for review instead of scored short. Reports its own '
             'confidence - High only with DEM elevation on a dense track, Low with the reason '
-            '(docs/methodology/OTRI-MODEL-0.1.0.md section 7).'
+            '(docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md section 7).'
         ),
         uses_competitors=False,
     ),
@@ -85,7 +85,7 @@ _MODEL_INFO: dict[str, ScoringModelInfo] = {
             'anchor dropped so one power law runs from the 544 anchor to the world-best 1000 '
             'anchor. Removes a kink that amplified every course-level correction in the 550-700 '
             'band; scores at or below 544 are unchanged '
-            '(docs/methodology/OTRI-MODEL-0.1.0.md section 14).'
+            '(docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md section 14).'
         ),
         uses_competitors=False,
     ),
@@ -97,7 +97,7 @@ _MODEL_INFO: dict[str, ScoringModelInfo] = {
             'what the gradient-cost integral does not price: sustained steep mountain terrain '
             'and altitude, both measured from the course GPX. Road courses are unaffected '
             '(factor exactly 1.0); steep high-mountain courses are scored materially harder '
-            '(docs/methodology/OTRI-MODEL-0.1.0.md section 4).'
+            '(docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md section 4).'
         ),
         uses_competitors=False,
     ),
@@ -110,7 +110,7 @@ _MODEL_INFO: dict[str, ScoringModelInfo] = {
             'score therefore measures how close a runner came to the best performance possible '
             'on a course that big, so short and long races are scored on the same scale and '
             '1000 means world-best at every distance '
-            '(docs/methodology/OTRI-MODEL-0.1.0.md section 5).'
+            '(docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md section 5).'
         ),
         uses_competitors=False,
     ),
@@ -122,7 +122,7 @@ _MODEL_INFO: dict[str, ScoringModelInfo] = {
             'duration/course-demand scaling correction (Riegel exponent b=1.06). b=1.06 was '
             'derived from road racing under 4 hours and under-corrects badly beyond it, and '
             "V0.1's invented 1000-anchor still saturates on short courses "
-            '(docs/methodology/OTRI-MODEL-0.1.0.md section 14). '
+            '(docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md section 14). '
             'Retained so V0.3 scores stay reproducible.'
         ),
         uses_competitors=False,
@@ -140,7 +140,7 @@ _MODEL_INFO: dict[str, ScoringModelInfo] = {
             "Score depends only on the course (50 m Minetti gradient-cost course demand) and "
             "the runner's own finish time. Uses a piecewise power-law score curve calibrated "
             "from demo/test race anchors: 6:29:58=349, 3:05:04=544, 2:20:30=692 "
-            "(docs/methodology/OTRI-MODEL-0.1.0.md section 14). No competitors are used."
+            "(docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md section 14). No competitors are used."
         ),
         uses_competitors=False,
     ),

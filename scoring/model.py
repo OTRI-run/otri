@@ -4,7 +4,7 @@ This is the **field-relative** model: the fastest finisher in a given race
 always scores exactly ``SCALE_MAX``, and everyone else scores proportionally
 off that field's own winner. That means the same finish time means a
 different score in a different race, depending on who else showed up —
-which is exactly what ``docs/methodology/OTRI-MODEL-0.1.0.md`` section 1.1's
+which is exactly what ``docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md`` section 1.1's
 "explicit exclusions" warn against ("the fundamental score should be
 determined from the course model and finish time, not from... the identity,
 number, or historical performance of the competitors in that race").

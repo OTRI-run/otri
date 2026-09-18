@@ -1,4 +1,4 @@
-"""Course-demand engine — implements docs/methodology/OTRI-MODEL-0.1.0.md section 3 exactly.
+"""Course-demand engine — implements docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md section 3 exactly.
 
 Converts a GPX course into a single "course demand" coordinate (an OTRI
 modeled demand-equivalent distance, not a literal energy measurement — see
