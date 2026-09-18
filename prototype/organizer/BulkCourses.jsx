@@ -69,11 +69,14 @@ export default function BulkCourses({ races, token, onChanged }) {
             Choose many .gpx files at once. Each is matched to a race by its file name (event name plus distance works best, e.g. <span className="font-mono">doi-inthanon-trail-50k.gpx</span>); check the match before sending. Only files OTRI may show: an open licence, or the organizer's yes.
           </p>
         </div>
-        <label className={`inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-[#0b1220] ${running ? 'opacity-60' : ''}`}>
+        <label className={`inline-flex min-h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-[#0b1220] ${running || races.length === 0 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
           <Files size={13} /> Choose GPX files
-          <input type="file" accept=".gpx" multiple className="sr-only" onChange={choose} disabled={running} />
+          <input type="file" accept=".gpx" multiple className="sr-only" onChange={choose} disabled={running || races.length === 0} />
         </label>
       </div>
+      {races.length === 0 && rows.length === 0 && (
+        <p className="mt-2 text-xs text-amber-700">No race is waiting for a course. Import the CSV of races first (or add a race); the files are then matched to those races.</p>
+      )}
 
       {rows.length > 0 && (
         <>

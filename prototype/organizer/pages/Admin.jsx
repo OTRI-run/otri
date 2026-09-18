@@ -653,7 +653,7 @@ function Listings({ events, session, onChanged }) {
           )}
         </div>
       )}
-      {withoutCourse.length > 0 && <BulkCourses races={withoutCourse} token={session.token} onChanged={onChanged} />}
+      <BulkCourses races={withoutCourse} token={session.token} onChanged={onChanged} />
       {asked.length > 0 && (
         <div className="mt-4">
           <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">MOST ASKED FOR · WHO TO WRITE TO FIRST</p>
