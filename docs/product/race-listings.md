@@ -41,6 +41,10 @@ A runner's own GPX still works in the calculator for their own estimate; it does
 
 `GET /races` returns scored races and listings; `request_count`, `is_listed`, `is_claimed` and `official_url` are on every summary.
 
+## Adding course files in bulk
+
+Admin → Events & races → Listings → **Choose GPX files** takes many files at once. Each is matched to a race without a course by its file name (event name plus distance, e.g. `doi-inthanon-trail-50k.gpx`; a year helps when an event is listed twice); the match is a guess shown in a dropdown, and nothing is sent until the admin presses Attach. One permission note can cover every file, or a row can carry its own; a race nobody owns is not sent without one. Files go one at a time through `POST /races/{id}/gpx`, because the server measures each course. A failed file says why and can be retried.
+
 ## Claiming, today
 
 1. The organizer presses "I organize this race" on the listing and leaves an email.
