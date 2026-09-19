@@ -572,6 +572,22 @@ def set_race_calculator_only(race_id: str, calculator_only: bool) -> Race:
     return race
 
 
+def update_calculator_course(race_id: str, *, event_name: str, course_name: str, location: str | None, country: str | None, source_url: str | None) -> Race:
+    """Set a calculator course's names and where it is; None clears a field (unlike update_event,
+    which keeps what it is not given)."""
+    with get_connection() as connection:
+        row = connection.execute("UPDATE races SET course_name = %s, updated_at = now() WHERE race_id = %s AND calculator_only RETURNING event_id", (course_name, race_id)).fetchone()
+        if row is None:
+            raise NotFoundError(f"calculator course {race_id!r} not found")
+        connection.execute(
+            "UPDATE events SET event_name = %s, location = %s, country = %s, source_url = %s, updated_at = now() WHERE event_id = %s",
+            (event_name, location, country, source_url, row["event_id"]),
+        )
+    race = find_race(race_id)
+    assert race is not None
+    return race
+
+
 def list_calculator_courses() -> list[Race]:
     with get_connection() as connection:
         rows = connection.execute(_RACE_JOIN_SELECT + " WHERE r.calculator_only ORDER BY e.event_name, r.distance_km").fetchall()

@@ -399,6 +399,18 @@ export function addCalculatorCourse({ file, event_name, course_name, location, c
   return request('/admin/calculator-courses', { method: 'POST', headers: authHeaders(token), body: formData })
 }
 
+/** Change a calculator course; `file` is optional and replaces its GPX. Empty fields are cleared. */
+export function updateCalculatorCourse(raceId, { file, event_name, course_name, location, country, source_url }, token) {
+  const formData = new FormData()
+  if (file) formData.append('file', file)
+  formData.append('event_name', event_name.trim())
+  formData.append('course_name', course_name.trim())
+  formData.append('location', (location ?? '').trim())
+  formData.append('country', (country ?? '').trim())
+  formData.append('source_url', (source_url ?? '').trim())
+  return request(`/admin/calculator-courses/${encodeURIComponent(raceId)}`, { method: 'PATCH', headers: authHeaders(token), body: formData })
+}
+
 export function deleteCalculatorCourse(raceId, token) {
   return request(`/admin/calculator-courses/${encodeURIComponent(raceId)}`, { method: 'DELETE', headers: authHeaders(token) })
 }
