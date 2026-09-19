@@ -120,6 +120,39 @@ def services_status(units: tuple[str, ...] = ("otri-api", "nginx", "postgresql",
     return {"available": True, "units": out}
 
 
+def watchdog_status() -> dict:
+    """The watchdog (scripts/deploy/08-install-watchdog.sh) reports by email only, and an email that
+    never comes looks the same as a watchdog that is not running. So: is its timer active, when did
+    it last check, and did that check end well."""
+    if shutil.which("systemctl") is None:
+        return {"available": False}
+    timer = _run(["systemctl", "is-active", "otri-watchdog.timer"], timeout=3)
+    last = _run(["systemctl", "show", "otri-watchdog.timer", "--property=LastTriggerUSec", "--value"], timeout=3)
+    result = _run(["systemctl", "show", "otri-watchdog.service", "--property=Result", "--value"], timeout=3)
+    return {
+        "available": True,
+        "active": (timer or "").strip() == "active",
+        "last_check": (last or "").strip() or None,
+        "last_result": (result or "").strip() or None,
+    }
+
+
+def backup_status(folder: Path, now: datetime | None = None) -> dict:
+    """The newest database dump of scripts/deploy/04-backup-db.sh and how old it is. The nightly run
+    once failed for want of an executable bit, and nothing anywhere said so."""
+    try:
+        dumps = sorted(folder.glob("*.sql.gz"), key=lambda path: path.stat().st_mtime)
+    except OSError:
+        return {"available": False}
+    if not dumps:
+        return {"available": True, "count": 0, "newest": None, "age_hours": None, "bytes": None, "ok": False}
+    newest = dumps[-1]
+    written = datetime.fromtimestamp(newest.stat().st_mtime, tz=timezone.utc)
+    age_hours = ((now or datetime.now(timezone.utc)) - written).total_seconds() / 3600
+    # Nightly, so a day and a bit; an empty dump is no backup either.
+    return {"available": True, "count": len(dumps), "newest": written.isoformat(), "age_hours": round(age_hours, 1), "bytes": newest.stat().st_size, "ok": age_hours < 26 and newest.stat().st_size > 1000}
+
+
 def firewall_status() -> dict:
     if shutil.which("ufw") is None and shutil.which("sudo") is None:
         return {"available": False}

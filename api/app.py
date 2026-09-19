@@ -2328,6 +2328,8 @@ def _server_snapshot(host_header: str | None) -> dict:
             db.database_size_bytes(),
         ),
         "services": _server.services_status(),
+        "watchdog": _server.watchdog_status(),
+        "backups": _server.backup_status(Path(os.environ.get("OTRI_BACKUP_DIR") or REPO_ROOT / "backups")),
         "firewall": _server.firewall_status(),
         "fail2ban": _server.fail2ban_status(),
         "api_usage": _server.api_usage(),
