@@ -29,6 +29,12 @@ def _tokens(name: str) -> list[str]:
     return [token for token in re.findall(r"[a-z0-9]+", text) if token not in _NOISE]
 
 
+def name_key(name: str) -> str:
+    """Two spellings of one name share a key ("Doi Trail 2027", "doi-trail"). With the same date it
+    is safe enough to merge on without asking, which the bulk import of listings does."""
+    return " ".join(_tokens(name)) or name.strip().lower()
+
+
 def names_match(a: str, b: str) -> bool:
     tokens_a, tokens_b = _tokens(a), _tokens(b)
     if not tokens_a or not tokens_b:

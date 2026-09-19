@@ -90,6 +90,8 @@ class ListingImportResult(BaseModel):
     created_events: int = 0
     created_races: int = 0
     skipped: list[str] = []
+    # CSV rows left out because their race was before the import's ``since`` day.
+    before_since: int = 0
 
 
 class RaceListingUpdate(BaseModel):

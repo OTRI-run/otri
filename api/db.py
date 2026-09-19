@@ -561,6 +561,32 @@ def set_race_listed(race_id: str, listed: bool, course_permission: str | None = 
     return race
 
 
+def new_listing_id(prefix: str) -> str:
+    """An id for a bulk-imported row: longer than the usual one, because thousands minted in one
+    transaction must not collide (one duplicate key would undo the whole import)."""
+    return f"{prefix}-{secrets.token_hex(8)}"
+
+
+def insert_listings(events: list[tuple], races: list[tuple]) -> None:
+    """Bulk import of unowned listings, all or nothing. ``events`` are (event_id, event_name,
+    event_date, location, country, website, source_url); ``races`` are (race_id, event_id,
+    course_name, distance_km, elevation_gain_m), listed from the start."""
+    from scoring import DEFAULT_SCORING_VERSION
+
+    with get_connection() as connection, connection.cursor() as cursor:
+        if events:
+            cursor.executemany(
+                "INSERT INTO events (event_id, event_name, event_date, organizer_id, location, country, website, source_url) VALUES (%s, %s, %s, NULL, %s, %s, %s, %s)",
+                events,
+            )
+        if races:
+            cursor.executemany(
+                "INSERT INTO races (race_id, event_id, course_name, distance_km, elevation_gain_m, scoring_version, listed_at) "
+                "VALUES (%s, %s, %s, %s, %s, %s, now())",
+                [(*race, DEFAULT_SCORING_VERSION) for race in races],
+            )
+
+
 def assign_event(event_id: str, organizer_id: int | None) -> Event:
     """Hand an event (a claimed listing) to an organizer account, or release it again."""
     with get_connection() as connection:

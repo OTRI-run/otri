@@ -622,6 +622,8 @@ const LISTING_COLUMNS = 'event_name,event_date,location,country,website,source_u
 function Listings({ events, session, onChanged }) {
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState(null)
+  // A calendar file often carries years of history; only this season is worth listing.
+  const [since, setSince] = useState(`${new Date().getFullYear()}-01-01`)
   const [error, setError] = useState(null)
   const waiting = events
     .flatMap((event) => event.races.map((race) => ({ ...race, owner: event.organizer_email })))
@@ -637,7 +639,7 @@ function Listings({ events, session, onChanged }) {
     setError(null)
     setResult(null)
     try {
-      setResult(await importListings(file, session.token))
+      setResult(await importListings(file, session.token, since))
       onChanged()
     } catch (err) {
       setError(err.message)
@@ -652,19 +654,26 @@ function Listings({ events, session, onChanged }) {
         <div className="min-w-0">
           <p className="font-mono text-[9px] tracking-[.08em] text-blue-600">LISTINGS · {waiting.length} WITHOUT RESULTS</p>
           <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-600">
-            Race facts only: one CSV row per distance, rows of the same event (name and date) grouped, anything already here skipped. A course file is added per race afterwards and needs a recorded licence or the organizer's yes.
+            Race facts only: one CSV row per distance (up to 19 MB), rows of the same event (name and date) grouped, anything already here skipped. A file with years of history is fine: only rows from the chosen day on are imported, at most 10,000 races at a time. A course file is added per race afterwards and needs a recorded licence or the organizer's yes.
           </p>
           <p className="mt-1 break-all font-mono text-[10px] text-slate-500">{LISTING_COLUMNS}</p>
         </div>
-        <label className={`inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-lg bg-[#0b1220] px-3 text-xs font-semibold text-white ${busy ? 'opacity-60' : ''}`}>
-          <Upload size={13} /> {busy ? 'Importing…' : 'Import CSV'}
-          <input type="file" accept=".csv,text/csv" className="sr-only" onChange={upload} disabled={busy} />
-        </label>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="grid gap-1 font-mono text-[9px] tracking-[.08em] text-slate-500">
+            ONLY RACES FROM
+            <input type="date" value={since} onChange={(e) => setSince(e.target.value)} disabled={busy} title="Rows with an earlier date are left out. Empty imports every row." className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 font-sans text-xs tracking-normal text-[#0b1220]" />
+          </label>
+          <label className={`inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-lg bg-[#0b1220] px-3 text-xs font-semibold text-white ${busy ? 'opacity-60' : ''}`}>
+            <Upload size={13} /> {busy ? 'Importing…' : 'Import CSV'}
+            <input type="file" accept=".csv,text/csv" className="sr-only" onChange={upload} disabled={busy} />
+          </label>
+        </div>
       </div>
       {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
       {result && (
         <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-xs text-emerald-900">
           Added {result.created_races} race(s) in {result.created_events} new event(s).
+          {result.before_since > 0 && ` ${result.before_since} row(s) before ${since} were left out.`}
           {result.skipped.length > 0 && (
             <ul className="mt-2 list-disc pl-4 text-amber-800">
               {result.skipped.map((line) => (
@@ -698,8 +707,12 @@ function Listings({ events, session, onChanged }) {
   )
 }
 
+const EVENTS_PER_PAGE = 40
+
 function EventsAdmin({ session }) {
   const [events, setEvents] = useState(null)
+  const [query, setQuery] = useState('')
+  const [visible, setVisible] = useState(EVENTS_PER_PAGE)
   const [error, setError] = useState(null)
   const [version, setVersion] = useState(0)
   const reload = () => setVersion((v) => v + 1)
@@ -735,6 +748,10 @@ function EventsAdmin({ session }) {
   if (error && !events) return <Notice kind="error">{error}</Notice>
   if (!events) return <p className="text-sm text-slate-500">Loading…</p>
   const raceCount = events.reduce((n, e) => n + e.race_count, 0)
+  // Thousands of events once listings are imported: search, and draw a screenful at a time.
+  const needle = query.trim().toLowerCase()
+  const matching = needle ? events.filter((e) => `${e.event_name} ${e.location ?? ''} ${e.country ?? ''} ${e.organizer_email ?? ''} ${e.event_date}`.toLowerCase().includes(needle)) : events
+  const shownEvents = matching.slice(0, visible)
   const publishedCount = events.reduce((n, e) => n + e.published_count, 0)
   return (
     <div>
@@ -747,8 +764,21 @@ function EventsAdmin({ session }) {
         {events.length} EVENT{events.length === 1 ? '' : 'S'} · {raceCount} RACE{raceCount === 1 ? '' : 'S'} · {publishedCount} PUBLISHED
       </p>
       <Listings events={events} session={session} onChanged={reload} />
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setVisible(EVENTS_PER_PAGE) }}
+          placeholder="Find an event: name, place, country, owner or date"
+          aria-label="Find an event"
+          className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+        />
+        <p className="font-mono text-[10px] text-slate-500">
+          {shownEvents.length} OF {matching.length} SHOWN
+        </p>
+      </div>
       <div className="mt-4 grid gap-4">
-        {events.map((event) => (
+        {shownEvents.map((event) => (
           <section key={event.event_id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div className="min-w-0">
@@ -783,6 +813,13 @@ function EventsAdmin({ session }) {
           </section>
         ))}
       </div>
+      {matching.length > shownEvents.length && (
+        <div className="mt-4 flex justify-center">
+          <Button variant="secondary" onClick={() => setVisible((n) => n + EVENTS_PER_PAGE)}>
+            Show {Math.min(EVENTS_PER_PAGE, matching.length - shownEvents.length)} more
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

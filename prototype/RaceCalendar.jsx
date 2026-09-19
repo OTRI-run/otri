@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Rss } from 'lucide-react'
 import { formatDistance, useUnits } from '../src/lib/units'
 import Flag from '../src/components/Flag'
 import { VerticalBadge } from './RaceCard'
 import SuggestRace from './SuggestRace'
 import { AddToCalendar, countdown, groupByEvent, icsUrl, parseDay } from './calendarLinks'
+
+const EVENTS_AT_ONCE = 120
 
 // The races page as a calendar: upcoming events by month, one row per event with its distances,
 // each addable to the runner's own calendar, and the whole (filtered) calendar subscribable.
@@ -66,6 +68,14 @@ export default function RaceCalendar({ races, country, filtered }) {
     }
     return [...byMonth.entries()]
   }, [races])
+  // A full calendar is thousands of events: draw the nearest months (about EVENTS_AT_ONCE events)
+  // and the rest on request. The filters above narrow it further.
+  const [extraMonths, setExtraMonths] = useState(0)
+  useEffect(() => setExtraMonths(0), [races])
+  let firstMonths = 0
+  for (let total = 0; firstMonths < months.length && total < EVENTS_AT_ONCE; firstMonths += 1) total += months[firstMonths][1].length
+  const shownMonths = months.slice(0, firstMonths + extraMonths)
+  const hiddenEvents = months.slice(shownMonths.length).reduce((n, [, events]) => n + events.length, 0)
   const feed = icsUrl({ country: country !== 'all' ? country : null })
 
   return (
@@ -90,7 +100,7 @@ export default function RaceCalendar({ races, country, filtered }) {
           {filtered ? 'No upcoming race matches these filters.' : 'No upcoming races are listed yet.'} Know one? Use “Suggest a race” and it appears here after a quick check.
         </div>
       )}
-      {months.map(([month, events]) => (
+      {shownMonths.map(([month, events]) => (
         <section key={month} className="mt-6">
           <h2 className="font-mono text-[11px] uppercase tracking-[.1em] text-slate-500">
             {parseDay(`${month}-01`).toLocaleDateString('en', { month: 'long', year: 'numeric' })} · {events.length} event{events.length === 1 ? '' : 's'}
@@ -102,6 +112,13 @@ export default function RaceCalendar({ races, country, filtered }) {
           </ul>
         </section>
       ))}
+      {hiddenEvents > 0 && (
+        <div className="mt-6 flex justify-center">
+          <button type="button" onClick={() => setExtraMonths((n) => n + 3)} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-[#0b1220] hover:border-blue-300">
+            Show later months · {hiddenEvents} more event{hiddenEvents === 1 ? '' : 's'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -384,11 +384,11 @@ export function requestScores(raceId, clientId) {
   })
 }
 
-/** Admin: add race listings (facts only) from a CSV file. */
-export function importListings(file, token) {
+/** Admin: add race listings (facts only) from a CSV file; `since` (YYYY-MM-DD) leaves out earlier races. */
+export function importListings(file, token, since) {
   const formData = new FormData()
   formData.append('file', file)
-  return request('/admin/listings/import', { method: 'POST', headers: authHeaders(token), body: formData })
+  return request(`/admin/listings/import${since ? `?since=${encodeURIComponent(since)}` : ''}`, { method: 'POST', headers: authHeaders(token), body: formData })
 }
 
 /** Admin: hand an event to an organizer's account (a claimed listing); no email releases it. */

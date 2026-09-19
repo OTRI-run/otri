@@ -30,6 +30,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, Request, Response, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.concurrency import run_in_threadpool
 
@@ -70,7 +71,7 @@ from .auth import (
 )
 from . import email as _email
 from .calendar_feed import CalendarEvent, CalendarRace, build_calendar
-from .event_match import same_edition
+from .event_match import name_key, same_edition
 from . import server_stats as _server
 from .email import send_password_reset_email, send_verification_email
 from .rate_limit import AccountLocked, check_account_lock, clear_login_failures, enforce_rate_limit, record_login_failure
@@ -175,6 +176,9 @@ app.add_middleware(
     allow_headers=["*"],
     allow_credentials=True,  # the organizer app authenticates with an HttpOnly cookie
 )
+# The race list is one response the browser filters itself; with a few thousand listings it is
+# megabytes of JSON and about a tenth of that compressed. The proxy does not compress for us.
+app.add_middleware(GZipMiddleware, minimum_size=2000)
 
 
 _MAX_BODY_BYTES = 20_000_000
@@ -837,9 +841,13 @@ def admin_list_events(organizer: Organizer = Depends(require_admin)) -> list[Adm
     """Every event on the platform with its owner and each race's publish state. Admin only."""
     counts = db.count_results_by_race()
     requests = db.count_score_requests_by_race()
+    # One query for every race, not one per event: the list runs to thousands once listings are imported.
+    races_by_event: dict[str, list[db.Race]] = {}
+    for race in db.list_races():
+        races_by_event.setdefault(race.event_id, []).append(race)
     out = []
     for event in db.list_events():
-        races = db.list_races_for_event(event.event_id)
+        races = races_by_event.get(event.event_id, [])
         out.append(
             AdminEventOut(
                 event_id=event.event_id,
@@ -979,26 +987,40 @@ def _validate_listing(payload: ListingCreate) -> tuple[str, str | None, str | No
     return name, country, website, source_url
 
 
+def _create_listings(payloads: list[ListingCreate], skipped: list[str]) -> tuple[int, int]:
+    """Create the events (or reuse one with the same name and date) and their missing races, listed.
+    Everything already on OTRI is read once and the new rows go in as one transaction, so a CSV of
+    a few thousand races is a matter of seconds. The same name means the same ``name_key``: the year,
+    accents and punctuation do not make a second event."""
+    events = {}
+    for event in db.list_events():
+        events.setdefault((name_key(event.event_name), event.event_date), event.event_id)
+    have: dict[str, set[str]] = {}
+    for race in db.list_races():
+        have.setdefault(race.event_id, set()).add(race.course_name.strip().lower())
+
+    new_events, new_races = [], []
+    for payload in payloads:
+        name, country, website, source_url = _validate_listing(payload)
+        key = (name_key(name), payload.event_date)
+        event_id = events.get(key)
+        if event_id is None:
+            event_id = events[key] = db.new_listing_id("evt")
+            new_events.append((event_id, name, payload.event_date, (payload.location or "").strip() or None, country, website, source_url))
+        courses = have.setdefault(event_id, set())
+        for race in payload.races:
+            course = race.course_name.strip()
+            if course.lower() in courses:
+                skipped.append(f"{name} · {course}: already on OTRI")
+                continue
+            courses.add(course.lower())
+            new_races.append((db.new_listing_id("race"), event_id, course, race.distance_km, race.elevation_gain_m))
+    db.insert_listings(new_events, new_races)
+    return len(new_events), len(new_races)
+
+
 def _create_listing(payload: ListingCreate, skipped: list[str]) -> tuple[int, int]:
-    """Create the event (or reuse one with the same name and date) and its missing races, listed."""
-    name, country, website, source_url = _validate_listing(payload)
-    existing = next((e for e in db.list_events() if e.event_name.strip().lower() == name.lower() and e.event_date == payload.event_date), None)
-    created_events = 0
-    if existing is None:
-        existing = db.create_event(name, payload.event_date, None, location=(payload.location or "").strip() or None, country=country, website=website, source_url=source_url)
-        created_events = 1
-    have = {race.course_name.strip().lower() for race in db.list_races_for_event(existing.event_id)}
-    created_races = 0
-    for race in payload.races:
-        course = race.course_name.strip()
-        if course.lower() in have:
-            skipped.append(f"{name} · {course}: already on OTRI")
-            continue
-        created = db.create_race(existing.event_id, course, race.distance_km, race.elevation_gain_m)
-        db.set_race_listed(created.race_id, True)
-        have.add(course.lower())
-        created_races += 1
-    return created_events, created_races
+    return _create_listings([payload], skipped)
 
 
 @app.post("/admin/listings", response_model=ListingImportResult, status_code=201)
@@ -1009,18 +1031,26 @@ def admin_create_listing(payload: ListingCreate, organizer: Organizer = Depends(
 
 
 _LISTING_CSV_COLUMNS = ("event_name", "event_date", "location", "country", "website", "source_url", "course_name", "distance_km", "elevation_gain_m")
+# The proxy takes 20 MB; a calendar of 100 000 races is about 15.
+_LISTING_CSV_MAX_BYTES = 19_000_000
+_LISTING_CSV_MAX_ROWS = 250_000
+# Races added by one import. More than this is a catalogue, not a calendar: narrow the dates.
+_LISTING_IMPORT_MAX_RACES = 10_000
+_LISTING_SKIPPED_SHOWN = 100
 
 
 @app.post("/admin/listings/import", response_model=ListingImportResult)
-async def admin_import_listings(file: UploadFile, organizer: Organizer = Depends(require_admin)) -> ListingImportResult:
+async def admin_import_listings(file: UploadFile, since: date | None = None, organizer: Organizer = Depends(require_admin)) -> ListingImportResult:
     """Bulk-add listings from a CSV of race facts: one row per race distance, rows of the same
-    event (name and date) grouped. A bad row is skipped with its reason; the rest are imported."""
+    event (name and date) grouped. ``since`` leaves out every race before that day, so a file with
+    years of history can be imported for this season only. A bad row is skipped with its reason;
+    the rest are imported."""
     import csv
     import io
 
-    contents = await file.read(2_000_001)
-    if len(contents) > 2_000_000:
-        raise HTTPException(status_code=413, detail="Upload exceeds 2 MB")
+    contents = await file.read(_LISTING_CSV_MAX_BYTES + 1)
+    if len(contents) > _LISTING_CSV_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="Upload exceeds 19 MB; split the file")
     try:
         reader = csv.DictReader(io.StringIO(contents.decode("utf-8-sig")))
     except UnicodeError as error:
@@ -1029,33 +1059,51 @@ async def admin_import_listings(file: UploadFile, organizer: Organizer = Depends
     if missing:
         raise HTTPException(status_code=422, detail=f"missing column(s) {missing}; expected {list(_LISTING_CSV_COLUMNS)}")
 
-    grouped: dict[tuple[str, str], dict] = {}
-    skipped: list[str] = []
-    for line, row in enumerate(reader, start=2):
-        if line > 5001:
-            skipped.append("rows after the 5000th were ignored")
-            break
-        row = {key: (value or "").strip() for key, value in row.items() if key}
-        try:
-            event_date = date.fromisoformat(row["event_date"])
-            race = {"course_name": row["course_name"], "distance_km": float(row["distance_km"]), "elevation_gain_m": float(row.get("elevation_gain_m") or 0)}
-        except ValueError:
-            skipped.append(f"line {line}: event_date must be YYYY-MM-DD and distance_km / elevation_gain_m numbers")
-            continue
-        entry = grouped.setdefault((row["event_name"].lower(), row["event_date"]), {**{k: row.get(k) or None for k in ("event_name", "location", "country", "website", "source_url")}, "event_date": event_date, "races": [], "line": line})
-        entry["races"].append(race)
+    def parse(rows) -> tuple[list[ListingCreate], list[str], int]:
+        grouped: dict[tuple[str, date], dict] = {}
+        skipped: list[str] = []
+        before = kept = 0
+        for line, row in enumerate(rows, start=2):
+            if line > _LISTING_CSV_MAX_ROWS + 1:
+                skipped.append(f"rows after the {_LISTING_CSV_MAX_ROWS}th were ignored")
+                break
+            row = {key: (value or "").strip() for key, value in row.items() if key}
+            try:
+                event_date = date.fromisoformat(row["event_date"])
+                race = {"course_name": row["course_name"], "distance_km": float(row["distance_km"]), "elevation_gain_m": float(row.get("elevation_gain_m") or 0)}
+            except ValueError:
+                skipped.append(f"line {line}: event_date must be YYYY-MM-DD and distance_km / elevation_gain_m numbers")
+                continue
+            if since is not None and event_date < since:
+                before += 1
+                continue
+            if kept >= _LISTING_IMPORT_MAX_RACES:
+                skipped.append(f"more than {_LISTING_IMPORT_MAX_RACES} races; the rest were ignored, import a shorter period")
+                break
+            kept += 1
+            entry = grouped.setdefault((name_key(row["event_name"]), event_date), {**{k: row.get(k) or None for k in ("event_name", "location", "country", "website", "source_url")}, "event_date": event_date, "races": [], "line": line})
+            entry["races"].append(race)
 
-    result = ListingImportResult(skipped=skipped)
-    for entry in grouped.values():
-        line = entry.pop("line")
-        try:
-            events, races = _create_listing(ListingCreate(**entry), result.skipped)
-        except (HTTPException, ValueError) as error:
-            result.skipped.append(f"line {line}: {getattr(error, 'detail', error)}")
-            continue
-        result.created_events += events
-        result.created_races += races
-    return result
+        payloads = []
+        for entry in grouped.values():
+            line = entry.pop("line")
+            try:
+                payload = ListingCreate(**entry)
+                _validate_listing(payload)
+            except (HTTPException, ValueError) as error:
+                skipped.append(f"line {line}: {getattr(error, 'detail', error)}")
+                continue
+            payloads.append(payload)
+        return payloads, skipped, before
+
+    def run() -> ListingImportResult:
+        payloads, skipped, before = parse(reader)
+        events, races = _create_listings(payloads, skipped)
+        if len(skipped) > _LISTING_SKIPPED_SHOWN:
+            skipped = skipped[:_LISTING_SKIPPED_SHOWN] + [f"… and {len(skipped) - _LISTING_SKIPPED_SHOWN} more"]
+        return ListingImportResult(created_events=events, created_races=races, skipped=skipped, before_since=before)
+
+    return await run_in_threadpool(run)
 
 
 @app.post("/races/{race_id}/listing", response_model=RaceSummary)
