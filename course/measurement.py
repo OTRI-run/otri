@@ -228,9 +228,12 @@ def measure_course(points: list[TrackPoint], provider=None) -> Measurement:
             known = [(x, p.elevation_m) for x, p in zip(xs, clean) if p.elevation_m is not None]
             if len(known) < 2 or clean[0].elevation_m is None or clean[-1].elevation_m is None:
                 raise GpxParseError('This GPX has no elevation (or none at its start or end), and OTRI has no terrain data for this place to fill it in, so the climb cannot be measured. Export the course with elevation: most route planners can add it (“add elevation” or “correct elevation”).')
+            # Built once. It used to be rebuilt for every point without an elevation: a file with
+            # every other elevation left out cost the square of its length, 4.5 s at 32,000 points.
+            known_x = [x for x, _ in known]
             for i, p in enumerate(clean):
                 if p.elevation_m is None:
-                    j = bisect_right([x for x, _ in known], xs[i])
+                    j = bisect_right(known_x, xs[i])
                     if known[j][0] - known[j-1][0] > PARAMETERS['max_missing_gap_m']:
                         raise GpxParseError('This GPX has stretches of more than 30 m with no elevation, and OTRI has no terrain data for this place to fill them in. Export the course with elevation on every point: most route planners can add it (“add elevation” or “correct elevation”).')
                     flags.add('short_elevation_gap_interpolated')

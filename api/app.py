@@ -546,10 +546,11 @@ def login(payload: OrganizerCredentials, request: Request, response: Response) -
         _limits.record_login_failure(payload.email, source)
         raise HTTPException(status_code=401, detail=str(error)) from error
     _limits.clear_login_failures(payload.email, source)
+    checked_under = organizer.session_version  # read with the password hash: see authenticate_organizer
     # The flag follows the list in both directions; an unconfirmed address proves nothing.
     db.set_organizer_flags(organizer.email, is_admin=organizer.email in _ADMIN_EMAILS and organizer.email_verified)
     organizer = _with_flags(organizer, check_session=False)  # credentials, not a token: nothing to compare yet
-    return _finish_session(response, request, _issue_session(organizer, payload.remember, request), payload.remember)
+    return _finish_session(response, request, _issue_session(organizer, payload.remember, request, session_version=checked_under), payload.remember)
 
 
 def _second_factor_key(email: str) -> str:
@@ -567,7 +568,7 @@ def _refuse_locked_second_factor(email: str) -> None:
         ) from error
 
 
-def _issue_session(organizer: Organizer, remember: bool, request: Request | None = None) -> TokenResponse:
+def _issue_session(organizer: Organizer, remember: bool, request: Request | None = None, *, session_version: int | None = None) -> TokenResponse:
     """Either a token, or a second-step challenge when the account has two-factor enabled."""
     status = _auth.two_factor_status(organizer.id)
     if status["enabled"]:
@@ -577,12 +578,15 @@ def _issue_session(organizer: Organizer, remember: bool, request: Request | None
         _refuse_locked_second_factor(organizer.email)
         if status["method"] == "email" and request is not None:  # each challenge is an email to the owner
             enforce_rate_limit(request, max_requests=6, scope="login-code", subject=f"account-{organizer.id}", window_seconds=900)
-        challenge, method, code = _auth.start_login_challenge(organizer, remember)
+        try:
+            challenge, method, code = _auth.start_login_challenge(organizer, remember, session_version=session_version)
+        except AuthError as error:  # the account's protection changed while the password was being checked
+            raise HTTPException(status_code=401, detail=str(error)) from error
         if code:
             _email.send_login_code_email(organizer.email, code)
         return TokenResponse(access_token="", email=organizer.email, requires_2fa=True, challenge=challenge, method=method)
     return TokenResponse(
-        access_token=create_access_token(organizer, remember),
+        access_token=create_access_token(organizer, remember, session_version=session_version),
         email=organizer.email,
         is_admin=organizer.is_admin,
         is_demo=organizer.is_demo,
@@ -609,9 +613,10 @@ def login_second_step(payload: TwoFactorLogin, request: Request, response: Respo
     except AuthError as error:
         raise HTTPException(status_code=401, detail=str(error)) from error
     _limits.clear_failures(_second_factor_key(organizer.email))
+    checked_under = organizer.session_version
     organizer = _with_flags(organizer, check_session=False)
     return _finish_session(response, request, TokenResponse(
-        access_token=create_access_token(organizer, remember),
+        access_token=create_access_token(organizer, remember, session_version=checked_under),
         email=organizer.email,
         is_admin=organizer.is_admin,
         is_demo=organizer.is_demo,
@@ -1064,15 +1069,16 @@ def _limit_uploads(request: Request, organizer: Organizer) -> None:
     _limit_writes(request, organizer, scope="upload", per_minute=_UPLOADS_PER_MINUTE, per_hour=_UPLOADS_PER_HOUR if organizer.email_verified else _UPLOADS_PER_HOUR_UNCONFIRMED)
 
 
-def _require_room_for_results(organizer: Organizer, race_id: str, incoming: int) -> None:
+def _result_row_limit(organizer: Organizer) -> int | None:
     if organizer.is_admin:
-        return
-    limit = _MAX_RESULT_ROWS_PER_ACCOUNT if organizer.email_verified else _MAX_RESULT_ROWS_UNCONFIRMED
-    if db.count_result_rows_for_organizer(organizer.id, except_race_id=race_id) + incoming <= limit:
-        return
+        return None
+    return _MAX_RESULT_ROWS_PER_ACCOUNT if organizer.email_verified else _MAX_RESULT_ROWS_UNCONFIRMED
+
+
+def _no_room_for_results(organizer: Organizer) -> HTTPException:
     if not organizer.email_verified:
-        raise HTTPException(status_code=403, detail=f"Confirm your email address to store more than {_MAX_RESULT_ROWS_UNCONFIRMED:,} results: the link is in your inbox, and you can have it sent again. Nothing was stored from this file.")
-    raise HTTPException(status_code=403, detail=f"This account holds {_MAX_RESULT_ROWS_PER_ACCOUNT:,} results, which is the limit. Write to us if you really need more.")
+        return HTTPException(status_code=403, detail=f"Confirm your email address to store more than {_MAX_RESULT_ROWS_UNCONFIRMED:,} results: the link is in your inbox, and you can have it sent again. Nothing was stored from this file.")
+    return HTTPException(status_code=403, detail=f"This account holds {_MAX_RESULT_ROWS_PER_ACCOUNT:,} results, which is the limit. Write to us if you really need more.")
 
 
 @app.post("/events", response_model=EventSummary, status_code=201)
@@ -1735,8 +1741,13 @@ async def submit_race_results(
             )
 
         results = await run_in_threadpool(result_records, temp_path)
-        _require_room_for_results(organizer, race_id, len(results))
-        await run_in_threadpool(db.replace_results, race_id, results)  # tens of thousands of inserts: not on the event loop
+        try:
+            # Tens of thousands of inserts: not on the event loop. The account's limit is checked
+            # inside, in the transaction that writes and with the account locked: checked out here,
+            # two uploads to two races at once each saw room for themselves and both went in.
+            await run_in_threadpool(db.replace_results, race_id, results, max_rows_for_organizer=_result_row_limit(organizer))
+        except db.QuotaExceeded as error:
+            raise _no_room_for_results(organizer) from error
 
         try:
             # Score the stored rows, which now carry runner ids, so the response matches a later replay.
