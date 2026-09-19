@@ -7,6 +7,7 @@ import NextSteps from './NextSteps'
 import ReportForm from './ReportForm'
 import { modelLabel, modelShort } from '../src/lib/model'
 import { RACE_NAMES } from '../src/lib/raceNames'
+import WhatWeScore from '../src/components/WhatWeScore'
 import { knownButNotHere, matchRank } from '../src/lib/suggest'
 import { distanceUnit, formatDistance, formatElevation, formatPace as formatPaceUnits, formatRate, kmToUnit, useUnits } from '../src/lib/units'
 
@@ -668,6 +669,7 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
                 </p>
               </div>
             </details>
+            <WhatWeScore className="mt-2" />
           </div>
         </div>
 

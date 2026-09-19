@@ -1,3 +1,4 @@
+import { NOT_MEASURED, WHAT_WE_SCORE, WhatWeScoreTable } from '../src/components/WhatWeScore'
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowUpRight, Mail, Search } from 'lucide-react'
 import NextSteps from './NextSteps'
@@ -15,6 +16,14 @@ const FAQ = [
         q: 'What is an OTRI score?',
         a: 'A number for one performance on one course, where 1000 is the best a human has done over that much ground. It is your speed over the course, as a share of the fastest a human has ever sustained over a course of that demand, raised to a fixed power. Only two things go in: the course and your finish time.',
         tags: 'definition meaning number scale',
+      },
+      {
+        q: 'Which races can OTRI score: trail, road, vertical?',
+        a: 'Anything with a fixed, measurable course and a finish time. Trail and mountain races are what the model was built for; road races work too; some kinds are scored with a warning, and a few cannot be scored at all.',
+        table: true,
+        // The table is drawn from the same data; this keeps it findable by the search box.
+        search: `${WHAT_WE_SCORE.map((row) => row.slice(1).join(' ')).join(' ')} ${NOT_MEASURED}`,
+        tags: 'limits what can score road race marathon vertical kilometre steep short 24 hour backyard relay stage race technical terrain mud heat',
       },
       {
         q: 'Why does the score not depend on who else raced?',
@@ -126,13 +135,13 @@ const FAQ = [
       },
       {
         q: 'What do I need to get my race scored?',
-        a: 'Three things: the course as a GPX file, the official results as CSV or XLSX (the layout your timing company already exports), and permission to share them. The whole flow takes about ten minutes: create an account, add the event and its distances, upload the course, upload the results, review, publish.',
+        a: 'Two files: the course as a GPX and the official results as CSV or Excel, the export you already have. Score my race gives you every score in a minute with no account. To publish them as a race page you also need a free account and the right to share the results: add the event, the course and the results, review, publish. About ten minutes.',
         link: ['organizer/', 'Start as an organizer'],
         tags: 'organizer start upload results course requirements time',
       },
       {
         q: 'Which result file formats and columns are accepted?',
-        a: 'CSV or XLSX, one row per participant. Column names are matched loosely (rank, time, last name, first name, gender, status, bib, nationality, birth date are recognised in most spellings) and extra columns are ignored. The results step shows an example file and validates yours before anything is scored.',
+        a: 'CSV, TSV or Excel (.xlsx), one row per participant, one file per race distance: the export from your timing company, or the sheet you send to ITRA or UTMB. It needs a finish time and a name. Position, gender (also from a category such as SEH or M40-44), status, bib, nationality and year of birth are read where the file has them, under whatever the columns are called in eight languages; a single name column, semicolons, title lines above the header and times like 12h34m56s are all fine. After every upload you are shown how your file was read, and exactly what to fix if something a score needs is missing.',
         tags: 'csv xlsx excel columns format results file',
       },
       {
@@ -186,7 +195,7 @@ export default function FaqPage({ initialQuery = '' }) {
   const matches = useMemo(() => {
     if (!words.length) return ALL
     return ALL.filter((item) => {
-      const hay = normalise(`${item.q} ${item.a} ${item.tags} ${item.group}`)
+      const hay = normalise(`${item.q} ${item.a} ${item.tags} ${item.group} ${item.search ?? ''}`)
       return words.every((word) => hay.includes(word))
     })
   }, [words])
@@ -260,6 +269,7 @@ export default function FaqPage({ initialQuery = '' }) {
                     </span>
                   </summary>
                   <p className="mt-3 max-w-[720px] text-sm leading-7 text-slate-600">{item.a}</p>
+                  {item.table && <WhatWeScoreTable className="mt-3 max-w-[720px]" />}
                   {item.link && (
                     <a href={item.link[0]} className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-blue-600 no-underline hover:underline" target={item.link[0].startsWith('http') ? '_blank' : undefined} rel="noreferrer">
                       {item.link[1]} <ArrowUpRight size={14} />

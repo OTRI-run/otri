@@ -1,4 +1,5 @@
 import ColumnsRead from '../src/components/ColumnsRead'
+import WhatWeScore from '../src/components/WhatWeScore'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, ArrowRight, CheckCircle2, Code2, Download, Share2, FileSpreadsheet, Map as MapIcon, ShieldCheck, Timer, Trophy, XCircle } from 'lucide-react'
 import { scoreRace } from './apiClient'
@@ -464,6 +465,7 @@ export default function ScoreRace() {
             <p className="mt-5 max-w-[560px] text-base leading-7 text-slate-600">
               Bring the course and the results file of any trail race. OTRI measures the course, checks the file, and gives every finisher a score you can explain: the same open model as every race here, with no account and no approval.
             </p>
+            <WhatWeScore className="mt-4 max-w-[560px]" />
             <ExampleRace onUse={useExample} busy={busy} rowsOpen={rowsOpen} onToggleRows={() => setRowsOpen((open) => !open)} />
           </div>
 
