@@ -76,6 +76,9 @@ _OTHER_FORMATS = {
 }
 
 
+MAX_TAGS = 3_000_000
+
+
 def parse_track_points(gpx_text: str) -> list[TrackPoint]:
     """Read every ``trkpt`` in document order from raw GPX 1.0/1.1 XML text.
 
@@ -88,6 +91,14 @@ def parse_track_points(gpx_text: str) -> list[TrackPoint]:
         raise GpxParseError('The GPX is larger than 20 MB. Export it with fewer points (one every 5 to 10 m is plenty) and upload that.')
     if '<!DOCTYPE' in gpx_text.upper() or '<!ENTITY' in gpx_text.upper():
         raise GpxParseError('GPX must not contain DTD or entity declarations')
+    # Parsing costs by the tag, not by the point, and anyone may upload: 19 MB of empty elements
+    # around two points took three seconds to read. Counting "<" takes a millisecond. The fullest
+    # real file, 100,000 points each with elevation, time and a watch's heart rate, cadence and
+    # temperature, has under two million.
+    if max(gpx_text.count('<trkpt'), gpx_text.count('<rtept')) > 100_000:  # said before the file is parsed, not after
+        raise GpxParseError('The GPX has more than 100,000 points. Export it with fewer points (one every 5 to 10 m is plenty) and upload that.')
+    if gpx_text.count('<') > MAX_TAGS:
+        raise GpxParseError('The GPX holds far more markup than a course of 100,000 points needs. Export the course again, as a plain GPX track, and upload that.')
     try:
         root = SafeElementTree.fromstring(gpx_text)
     except (ElementTree.ParseError, DefusedXmlException) as error:  # malformed, or an entity/DTD trick
@@ -104,13 +115,19 @@ def parse_track_points(gpx_text: str) -> list[TrackPoint]:
         names = [(track.findtext(f'{ns}name') or '').strip() for track in tracks]
         listed = ", ".join(f"“{name}”" for name in names[:5] if name)
         raise GpxParseError(f"This GPX holds {len(tracks)} tracks{f' ({listed})' if listed else ''}. Export the race course on its own, one track, and upload that.")
-    segments = list(root.iter(f'{ns}trkseg'))
-    if not segments:
-        segments = [root]
+    # Every element is looked at once. A segment's points are its own children, as the GPX schema
+    # has them. This used to take every `trkseg` at any depth and walk the whole subtree of each:
+    # with segments nested inside each other (which no program writes and the schema forbids) a
+    # point was read once per segment around it, so 400 KB with two points in it cost two seconds,
+    # the cost grew with the square of the file, and the two points came back as 48,000.
+    segments = [segment for track in tracks for segment in track.findall(f'{ns}trkseg')]
+    if sum(1 for _ in root.iter(f'{ns}trkseg')) != len(segments):
+        raise GpxParseError("This GPX has track segments in the wrong place (inside each other, or outside the track): it was not written by a program that exports courses. Export the course again and upload that.")
     points = []
     try:
-        for segment_id, segment in enumerate(segments):
-            for element in segment.iter(f'{ns}trkpt'):
+        # No segments at all: some exporters put the points straight into the track. One walk.
+        for segment_id, children in enumerate([segment.findall(f'{ns}trkpt') for segment in segments] or [root.iter(f'{ns}trkpt')]):
+            for element in children:
                 point = _parse_trkpt(element, ns)
                 points.append(TrackPoint(point.lat, point.lon, point.elevation_m, point.time, segment_id))
                 if len(points) > 100_000:
