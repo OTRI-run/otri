@@ -32,6 +32,10 @@ _HEADER = (
 )
 
 
+# What a file written by `sanitized_gpx` starts with: how a stored file is known to be one.
+SANITIZED_HEADER = _HEADER
+
+
 def sanitized_gpx(points: list[TrackPoint], name: str | None = None) -> str:
     """A minimal GPX 1.1 document holding only these points' positions and elevations."""
     lines = [_HEADER, "  <trk>\n"]

@@ -1,7 +1,7 @@
 import { fitFontSize } from '../src/lib/fitText'
 import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowLeft, ArrowUpRight, Mail } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, Mail, Download } from 'lucide-react'
 import { countryName } from '../src/components/CountrySelect'
 import Logo from '../src/components/Logo'
 import UnitsMenu from '../src/components/UnitsMenu'
@@ -37,7 +37,7 @@ const PAGE_TITLES = {
   faq: 'FAQ · OTRI',
   notfound: 'Page not found · OTRI',
 }
-import { fetchRaceGpxFile, getRace, getRaceMeasurement, getRaceResults, listRaces } from './apiClient'
+import { fetchRaceGpxFile, getRace, getRaceMeasurement, getRaceResults, listRaces, raceGpxDownloadUrl } from './apiClient'
 import BuildBanner from '../src/components/BuildBanner'
 import ErrorBoundary from '../src/components/ErrorBoundary'
 import NotFound from '../src/components/NotFound'
@@ -279,6 +279,12 @@ function Leaderboard({ raceId, onBack }) {
           {course && (
             <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
               <CourseMap gpxText={course.gpxText} measurement={course.measurement} className="p-3" />
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-slate-200 px-4 py-3">
+                <p className="min-w-0 text-xs leading-5 text-slate-500">The course as a GPX file for your watch or app: the track and its elevations, nothing else from the original file.</p>
+                <a href={raceGpxDownloadUrl(race.race_id)} className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-[#0b1220] no-underline hover:border-blue-300">
+                  <Download size={14} /> Download the GPX
+                </a>
+              </div>
             </div>
           )}
           {!race.is_published && <RaceListing race={race} />}

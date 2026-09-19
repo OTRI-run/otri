@@ -89,3 +89,32 @@ def test_a_course_can_be_edited_cleared_and_given_another_file():
     # Only calculator courses, only admins.
     assert client.patch("/admin/calculator-courses/race-nope", data={"event_name": "Some race", "course_name": "X"}, headers=admin).status_code == 404
     assert client.patch(url, data={"event_name": "Some race", "course_name": "X"}, headers=_headers("calc-organizer-2@example.com", False)).status_code == 403
+
+
+def test_a_downloaded_course_carries_positions_and_elevations_and_nothing_else():
+    """What the GPX endpoint hands out is sanitized, whatever sits in the table: a row from before
+    sanitizing existed (or put there some other way) is reduced on the way out."""
+    admin = _headers("calc-admin-4@example.com", True)
+    personal = GPX.decode("utf-8").replace(
+        "<trk>",
+        '<metadata><author><name>Jane Runner</name><email id="jane" domain="example.com"/></author><time>2026-05-01T06:00:00Z</time></metadata>'
+        '<wpt lat="18.72" lon="98.89"><name>My house</name></wpt><trk>',
+        1,
+    ).replace("</ele></trkpt>", "</ele><time>2026-05-01T06:00:00Z</time><extensions><hr>171</hr></extensions></trkpt>", 3)
+    course = client.post("/admin/calculator-courses", files={"file": ("watch.gpx", personal.encode("utf-8"), "application/gpx+xml")}, data={"event_name": "Doi Pui Übertrail", "course_name": "24K"}, headers=admin).json()
+    url = f"/races/{course['race_id']}/gpx"
+
+    served = client.get(url).text
+    assert served.count("<trkpt") == GPX.decode("utf-8").count("<trkpt")
+    for leak in ("Jane", "example.com", "My house", "<time>", "<hr>", "<wpt", "<extensions"):
+        assert leak not in served, leak
+
+    # Put the raw upload in the table, as an old row would have it: it still leaves sanitized.
+    with db.get_connection() as connection:
+        connection.execute("UPDATE races SET gpx_content = %s WHERE race_id = %s", (personal, course["race_id"]))
+    again = client.get(url + "?download=1")
+    for leak in ("Jane", "example.com", "My house", "<time>", "<hr>", "<wpt", "<extensions"):
+        assert leak not in again.text, leak
+    assert again.text.count("<trkpt") == served.count("<trkpt")
+    assert again.headers["content-disposition"] == 'attachment; filename="doi-pui-ubertrail-24k-otri.gpx"'
+    assert "content-disposition" not in client.get(url).headers
