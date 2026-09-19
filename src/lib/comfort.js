@@ -18,6 +18,7 @@ export function revealElement(target, { block = 'start', delay = 60, focus = fal
     if (!visible) element.scrollIntoView({ behavior: scrollBehavior(), block })
     if (focus) {
       if (!element.hasAttribute('tabindex')) element.setAttribute('tabindex', '-1')
+      element.style.outline = 'none' // focus moves for screen readers and the keyboard; a ring around a whole section helps nobody
       element.focus({ preventScroll: true })
     }
   }, delay)

@@ -20,10 +20,12 @@ export function parseGpxTrackPoints(gpxText) {
   if (doc.documentElement.localName !== 'gpx' || /<!DOCTYPE|<!ENTITY/i.test(gpxText)) throw new Error('Invalid GPX document')
   if (doc.getElementsByTagNameNS('*', 'trk').length > 1) throw new Error('Select a single track')
   const segments = Array.from(doc.getElementsByTagNameNS('*', 'trkseg'))
-  const trkpts = Array.from(doc.getElementsByTagNameNS('*', 'trkpt'))
+  let trkpts = Array.from(doc.getElementsByTagNameNS('*', 'trkpt'))
+  // A route (what route planners export) is drawn like a track, as the server measures it like one.
+  if (trkpts.length === 0) trkpts = Array.from(doc.getElementsByTagNameNS('*', 'rtept'))
   if (trkpts.length > 100000) throw new Error('GPX exceeds point limit')
   if (trkpts.length === 0) {
-    throw new Error('Invalid GPX: no <trkpt> points found')
+    throw new Error('This GPX has no track in it')
   }
 
   return trkpts.map((node) => {

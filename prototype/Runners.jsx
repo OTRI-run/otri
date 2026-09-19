@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useDocumentTitle } from '../src/lib/title'
-import { ArrowLeft, ArrowUpRight } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, Check, Image as ImageIcon, Link2 } from 'lucide-react'
+import { ShareRunner } from './SharePanel'
+import { revealElement } from '../src/lib/comfort'
 import NextSteps from './NextSteps'
 import { DemoBadge } from './RaceCard'
 import { getRunner, listRunners } from './apiClient'
@@ -253,6 +255,9 @@ export function RunnerProfilePage({ runnerId, onBack }) {
   const [profile, setProfile] = useState(null)
   const [error, setError] = useState(null)
   useDocumentTitle(profile ? `${profile.first_name} ${profile.family_name} · OTRI` : 'Runner · OTRI')
+  const [shareOpen, setShareOpen] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
+  const profileUrl = `${window.location.origin}${window.location.pathname}#runners/${encodeURIComponent(runnerId)}`
 
   useEffect(() => {
     let cancelled = false
@@ -292,6 +297,31 @@ export function RunnerProfilePage({ runnerId, onBack }) {
                   {profile.result_count} published result{profile.result_count === 1 ? '' : 's'}
                   {profile.last_race_date ? ` · last race ${profile.last_race_date}` : ''}
                 </p>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShareOpen((open) => !open)
+                      if (!shareOpen) revealElement('runner-share')
+                    }}
+                    aria-expanded={shareOpen}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 px-4 text-[13px] font-semibold text-white shadow-[0_10px_28px_rgba(37,99,235,.2)] hover:from-blue-800 hover:to-blue-600"
+                  >
+                    <ImageIcon size={15} /> {shareOpen ? 'Hide the image' : 'Share as an image'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(profileUrl).then(() => {
+                        setLinkCopied(true)
+                        setTimeout(() => setLinkCopied(false), 2000)
+                      })
+                    }}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-[13px] font-semibold text-[#0b1220] hover:border-blue-300"
+                  >
+                    {linkCopied ? <Check size={15} className="text-emerald-600" /> : <Link2 size={15} />} {linkCopied ? 'Link copied' : 'Copy the link'}
+                  </button>
+                </div>
               </div>
               <div className="min-w-0 overflow-hidden rounded-2xl bg-[linear-gradient(145deg,#08111f_0%,#0b1730_58%,#123b85_100%)] p-5 text-white shadow-[0_24px_70px_rgba(11,18,32,.2)]">
                 <div className="flex items-center justify-between font-mono text-[8px] tracking-[.08em] text-slate-400">
@@ -314,6 +344,25 @@ export function RunnerProfilePage({ runnerId, onBack }) {
                 </p>
               </div>
             </div>
+
+            {shareOpen && (
+              <div id="runner-share" className="mt-8 scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] sm:p-6">
+                <p className="font-mono text-[10px] tracking-[.08em] text-blue-600">SHARE THIS PROFILE</p>
+                <h2 className="mt-2 text-xl font-bold tracking-[-.03em] text-[#0b1220]">An image and a post, ready for your feed</h2>
+                <p className="mt-1 mb-5 max-w-2xl text-sm leading-6 text-slate-600">
+                  The index and the best three races as a picture, with a post written to go with it. Pick a format, change the words if you like,
+                  then download the image or send both to an app. Nothing is posted or stored by OTRI.
+                </p>
+                <ShareRunner
+                  name={runnerName(profile)}
+                  facts={[profile.nationality, profile.age_category, `${profile.result_count} published result${profile.result_count === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}
+                  index={profile.index}
+                  provisional={profile.provisional}
+                  results={profile.results}
+                  url={profileUrl}
+                />
+              </div>
+            )}
 
             <div className="mt-8 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
               <table className="w-full border-collapse text-left text-sm">

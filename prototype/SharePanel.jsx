@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Copy, Download, Share2 } from 'lucide-react'
-import { FORMATS, canvasToBlob, drawLeaderboard, drawScoreCard } from './shareImage'
+import { FORMATS, canvasToBlob, drawLeaderboard, drawRunnerCard, drawScoreCard } from './shareImage'
 
 // Sharing, for the two people who have something to show: an organizer with scored results (a
 // podium image and a post written for them) and a runner with a target time. The image is drawn in
@@ -206,4 +206,41 @@ export function ShareTarget({ courseName, distanceKm, elevationGainM, seconds, s
     [hashtag(courseName), '#trailrunning', '#OTRI'].filter(Boolean).join(' '),
   ].join('\n')
   return <Panel draw={draw} fileName={`${slug(courseName)}-target`} suggestedText={suggestedText} url={url} />
+}
+
+// A runner's profile: their index and best results, as an image and a post. Most people who share a
+// profile share their own, so the text starts in the first person; "Someone else" rewrites it.
+export function ShareRunner({ name, facts, index, provisional, results, url }) {
+  const [mine, setMine] = useState(true)
+  const best = useMemo(
+    () => [...results].filter((result) => result.otri_score != null).sort((a, b) => b.otri_score - a.otri_score).slice(0, 3),
+    [results],
+  )
+  const rows = useMemo(
+    () => best.map((result) => ({ race: result.event_name, detail: [result.course_name, formatHms(result.finish_time_seconds), String(result.event_date ?? '').slice(0, 4)].filter(Boolean).join(' · '), score: result.otri_score })),
+    [best],
+  )
+  const indexLabel = provisional ? 'Provisional OTRI index' : 'OTRI index'
+  const draw = useMemo(
+    () => (canvas, format) => drawRunnerCard(canvas, { format, heading: 'Runner index', name, facts, index, indexLabel, results: rows, note: 'One open score for any trail race · otri.run' }),
+    [name, facts, index, indexLabel, rows],
+  )
+  const whose = mine ? 'My' : `${name}'s`
+  const suggestedText = [
+    index != null ? `🏃 ${whose} OTRI index: ${index}${provisional ? ' (provisional, fewer than three results so far)' : ''}.` : `🏃 ${whose} results on OTRI.`,
+    ...(best.length
+      ? ['', `${mine ? 'My best' : 'Best'} race${best.length === 1 ? '' : 's'}:`, ...best.map((result) => `• ${result.event_name} · ${result.course_name}: ${formatHms(result.finish_time_seconds)}, ${result.otri_score} points`)]
+      : []),
+    '',
+    `${provisional ? 'The index becomes firm with three races in the last 24 months; until then it is provisional.' : `The index is the weighted mean of ${mine ? 'my' : 'the'} best three race scores of the last 24 months.`} A score depends only on the course and the time, never on who else raced.`,
+    '',
+    url ? `${mine ? 'My profile' : 'The profile'}: ${url}` : 'otri.run',
+    '',
+    '#trailrunning #OTRI',
+  ].join('\n')
+  return (
+    <Panel draw={draw} fileName={`${slug(name)}-otri-index`} suggestedText={suggestedText} url={url}>
+      <Choice label="WHOSE PROFILE" options={[['me', 'It is me'], ['other', 'Someone else']]} value={mine ? 'me' : 'other'} onChange={(id) => setMine(id === 'me')} />
+    </Panel>
+  )
 }
