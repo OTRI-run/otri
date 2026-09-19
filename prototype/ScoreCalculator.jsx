@@ -1,8 +1,8 @@
 import { fitFontSize } from '../src/lib/fitText'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUpRight, Check, Copy, GitBranch, Link2, Mountain, RefreshCw, Search, Share2, Timer, Upload, Image as ImageIcon } from 'lucide-react'
+import { ArrowUpRight, Check, Copy, GitBranch, Link2, Mountain, RefreshCw, Search, Share2, Timer, Upload, Image as ImageIcon, Download } from 'lucide-react'
 import CourseMap from '../src/components/CourseMap'
-import { analyzeGpx, fetchRaceGpxFile, fetchSharedGpxFile, getRace, listRaces, shareGpx } from './apiClient'
+import { analyzeGpx, fetchRaceGpxFile, fetchSharedGpxFile, getRace, listRaces, shareGpx, raceGpxDownloadUrl } from './apiClient'
 import { ShareTarget } from './SharePanel'
 import NextSteps from './NextSteps'
 import ReportForm from './ReportForm'
@@ -832,12 +832,24 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
               )}
             </p>
           </div>
-          <button
-            onClick={onChangeCourse}
-            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-[13px] font-semibold text-[#0b1220] hover:border-blue-300"
-          >
-            <RefreshCw size={14} /> Change course
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {/* A race's course can be taken along; the visitor's own upload they already have. */}
+            {courseLabel.raceId && (
+              <a
+                href={raceGpxDownloadUrl(courseLabel.raceId)}
+                title="The track and its elevations, nothing else from the original file"
+                className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-[13px] font-semibold text-[#0b1220] no-underline hover:border-blue-300"
+              >
+                <Download size={14} /> Download the GPX
+              </a>
+            )}
+            <button
+              onClick={onChangeCourse}
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-[13px] font-semibold text-[#0b1220] hover:border-blue-300"
+            >
+              <RefreshCw size={14} /> Change course
+            </button>
+          </div>
         </div>
 
         <div className="mt-8 grid grid-cols-2 border-y border-slate-200 sm:grid-cols-4">

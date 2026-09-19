@@ -1,7 +1,7 @@
 import { fitFontSize } from '../src/lib/fitText'
 import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowLeft, ArrowUpRight, Mail } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, Mail, Download, Upload, Play, ArrowRight, Calculator as CalculatorIcon } from 'lucide-react'
 import { countryName } from '../src/components/CountrySelect'
 import Logo from '../src/components/Logo'
 import UnitsMenu from '../src/components/UnitsMenu'
@@ -37,7 +37,7 @@ const PAGE_TITLES = {
   faq: 'FAQ · OTRI',
   notfound: 'Page not found · OTRI',
 }
-import { fetchRaceGpxFile, getRace, getRaceMeasurement, getRaceResults, listRaces } from './apiClient'
+import { fetchRaceGpxFile, getRace, getRaceMeasurement, getRaceResults, listRaces, raceGpxDownloadUrl } from './apiClient'
 import BuildBanner from '../src/components/BuildBanner'
 import ErrorBoundary from '../src/components/ErrorBoundary'
 import NotFound from '../src/components/NotFound'
@@ -279,6 +279,12 @@ function Leaderboard({ raceId, onBack }) {
           {course && (
             <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
               <CourseMap gpxText={course.gpxText} measurement={course.measurement} className="p-3" />
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-slate-200 px-4 py-3">
+                <p className="min-w-0 text-xs leading-5 text-slate-500">The course as a GPX file for your watch or app: the track and its elevations, nothing else from the original file.</p>
+                <a href={raceGpxDownloadUrl(race.race_id)} className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-[#0b1220] no-underline hover:border-blue-300">
+                  <Download size={14} /> Download the GPX
+                </a>
+              </div>
             </div>
           )}
           {!race.is_published && <RaceListing race={race} />}
@@ -402,6 +408,54 @@ const RACE_SORTS = {
   climb: { label: 'Most climb', by: (a, b) => (b.elevation_gain_m ?? 0) - (a.elevation_gain_m ?? 0) },
   name: { label: 'Name A–Z', by: (a, b) => `${a.event_name} ${a.course_name}`.localeCompare(`${b.event_name} ${b.course_name}`) },
 }
+// The races page before anyone has published: not an empty room, but what fills it and what a
+// visitor can do meanwhile. Races come from their organizers, so the first thing offered is a way
+// to ask one.
+function NoRacesYet() {
+  const mail = `mailto:?subject=${encodeURIComponent('Our race on OTRI?')}&body=${encodeURIComponent(
+    [
+      'Hello,',
+      'I would like to see our race on OTRI (https://otri.run), an open and free score for trail races: every finisher gets a score that depends only on the course and their own time, so it compares across races.',
+      'Scoring the results takes about a minute and needs no account (https://otri.run/prototype/#score). Publishing them as a race page is free and needs no approval: https://otri.run/organizer/',
+      'Thank you!',
+    ].join('\n\n'),
+  )}`
+  const ways = [
+    [Mail, 'Ask your organizer', 'Races appear here when their organizers publish results. A prepared email explains what OTRI is and that it is free.', mail, 'Write to them'],
+    [Upload, 'Have the results yourself?', 'A course file and a results file are enough: every finisher scored in a minute, no account, and one click to publish.', '#score', 'Score a race'],
+    [Play, 'See what a scored race looks like', 'The example race: its course on the map, the elevation profile and 100 finishers with their scores.', '#score?example=1', 'Open the example'],
+    [CalculatorIcon, 'Just curious about a time?', 'Pick a course or upload a GPX and see what a finish time is worth, before or after race day.', '#calculator', 'Open the calculator'],
+  ]
+  return (
+    <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+      <div className="bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] px-5 py-6 sm:px-7">
+        <p className="font-mono text-[10px] tracking-[.08em] text-blue-600">NO RACES PUBLISHED YET</p>
+        <h2 className="mt-2 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">The first race here could be yours.</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+          OTRI keeps no list of every race: a race appears when its organizer publishes the results, free and without anyone's approval. Until then, here is
+          what you can do.
+        </p>
+      </div>
+      <div className="grid gap-px bg-slate-200 sm:grid-cols-2">
+        {ways.map(([Icon, title, text, href, action]) => (
+          <a key={title} href={href} className="group flex min-w-0 gap-3 bg-white p-5 text-inherit no-underline transition hover:bg-blue-50/40 sm:p-6">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+              <Icon size={17} />
+            </span>
+            <span className="min-w-0">
+              <b className="block text-[15px] text-[#0b1220]">{title}</b>
+              <span className="mt-1 block text-sm leading-6 text-slate-500">{text}</span>
+              <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-blue-600">
+                {action} <ArrowRight size={14} className="transition group-hover:translate-x-0.5" />
+              </span>
+            </span>
+          </a>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 const normalise = (text) => String(text ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
 // The races page's state as it appears in the address, defaults left out.
@@ -507,7 +561,7 @@ function RacesPage({ raceId }) {
             </div>
             {error && <p className="mt-8 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</p>}
             {races === null && !error && <p className="mt-8 text-sm text-slate-500">Loading races…</p>}
-            {races?.length === 0 && <p className="mt-6 text-sm text-slate-500">No races have been published yet.</p>}
+            {races?.length === 0 && <NoRacesYet />}
             {races?.length > 0 && (
               <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center">
                 <SearchSuggest

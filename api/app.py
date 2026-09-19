@@ -25,6 +25,7 @@ from datetime import date, datetime, timezone
 import re
 import sys
 import tempfile
+import unicodedata
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -36,7 +37,7 @@ from starlette.concurrency import run_in_threadpool
 
 from course import GpxParseError, extract_features, parse_track_points, read_track_points
 from course.discipline import is_vertical
-from course.sanitize import sanitized_gpx, source_metadata
+from course.sanitize import SANITIZED_HEADER, sanitized_gpx, source_metadata
 from course.measurement import Measurement, measure_course
 from course.features import features_from_measurement
 from course.elevation import cell_of, configured_provider
@@ -1329,14 +1330,32 @@ def get_race_measurement(race_id: str, organizer: Organizer | None = Depends(_op
     return {key: value for key, value in result.items() if key not in _PRIVATE_MEASUREMENT_KEYS}
 
 
+def _served_gpx(content: str, name: str) -> str:
+    """A course file as it may leave OTRI: positions and elevations only (course/sanitize.py).
+
+    Files are sanitized when they are stored, and a file OTRI wrote says so in its header. Anything
+    else (a row from before sanitizing existed, or put there by other means) is reduced on the way
+    out, so what this endpoint hands over never carries a device, an author, timestamps, heart
+    rate, waypoints or notes, whatever is in the table."""
+    if content.lstrip().startswith(SANITIZED_HEADER.strip()):
+        return content
+    return sanitized_gpx(parse_track_points(content), name=name)
+
+
 @app.get("/races/{race_id}/gpx")
-def get_race_gpx(race_id: str, organizer: Organizer | None = Depends(_optional_organizer)) -> Response:
-    _visible_race(race_id, organizer)
+def get_race_gpx(race_id: str, download: bool = False, organizer: Organizer | None = Depends(_optional_organizer)) -> Response:
+    """The race's course file, sanitized. `?download=1` answers with a file name, for a download link."""
+    race = _visible_race(race_id, organizer)
     result = db.get_gpx_content(race_id)
     if result is None:
         raise HTTPException(status_code=404, detail=f"no GPX file attached to race {race_id!r}")
     _filename, content = result
-    return Response(content=content, media_type="application/gpx+xml")
+    name = f"{race.event_name or ''} {race.course_name}".strip()
+    headers = {}
+    if download:
+        stem = re.sub(r"[^A-Za-z0-9]+", "-", unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode("ascii")).strip("-").lower() or "course"
+        headers["Content-Disposition"] = f'attachment; filename="{stem[:80]}-otri.gpx"'
+    return Response(content=_served_gpx(content, name), media_type="application/gpx+xml", headers=headers)
 
 
 # --- Results ------------------------------------------------------------------

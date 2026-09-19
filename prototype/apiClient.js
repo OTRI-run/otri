@@ -415,6 +415,11 @@ export function deleteCalculatorCourse(raceId, token) {
   return request(`/admin/calculator-courses/${encodeURIComponent(raceId)}`, { method: 'DELETE', headers: authHeaders(token) })
 }
 
+/** A link that downloads a race's course file: sanitized by the API (positions and elevations only). */
+export function raceGpxDownloadUrl(raceId) {
+  return `${API_BASE_URL}/races/${encodeURIComponent(raceId)}/gpx?download=1`
+}
+
 export function listSharedCourses(token) {
   return request('/admin/shared-courses', { headers: authHeaders(token) })
 }
