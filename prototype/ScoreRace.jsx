@@ -251,25 +251,29 @@ function ExampleRace({ onUse, busy, rowsOpen, onToggleRows }) {
     }
   }
 
+  // Sits in the form, under "Validate and score": the place someone looks when they have no files.
   return (
-    <div className="mt-7 min-w-0 max-w-[620px] rounded-xl border border-slate-200 bg-white/80">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <div className="min-w-0">
-          <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">NO FILES AT HAND?</p>
-          <p className="mt-0.5 text-xs leading-5 text-slate-600">Try it on a made-up race: a 24 km course and 100 finishers called John Doe and Max Mustermann, plus a few who did not finish.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <button type="button" onClick={use} disabled={busy || state === 'loading'} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-[#0b1220] px-3 text-xs font-semibold text-white disabled:opacity-60">
-            {state === 'loading' ? 'Loading…' : 'Use the example race'}
-          </button>
-          <button type="button" onClick={onToggleRows} aria-expanded={rowsOpen} aria-controls="example-rows" className="text-xs font-semibold text-blue-600 hover:underline">
-            {rowsOpen ? 'Hide' : 'Show'} rows
-          </button>
-          <a href={EXAMPLE.results.url} download={EXAMPLE.results.file} className="text-xs font-semibold text-blue-600 no-underline hover:underline">CSV</a>
-          <a href={EXAMPLE.course.url} download={EXAMPLE.course.file} className="text-xs font-semibold text-blue-600 no-underline hover:underline">GPX</a>
-        </div>
-      </div>
-      {state === 'failed' && <p className="border-t border-slate-200 px-4 py-2 text-xs text-red-600">The example files could not be loaded. Try again in a moment.</p>}
+    <div className="mt-4 border-t border-slate-200 pt-4">
+      <p className="text-center font-mono text-[9px] tracking-[.08em] text-slate-500">NO FILES AT HAND?</p>
+      <button
+        type="button"
+        onClick={use}
+        disabled={busy || state === 'loading'}
+        className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-[13px] font-semibold text-[#0b1220] transition hover:border-blue-300 disabled:opacity-60"
+      >
+        {state === 'loading' ? 'Loading the example…' : 'Use the example race'}
+      </button>
+      <p className="mt-2 text-center text-xs leading-5 text-slate-500">
+        A made-up 24 km course and 100 finishers called John Doe and Max Mustermann.{' '}
+        <button type="button" onClick={onToggleRows} aria-expanded={rowsOpen} aria-controls="example-rows" className="font-semibold text-blue-600 hover:underline">
+          {rowsOpen ? 'Hide' : 'Show'} rows
+        </button>
+        {' · '}
+        <a href={EXAMPLE.results.url} download={EXAMPLE.results.file} className="font-semibold text-blue-600 no-underline hover:underline">CSV</a>
+        {' · '}
+        <a href={EXAMPLE.course.url} download={EXAMPLE.course.file} className="font-semibold text-blue-600 no-underline hover:underline">GPX</a>
+      </p>
+      {state === 'failed' && <p className="mt-2 text-center text-xs text-red-600">The example files could not be loaded. Try again in a moment.</p>}
     </div>
   )
 }
@@ -481,7 +485,6 @@ export default function ScoreRace() {
               Bring the course and the results file of any trail race. OTRI measures the course, checks the file, and gives every finisher a score you can explain: the same open model as every race here, with no account and no approval.
             </p>
             <WhatWeScore className="mt-4 max-w-[560px]" />
-            <ExampleRace onUse={useExample} busy={busy} rowsOpen={rowsOpen} onToggleRows={() => setRowsOpen((open) => !open)} />
           </div>
 
           <form onSubmit={submit} {...dropProps} className={`min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 rounded-2xl border bg-white p-5 shadow-[0_18px_44px_rgba(15,23,42,.07)] transition sm:p-6 ${dragging ? 'border-blue-500 ring-4 ring-blue-100' : 'border-slate-200'}`}>
@@ -512,6 +515,7 @@ export default function ScoreRace() {
               {busy ? 'Measuring the course and scoring…' : <>Validate and score <ArrowRight size={15} /></>}
             </button>
             {!busy && missing && <p className="mt-2 text-center text-xs text-slate-500">{missing}</p>}
+            <ExampleRace onUse={useExample} busy={busy} rowsOpen={rowsOpen} onToggleRows={() => setRowsOpen((open) => !open)} />
           </form>
           <div className="min-w-0 lg:col-start-1">
             <ul className="space-y-2 text-sm text-slate-600">
