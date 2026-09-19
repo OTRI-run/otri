@@ -214,7 +214,7 @@ function AuthCard({ title, intro, children, footer, eyebrow = 'FOR ORGANIZERS' }
   )
 }
 
-export function Register() {
+export function Register({ onSignedIn }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -232,8 +232,11 @@ export function Register() {
     setError(null)
     setBusy(true)
     try {
-      await registerOrganizer(email, password, { acceptTerms, marketingOptIn: news })
-      navigate(`/check-email?email=${encodeURIComponent(email)}`)
+      // The account is signed in straight away: the organizer builds their race now and confirms
+      // the address (the link we just emailed) before publishing.
+      const result = await registerOrganizer(email, password, { acceptTerms, marketingOptIn: news })
+      onSignedIn(result.access_token, result.email, result.is_admin)
+      navigate(hasHandoff() ? '/publish' : '/events', { replace: true })
     } catch (err) {
       setError(err.message)
     } finally {
@@ -384,11 +387,11 @@ export function Verify({ token }) {
       {state === 'checking' && <p className="text-sm text-slate-600">One moment…</p>}
       {state === 'ok' && (
         <>
-          <Notice kind="success" title="Your email is verified.">
-            You can sign in and add your first event.
+          <Notice kind="success" title="Your email is confirmed.">
+            You can publish your races now.
           </Notice>
-          <Button className="mt-4" onClick={() => navigate('/login')}>
-            Sign in <ArrowRight size={15} />
+          <Button className="mt-4" onClick={() => navigate('/')}>
+            Continue <ArrowRight size={15} />
           </Button>
         </>
       )}

@@ -17,8 +17,8 @@ Every event/race mutation (create/edit/delete, GPX attach, result submission) re
 | Method | Path | Description |
 | --- | --- | --- |
 | GET | `/` | App status. |
-| POST | `/auth/register` | Organizer sign-up: `email`, `password` (10–128 characters, not a common password, not built from the email), `accept_terms` (must be `true`; the acceptance time is stored) and optional `marketing_opt_in`. Creates an **unverified** account and sends a verification email — does **not** return an access token. 400 if the email already has an account, the password is rejected, or the terms are not accepted. Rate-limited. |
-| POST | `/auth/login` | Organizer sign-in. Returns an access token. 403 if the email isn't verified yet, 401 on wrong email/password. Rate-limited. |
+| POST | `/auth/register` | Organizer sign-up: `email`, `password` (10–128 characters, not a common password, not built from the email), `accept_terms` (must be `true`; the acceptance time is stored) and optional `marketing_opt_in`. Creates the account, emails a confirmation link and **signs the organizer in** (the same answer as `/auth/login`, plus `message`); `email_verified` is false until the link is opened. 400 if the email already has an account, the password is rejected, or the terms are not accepted. Rate-limited. |
+| POST | `/auth/login` | Organizer sign-in. Returns an access token and `email_verified`. 401 on wrong email/password. An unconfirmed address may sign in and prepare a race; `POST /races/{id}/publish` and `/listing` answer 403 until it is confirmed, and it is never an admin. Rate-limited. |
 | POST | `/auth/verify-email` | Confirm an organizer's email using the token from the verification email. 400 if the token is invalid/expired. |
 | POST | `/auth/resend-verification` | Resend the verification email. Always returns 200 with the same message whether or not the account exists/is already verified (prevents account enumeration). Rate-limited. |
 | POST | `/auth/request-password-reset` | Request a password reset email. Always returns 200 with the same message whether or not the email exists. Rate-limited. |

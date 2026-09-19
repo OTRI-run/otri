@@ -960,10 +960,12 @@ def platform_stats() -> dict:
 def get_organizer_flags(organizer_id: int) -> dict | None:
     """Flags plus the current session version; None when the account no longer exists."""
     with get_connection() as connection:
-        row = connection.execute("SELECT is_admin, is_demo, session_version FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
+        row = connection.execute("SELECT is_admin, is_demo, session_version, email_verified FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
     if row is None:
         return None
-    return {"is_admin": bool(row["is_admin"]), "is_demo": bool(row["is_demo"]), "session_version": int(row["session_version"])}
+    verified = bool(row["email_verified"])
+    # Admin rights rest on an address in OTRI_ADMIN_EMAILS; an address nobody has confirmed proves nothing.
+    return {"is_admin": bool(row["is_admin"]) and verified, "is_demo": bool(row["is_demo"]), "session_version": int(row["session_version"]), "email_verified": verified}
 
 
 def bump_session_version(organizer_id: int) -> int:

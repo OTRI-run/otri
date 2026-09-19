@@ -58,7 +58,6 @@ from . import db
 from . import auth as _auth
 from .auth import (
     AuthError,
-    EmailNotVerifiedError,
     Organizer,
     authenticate_organizer,
     create_access_token,
@@ -110,6 +109,7 @@ from .schemas import (
     GpxAnalysis,
     IllustrativeEstimateOut,
     MessageResponse,
+    RegistrationResponse,
     OrganizerCredentials,
     OrganizerRegistration,
     NewsletterSubscriber,
@@ -398,6 +398,13 @@ def require_organizer(request: Request, credentials: HTTPAuthorizationCredential
         raise HTTPException(status_code=401, detail=str(error)) from error
 
 
+def require_verified(organizer: Organizer) -> None:
+    """Anything that shows a race to the public needs a confirmed email address: it is the one thing
+    OTRI knows about who is publishing runners' names."""
+    if not organizer.email_verified:
+        raise HTTPException(status_code=403, detail=f"confirm your email address first: we sent a link to {organizer.email}")
+
+
 def require_admin(organizer: Organizer = Depends(require_organizer)) -> Organizer:
     if not organizer.is_admin:
         raise HTTPException(status_code=403, detail="admin access required")
@@ -440,10 +447,10 @@ def _require_race_visible(race: db.Race, organizer: Organizer | None, *, results
 # --- Auth ------------------------------------------------------------------
 
 
-@app.post("/auth/register", response_model=MessageResponse, status_code=201)
-def register(payload: OrganizerRegistration, request: Request) -> MessageResponse:
-    """Creates an unverified account and emails a verification link. No access token yet —
-    organizers can't log in until they verify their email (see /auth/login)."""
+@app.post("/auth/register", response_model=RegistrationResponse, status_code=201)
+def register(payload: OrganizerRegistration, request: Request, response: Response) -> RegistrationResponse:
+    """Creates the account, emails a confirmation link and signs the organizer in. They can build
+    their race straight away; publishing or listing it waits for the confirmed address."""
     enforce_rate_limit(request, max_requests=5)
     try:
         organizer = register_organizer(payload.email, payload.password, accept_terms=payload.accept_terms, marketing_opt_in=payload.marketing_opt_in)
@@ -453,7 +460,8 @@ def register(payload: OrganizerRegistration, request: Request) -> MessageRespons
     token = create_email_verification_token(organizer)
     send_verification_email(organizer.email, token)
 
-    return MessageResponse(message="account created — check your email to verify it before signing in")
+    session = _finish_session(response, request, _issue_session(organizer, False), False)
+    return RegistrationResponse(**session.model_dump(), message="account created: confirm your email address from the link we sent before you publish")
 
 
 @app.post("/auth/login", response_model=TokenResponse)
@@ -465,13 +473,11 @@ def login(payload: OrganizerCredentials, request: Request, response: Response) -
         raise HTTPException(status_code=429, detail=str(error), headers={"Retry-After": "900"}) from error
     try:
         organizer = authenticate_organizer(payload.email, payload.password)
-    except EmailNotVerifiedError as error:
-        raise HTTPException(status_code=403, detail=str(error)) from error
     except AuthError as error:
         record_login_failure(payload.email)
         raise HTTPException(status_code=401, detail=str(error)) from error
     clear_login_failures(payload.email)
-    if organizer.email in _ADMIN_EMAILS:
+    if organizer.email in _ADMIN_EMAILS and organizer.email_verified:  # an unconfirmed address proves nothing
         db.set_organizer_flags(organizer.email, is_admin=True)
     organizer = _with_flags(organizer, check_session=False)  # credentials, not a token: nothing to compare yet
     return _finish_session(response, request, _issue_session(organizer, payload.remember), payload.remember)
@@ -490,6 +496,7 @@ def _issue_session(organizer: Organizer, remember: bool) -> TokenResponse:
         email=organizer.email,
         is_admin=organizer.is_admin,
         is_demo=organizer.is_demo,
+        email_verified=organizer.email_verified,
         expires_in=_auth.token_ttl_seconds(remember),
     )
 
@@ -508,6 +515,7 @@ def login_second_step(payload: TwoFactorLogin, request: Request, response: Respo
         email=organizer.email,
         is_admin=organizer.is_admin,
         is_demo=organizer.is_demo,
+        email_verified=organizer.email_verified,
         expires_in=_auth.token_ttl_seconds(remember),
     ), remember)
 
@@ -518,6 +526,7 @@ def _me(organizer: Organizer) -> MeResponse:
         email=organizer.email,
         is_admin=organizer.is_admin,
         is_demo=organizer.is_demo,
+        email_verified=organizer.email_verified,
         profile=ProfileOut(**{k: profile.get(k) for k in (*db.PROFILE_FIELDS, "marketing_opt_in_at", "terms_accepted_at")}),
         two_factor=TwoFactorStatus(**_auth.two_factor_status(organizer.id)),
         password_changed_at=profile.get("password_changed_at"),
@@ -576,6 +585,7 @@ def _fresh_token(organizer: Organizer) -> TokenResponse:
         email=organizer.email,
         is_admin=organizer.is_admin,
         is_demo=organizer.is_demo,
+        email_verified=organizer.email_verified,
         expires_in=_auth.token_ttl_seconds(False),
     )
 
@@ -910,11 +920,13 @@ def get_race(race_id: str) -> RaceSummary:
 
 @app.post("/races/{race_id}/publish", response_model=RaceSummary)
 def publish_race(race_id: str, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
-    """Make the race's results, course and measurement public. Owner or admin; needs scored results."""
+    """Make the race's results, course and measurement public. Owner or admin; needs scored results
+    and a confirmed email address."""
     race = db.find_race(race_id)
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
+    require_verified(organizer)
     if not db.has_results(race_id):
         raise HTTPException(status_code=422, detail="upload results before publishing")
     return _race_summary(db.set_race_published(race_id, True), db.count_results_by_race().get(race_id, 0))
@@ -939,11 +951,12 @@ def unpublish_race(race_id: str, organizer: Organizer = Depends(require_organize
 
 @app.post("/races/{race_id}/listing", response_model=RaceSummary)
 def list_race(race_id: str, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
-    """Show this race publicly before it has results. Owner or admin."""
+    """Show this race publicly before it has results. Owner or admin, with a confirmed email address."""
     race = db.find_race(race_id)
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
+    require_verified(organizer)
     return _race_summary(db.set_race_listed(race_id, True), db.count_results_by_race().get(race_id, 0))
 
 

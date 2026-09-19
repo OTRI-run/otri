@@ -44,10 +44,6 @@ class AuthError(Exception):
     """Raised for any authentication failure (bad credentials, invalid token, etc.)."""
 
 
-class EmailNotVerifiedError(AuthError):
-    """Raised on login when the account exists and the password is correct, but the email isn't verified yet."""
-
-
 @dataclass(frozen=True)
 class Organizer:
     id: int
@@ -55,6 +51,9 @@ class Organizer:
     is_admin: bool = False
     is_demo: bool = False
     session_version: int = 1
+    # Read from the account on every request. An unconfirmed address may sign in and prepare a
+    # race, but cannot make anything public and is never an admin (api/app.py `require_verified`).
+    email_verified: bool = False
 
 
 def register_organizer(email: str, password: str, *, accept_terms: bool = True, marketing_opt_in: bool = False) -> Organizer:
@@ -80,8 +79,8 @@ def register_organizer(email: str, password: str, *, accept_terms: bool = True, 
 
 
 def authenticate_organizer(email: str, password: str) -> Organizer:
-    """Requires a verified email — raises EmailNotVerifiedError (not a plain AuthError) if not, so
-    callers can tell "wrong password" apart from "right password, just not verified yet"."""
+    """The account for these credentials, whether or not its email is confirmed yet: what an
+    unconfirmed account may do is decided per route, not at the door."""
     email = email.strip().lower()
     with get_connection() as connection:
         row = connection.execute(
@@ -94,10 +93,7 @@ def authenticate_organizer(email: str, password: str) -> Organizer:
     if not bcrypt.checkpw(password.encode("utf-8"), row["password_hash"].encode("utf-8")):
         raise AuthError("invalid email or password")
 
-    if not row["email_verified"]:
-        raise EmailNotVerifiedError("please verify your email before signing in")
-
-    return Organizer(id=row["id"], email=row["email"])
+    return Organizer(id=row["id"], email=row["email"], email_verified=bool(row["email_verified"]))
 
 
 def require_acceptable_password(password: str, email: str | None = None) -> None:
@@ -219,11 +215,12 @@ def reset_password(token: str, new_password: str) -> Organizer:
 
         password_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         organizer_row = connection.execute(
-            "UPDATE organizers SET password_hash = %s WHERE id = %s RETURNING id, email",
+            # The reset link went to the account's address: opening it confirms the address too.
+            "UPDATE organizers SET password_hash = %s, email_verified = TRUE WHERE id = %s RETURNING id, email",
             (password_hash, row["organizer_id"]),
         ).fetchone()
         connection.execute("UPDATE password_reset_tokens SET used_at = now() WHERE token = %s", (token,))
-        return Organizer(id=organizer_row["id"], email=organizer_row["email"])
+        return Organizer(id=organizer_row["id"], email=organizer_row["email"], email_verified=True)
 
 
 # --- Password change ------------------------------------------------------

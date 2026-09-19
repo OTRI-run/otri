@@ -4,7 +4,7 @@ import { ArrowUpRight, ChevronDown, Mail } from 'lucide-react'
 import '../../src/styles.css'
 import Logo from '../../src/components/Logo'
 import UnitsMenu from '../../src/components/UnitsMenu'
-import { logoutOrganizer, getMe } from '../apiClient'
+import { logoutOrganizer, getMe, resendVerification } from '../apiClient'
 import BuildBanner from '../../src/components/BuildBanner'
 import ErrorBoundary from '../../src/components/ErrorBoundary'
 import { initMonitoring } from '../../src/lib/monitoring'
@@ -232,7 +232,7 @@ function App() {
     if (!signedIn) return
     getMe('')
       .then((me) => {
-        setSession((current) => (current ? { ...current, email: me.email, isAdmin: me.is_admin, pending: false } : current))
+        setSession((current) => (current ? { ...current, email: me.email, isAdmin: me.is_admin, emailVerified: me.email_verified, pending: false } : current))
       })
       .catch((err) => {
         // The cookie expired or was revoked (sign out everywhere, password change elsewhere):
@@ -254,11 +254,20 @@ function App() {
     if (route.path === '/' && session) navigate(hasHandoff() ? '/publish' : '/events', { replace: true })
   }, [route.path, needsAuth, session])
 
+  // The confirmation link may be opened in another tab: ask again when this one gets the focus back.
+  const unconfirmed = session?.emailVerified === false
+  useEffect(() => {
+    if (!unconfirmed) return undefined
+    const refresh = () => getMe('').then((me) => setSession((current) => (current ? { ...current, emailVerified: me.email_verified } : current))).catch(() => {})
+    window.addEventListener('focus', refresh)
+    return () => window.removeEventListener('focus', refresh)
+  }, [unconfirmed])
+
   let page = null
   let params
   if (route.path === '/') page = session ? null : <Welcome />
   else if (route.path === '/publish') page = <PublishScoredRace session={session} />
-  else if (route.path === '/register') page = <Register />
+  else if (route.path === '/register') page = <Register onSignedIn={signIn} />
   else if (route.path === '/login') page = <Login onSignedIn={signIn} />
   else if (route.path === '/forgot') page = <Forgot />
   else if (route.path === '/check-email') page = <CheckEmail email={route.query.email} />
@@ -279,9 +288,33 @@ function App() {
   return (
     <div id="top" className="flex min-h-screen max-w-full flex-col overflow-x-clip bg-[#f7f9fc] text-[#0b1220]">
       <Header session={session} onSignOut={signOut} />
+      {unconfirmed && <ConfirmEmailBar email={session.email} />}
       <main className="flex-1">{page}</main>
       <Footer />
       <BuildBanner />
+    </div>
+  )
+}
+
+// Signed in with an address nobody has confirmed yet: everything works except making a race public.
+function ConfirmEmailBar({ email }) {
+  const [sent, setSent] = useState(false)
+  return (
+    <div className="border-b border-amber-200 bg-amber-50">
+      <div className={`${CONTAINER} flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-[13px] text-amber-900`}>
+        <Mail size={14} className="shrink-0" />
+        <span className="min-w-0">
+          Confirm your email to publish: we sent a link to <strong className="font-semibold">{email}</strong>. You can build your race in the meantime.
+        </span>
+        <button
+          type="button"
+          disabled={sent}
+          onClick={() => resendVerification(email).then(() => setSent(true)).catch(() => setSent(true))}
+          className="font-semibold text-amber-900 underline disabled:no-underline"
+        >
+          {sent ? 'Sent again' : 'Send it again'}
+        </button>
+      </div>
     </div>
   )
 }

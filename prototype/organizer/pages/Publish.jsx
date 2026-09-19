@@ -115,7 +115,7 @@ export default function PublishScoredRace({ session }) {
               <Button variant="secondary" onClick={() => navigate('/login')}>I already have an account</Button>
             </div>
             <p className="mt-4 text-xs leading-5 text-slate-500">
-              We email you a link to confirm the address. Open it in this browser and sign in: your race is waiting here and becomes a race page in one step.
+              You are signed in as soon as the account exists and come straight back here. We email you a link to confirm the address; you only need it before you press Publish.
             </p>
             <button type="button" onClick={discard} className="mt-3 text-xs font-semibold text-slate-500 hover:text-red-600">Forget this race</button>
           </Card>
