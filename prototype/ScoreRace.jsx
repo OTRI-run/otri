@@ -1,3 +1,4 @@
+import RankBadge from '../src/components/RankBadge'
 import ColumnsRead from '../src/components/ColumnsRead'
 import WhatWeScore from '../src/components/WhatWeScore'
 import useFileDrop from '../src/lib/useFileDrop'
@@ -214,7 +215,7 @@ function Scored({ result, fileStem, gpxText, children }) {
           <tbody>
             {scores.slice(0, visible).map((row, index) => (
               <tr key={`${index}-${row.rank}`} className="border-b border-slate-100 last:border-0 odd:bg-white even:bg-slate-50/70 hover:bg-blue-50/50">
-                <td className="px-3 py-2 font-mono text-xs text-slate-500">{row.rank}</td>
+                <td className="px-3 py-2 font-mono text-xs text-slate-500"><RankBadge rank={row.rank} /></td>
                 <td className="px-3 py-2 font-medium text-[#0b1220]">{row.first_name} {row.family_name}</td>
                 <td className="px-3 py-2">{row.nationality ? <Flag code={row.nationality} /> : <span className="text-slate-300">—</span>}</td>
                 <td className="px-3 py-2 font-mono text-xs text-slate-500">{row.gender || '—'}</td>

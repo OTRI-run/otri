@@ -1,3 +1,4 @@
+import RankBadge from '../src/components/RankBadge'
 import { fitFontSize } from '../src/lib/fitText'
 import { useEffect, useMemo, useState } from 'react'
 import { useDocumentTitle } from '../src/lib/title'
@@ -231,7 +232,7 @@ function ResultRow({ result, units }) {
         </span>
       </td>
       <td className="px-4 py-3 font-mono text-xs text-slate-500">
-        {result.rank}
+        <RankBadge rank={result.rank} />
         <span className="text-slate-400"> · {formatHms(result.finish_time_seconds)}</span>
       </td>
       <td className={`px-4 py-3 font-mono text-sm font-bold ${result.status === 'counting' ? 'text-blue-600' : 'text-slate-500'}`}>{result.otri_score}</td>

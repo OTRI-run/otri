@@ -1,3 +1,4 @@
+import RankBadge from '../src/components/RankBadge'
 import { fitFontSize } from '../src/lib/fitText'
 import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -310,7 +311,7 @@ function Leaderboard({ raceId, onBack }) {
                 <tbody>
                   {(results ?? []).map((row) => (
                     <tr key={`${row.rank}-${row.bib_number ?? row.family_name}-${row.first_name}`} className={`border-b border-slate-100 last:border-0 hover:bg-blue-50/50 ${row.status !== 'finisher' ? 'bg-slate-50/60 text-slate-500' : 'even:bg-slate-50/70'}`}>
-                      <td className="px-4 py-3 font-mono text-xs text-slate-500">{row.rank}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-500"><RankBadge rank={row.rank} /></td>
                       <td className="px-4 py-3 font-medium text-[#0b1220]">
                         {row.runner_id ? (
                           <a href={`#runners/${encodeURIComponent(row.runner_id)}`} className="no-underline hover:underline">
