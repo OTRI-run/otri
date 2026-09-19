@@ -32,8 +32,9 @@ def _with_authenticator(email):
     """An account protected by an authenticator app; returns (headers, secret)."""
     headers = _account(email)
     secret = client.post("/auth/2fa/totp/setup", json={"password": PASSWORD}, headers=headers).json()["secret"]
-    assert client.post("/auth/2fa/totp/enable", json={"code": security.totp_now(secret)}, headers=headers).status_code == 200
-    return headers, secret
+    enabled = client.post("/auth/2fa/totp/enable", json={"code": security.totp_now(secret)}, headers=headers)
+    assert enabled.status_code == 200
+    return {**headers, "Authorization": f"Bearer {enabled.json()['access_token']}"}, secret
 
 
 def test_wrong_codes_are_counted_and_the_sixth_guess_is_refused_even_when_right():

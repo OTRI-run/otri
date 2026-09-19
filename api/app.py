@@ -146,6 +146,9 @@ async def _lifespan(app: FastAPI):
     applied = db.init_db()
     if applied:
         print(f"schema migrations applied: {', '.join(applied)}")
+    revoked = db.keep_admins(_ADMIN_EMAILS)
+    if revoked:
+        print(f"admin flag taken from {revoked} account(s) no longer in OTRI_ADMIN_EMAILS")
     yield
 
 
@@ -368,19 +371,24 @@ def health(request: Request, response: Response) -> dict:
 _bearer_scheme = HTTPBearer(auto_error=False)
 
 
-# Admin accounts: a comma-separated list of emails. The flag is written to the account at sign-in,
-# so it survives token refreshes and can be revoked by removing the email and restarting.
+# Admin accounts: a comma-separated list of emails, and the list is what counts. An account is an
+# admin while its confirmed address is on it: checked on every request (_with_flags), so taking an
+# address off the list and restarting ends that admin's rights with the restart, open sessions
+# included. The flag on the account follows the list (at sign-in and at start) and is what the
+# admin pages show. It used to be the other way round: the flag was set at sign-in and nothing
+# ever cleared it, so removing an address from the list removed nothing.
 _ADMIN_EMAILS = {email.strip().lower() for email in os.environ.get("OTRI_ADMIN_EMAILS", "").split(",") if email.strip()}
 
 
-def _with_flags(organizer: Organizer, *, check_session: bool = True) -> Organizer:
+def _with_flags(organizer: Organizer, *, check_session: bool = True, token: str | None = None) -> Organizer:
     """The token carries identity; the admin/demo flags are read from the account on every request,
     so revoking admin takes effect immediately."""
-    flags = db.get_organizer_flags(organizer.id)
+    flags = db.get_organizer_flags(organizer.id, _auth.token_digest(token) if token else None)
     if flags is None:
         raise AuthError("this account no longer exists")
-    if check_session and flags["session_version"] != organizer.session_version:
+    if flags.pop("revoked") or (check_session and flags["session_version"] != organizer.session_version):
         raise AuthError("this session was signed out; sign in again")
+    flags["is_admin"] = flags["is_admin"] and organizer.email.strip().lower() in _ADMIN_EMAILS
     return replace(organizer, **flags)
 
 
@@ -449,7 +457,7 @@ def require_organizer(request: Request, credentials: HTTPAuthorizationCredential
     if from_cookie and request.method not in _SAFE_METHODS and not _is_web_client(request):
         raise HTTPException(status_code=403, detail="cookie sessions must send the X-OTRI-Client header on state-changing requests")
     try:
-        return _with_flags(decode_access_token(token))
+        return _with_flags(decode_access_token(token), token=token)
     except AuthError as error:
         raise HTTPException(status_code=401, detail=str(error)) from error
 
@@ -475,7 +483,7 @@ def _optional_organizer(request: Request, credentials: HTTPAuthorizationCredenti
     if from_cookie and request.method not in _SAFE_METHODS and not _is_web_client(request):
         return None
     try:
-        return _with_flags(decode_access_token(token))
+        return _with_flags(decode_access_token(token), token=token)
     except AuthError:
         return None
 
@@ -538,8 +546,8 @@ def login(payload: OrganizerCredentials, request: Request, response: Response) -
         _limits.record_login_failure(payload.email, source)
         raise HTTPException(status_code=401, detail=str(error)) from error
     _limits.clear_login_failures(payload.email, source)
-    if organizer.email in _ADMIN_EMAILS and organizer.email_verified:  # an unconfirmed address proves nothing
-        db.set_organizer_flags(organizer.email, is_admin=True)
+    # The flag follows the list in both directions; an unconfirmed address proves nothing.
+    db.set_organizer_flags(organizer.email, is_admin=organizer.email in _ADMIN_EMAILS and organizer.email_verified)
     organizer = _with_flags(organizer, check_session=False)  # credentials, not a token: nothing to compare yet
     return _finish_session(response, request, _issue_session(organizer, payload.remember, request), payload.remember)
 
@@ -687,8 +695,17 @@ def change_password(payload: ChangePassword, request: Request, response: Respons
 
 
 @app.post("/auth/logout", response_model=MessageResponse)
-def logout(request: Request, response: Response) -> MessageResponse:
-    """Ends the cookie session on this device (bearer tokens simply expire or are revoked)."""
+def logout(request: Request, response: Response, credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme)) -> MessageResponse:
+    """Ends this session: the cookie is cleared and the token itself stops working. Clearing the
+    cookie alone left the token good until it expired, up to thirty days: whoever had copied it
+    from a shared computer or a log was not signed out by the owner signing out."""
+    token, from_cookie = _token_from_request(request, credentials)
+    # A cookie counts only with the web client's header, like every other state change by cookie:
+    # another site must not be able to end a visitor's session.
+    if token and not (from_cookie and not _is_web_client(request)):
+        expires_at = _auth.token_expiry(token)
+        if expires_at is not None:
+            db.revoke_token(_auth.token_digest(token), expires_at)
     _clear_session_cookie(response, request)
     return MessageResponse(message="signed out")
 
@@ -741,14 +758,21 @@ def totp_setup(payload: PasswordConfirm, request: Request, organizer: Organizer 
     return TotpSetupOut(secret=secret, otpauth_uri=uri)
 
 
+def _recovery_codes_with_session(response: Response, request: Request, organizer: Organizer, codes: list[str], method: str) -> RecoveryCodesOut:
+    """Turning two-factor on signed out every session of the account, this one too: hand this
+    device a new one with the codes, as turning it off does."""
+    session = _finish_session(response, request, _fresh_token(organizer), False)
+    return RecoveryCodesOut(codes=codes, method=method, access_token=session.access_token, token_type=session.token_type, expires_in=session.expires_in)
+
+
 @app.post("/auth/2fa/totp/enable", response_model=RecoveryCodesOut)
-def totp_enable(payload: TwoFactorCode, request: Request, organizer: Organizer = Depends(require_organizer)) -> RecoveryCodesOut:
+def totp_enable(payload: TwoFactorCode, request: Request, response: Response, organizer: Organizer = Depends(require_organizer)) -> RecoveryCodesOut:
     enforce_rate_limit(request, max_requests=10, scope="2fa-enable", subject=f"account-{organizer.id}")
     try:
         codes = _auth.enable_totp(organizer.id, payload.code)
     except AuthError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    return RecoveryCodesOut(codes=codes, method="totp")
+    return _recovery_codes_with_session(response, request, organizer, codes, "totp")
 
 
 @app.post("/auth/2fa/email/start", response_model=MessageResponse)
@@ -761,14 +785,14 @@ def email_two_factor_start(payload: PasswordConfirm, request: Request, organizer
 
 
 @app.post("/auth/2fa/email/enable", response_model=RecoveryCodesOut)
-def email_two_factor_enable(payload: TwoFactorCode, request: Request, organizer: Organizer = Depends(require_organizer)) -> RecoveryCodesOut:
+def email_two_factor_enable(payload: TwoFactorCode, request: Request, response: Response, organizer: Organizer = Depends(require_organizer)) -> RecoveryCodesOut:
     # Six digits, ten minutes: without a limit the code is a guess away. Five tries a code.
     enforce_rate_limit(request, max_requests=5, scope="2fa-enable", subject=f"account-{organizer.id}", window_seconds=600)
     try:
         codes = _auth.enable_email_two_factor(organizer.id, payload.code)
     except AuthError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    return RecoveryCodesOut(codes=codes, method="email")
+    return _recovery_codes_with_session(response, request, organizer, codes, "email")
 
 
 @app.post("/auth/2fa/disable", response_model=TokenResponse)
@@ -2049,13 +2073,19 @@ def _shared_course_meta(share_id: str) -> dict:
 
 def _evict_shared_courses(budget_bytes: int) -> None:
     """Delete the oldest shared courses until the folder fits the budget."""
+    def stored(path: Path) -> int:
+        """A share is two files, the track and what the upload said about itself; both are the
+        uploader's and both count. Only the track did, so the folder outgrew its budget."""
+        meta = _shared_course_meta_path(path.name[: -len(".gpx.gz")])
+        return path.stat().st_size + (meta.stat().st_size if meta.exists() else 0)
+
     try:
         entries = sorted(_SHARED_COURSE_DIR.glob("*.gpx.gz"), key=lambda path: path.stat().st_mtime)
-        total = sum(path.stat().st_size for path in entries)
+        total = sum(stored(path) for path in entries)
         for path in entries:
             if total <= budget_bytes:
                 break
-            size = path.stat().st_size
+            size = stored(path)
             path.unlink(missing_ok=True)
             _shared_course_meta_path(path.name[: -len(".gpx.gz")]).unlink(missing_ok=True)
             total -= size
@@ -2089,12 +2119,10 @@ async def share_gpx(request: Request, file: UploadFile, name: str | None = Form(
             _SHARED_COURSE_DIR.mkdir(parents=True, exist_ok=True)
             # Make room first so the new file is never the one evicted, then trim again in case
             # another process wrote in between.
-            _evict_shared_courses(max(0, _SHARED_COURSE_MAX_TOTAL_BYTES - len(packed)))
+            about = json.dumps({"name": clean_name, "filename": (file.filename or "")[:200], "created_at": datetime.now(timezone.utc).isoformat(), "source_metadata": source_metadata(text)})
+            _evict_shared_courses(max(0, _SHARED_COURSE_MAX_TOTAL_BYTES - len(packed) - len(about.encode("utf-8"))))
             path.write_bytes(packed)
-            _shared_course_meta_path(share_id).write_text(
-                json.dumps({"name": clean_name, "filename": file.filename, "created_at": datetime.now(timezone.utc).isoformat(), "source_metadata": source_metadata(text)}),
-                encoding="utf-8",
-            )
+            _shared_course_meta_path(share_id).write_text(about, encoding="utf-8")
             _evict_shared_courses(_SHARED_COURSE_MAX_TOTAL_BYTES)
     else:
         # Touch, so an actively shared course is evicted after the ones nobody reshares.
@@ -2233,7 +2261,9 @@ def admin_newsletter_csv(organizer: Organizer = Depends(require_admin)) -> Respo
     writer = csv.writer(buffer)
     writer.writerow(["email", "name", "organization", "country", "consented_at"])
     for row in db.list_newsletter_subscribers():
-        writer.writerow([row["email"], row.get("display_name") or "", row.get("organization") or "", row.get("country") or "", row["marketing_opt_in_at"].isoformat() if row.get("marketing_opt_in_at") else ""])
+        # Name and organization are whatever the organizer typed: never a formula in the admin's spreadsheet.
+        cells = [row["email"], row.get("display_name") or "", row.get("organization") or "", row.get("country") or "", row["marketing_opt_in_at"].isoformat() if row.get("marketing_opt_in_at") else ""]
+        writer.writerow([_csv_cell(cell) for cell in cells])
     return Response(
         content=buffer.getvalue(),
         media_type="text/csv",

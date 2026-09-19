@@ -187,8 +187,23 @@ def create_access_token(organizer: Organizer, remember: bool = False) -> str:
         "email": organizer.email,
         "sv": current_session_version(organizer.id),
         "exp": int(time.time()) + token_ttl_seconds(remember),
+        # Unique per token: two sign-ins in the same second were the same string, so signing out
+        # of one (which revokes that string) would have signed out the other.
+        "jti": secrets.token_hex(8),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=_JWT_ALGORITHM)
+
+
+def token_expiry(token: str) -> datetime | None:
+    """When a token of ours stops working by itself; None for anything that is not one."""
+    try:
+        return datetime.fromtimestamp(int(jwt.decode(token, JWT_SECRET, algorithms=[_JWT_ALGORITHM])["exp"]), tz=timezone.utc)
+    except (jwt.PyJWTError, KeyError, ValueError):
+        return None
+
+
+def token_digest(token: str) -> str:
+    return _token_digest(token)
 
 
 def decode_access_token(token: str) -> Organizer:
@@ -271,7 +286,7 @@ def reset_password(token: str, new_password: str) -> Organizer:
 
     with get_connection() as connection:
         row = connection.execute(
-            "SELECT token, organizer_id, expires_at, used_at FROM password_reset_tokens WHERE token IN (%s, %s)", _token_lookup(token)
+            "SELECT token, organizer_id, expires_at, used_at FROM password_reset_tokens WHERE token IN (%s, %s) FOR UPDATE", _token_lookup(token)
         ).fetchone()
         if row is None:
             raise AuthError("invalid reset token")
@@ -370,8 +385,11 @@ def enable_totp(organizer_id: int, code: str) -> list[str]:
         if not security.verify_totp(row["totp_secret_pending"], code):
             raise AuthError("that code did not match; check the time on your phone and try the next one")
         connection.execute(
+            # session_version + 1: an owner who turns this on because somebody else may be in the
+            # account expects that somebody to be out. Their session used to stay good for its
+            # full thirty days, never meeting the second factor it was turned on against.
             "UPDATE organizers SET totp_secret = totp_secret_pending, totp_secret_pending = NULL, two_factor_method = 'totp', "
-            "email_code_hash = NULL, email_code_expires_at = NULL WHERE id = %s",
+            "email_code_hash = NULL, email_code_expires_at = NULL, session_version = session_version + 1 WHERE id = %s",
             (organizer_id,),
         )
         return _issue_recovery_codes(connection, organizer_id)
@@ -400,7 +418,7 @@ def enable_email_two_factor(organizer_id: int, code: str) -> list[str]:
             raise AuthError("that code did not match")
         connection.execute(
             "UPDATE organizers SET two_factor_method = 'email', totp_secret = NULL, totp_secret_pending = NULL, "
-            "email_code_hash = NULL, email_code_expires_at = NULL WHERE id = %s",
+            "email_code_hash = NULL, email_code_expires_at = NULL, session_version = session_version + 1 WHERE id = %s",  # as for the authenticator
             (organizer_id,),
         )
         return _issue_recovery_codes(connection, organizer_id)
@@ -513,8 +531,9 @@ def complete_login_challenge(token: str, code: str) -> tuple[Organizer, bool]:
                 (row["organizer_id"], security.hash_code(code), security.legacy_hash_code(code)),
             ).fetchone()
             if recovery:
-                connection.execute("UPDATE recovery_codes SET used_at = now() WHERE id = %s", (recovery["id"],))
-                ok = True
+                # Two requests with the same code at the same moment: the row is spent by one of them.
+                spent = connection.execute("UPDATE recovery_codes SET used_at = now() WHERE id = %s AND used_at IS NULL RETURNING id", (recovery["id"],)).fetchone()
+                ok = spent is not None
         if not ok:
             raise WrongSecondFactor("that code did not match", row["email"])
         connection.execute("DELETE FROM login_challenges WHERE token = %s", (token,))

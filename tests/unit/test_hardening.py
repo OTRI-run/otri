@@ -81,7 +81,9 @@ def test_turning_two_factor_off_revokes_earlier_tokens():
 
     headers = _organizer_auth_headers("twofa-off@example.com")
     setup = client.post("/auth/2fa/totp/setup", json={"password": PASSWORD}, headers=headers).json()
-    assert client.post("/auth/2fa/totp/enable", json={"code": totp_now(setup["secret"])}, headers=headers).status_code == 200
+    enabled = client.post("/auth/2fa/totp/enable", json={"code": totp_now(setup["secret"])}, headers=headers)
+    assert enabled.status_code == 200
+    headers = {"Authorization": f"Bearer {enabled.json()['access_token']}"}
     disabled = client.post("/auth/2fa/disable", json={"password": PASSWORD}, headers=headers)
     assert disabled.status_code == 200 and disabled.json()["access_token"]
     assert client.get("/auth/me", headers=headers).status_code == 401

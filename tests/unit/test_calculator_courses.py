@@ -15,7 +15,15 @@ pytestmark = pytest.mark.usefixtures("clean_state")
 GPX = (Path(__file__).resolve().parents[2] / "public" / "examples" / "otri-example-course.gpx").read_bytes()
 
 
+@pytest.fixture(autouse=True)
+def _admin_list(monkeypatch):
+    """Who is an admin is the list in OTRI_ADMIN_EMAILS, not a flag on the account."""
+    monkeypatch.setattr(app_module, "_ADMIN_EMAILS", set())
+
+
 def _headers(email, admin):
+    if admin:
+        app_module._ADMIN_EMAILS.add(email)
     client.post("/auth/register", json={"email": email, "password": "a-long-test-password-1", "accept_terms": True})
     with db.get_connection() as connection:
         connection.execute("UPDATE organizers SET email_verified = TRUE, is_admin = %s WHERE email = %s", (admin, email))

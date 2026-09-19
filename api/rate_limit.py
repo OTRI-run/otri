@@ -191,7 +191,19 @@ def record_failure(key: str, *, threshold: int = LOCKOUT_FAILURES, duration: tim
             "locked_until = EXCLUDED.locked_until",
             (key, failures, first, locked_until),
         )
+        if random.random() < 0.02:
+            prune_failures(connection, now)
     return failures == threshold
+
+
+def prune_failures(connection, now: datetime) -> None:
+    """A wrong password for an address nobody has is counted too (answering differently would say
+    which addresses have accounts), so a script typing random addresses adds a row each. A row says
+    nothing once its window and its lock are over; without this they stayed for ever."""
+    connection.execute(
+        "DELETE FROM login_failures WHERE (first_failure_at IS NULL OR first_failure_at < %s) AND (locked_until IS NULL OR locked_until < %s)",
+        (now - max(LOCKOUT_WINDOW, SECOND_FACTOR_LOCKOUT_DURATION), now),
+    )
 
 
 def clear_failures(*keys: str) -> None:

@@ -80,7 +80,7 @@ Use a dedicated venv (not system Python) so dependency upgrades never touch the 
 
 ## 5. Run the API as a systemd service (auto-restart, auto-start on boot)
 
-**Automated:** `scripts/deploy/02-deploy-app.sh` does everything in this section, including steps 4 and 6 below.
+**Automated:** `scripts/deploy/02-deploy-app.sh` does everything in this section, including steps 4 and 6 below, except writing the unit file once the deploy user's sudo is hardened (`09-harden-sudo.sh`): a user who may write a unit file has root, so the unit is root's to install, with `sudo ./scripts/deploy/10-install-service.sh [service_user] [app_dir]`. The deploy compares the installed unit with the one the release expects and asks for that command when they differ (rare: a new sandbox path, another worker count); until then it restarts the service with the unit that is there.
 
 Create `/etc/systemd/system/otri-api.service`:
 

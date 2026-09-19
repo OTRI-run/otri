@@ -95,6 +95,18 @@ MIGRATIONS: tuple[Migration, ...] = (
         "Courses an admin puts up for the calculator's Pick a race: public for trying a target time, "
         "never shown as a race on the races page.",
     ),
+    Migration(
+        "0007_sign_out_and_mail_log",
+        """
+        CREATE TABLE IF NOT EXISTS revoked_tokens (
+            token TEXT PRIMARY KEY,
+            expires_at TIMESTAMPTZ NOT NULL
+        );
+        UPDATE email_log SET subject = 'Your OTRI sign-in code' WHERE subject ~ '^[0-9]{6} is your OTRI sign-in code';
+        DELETE FROM runners ru WHERE NOT EXISTS (SELECT 1 FROM results res WHERE res.runner_id = ru.runner_id);
+        """,
+        "Signing out revokes that token (digests, until they expire); sign-in codes leave the email log; runners left behind by replaced or deleted results go.",
+    ),
 )
 
 _TRACKING_SQL = """

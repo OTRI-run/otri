@@ -40,8 +40,8 @@ def _account(email, *, verified=True):
 def _with_authenticator(email):
     headers = _account(email)
     secret = client.post("/auth/2fa/totp/setup", json={"password": PASSWORD}, headers=headers).json()["secret"]
-    codes = client.post("/auth/2fa/totp/enable", json={"code": security.totp_now(secret)}, headers=headers).json()["codes"]
-    return headers, secret, codes
+    enabled = client.post("/auth/2fa/totp/enable", json={"code": security.totp_now(secret)}, headers=headers).json()
+    return {**headers, "Authorization": f"Bearer {enabled['access_token']}"}, secret, enabled["codes"]
 
 
 def _emails_to(address):

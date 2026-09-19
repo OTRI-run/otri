@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run as the deploy user (e.g. otri), on the Droplet. Clones/updates the repo,
-# sets up the Python virtualenv, and installs/updates the otri-api systemd
-# service. Safe to re-run for updates (git pull + restart).
+# sets up the Python virtualenv and restarts the otri-api service (the systemd unit itself is
+# installed by root: 10-install-service.sh). Safe to re-run for updates (git pull + restart).
 #
 # Usage:
 #   OTRI_API_ALLOWED_ORIGINS="https://otri.run,https://www.otri.run" \
@@ -133,41 +133,26 @@ python scripts/seed_demo_data.py
 python scripts/migrate.py status
 deactivate
 
-echo "==> Installing systemd unit"
-sudo tee /etc/systemd/system/otri-api.service >/dev/null <<EOF
-[Unit]
-Description=OTRI API (FastAPI/Gunicorn)
-After=network.target
-
-[Service]
-Type=simple
-User=${SERVICE_USER}
-Group=${SERVICE_USER}
-WorkingDirectory=${APP_DIR}
-EnvironmentFile=${APP_DIR}/.env
-# ProtectHome hides /home; newer gunicorn wants a writable HOME for its control socket.
-Environment=HOME=${APP_DIR}/data
-ExecStart=${APP_DIR}/venv/bin/gunicorn api.app:app \\
-    --workers ${GUNICORN_WORKERS} \\
-    --worker-class uvicorn.workers.UvicornWorker \\
-    --bind 127.0.0.1:8000 \\
-    --access-logfile - \\
-    --error-logfile -
-Restart=on-failure
-RestartSec=5
-NoNewPrivileges=true
-ProtectSystem=strict
-ReadWritePaths=${APP_DIR}/data $(dirname "${OTRI_DEM_MANIFEST}")
-ProtectHome=true
-PrivateTmp=true
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo systemctl daemon-reload
-sudo systemctl enable --now otri-api
-sudo systemctl restart otri-api
+# The unit is root's to install (10-install-service.sh): a deploy user that may write it has root,
+# whatever else its sudo rules deny. The deploy only looks whether the installed one is still the
+# one it should be. A first deploy, where this user still has full sudo, installs it itself.
+echo "==> Checking the systemd unit"
+UNIT=/etc/systemd/system/otri-api.service
+INSTALL_UNIT="${APP_DIR}/scripts/deploy/10-install-service.sh"
+export GUNICORN_WORKERS OTRI_DEM_MANIFEST
+if [[ "$(bash "${INSTALL_UNIT}" --print "${SERVICE_USER}" "${APP_DIR}")" == "$(cat "${UNIT}" 2>/dev/null)" ]]; then
+  sudo systemctl restart otri-api
+elif sudo -n --preserve-env=GUNICORN_WORKERS,OTRI_DEM_MANIFEST bash "${INSTALL_UNIT}" "${SERVICE_USER}" "${APP_DIR}" 2>/dev/null; then
+  echo "==> Installed the systemd unit"
+else
+  echo >&2
+  echo "!!! The systemd unit differs from the one this release expects, and this user may not" >&2
+  echo "!!! install it (by design). As root, once:" >&2
+  echo "!!!   sudo GUNICORN_WORKERS=${GUNICORN_WORKERS} ${INSTALL_UNIT} ${SERVICE_USER} ${APP_DIR}" >&2
+  echo "!!! Restarting with the unit that is installed; the new code runs, the new unit does not." >&2
+  echo >&2
+  sudo systemctl restart otri-api
+fi
 
 echo
 echo "==> Done. Service status:"

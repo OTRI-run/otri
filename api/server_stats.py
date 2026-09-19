@@ -249,11 +249,19 @@ def tls_expiry(host: str | None) -> dict:
     if not host or host in ("localhost", "127.0.0.1") or ":" in host:
         return {"available": False}
     try:
+        import ipaddress
         import ssl
 
+        # The host is the request's Host header, which the caller writes. Only a name that resolves
+        # to public addresses is connected to, and the connection goes to the address that was
+        # checked: otherwise this is a way to ask the server which machines of its private network
+        # (or the cloud's metadata address) answer on port 443.
+        addresses = {info[4][0] for info in socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)}
+        if not addresses or not all(ipaddress.ip_address(address.split("%")[0]).is_global for address in addresses):
+            return {"available": False}
         context = ssl.create_default_context()
         context.minimum_version = ssl.TLSVersion.TLSv1_2  # never negotiate TLS 1.0/1.1, even on an old OpenSSL
-        with socket.create_connection((host, 443), timeout=4) as sock:
+        with socket.create_connection((sorted(addresses)[0], 443), timeout=4) as sock:
             with context.wrap_socket(sock, server_hostname=host) as tls:
                 cert = tls.getpeercert()
         not_after = datetime.strptime(cert["notAfter"], "%b %d %H:%M:%S %Y %Z").replace(tzinfo=timezone.utc)
