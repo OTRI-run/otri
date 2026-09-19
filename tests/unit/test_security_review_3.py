@@ -397,3 +397,41 @@ def test_a_runner_planted_in_a_draft_is_not_who_a_later_publication_is_matched_t
     with db.get_connection() as connection:
         ids = {row["runner_id"] for row in connection.execute("SELECT runner_id FROM results WHERE race_id IN (%s, %s)", (race_id, second)).fetchall()}
     assert ids == {public_id}
+
+
+# --- a course file that costs far more to read than to send ----------------------------------
+
+
+def _gpx(body):
+    return f'<?xml version="1.0"?><gpx xmlns="http://www.topografix.com/GPX/1/1" version="1.1">{body}</gpx>'
+
+
+def test_a_gpx_is_read_in_time_that_grows_with_its_size_not_with_its_square():
+    """Segments nested inside each other: every point was read once per segment around it. 400 KB
+    holding two points took two seconds, anonymously, and came back as 48,000 points."""
+    from course.gpx import GpxParseError, parse_track_points
+
+    points = '<trkpt lat="7.9" lon="98.3"/><trkpt lat="7.91" lon="98.31"/>'
+    depth = 24_000
+    start = time.perf_counter()
+    with pytest.raises(GpxParseError, match="segments in the wrong place"):
+        parse_track_points(_gpx("<trk>" + "<trkseg>" * depth + points + "</trkseg>" * depth + "</trk>"))
+    assert time.perf_counter() - start < 1
+
+    # What real exporters write still reads as before: several segments, or none at all.
+    two = parse_track_points(_gpx(f"<trk><trkseg>{points}</trkseg><trkseg>{points}</trkseg></trk>"))
+    assert [point.segment_id for point in two] == [0, 0, 1, 1]
+    assert len(parse_track_points(_gpx(f"<trk>{points}</trk>"))) == 2
+
+    # Markup without end around two points, and points without end: refused before they are parsed.
+    for body, said in ((f"<trk><trkseg>{points}</trkseg></trk><extensions>{'<a/>' * 3_100_000}</extensions>", "far more markup"), (f"<trk><trkseg>{'<trkpt lat=\"1\" lon=\"1\"/>' * 100_001}</trkseg></trk>", "more than 100,000 points")):
+        start = time.perf_counter()
+        with pytest.raises(GpxParseError, match=said):
+            parse_track_points(_gpx(body))
+        assert time.perf_counter() - start < 1
+
+    # And through the public endpoint: an answer, at once, that says what is wrong with the file.
+    start = time.perf_counter()
+    answer = client.post("/gpx/analyze", files={"file": ("nested.gpx", _gpx("<trk>" + "<trkseg>" * depth + points + "</trkseg>" * depth + "</trk>").encode(), "application/gpx+xml")})
+    assert answer.status_code == 422 and "segments in the wrong place" in answer.json()["detail"]
+    assert time.perf_counter() - start < 2
