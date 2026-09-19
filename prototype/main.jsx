@@ -80,13 +80,12 @@ function navigate(hash) {
 
 // ------------------------------------------------------------------------------------- shell
 
+// The header carries what a visitor came to do; Runners, the API page and GitHub are in the footer.
 const NAV = [
   { id: 'score', label: 'Score a race', short: 'Score', href: '#score' },
   { id: 'calculator', label: 'Calculator', href: '#calculator' },
   { id: 'races', label: 'Races', href: '#races' },
-  { id: 'runners', label: 'Runners', href: '#runners' },
   { id: 'faq', label: 'FAQ', href: '#faq' },
-  { id: 'api', label: 'API', href: '#api' },
 ]
 
 function NavLink({ item, active, className = '', short = false }) {
@@ -107,21 +106,18 @@ function Header({ tab }) {
       <header className="sticky top-0 z-50 h-[68px] border-b border-slate-200/90 bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-full min-w-0 w-[min(1120px,calc(100%-28px))] items-center">
           <Logo href="#home" />
-          <div className="ml-auto mr-6 hidden shrink-0 items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 font-mono text-[9px] font-medium tracking-[.08em] text-blue-600 sm:flex">
+          <div className="ml-4 hidden shrink-0 items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 font-mono text-[9px] font-medium tracking-[.08em] text-blue-600 lg:flex">
             <i className="h-1.5 w-1.5 rounded-full bg-blue-600 shadow-[0_0_0_3px_#dbeafe]" />
             PROTOTYPE <span className="text-slate-400">v0.x</span>
           </div>
-          <nav className="hidden shrink-0 items-center gap-5 md:flex lg:gap-7">
+          <nav className="ml-auto hidden shrink-0 items-center gap-7 md:flex">
             {NAV.map((item) => (
               <NavLink key={item.id} item={item} active={tab === item.id} />
             ))}
-            <a href="organizer/" className="text-[13px] font-medium text-slate-500 no-underline hover:text-slate-950">
-              For organizers
+            <UnitsMenu compact />
+            <a href="organizer/" className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-300 px-3 text-[13px] font-semibold text-[#0b1220] no-underline hover:border-blue-300">
+              For organizers <ArrowUpRight size={13} />
             </a>
-            <a className="flex items-center gap-1 text-[13px] font-semibold text-[#0b1220] no-underline" href={GITHUB_URL}>
-              GitHub <ArrowUpRight size={14} />
-            </a>
-            <UnitsMenu />
           </nav>
           <a
             className="ml-auto flex shrink-0 items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white no-underline md:hidden"
@@ -144,7 +140,7 @@ function Header({ tab }) {
             />
           ))}
           <div className="ml-auto py-1.5">
-            <UnitsMenu />
+            <UnitsMenu compact />
           </div>
         </div>
       </div>
@@ -158,6 +154,9 @@ function Footer() {
       <div className="mx-auto flex w-[min(1120px,calc(100%-28px))] flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <Logo href="../" />
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <a href="#runners" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Runners</a>
+          <a href="#api" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">API and embed</a>
+          <a href={GITHUB_URL} className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">GitHub</a>
           <a href="#faq" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">FAQ</a>
           <a href="https://github.com/OTRI-run/otri/blob/main/PRIVACY.md" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Privacy</a>
           <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">
