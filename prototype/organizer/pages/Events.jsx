@@ -20,7 +20,7 @@ export function Dashboard({ session }) {
 
   return (
     <Page
-      eyebrow="STEP 2 OF 5 · EVENTS"
+      eyebrow="ORGANIZER DASHBOARD"
       headline={
         <>
           Your

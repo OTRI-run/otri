@@ -31,7 +31,8 @@ function raceSteps(raceId) {
   ]
 }
 
-const STEP_EYEBROW = ['STEP 3 OF 5 · RACE', 'STEP 4 OF 5 · COURSE', 'STEP 5 OF 5 · RESULTS', 'REVIEW']
+// Numbered as on the welcome page: 1 account, 2 event, 3 race + course, 4 results, 5 review.
+const STEP_EYEBROW = ['STEP 3 OF 5 · RACE', 'STEP 3 OF 5 · COURSE', 'STEP 4 OF 5 · RESULTS', 'STEP 5 OF 5 · REVIEW']
 
 function RaceShell({ race, step, children }) {
   return (
