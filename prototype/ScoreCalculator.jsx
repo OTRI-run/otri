@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUpRight, Check, Copy, GitBranch, Link2, Mountain, RefreshCw, Search, Share2, Timer, Upload } from 'lucide-react'
 import CourseMap from '../src/components/CourseMap'
 import { analyzeGpx, fetchRaceGpxFile, fetchSharedGpxFile, getRace, listRaces, shareGpx } from './apiClient'
+import { ShareTarget } from './SharePanel'
 import NextSteps from './NextSteps'
 import ReportForm from './ReportForm'
 import { modelLabel, modelShort } from '../src/lib/model'
@@ -467,8 +468,9 @@ function buildShareUrl(args) {
   return `${window.location.origin}${window.location.pathname}${buildShareHash(args)}`
 }
 
-function ShareBox({ courseLabel, courseFile, targetSeconds, shareId, onShared }) {
+function ShareBox({ courseLabel, courseFile, targetSeconds, shareId, onShared, estimate, features }) {
   const [state, setState] = useState('idle') // idle | sharing | ready | copied
+  const [imageOpen, setImageOpen] = useState(false)
   const [error, setError] = useState(null)
   const raceId = courseLabel.raceId ?? null
   const linkReady = Boolean(raceId || shareId)
@@ -560,6 +562,18 @@ function ShareBox({ courseLabel, courseFile, targetSeconds, shareId, onShared })
             : 'Sharing stores your course file on OTRI so the link works for anyone; the target time travels in the link itself.'}
       </p>
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      {estimate && features && (
+        <div className="mt-3 border-t border-blue-100 pt-3">
+          <button type="button" onClick={() => setImageOpen((open) => !open)} aria-expanded={imageOpen} className="text-xs font-semibold text-blue-600 hover:underline">
+            {imageOpen ? 'Hide the image and post text' : 'Make an image and a post of this target →'}
+          </button>
+          {imageOpen && (
+            <div className="mt-4">
+              <ShareTarget courseName={courseLabel.name} distanceKm={features.distance_km} elevationGainM={features.elevation_gain_m} seconds={targetSeconds} score={estimate.predicted_score} fractionOfCeiling={estimate.breakdown?.fraction_of_ceiling} url={url} />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -1039,7 +1053,7 @@ export default function ScoreCalculator({ embedded = false }) {
                   analysisError={analysisError}
                   ceilingSeconds={estimate?.breakdown?.world_best_time_seconds}
                 />
-                {!embedded && <ShareBox courseLabel={courseLabel} courseFile={courseFile} targetSeconds={targetSeconds} shareId={shareId} onShared={setShareId} />}
+                {!embedded && <ShareBox courseLabel={courseLabel} courseFile={courseFile} targetSeconds={targetSeconds} shareId={shareId} onShared={setShareId} estimate={estimate} features={features} />}
               </>
             ) : (
               <>
