@@ -38,6 +38,16 @@ The whole product in one call: a course and a results file in, the validated and
 - **It is the same computation** as a published race: `_scored_rows` in `api/app.py` serves both the stored leaderboard and this call.
 - **Abuse:** 10 calls a minute per address, 20 MB per request, 50,000 rows; nginx adds its own per-address budget.
 
+## From a scored race to a published race page
+
+Scoring without an account is the front door; keeping the race is one click further, and nothing is uploaded twice.
+
+1. After a valid result, the Score my race page invites: **Publish this race**. It says what the organizer gets (leaderboard, course map, target times, the embed), that it is free, that nobody approves anything and that nothing is public until they press Publish.
+2. The press writes the two files and the course figures to the browser's IndexedDB (`prototype/publishHandoff.js`) and opens the organizer app at `#/publish`. Nothing is sent by this step. The hand-over is deleted once the race page exists, after a day, or on "Forget this race".
+3. Signed out, `#/publish` shows what is waiting and offers "Create my free account" or "I already have an account"; every account screen carries a reminder that the race is waiting, and signing in lands on `#/publish`, not on an empty events list.
+4. Signed in, one form asks for what the files do not say: the event name (prefilled), the race date, the distance name (prefilled from the measured distance), and optionally place and country. **Build my race page** then creates the event and the race, attaches the course and submits the results through the normal endpoints, showing each step; a failure can be retried without creating anything twice.
+5. It ends on the race's review page. Publishing stays a separate, deliberate press: the results carry runners' names.
+
 ## Open to any origin
 
 `/score`, `/gpx/analyze` and `/scoring/models` answer every origin with `Access-Control-Allow-Origin: *` and no credentials (`_open_cors` in `api/app.py`). They carry no session and keep nothing, so there is nothing for a hostile page to reach. Every other route stays on the `OTRI_API_ALLOWED_ORIGINS` allow-list, and OTRI's own pages keep their credentialed answer on the open routes too.

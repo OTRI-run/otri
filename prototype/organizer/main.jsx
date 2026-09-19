@@ -12,6 +12,8 @@ import { useDocumentTitle } from '../../src/lib/title'
 import SharedNotFound from '../../src/components/NotFound'
 import { AccountPage } from './pages/Account'
 import { AdminEvents } from './pages/Admin'
+import PublishScoredRace from './pages/Publish'
+import { hasHandoff } from '../publishHandoff'
 import { CheckEmail, Forgot, Login, Register, Reset, Verify, Welcome } from './pages/Auth'
 import { Dashboard, EventPage, NewEvent } from './pages/Events'
 import { CourseStep, NewRace, ResultsStep, ReviewStep } from './pages/Race'
@@ -190,6 +192,7 @@ function Footer() {
 initMonitoring()
 
 function organizerTitle(path) {
+  if (path.startsWith('/publish')) return 'Publish your scored race · OTRI organizers'
   if (path.startsWith('/login')) return 'Sign in · OTRI organizers'
   if (path.startsWith('/register')) return 'Create account · OTRI organizers'
   if (path.startsWith('/forgot') || path.startsWith('/reset')) return 'Reset password · OTRI organizers'
@@ -247,12 +250,14 @@ function App() {
     // session in the same tick, and the render in between still carries the old route.
     const liveNeedsAuth = /^#\/(events|races|admin|account)/.test(window.location.hash)
     if (liveNeedsAuth && !session) navigate('/login', { replace: true })
-    if (route.path === '/' && session) navigate('/events', { replace: true })
+    // A race scored on the public site may be waiting to become a race page (publishHandoff.js).
+    if (route.path === '/' && session) navigate(hasHandoff() ? '/publish' : '/events', { replace: true })
   }, [route.path, needsAuth, session])
 
   let page = null
   let params
   if (route.path === '/') page = session ? null : <Welcome />
+  else if (route.path === '/publish') page = <PublishScoredRace session={session} />
   else if (route.path === '/register') page = <Register />
   else if (route.path === '/login') page = <Login onSignedIn={signIn} />
   else if (route.path === '/forgot') page = <Forgot />
