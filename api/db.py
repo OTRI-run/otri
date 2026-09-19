@@ -394,11 +394,31 @@ def count_events_for_organizer(organizer_id: int) -> int:
         return int(connection.execute("SELECT COUNT(*) AS n FROM events WHERE organizer_id = %s", (organizer_id,)).fetchone()["n"])
 
 
+def _runner_ids(connection, where: str, params: tuple) -> list[str]:
+    """The runners of the results about to be deleted (`where` is a condition on `results res`)."""
+    rows = connection.execute(f"SELECT DISTINCT res.runner_id FROM results res WHERE res.runner_id IS NOT NULL AND {where}", params).fetchall()
+    return [row["runner_id"] for row in rows]
+
+
+def _drop_runners_without_results(connection, runner_ids: list[str]) -> None:
+    """A runner exists because a results file named them. When the last result goes (the file is
+    replaced, the race deleted, the account closed) the runner goes too: the row was left behind,
+    so one race, its results replaced over and over with new names, grew the table without end and
+    outside every quota, and a deleted account's runners stayed for good."""
+    if runner_ids:
+        connection.execute(
+            "DELETE FROM runners ru WHERE ru.runner_id = ANY(%s) AND NOT EXISTS (SELECT 1 FROM results res WHERE res.runner_id = ru.runner_id)",
+            (runner_ids,),
+        )
+
+
 def delete_event(event_id: str) -> None:
     with get_connection() as connection:
+        runners = _runner_ids(connection, "res.race_id IN (SELECT race_id FROM races WHERE event_id = %s)", (event_id,))
         cursor = connection.execute("DELETE FROM events WHERE event_id = %s", (event_id,))
         if cursor.rowcount == 0:
             raise NotFoundError(f"event {event_id!r} not found")
+        _drop_runners_without_results(connection, runners)
 
 
 # --- Races (distances under an event) ------------------------------------
@@ -429,6 +449,19 @@ def list_races(published_only: bool = False) -> list[Race]:
     return [Race(**row) for row in rows]
 
 
+def fill_in_runner_details(connection, race_id: str) -> None:
+    """What `_match_runner` holds back for a draft, done when the race is published: a year of
+    birth or a nationality for runners that had none, where this race's results agree on one."""
+    for column in ("birth_year", "nationality"):
+        connection.execute(
+            f"UPDATE runners ru SET {column} = src.value FROM ("
+            f"  SELECT runner_id, MIN({column}) AS value FROM results WHERE race_id = %s AND runner_id IS NOT NULL AND {column} IS NOT NULL"
+            f"  GROUP BY runner_id HAVING COUNT(DISTINCT {column}) = 1"
+            f") src WHERE ru.runner_id = src.runner_id AND ru.{column} IS NULL",
+            (race_id,),
+        )
+
+
 def set_race_published(race_id: str, published: bool) -> Race:
     """Publishing makes a race's results, course and measurement public; unpublishing hides them again."""
     with get_connection() as connection:
@@ -439,6 +472,8 @@ def set_race_published(race_id: str, published: bool) -> Race:
         )
         if cursor.rowcount == 0:
             raise NotFoundError(f"race {race_id!r} not found")
+        if published:
+            fill_in_runner_details(connection, race_id)
     race = find_race(race_id)
     assert race is not None
     return race
@@ -515,9 +550,11 @@ def update_race(
 
 def delete_race(race_id: str) -> None:
     with get_connection() as connection:
+        runners = _runner_ids(connection, "res.race_id = %s", (race_id,))
         cursor = connection.execute("DELETE FROM races WHERE race_id = %s", (race_id,))
         if cursor.rowcount == 0:
             raise NotFoundError(f"race {race_id!r} not found")
+        _drop_runners_without_results(connection, runners)
 
 
 def attach_gpx(race_id: str, filename: str, content: str, distance_km: float, elevation_gain_m: float, measurement: dict | None = None) -> Race:
@@ -658,10 +695,13 @@ def replace_results(race_id: str, results: list[ResultRecord]) -> None:
     Each result is attached to a runner (matched or created) as it is inserted, so runner
     profiles are consistent the moment a submission lands."""
     with get_connection() as connection:
+        race = connection.execute("SELECT published_at FROM races WHERE race_id = %s FOR UPDATE", (race_id,)).fetchone()
+        published = race is not None and race["published_at"] is not None
+        before = _runner_ids(connection, "res.race_id = %s", (race_id,))
         connection.execute("DELETE FROM results WHERE race_id = %s", (race_id,))
         with connection.cursor() as cursor:
             for result in results:
-                runner_id = _match_runner(connection, result)
+                runner_id = _match_runner(connection, result, fill_in=published)
                 cursor.execute(
                     "INSERT INTO results (race_id, rank, finish_time_seconds, family_name, first_name, gender, bib_number, "
                     "birth_year, nationality, runner_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
@@ -678,6 +718,7 @@ def replace_results(race_id: str, results: list[ResultRecord]) -> None:
                         runner_id,
                     ),
                 )
+        _drop_runners_without_results(connection, before)
 
 
 # --- Runners (identity across races) ------------------------------------------
@@ -708,8 +749,15 @@ class Runner:
     last_race_date: date | None = None
 
 
-def _match_runner(connection, result: ResultRecord) -> str:
-    """The runner_id for a result, matching an existing runner or creating one (see the note)."""
+def _match_runner(connection, result: ResultRecord, *, fill_in: bool = True) -> str:
+    """The runner_id for a result, matching an existing runner or creating one (see the note).
+
+    A match may complete the runner: a year of birth or a nationality the runner did not have yet.
+    That is a write to a profile the public sees and other organizers' results hang on, so it
+    happens only for a published race (`fill_in`). A draft is private, needs no confirmed address,
+    and used to do it too: anyone could upload a file naming a known runner and give them a year
+    of birth, without publishing anything. For a draft the match is kept and the runner left as
+    they are; publishing the race completes them (`fill_in_runner_details`)."""
     key = runner_name_key(result.family_name, result.first_name, result.gender)
     candidates = connection.execute(
         "SELECT runner_id, birth_year, nationality FROM runners WHERE name_key = %s ORDER BY created_at, runner_id",
@@ -729,13 +777,14 @@ def _match_runner(connection, result: ResultRecord) -> str:
             unknown = [row for row in candidates if row["birth_year"] is None and compatible_nationality(row)]
             if len(unknown) == 1:
                 chosen = unknown[0]["runner_id"]
-                connection.execute("UPDATE runners SET birth_year = %s WHERE runner_id = %s", (result.birth_year, chosen))
+                if fill_in:
+                    connection.execute("UPDATE runners SET birth_year = %s WHERE runner_id = %s", (result.birth_year, chosen))
     else:
         pool = [row for row in candidates if compatible_nationality(row)]
         if len(pool) == 1:
             chosen = pool[0]["runner_id"]
     if chosen is not None:
-        if nat is not None:
+        if nat is not None and fill_in:
             connection.execute(
                 "UPDATE runners SET nationality = COALESCE(nationality, %s) WHERE runner_id = %s", (nat, chosen)
             )
@@ -998,8 +1047,12 @@ def set_organizer_verified(organizer_id: int) -> bool:
 def delete_organizer(organizer_id: int) -> bool:
     """Delete an account and everything it owns (events cascade to races and results)."""
     with get_connection() as connection:
+        runners = _runner_ids(
+            connection, "res.race_id IN (SELECT ra.race_id FROM races ra JOIN events e ON e.event_id = ra.event_id WHERE e.organizer_id = %s)", (organizer_id,)
+        )
         connection.execute("DELETE FROM events WHERE organizer_id = %s", (organizer_id,))
         cursor = connection.execute("DELETE FROM organizers WHERE id = %s", (organizer_id,))
+        _drop_runners_without_results(connection, runners)
         return cursor.rowcount > 0
 
 
@@ -1035,15 +1088,39 @@ def platform_stats() -> dict:
 # --- Organizer flags (admin / demo) ------------------------------------------
 
 
-def get_organizer_flags(organizer_id: int) -> dict | None:
-    """Flags plus the current session version; None when the account no longer exists."""
+def get_organizer_flags(organizer_id: int, token_digest: str | None = None) -> dict | None:
+    """Flags plus the current session version, and whether this very token was signed out; None
+    when the account no longer exists. One query: it runs on every authenticated request."""
     with get_connection() as connection:
-        row = connection.execute("SELECT is_admin, is_demo, session_version, email_verified FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
+        row = connection.execute(
+            "SELECT is_admin, is_demo, session_version, email_verified, "
+            "EXISTS (SELECT 1 FROM revoked_tokens WHERE token = %s) AS revoked FROM organizers WHERE id = %s",
+            (token_digest, organizer_id),
+        ).fetchone()
     if row is None:
         return None
     verified = bool(row["email_verified"])
     # Admin rights rest on an address in OTRI_ADMIN_EMAILS; an address nobody has confirmed proves nothing.
-    return {"is_admin": bool(row["is_admin"]) and verified, "is_demo": bool(row["is_demo"]), "session_version": int(row["session_version"]), "email_verified": verified}
+    return {
+        "is_admin": bool(row["is_admin"]) and verified,
+        "is_demo": bool(row["is_demo"]),
+        "session_version": int(row["session_version"]),
+        "email_verified": verified,
+        "revoked": bool(row["revoked"]),
+    }
+
+
+def revoke_token(token_digest: str, expires_at: datetime) -> None:
+    """Signing out ends that one session on the server too. Rows go when the token would have expired anyway."""
+    with get_connection() as connection:
+        connection.execute("INSERT INTO revoked_tokens (token, expires_at) VALUES (%s, %s) ON CONFLICT (token) DO NOTHING", (token_digest, expires_at))
+        connection.execute("DELETE FROM revoked_tokens WHERE expires_at < now()")
+
+
+def keep_admins(emails: set[str]) -> int:
+    """Take the admin flag from every account whose address is not in `emails`; returns how many."""
+    with get_connection() as connection:
+        return connection.execute("UPDATE organizers SET is_admin = FALSE WHERE is_admin AND NOT (email = ANY(%s))", (sorted(emails),)).rowcount
 
 
 def bump_session_version(organizer_id: int) -> int:

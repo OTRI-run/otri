@@ -205,6 +205,7 @@ function TwoFactor({ me, email, onChanged, onToken }) {
   const finishTotp = () =>
     run(async () => {
       const result = await totpEnable(code)
+      onToken?.(result) // turning it on signed out every session; this is the new one
       setRecovery(result)
       setMode(null)
       setSetup(null)
@@ -220,6 +221,7 @@ function TwoFactor({ me, email, onChanged, onToken }) {
   const finishEmail = () =>
     run(async () => {
       const result = await emailTwoFactorEnable(code)
+      onToken?.(result)
       setRecovery(result)
       setMode(null)
       onChanged()
@@ -501,7 +503,7 @@ export function AccountPage({ session, onToken, onSignOut }) {
   const [error, setError] = useState(null)
   const load = () => getMe(session.token).then(setMe).catch((err) => setError(err.message))
   const keepToken = (result) => {
-    if (result?.access_token) onToken?.(result.access_token, result.email, result.is_admin)
+    if (result?.access_token) onToken?.(result.access_token, result.email ?? session.email, result.is_admin ?? session.isAdmin)
   }
   useEffect(() => {
     load()

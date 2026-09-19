@@ -8,6 +8,11 @@
 # strict, ReadWritePaths only under /opt/otri/data, ProtectHome, PrivateTmp) — this closes the
 # other door: a stolen deploy key or a bug in a script run as the deploy user no longer has root.
 #
+# Nothing here may let the deploy user write a file root acts on. An earlier version allowed
+# `tee /etc/systemd/system/otri-api.service` with `daemon-reload` and `restart`: a unit file says
+# which program runs as which user, so that was root in three commands. The unit is installed by
+# root (10-install-service.sh); the deploy restarts the service and no more.
+#
 # Usage: ./09-harden-sudo.sh [deploy_user] [app_dir]
 set -euo pipefail
 
@@ -24,12 +29,10 @@ cat >"${TMP}" <<EOF
 # Managed by scripts/deploy/09-harden-sudo.sh — the deploy user's whole sudo surface.
 Defaults:${DEPLOY_USER} !requiretty
 
-Cmnd_Alias OTRI_SERVICE = /usr/bin/systemctl daemon-reload, \\
-    /usr/bin/systemctl enable --now otri-api, /usr/bin/systemctl enable otri-api, \\
-    /usr/bin/systemctl start otri-api, /usr/bin/systemctl stop otri-api, /usr/bin/systemctl restart otri-api, \\
-    /usr/bin/systemctl status otri-api, /usr/bin/systemctl --no-pager --full status otri-api, \\
-    /usr/bin/systemctl reload nginx, /usr/sbin/nginx -t, \\
-    /usr/bin/tee /etc/systemd/system/otri-api.service
+Cmnd_Alias OTRI_SERVICE = /usr/bin/systemctl start otri-api, /usr/bin/systemctl stop otri-api, \\
+    /usr/bin/systemctl restart otri-api, /usr/bin/systemctl status otri-api, \\
+    /usr/bin/systemctl --no-pager --full status otri-api, \\
+    /usr/bin/systemctl reload nginx, /usr/sbin/nginx -t
 Cmnd_Alias OTRI_FIRSTRUN = /usr/bin/mkdir -p ${APP_DIR}, /usr/bin/chown ${DEPLOY_USER}\\:${DEPLOY_USER} ${APP_DIR}
 Cmnd_Alias OTRI_STATUS = /usr/sbin/ufw status, /usr/bin/fail2ban-client status, /usr/bin/fail2ban-client status *
 Cmnd_Alias OTRI_RESTORE = /usr/bin/createdb -O ${DEPLOY_USER} otri*, /usr/bin/dropdb otri_restore_test, \\
@@ -63,3 +66,4 @@ for cmd in "systemctl status otri-api" "ufw status" "fail2ban-client status"; do
   if sudo -n -u "${DEPLOY_USER}" sudo -n ${cmd} >/dev/null 2>&1; then echo "   OK   sudo ${cmd}"; else echo "   FAIL sudo ${cmd}"; fi
 done
 if sudo -n -u "${DEPLOY_USER}" sudo -n apt-get --version >/dev/null 2>&1; then echo "   FAIL sudo apt-get should be denied"; else echo "   OK   sudo apt-get denied"; fi
+if sudo -n -u "${DEPLOY_USER}" sudo -n -l /usr/bin/tee /etc/systemd/system/otri-api.service >/dev/null 2>&1; then echo "   FAIL writing the systemd unit should be denied"; else echo "   OK   writing the systemd unit denied"; fi

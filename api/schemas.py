@@ -381,6 +381,11 @@ class TotpSetupOut(BaseModel):
 class RecoveryCodesOut(BaseModel):
     codes: list[str]
     method: str
+    # Turning two-factor on signs out every session; these carry the fresh one for this device
+    # (empty `access_token` for the web client, whose session is the cookie).
+    access_token: str = ""
+    token_type: str = "bearer"
+    expires_in: int | None = None
 
 
 class AdminEventOut(EventSummary):

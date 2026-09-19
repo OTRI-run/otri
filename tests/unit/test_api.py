@@ -777,16 +777,21 @@ def test_share_gpx_is_gzipped_on_disk_and_evicts_the_oldest_when_over_budget(tmp
     real_raw = real_course.read_bytes()
     assert len(gzip.compress(real_raw, compresslevel=6)) < len(real_raw) / 3, "gzip should shrink a real GPX several-fold"
     raw = FLAT_LOOP_GPX.read_bytes()
-    packed_size = len(gzip.compress(raw, compresslevel=6))
-    # Budget for two compressed files (with generous slack for size differences between variants).
-    monkeypatch.setattr(api_module, "_SHARED_COURSE_MAX_TOTAL_BYTES", int(packed_size * 2.5))
+    folder_bytes = lambda: sum(path.stat().st_size for path in (tmp_path / "shared").iterdir())  # noqa: E731
 
     ids = []
     for i in range(3):
         variant = raw.replace(b"<gpx", f"<!-- v{i} --><gpx".encode(), 1)  # distinct content, still valid GPX
-        response = client.post("/gpx/share", files={"file": (f"v{i}.gpx", variant, "application/gpx+xml")})
+        # A file name as long as the form parser lets through: what is kept of it counts too.
+        response = client.post("/gpx/share", files={"file": (f"v{i}-{'n' * 3000}.gpx", variant, "application/gpx+xml")})
         assert response.status_code == 200, response.text
         ids.append(response.json()["share_id"])
+        if i == 0:
+            # Budget for two shares, each the track and what the upload said about itself (the
+            # budget used to count the tracks only, and the folder outgrew it).
+            assert folder_bytes() < len(gzip.compress(raw, compresslevel=6)) + 1000, "the long file name is not kept whole"
+            monkeypatch.setattr(api_module, "_SHARED_COURSE_MAX_TOTAL_BYTES", int(folder_bytes() * 2.5))
+        assert folder_bytes() <= api_module._SHARED_COURSE_MAX_TOTAL_BYTES
         # mtime resolution on some filesystems is coarse; make the ordering unambiguous
         os.utime(tmp_path / "shared" / f"{ids[-1]}.gpx.gz", (time.time() + i, time.time() + i))
 
@@ -1180,6 +1185,9 @@ def test_authenticator_two_factor_setup_login_and_recovery_codes():
     assert client.post("/auth/2fa/totp/enable", json={"code": "000000"}, headers=headers).status_code == 400
     enabled = client.post("/auth/2fa/totp/enable", json={"code": totp_now(setup["secret"])}, headers=headers).json()
     assert len(enabled["codes"]) == 10 and enabled["method"] == "totp"
+    # Turning it on signs out every session and hands this device a new one.
+    assert client.get("/auth/me", headers=headers).status_code == 401
+    headers = {"Authorization": f"Bearer {enabled['access_token']}"}
     assert client.get("/auth/me", headers=headers).json()["two_factor"] == {"enabled": True, "method": "totp", "recovery_codes_left": 10}
 
     # Sign-in now has a second step.

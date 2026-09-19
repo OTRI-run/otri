@@ -143,6 +143,7 @@ def _read_text(path: Path) -> list[list[str]]:
 # anything is unpacked. A real results sheet of 50,000 rows is a few tens of megabytes unpacked.
 MAX_XLSX_UNPACKED_BYTES = 200_000_000
 MAX_XLSX_ENTRIES = 2_000
+MAX_XLSX_COLUMNS = 200  # a results sheet has a dozen; timing exports with every split, a hundred
 _NOT_A_WORKBOOK = "this file is named .xlsx but is not an Excel workbook (it may be a CSV that was renamed, or a damaged download): open it in a spreadsheet, save it as .xlsx or CSV, and upload that"
 
 
@@ -167,13 +168,20 @@ def _read_xlsx(path: Path) -> list[list[str]]:
         sheet = workbook.active
         if sheet is None:
             return []
-        rows = sheet.iter_rows(values_only=True)
+        # A sheet says how large it is, and a reader that believes it pads every row to that width
+        # and fills every gap between two rows with empty ones. A workbook of 1.5 KB that claimed
+        # 16,384 columns and put one cell in row 60,000 cost 14 seconds of a core, and the public
+        # scorer takes workbooks from anyone. So the sheet's claim is dropped, no row is read past
+        # MAX_XLSX_COLUMNS, and every row counts towards the limit, the empty ones too.
+        sheet.reset_dimensions()
+        limit = MAX_ROWS + HEADER_SEARCH_ROWS
+        rows = sheet.iter_rows(values_only=True, max_row=limit + 1, max_col=MAX_XLSX_COLUMNS)
         table: list[list[str]] = []
-        for raw_row in rows:
+        for seen, raw_row in enumerate(rows, start=1):
+            if seen > limit:
+                raise ValueError(f"the file has more than {MAX_ROWS} rows; split it per race distance")
             if all(cell is None for cell in raw_row):
                 continue
-            if len(table) > MAX_ROWS + HEADER_SEARCH_ROWS:
-                raise ValueError(f"the file has more than {MAX_ROWS} rows; split it per race distance")
             table.append([_stringify(cell) for cell in raw_row])
         return table
     finally:

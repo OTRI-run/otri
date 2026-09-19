@@ -125,20 +125,22 @@ def _render(
 # ----------------------------------------------------------------------------- sending
 
 
-def _send(to: str, subject: str, html: str, text: str) -> None:
+def _send(to: str, subject: str, html: str, text: str, *, log_subject: str | None = None) -> None:
+    """`log_subject` is what the email log keeps when the subject itself must not be kept."""
+    logged = log_subject or subject
     if not RESEND_API_KEY:
         print(f"[email not sent - no RESEND_API_KEY] to={to!r} subject={subject!r}\n{text}")
-        db.log_email(to, subject, "logged")
+        db.log_email(to, logged, "logged")
         return
     try:
         response = resend.Emails.send(
             {"from": EMAIL_FROM, "to": [to], "reply_to": EMAIL_REPLY_TO, "subject": subject, "html": html, "text": text}
         )
         provider_id = response.get("id") if isinstance(response, dict) else getattr(response, "id", None)
-        db.log_email(to, subject, "sent", provider_id=provider_id)
-        print(f"email sent to={to!r} subject={subject!r} resend_id={provider_id}")
+        db.log_email(to, logged, "sent", provider_id=provider_id)
+        print(f"email sent to={to!r} subject={logged!r} resend_id={provider_id}")
     except resend.exceptions.ResendError as error:
-        db.log_email(to, subject, "failed", error=str(error))
+        db.log_email(to, logged, "failed", error=str(error))
         # Never let an email-provider hiccup break registration/login/reset: log loudly and
         # continue. A failed verification/reset email is recoverable (the organizer can ask
         # again); a 500 on register/login is not.
@@ -196,7 +198,10 @@ def send_login_code_email(to: str, code: str) -> None:
         ],
         reason="You received this email because your OTRI organizer account uses email codes at sign-in.",
     )
-    _send(to, f"{code} is your OTRI sign-in code", html, text)
+    # The code is in the subject so it can be read off a lock screen. The log keeps the subject,
+    # admins read the log and an account export contains it: the log gets the subject without the
+    # code. The database stores the code as a keyed hash for the same reason.
+    _send(to, f"{code} is your OTRI sign-in code", html, text, log_subject="Your OTRI sign-in code")
 
 
 def send_report_email(to: str, kind: str, subject_label: str, message: str, page_url: str | None) -> None:
