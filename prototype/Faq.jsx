@@ -52,11 +52,6 @@ const FAQ = [
         tags: 'confidence high low trust reproducible sparse',
       },
       {
-        q: 'Can I use OTRI as a race calendar?',
-        a: 'Yes. The races page has a Calendar view of upcoming trail races by month, with search, distance and country filters. Each race can be added to your own calendar, and the whole calendar (or one country) can be subscribed to from your calendar app, so new races and corrected dates arrive by themselves. Where a race’s course is on OTRI you can try a target time before race day. It shows the races their organizers have listed: OTRI keeps no catalogue of its own, so a race appears when its organizer adds it.',
-        tags: 'calendar upcoming races ics subscribe webcal google calendar add race',
-      },
-      {
         q: 'Why does a vertical race have finish times but no scores?',
         a: 'Because the model would get it wrong. One part of the score prices sustained steep ground, and it was tuned on mountain courses where up to a quarter of the distance is that steep and much of it is descent. On an uphill-only course, such as a vertical kilometre, nearly all of it is, and that factor over-scores everyone by about 60%: a mid-pack 50 minutes would score like a world best. Until it is recalibrated on vertical-race data, a course with more than half its distance at 20% or steeper is listed with ranks and times only, and it does not count toward a runner index.',
         tags: 'vertical kilometer kilometre vk uphill only not scored no score steep',

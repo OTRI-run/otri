@@ -1,8 +1,20 @@
 import { ArrowRight, ExternalLink } from 'lucide-react'
-import { AddToCalendar, countdown } from './calendarLinks'
 
 // A race its organizer has shown before it has results: say so, and send the runner to what they
 // can do with it today, which is to try a target time on the course.
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+// "in 12 days": how far off race day is, or null once it has passed.
+function countdown(iso, now = new Date()) {
+  const days = Math.round((new Date(`${iso}T00:00:00`) - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / DAY_MS)
+  if (days < 0) return null
+  if (days === 0) return 'today'
+  if (days === 1) return 'tomorrow'
+  if (days < 14) return `in ${days} days`
+  if (days < 70) return `in ${Math.round(days / 7)} weeks`
+  return `in ${Math.round(days / 30.4)} months`
+}
 
 export function ListingBadge({ status, className = '' }) {
   if (status !== 'upcoming' && status !== 'awaiting_results') return null
@@ -20,7 +32,6 @@ export default function RaceListing({ race }) {
     <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
       <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">{upcoming ? 'UPCOMING · NO RESULTS YET' : 'NO RESULTS ON OTRI YET'}</p>
       <h3 className="mt-2 text-xl font-bold tracking-[-.03em] text-[#0b1220]">{upcoming ? `Race day is ${countdown(race.event_date) ?? 'soon'}. Scores appear here afterwards.` : 'The organizer has not published the results yet.'}</h3>
-      {upcoming && <AddToCalendar event={{ ...race, races: [race] }} className="mt-2" />}
       <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
         Scores come from the official results, which the race's organizer uploads and publishes.
         {race.has_gpx ? ' The course is already here, so you can see what a finish time would be worth.' : ''}

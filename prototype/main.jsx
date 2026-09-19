@@ -9,7 +9,6 @@ import Home from './Home'
 import NextSteps from './NextSteps'
 import RaceCard, { DemoBadge, VerticalBadge } from './RaceCard'
 import RaceListing, { ListingBadge } from './RaceListing'
-import RaceCalendar from './RaceCalendar'
 import ScoreCalculator from './ScoreCalculator'
 import ScoreRace from './ScoreRace'
 import ApiDocs from './ApiDocs'
@@ -45,7 +44,7 @@ const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 // ------------------------------------------------------------------------------------ routing
 // Hash routes so every screen has a URL: #home (default), #races, #races/<race_id>, #runners,
 // #runners/<runner_id>, #calculator, #score (score my race), #api. The races page keeps its view and filters in the query
-// (#races?view=calendar&country=THA), so a filtered calendar is a link that can be shared.
+// (#races?country=THA&distance=ultra), so a filtered list is a link that can be shared.
 
 function parseHash(hash) {
   const path = hash.replace(/^#\/?/, '')
@@ -349,7 +348,7 @@ const DISTANCE_BUCKETS = [
   { id: 'mid', label: '21–50 km', test: (race) => race.distance_km > 21.2 && race.distance_km <= 50 },
   { id: 'long', label: '50–100 km', test: (race) => race.distance_km > 50 && race.distance_km <= 100 },
   { id: 'ultra', label: '100 km+', test: (race) => race.distance_km > 100 },
-  // Uphill-only courses, whatever their length: a category of its own, as race calendars list them.
+  // Uphill-only courses, whatever their length: a category of its own.
   { id: 'vertical', label: 'Vertical', test: (race) => Boolean(race.is_vertical) },
 ]
 // Scored races first (newest), then upcoming ones (soonest), then races still waiting for results
@@ -380,7 +379,7 @@ const RACE_SORTS = {
 const normalise = (text) => String(text ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
 // The races page's state as it appears in the address, defaults left out.
-const RACES_DEFAULTS = { view: 'list', q: '', distance: 'all', country: 'all', status: 'all', sort: 'featured' }
+const RACES_DEFAULTS = { q: '', distance: 'all', country: 'all', status: 'all', sort: 'featured' }
 function readRacesQuery() {
   const params = new URLSearchParams(window.location.hash.split('?')[1] || '')
   return Object.fromEntries(Object.entries(RACES_DEFAULTS).map(([key, fallback]) => [key, params.get(key) || fallback]))
@@ -395,13 +394,12 @@ function RacesPage({ raceId }) {
   const [races, setRaces] = useState(null)
   const [error, setError] = useState(null)
   const initial = useMemo(readRacesQuery, [])
-  const [view, setView] = useState(initial.view === 'calendar' ? 'calendar' : 'list')
   const [query, setQuery] = useState(initial.q)
   const [bucket, setBucket] = useState(initial.distance)
   const [country, setCountry] = useState(initial.country)
   const [status, setStatus] = useState(initial.status)
   const [sort, setSort] = useState(initial.sort)
-  const address = racesHash({ view, q: query, distance: bucket, country, status, sort })
+  const address = racesHash({ q: query, distance: bucket, country, status, sort })
   // Keep the address in step without adding a history entry per keystroke; a link opened from
   // elsewhere (another #races?… address) is read back into the state.
   useEffect(() => {
@@ -411,7 +409,6 @@ function RacesPage({ raceId }) {
     const onHash = () => {
       if (!/^#\/?races(\?|$)/.test(window.location.hash)) return
       const next = readRacesQuery()
-      setView(next.view === 'calendar' ? 'calendar' : 'list')
       setQuery(next.q)
       setBucket(next.distance)
       setCountry(next.country)
@@ -435,15 +432,14 @@ function RacesPage({ raceId }) {
     return (races ?? [])
       .filter(test)
       .filter((race) => country === 'all' || race.event_country === country)
-      // The calendar is about dates, not about whether a race is scored: the status filter is a list thing.
-      .filter((race) => view === 'calendar' || status === 'all' || race.listing_status === status)
+      .filter((race) => status === 'all' || race.listing_status === status)
       .filter((race) => {
         if (!words.length) return true
         const hay = normalise(`${race.event_name} ${race.course_name} ${race.event_location ?? ''} ${countryName(race.event_country)} ${race.event_date ?? ''}`)
         return words.every((word) => hay.includes(word))
       })
       .sort(RACE_SORTS[sort]?.by ?? RACE_SORTS.featured.by)
-  }, [races, query, bucket, country, status, sort, view])
+  }, [races, query, bucket, country, status, sort])
 
   // Refetch whenever the list is shown (also on the way back from a leaderboard), so a race
   // published or taken down meanwhile is reflected.
@@ -472,35 +468,21 @@ function RacesPage({ raceId }) {
               <div className="min-w-0">
                 <p className="mb-3 font-mono text-[10px] tracking-[.08em] text-slate-500">RACES</p>
                 <h1 className="text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
-                  {view === 'calendar' ? 'Race calendar.' : 'Scored races.'}
+                  Scored races.
                   <br />
-                  <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">{view === 'calendar' ? 'Find it, plan it, score it.' : 'Every number explained.'}</span>
+                  <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">Every number explained.</span>
                 </h1>
               </div>
               <p className="min-w-0 text-sm leading-7 text-slate-500">
                 Races their organizers have published, scored under the Course Standard model. Each score depends only on the
                 course and the runner's own finish time — never on who else raced.
-                {hasListings ? ' Races marked UPCOMING or AWAITING RESULTS are listed without scores: open one to ask for them.' : ''}
+                {hasListings ? ' Races marked UPCOMING or AWAITING RESULTS are listed by their organizer ahead of the results: open one to try a target time on its course.' : ''}
                 {hasDemo ? ' Races marked DEMO DATA are synthetic examples.' : ''}
               </p>
             </div>
             {error && <p className="mt-8 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</p>}
             {races === null && !error && <p className="mt-8 text-sm text-slate-500">Loading races…</p>}
-            {races !== null && (
-              <div className="mt-8 inline-flex rounded-lg border border-slate-300 bg-white" role="group" aria-label="View">
-                {[['list', 'All races'], ['calendar', 'Calendar']].map(([id, label]) => (
-                  <button key={id} type="button" onClick={() => setView(id)} aria-pressed={view === id} className={`px-4 py-2 text-xs font-semibold ${view === id ? 'bg-[#0b1220] text-white' : 'text-slate-500 hover:text-[#0b1220]'}`}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-            {races?.length === 0 && view === 'list' && (
-              <p className="mt-6 text-sm text-slate-500">
-                No races have been published yet.{' '}
-                <button type="button" onClick={() => setView('calendar')} className="font-semibold text-blue-600 hover:underline">Open the calendar</button> to suggest one.
-              </p>
-            )}
+            {races?.length === 0 && <p className="mt-6 text-sm text-slate-500">No races have been published yet.</p>}
             {races?.length > 0 && (
               <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center">
                 <div className="relative min-w-0 flex-1">
@@ -536,45 +518,38 @@ function RacesPage({ raceId }) {
                       ))}
                     </select>
                   )}
-                  {hasListings && view === 'list' && (
+                  {hasListings && (
                     <select value={status} onChange={(event) => setStatus(event.target.value)} aria-label="Status" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-[#0b1220]">
                       {RACE_STATUSES.map(([id, label]) => (
                         <option key={id} value={id}>{label}</option>
                       ))}
                     </select>
                   )}
-                  {view === 'list' && (
-                    <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort races" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-[#0b1220]">
-                      {Object.entries(RACE_SORTS).map(([id, option]) => (
-                        <option key={id} value={id}>{option.label}</option>
-                      ))}
-                    </select>
-                  )}
+                  <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort races" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-[#0b1220]">
+                    {Object.entries(RACE_SORTS).map(([id, option]) => (
+                      <option key={id} value={id}>{option.label}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             )}
-            {races !== null && view === 'calendar' && (
-              <RaceCalendar races={shown} country={country} filtered={Boolean(query) || bucket !== 'all' || country !== 'all'} />
-            )}
-            {races?.length > 0 && view === 'list' && (
+            {races?.length > 0 && (
               <p className="mt-3 font-mono text-[11px] text-slate-500" aria-live="polite">
                 {shown.length === races.length ? `${races.length} races` : `${shown.length} of ${races.length} races match`}
               </p>
             )}
-            {races?.length > 0 && view === 'list' && shown.length === 0 && (
+            {races?.length > 0 && shown.length === 0 && (
               <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
                 No race matches. Try fewer words, another distance, or{' '}
                 <button type="button" onClick={() => { setQuery(''); setBucket('all'); setCountry('all'); setStatus('all') }} className="font-semibold text-blue-600 hover:underline">clear the filters</button>.
               </div>
             )}
-            {view === 'list' && (
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {shown.slice(0, visible).map((race) => (
-                  <RaceCard key={race.race_id} race={race} />
-                ))}
-              </div>
-            )}
-            {view === 'list' && shown.length > 0 && (
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {shown.slice(0, visible).map((race) => (
+                <RaceCard key={race.race_id} race={race} />
+              ))}
+            </div>
+            {shown.length > 0 && (
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                 <p className="font-mono text-[11px] text-slate-500">Showing {Math.min(visible, shown.length)} of {shown.length}</p>
                 {shown.length > visible && (
