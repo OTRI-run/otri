@@ -6,7 +6,7 @@ from datetime import date, datetime, timedelta, timezone
 import pytest
 
 from api.calendar_feed import CalendarEvent, CalendarRace, build_calendar
-from test_api import _admin_headers, client
+from test_api import _organizer_auth_headers, client
 from test_listings import FUTURE, PAST, _listing, _public_race
 
 pytestmark = pytest.mark.usefixtures("clean_state")
@@ -48,10 +48,10 @@ def test_folding_never_splits_a_character():
 # ------------------------------------------------------------------ the feed
 
 
-def test_the_feed_lists_upcoming_public_events_once_each(monkeypatch):
-    admin = _admin_headers(monkeypatch)
-    _listing(admin, races=[{"course_name": "50K", "distance_km": 50, "elevation_gain_m": 2600}, {"course_name": "21K", "distance_km": 21, "elevation_gain_m": 900}])
-    _listing(admin, name="Old Trail", event_date=PAST)
+def test_the_feed_lists_upcoming_public_events_once_each():
+    organizer = _organizer_auth_headers()
+    _listing(organizer, races=[{"course_name": "50K", "distance_km": 50, "elevation_gain_m": 2600}, {"course_name": "21K", "distance_km": 21, "elevation_gain_m": 900}])
+    _listing(organizer, name="Old Trail", event_date=PAST)
     response = client.get("/calendar.ics")
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/calendar")
@@ -62,14 +62,14 @@ def test_the_feed_lists_upcoming_public_events_once_each(monkeypatch):
     assert "Old Trail" not in text
 
 
-def test_the_feed_filters_by_country_and_serves_one_event(monkeypatch):
-    admin = _admin_headers(monkeypatch)
-    _listing(admin)
+def test_the_feed_filters_by_country_and_serves_one_event():
+    organizer = _organizer_auth_headers()
+    _listing(organizer)
     assert "Doi Trail" in client.get("/calendar.ics?country=THA").text
     assert "BEGIN:VEVENT" not in client.get("/calendar.ics?country=FRA").text
     assert client.get("/calendar.ics?country=thailand").status_code == 422
 
-    _listing(admin, name="Old Trail", event_date=PAST)
+    _listing(organizer, name="Old Trail", event_date=PAST)
     old = _public_race("Old Trail")
     single = client.get(f"/calendar.ics?event={old['event_id']}")
     assert single.status_code == 200 and "SUMMARY:Old Trail" in single.text, "a past event can still be added"
@@ -77,58 +77,8 @@ def test_the_feed_filters_by_country_and_serves_one_event(monkeypatch):
 
 
 def test_a_private_race_never_reaches_the_feed():
-    from test_api import _organizer_auth_headers
-
     organizer = _organizer_auth_headers()
     event = client.post("/events", json={"event_name": "Secret Trail", "event_date": FUTURE}, headers=organizer).json()
     client.post(f"/events/{event['event_id']}/races", json={"course_name": "30K", "distance_km": 30, "elevation_gain_m": 1500}, headers=organizer)
     assert "Secret Trail" not in client.get("/calendar.ics").text
     assert client.get(f"/calendar.ics?event={event['event_id']}").status_code == 404
-
-
-# ------------------------------------------------------------------ suggestions
-
-
-SUGGESTION = {
-    "kind": "suggestion",
-    "subject_id": "new-race",
-    "subject_label": "Khao Yai Trail",
-    "message": "Suggested for the calendar: Khao Yai Trail",
-    "reporter_email": "runner@example.com",
-    "listing": {
-        "event_name": "Khao Yai Trail",
-        "event_date": (date.today() + timedelta(days=120)).isoformat(),
-        "location": "Khao Yai",
-        "country": "THA",
-        "website": "https://khaoyai.example",
-        "races": [{"course_name": "25K", "distance_km": 25, "elevation_gain_m": 1100}],
-    },
-}
-
-
-def test_a_suggested_race_waits_for_an_admin_and_is_listed_in_one_step(monkeypatch):
-    admin = _admin_headers(monkeypatch)
-    created = client.post("/reports", json=SUGGESTION)
-    assert created.status_code == 201, created.text
-    assert all(r["event_name"] != "Khao Yai Trail" for r in client.get("/races").json()), "nothing is public before review"
-
-    report = next(r for r in client.get("/admin/reports", headers=admin).json() if r["kind"] == "suggestion")
-    assert report["payload"]["races"][0]["course_name"] == "25K"
-    assert client.post(f"/admin/reports/{report['id']}/create-listing").status_code == 401
-    listed = client.post(f"/admin/reports/{report['id']}/create-listing", headers=admin)
-    assert listed.status_code == 200 and listed.json()["created_races"] == 1
-    race = _public_race("Khao Yai Trail", "25K")
-    assert race["listing_status"] == "upcoming" and race["official_url"] == "https://khaoyai.example"
-    assert all(r["id"] != report["id"] for r in client.get("/admin/reports", headers=admin).json()), "the report is resolved"
-
-
-def test_a_suggestion_is_checked_like_a_listing(monkeypatch):
-    admin = _admin_headers(monkeypatch)
-    assert client.post("/reports", json={**SUGGESTION, "listing": None}).status_code == 422
-    bad_link = {**SUGGESTION, "listing": {**SUGGESTION["listing"], "website": "javascript:alert(1)"}}
-    assert client.post("/reports", json=bad_link).status_code == 422
-    no_distance = {**SUGGESTION, "listing": {**SUGGESTION["listing"], "races": [{"course_name": "X", "distance_km": 0}]}}
-    assert client.post("/reports", json=no_distance).status_code == 422
-    # An ordinary report cannot be turned into a listing.
-    ordinary = client.post("/reports", json={"kind": "other", "subject_id": "x", "message": "Something else entirely."}).json()
-    assert client.post(f"/admin/reports/{ordinary['id']}/create-listing", headers=admin).status_code == 422

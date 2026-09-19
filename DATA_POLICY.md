@@ -63,7 +63,7 @@ Athlete identity matching should use the minimum necessary information and shoul
 
 ## Race listings
 
-OTRI may list a race before its organizer has joined, from facts checked against a public source (name, date, place, distance, climb, official website), with the source recorded. It does not copy the results with them: results come only from the organizer. A course file on an unclaimed listing should rest on an open licence or the organizer's consent, recorded with the race when it exists; the software records the note but does not require it, so whoever uploads the file answers for having the right to. An organizer who asks for a listing to be corrected or removed gets that done. See [`docs/product/race-listings.md`](docs/product/race-listings.md).
+OTRI lists no race on anyone's behalf and keeps no catalogue of races. A race is on OTRI because its organizer put it there: they can show their own race before it has results (the facts and their own course file), and they publish the results when they choose. OTRI-compiled listings, and the course files attached to them, were retired in September 2026 ([`docs/product/open-scoring-tool.md`](docs/product/open-scoring-tool.md)); what they left in the database is not shown publicly and is deleted by an admin.
 
 ## Stored course files
 

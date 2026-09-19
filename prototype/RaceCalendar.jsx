@@ -3,7 +3,6 @@ import { Rss } from 'lucide-react'
 import { formatDistance, useUnits } from '../src/lib/units'
 import Flag from '../src/components/Flag'
 import { VerticalBadge } from './RaceCard'
-import SuggestRace from './SuggestRace'
 import { AddToCalendar, countdown, groupByEvent, icsUrl, parseDay } from './calendarLinks'
 
 const EVENTS_AT_ONCE = 120
@@ -14,7 +13,6 @@ const EVENTS_AT_ONCE = 120
 function EventRow({ event }) {
   const units = useUnits()
   const day = parseDay(event.event_date)
-  const asked = event.races.reduce((sum, race) => sum + (race.request_count ?? 0), 0)
   return (
     <li className="grid grid-cols-[52px_minmax(0,1fr)] gap-4 border-t border-slate-100 py-4 first:border-0 sm:grid-cols-[52px_minmax(0,1fr)_auto] sm:items-center">
       <div className="rounded-xl border border-slate-200 bg-slate-50 py-1.5 text-center">
@@ -50,14 +48,12 @@ function EventRow({ event }) {
       </div>
       <div className="col-span-2 flex flex-wrap items-center gap-x-4 gap-y-1 sm:col-span-1 sm:flex-col sm:items-end">
         <AddToCalendar event={event} />
-        {asked > 0 && <span className="font-mono text-[10px] text-slate-500">{asked} asked for scores</span>}
       </div>
     </li>
   )
 }
 
 export default function RaceCalendar({ races, country, filtered }) {
-  const [suggesting, setSuggesting] = useState(false)
   const months = useMemo(() => {
     const events = groupByEvent(races.filter((race) => race.event_date && countdown(race.event_date) !== null)).sort((a, b) => a.event_date.localeCompare(b.event_date) || a.event_name.localeCompare(b.event_name))
     const byMonth = new Map()
@@ -82,22 +78,21 @@ export default function RaceCalendar({ races, country, filtered }) {
     <div className="mt-4">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-3">
         <p className="min-w-0 text-xs leading-5 text-slate-600">
-          Upcoming trail races{country !== 'all' ? ' in this country' : ''}. Blue distances have their course on OTRI: open one and try a target time before race day.
+          Upcoming races listed by their organizers{country !== 'all' ? ' in this country' : ''}. Blue distances have their course on OTRI: open one and try a target time before race day.
         </p>
         <div className="flex flex-wrap items-center gap-3 text-xs font-semibold">
           <a href={feed.replace(/^https?:/, 'webcal:')} title={`Subscribe in your calendar app. The address is ${feed}`} className="inline-flex items-center gap-1 text-blue-600 no-underline hover:underline">
             <Rss size={13} /> Subscribe to this calendar
           </a>
-          <button type="button" onClick={() => setSuggesting((open) => !open)} className="rounded-lg bg-[#0b1220] px-3 py-2 text-white">
-            {suggesting ? 'Close' : 'Suggest a race'}
-          </button>
+          <a href="organizer/" className="rounded-lg bg-[#0b1220] px-3 py-2 text-white no-underline">
+            List your race
+          </a>
         </div>
       </div>
-      {suggesting && <SuggestRace onDone={() => setSuggesting(false)} />}
 
       {months.length === 0 && (
         <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
-          {filtered ? 'No upcoming race matches these filters.' : 'No upcoming races are listed yet.'} Know one? Use “Suggest a race” and it appears here after a quick check.
+          {filtered ? 'No upcoming race matches these filters.' : 'No upcoming races are listed yet.'} Races appear here when their organizer lists them; OTRI keeps no catalogue of its own.
         </div>
       )}
       {shownMonths.map(([month, events]) => (

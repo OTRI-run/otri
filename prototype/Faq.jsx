@@ -53,8 +53,8 @@ const FAQ = [
       },
       {
         q: 'Can I use OTRI as a race calendar?',
-        a: 'Yes. The races page has a Calendar view of upcoming trail races by month, with search, distance and country filters. Each race can be added to your own calendar, and the whole calendar (or one country) can be subscribed to from your calendar app, so new races and corrected dates arrive by themselves. Where a race’s course is on OTRI you can try a target time before race day. A race is missing? Use “Suggest a race” on the calendar: name, date, place, distances and the official website, and it is listed after a quick check.',
-        tags: 'calendar upcoming races ics subscribe webcal google calendar suggest add race',
+        a: 'Yes. The races page has a Calendar view of upcoming trail races by month, with search, distance and country filters. Each race can be added to your own calendar, and the whole calendar (or one country) can be subscribed to from your calendar app, so new races and corrected dates arrive by themselves. Where a race’s course is on OTRI you can try a target time before race day. It shows the races their organizers have listed: OTRI keeps no catalogue of its own, so a race appears when its organizer adds it.',
+        tags: 'calendar upcoming races ics subscribe webcal google calendar add race',
       },
       {
         q: 'Why does a vertical race have finish times but no scores?',

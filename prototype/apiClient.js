@@ -167,20 +167,6 @@ export function createEvent(payload, token) {
   })
 }
 
-/** Events already on OTRI that look like the one being created: unclaimed listings and the organizer's own. */
-export function findMatchingEvents(name, eventDate, token) {
-  return request(`/events/matches?name=${encodeURIComponent(name)}&event_date=${encodeURIComponent(eventDate)}`, { headers: authHeaders(token) })
-}
-
-/** Ask for an unclaimed listing to be moved into the signed-in organizer's account. */
-export function claimEvent(eventId, message, token) {
-  return request(`/events/${encodeURIComponent(eventId)}/claim`, {
-    method: 'POST',
-    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ message: message || null }),
-  })
-}
-
 export function updateEvent(eventId, payload, token) {
   return request(`/events/${encodeURIComponent(eventId)}`, {
     method: 'PATCH',
@@ -219,11 +205,9 @@ export function deleteRace(raceId, token) {
   })
 }
 
-export function attachRaceGpx(raceId, file, token, coursePermission) {
+export function attachRaceGpx(raceId, file, token) {
   const formData = new FormData()
   formData.append('file', file)
-  // Only an unclaimed listing needs it: on what basis OTRI may show a course nobody uploaded as its owner.
-  if (coursePermission) formData.append('course_permission', coursePermission)
   return request(`/races/${encodeURIComponent(raceId)}/gpx`, {
     method: 'POST',
     headers: authHeaders(token),
@@ -324,11 +308,6 @@ export function listAdminReports(token, status = 'open') {
   return request(`/admin/reports?status=${encodeURIComponent(status)}`, { headers: authHeaders(token) })
 }
 
-/** Admin: turn a runner's race suggestion into a public listing; the report is resolved by the API. */
-export function createListingFromReport(reportId, token) {
-  return request(`/admin/reports/${reportId}/create-listing`, { method: 'POST', headers: authHeaders(token) })
-}
-
 export function resolveAdminReport(reportId, resolution, token) {
   return request(`/admin/reports/${reportId}/resolve`, { method: 'POST', headers: authHeaders(token, { 'Content-Type': 'application/json' }), body: JSON.stringify({ resolution }) })
 }
@@ -382,31 +361,6 @@ export async function getRaceResults(raceId, token) {
 
 export function listRaces() {
   return request('/races')
-}
-
-/** A runner asking for a listed race to be scored. Counted once per visitor by the API. */
-export function requestScores(raceId, clientId) {
-  return request(`/races/${encodeURIComponent(raceId)}/score-requests`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ client_id: clientId }),
-  })
-}
-
-/** Admin: add race listings (facts only) from a CSV file; `since` (YYYY-MM-DD) leaves out earlier races. */
-export function importListings(file, token, since) {
-  const formData = new FormData()
-  formData.append('file', file)
-  return request(`/admin/listings/import${since ? `?since=${encodeURIComponent(since)}` : ''}`, { method: 'POST', headers: authHeaders(token), body: formData })
-}
-
-/** Admin: hand an event to an organizer's account (a claimed listing); no email releases it. */
-export function assignEvent(eventId, organizerEmail, token) {
-  return request(`/admin/events/${encodeURIComponent(eventId)}/assign`, {
-    method: 'POST',
-    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ organizer_email: organizerEmail || null }),
-  })
 }
 
 /** Owner or admin: show a race publicly before it has results, or take the listing down. */

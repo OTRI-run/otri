@@ -246,7 +246,7 @@ function Leaderboard({ raceId, onBack }) {
           <h2 className="mt-2 text-[clamp(32px,4.5vw,52px)] font-bold leading-[.98] tracking-[-.05em] text-[#0b1220]">{race.event_name}</h2>
           <p className="mt-3 text-sm text-slate-500">
             {race.course_name} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
-            {race.has_gpx ? (race.is_claimed ? ' · Verified course' : race.course_permission ? ' · Course shown with permission' : ' · Course file') : ' · Official figures, no course file'}
+            {race.has_gpx ? ' · Verified course' : ' · Official figures, no course file'}
           </p>
           {race.organizer_display && (
             <p className="mt-2 text-xs text-slate-500">
@@ -359,7 +359,6 @@ function featuredOrder(a, b) {
   const byStatus = (STATUS_ORDER[a.listing_status] ?? 3) - (STATUS_ORDER[b.listing_status] ?? 3)
   if (byStatus) return byStatus
   if (a.listing_status === 'upcoming') return (a.event_date ?? '').localeCompare(b.event_date ?? '')
-  if (a.listing_status === 'awaiting_results') return (b.request_count ?? 0) - (a.request_count ?? 0) || (b.event_date ?? '').localeCompare(a.event_date ?? '')
   return (b.event_date ?? '').localeCompare(a.event_date ?? '')
 }
 const RACE_STATUSES = [
@@ -376,7 +375,6 @@ const RACE_SORTS = {
   longest: { label: 'Longest', by: (a, b) => (b.distance_km ?? 0) - (a.distance_km ?? 0) },
   shortest: { label: 'Shortest', by: (a, b) => (a.distance_km ?? 0) - (b.distance_km ?? 0) },
   climb: { label: 'Most climb', by: (a, b) => (b.elevation_gain_m ?? 0) - (a.elevation_gain_m ?? 0) },
-  requested: { label: 'Most asked for', by: (a, b) => (b.request_count ?? 0) - (a.request_count ?? 0) },
   name: { label: 'Name A–Z', by: (a, b) => `${a.event_name} ${a.course_name}`.localeCompare(`${b.event_name} ${b.course_name}`) },
 }
 const normalise = (text) => String(text ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')

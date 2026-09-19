@@ -150,8 +150,10 @@ CREATE INDEX IF NOT EXISTS races_event_id_idx ON races (event_id);
 CREATE INDEX IF NOT EXISTS races_published_at_idx ON races (published_at) WHERE published_at IS NOT NULL;
 CREATE INDEX IF NOT EXISTS events_organizer_id_idx ON events (organizer_id);
 
--- Listings: a race shown publicly before anyone has uploaded results (docs/product/race-listings.md).
--- listed_at makes the race facts and any authorized course public; published_at still gates results.
+-- listed_at: an organizer shows their own race publicly before it has results; published_at still
+-- gates results. website, source_url, course_permission and score_requests belong to the retired
+-- OTRI-compiled listings (docs/product/open-scoring-tool.md): kept so existing data is not destroyed,
+-- no longer written or read.
 ALTER TABLE events ADD COLUMN IF NOT EXISTS website TEXT;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS source_url TEXT;
 ALTER TABLE races ADD COLUMN IF NOT EXISTS listed_at TIMESTAMPTZ;
@@ -179,7 +181,7 @@ CREATE TABLE IF NOT EXISTS reports (
     resolved_by TEXT,
     resolution TEXT
 );
--- A race suggested by a runner carries its facts as data, so an admin can turn it into a listing in one step.
+-- Unused since race suggestions were retired; kept for the reports already filed.
 ALTER TABLE reports ADD COLUMN IF NOT EXISTS payload JSONB;
 """
 
@@ -391,7 +393,9 @@ _RACE_JOIN_SELECT = """
 
 def list_races(published_only: bool = False) -> list[Race]:
     """``published_only`` means public: races with published results, and listings awaiting them."""
-    where = " WHERE (r.published_at IS NOT NULL OR r.listed_at IS NOT NULL)" if published_only else ""
+    # A race is public once its organizer published results or listed it. Rows nobody owns (from
+    # the retired OTRI-compiled listings) stay in the table and out of sight.
+    where = " WHERE (r.published_at IS NOT NULL OR (r.listed_at IS NOT NULL AND e.organizer_id IS NOT NULL))" if published_only else ""
     with get_connection() as connection:
         rows = connection.execute(_RACE_JOIN_SELECT + where + " ORDER BY e.event_date DESC, r.distance_km").fetchall()
     return [Race(**row) for row in rows]
@@ -546,79 +550,18 @@ def get_results(race_id: str) -> list[ResultRecord]:
     ]
 
 
-def set_race_listed(race_id: str, listed: bool, course_permission: str | None = None) -> Race:
+def set_race_listed(race_id: str, listed: bool) -> Race:
     """List a race publicly without results (or take the listing down). Results stay gated by publishing."""
     with get_connection() as connection:
         cursor = connection.execute(
-            "UPDATE races SET listed_at = CASE WHEN %s THEN COALESCE(listed_at, now()) ELSE NULL END, "
-            "course_permission = COALESCE(%s, course_permission), updated_at = now() WHERE race_id = %s",
-            (listed, course_permission, race_id),
+            "UPDATE races SET listed_at = CASE WHEN %s THEN COALESCE(listed_at, now()) ELSE NULL END, updated_at = now() WHERE race_id = %s",
+            (listed, race_id),
         )
         if cursor.rowcount == 0:
             raise NotFoundError(f"race {race_id!r} not found")
     race = find_race(race_id)
     assert race is not None
     return race
-
-
-def new_listing_id(prefix: str) -> str:
-    """An id for a bulk-imported row: longer than the usual one, because thousands minted in one
-    transaction must not collide (one duplicate key would undo the whole import)."""
-    return f"{prefix}-{secrets.token_hex(8)}"
-
-
-def insert_listings(events: list[tuple], races: list[tuple]) -> None:
-    """Bulk import of unowned listings, all or nothing. ``events`` are (event_id, event_name,
-    event_date, location, country, website, source_url); ``races`` are (race_id, event_id,
-    course_name, distance_km, elevation_gain_m), listed from the start."""
-    from scoring import DEFAULT_SCORING_VERSION
-
-    with get_connection() as connection, connection.cursor() as cursor:
-        if events:
-            cursor.executemany(
-                "INSERT INTO events (event_id, event_name, event_date, organizer_id, location, country, website, source_url) VALUES (%s, %s, %s, NULL, %s, %s, %s, %s)",
-                events,
-            )
-        if races:
-            cursor.executemany(
-                "INSERT INTO races (race_id, event_id, course_name, distance_km, elevation_gain_m, scoring_version, listed_at) "
-                "VALUES (%s, %s, %s, %s, %s, %s, now())",
-                [(*race, DEFAULT_SCORING_VERSION) for race in races],
-            )
-
-
-def assign_event(event_id: str, organizer_id: int | None) -> Event:
-    """Hand an event (a claimed listing) to an organizer account, or release it again."""
-    with get_connection() as connection:
-        cursor = connection.execute("UPDATE events SET organizer_id = %s, updated_at = now() WHERE event_id = %s", (organizer_id, event_id))
-        if cursor.rowcount == 0:
-            raise NotFoundError(f"event {event_id!r} not found")
-    event = find_event(event_id)
-    assert event is not None
-    return event
-
-
-def add_score_request(race_id: str, visitor_key: str) -> bool:
-    """Record that one visitor wants this race scored. False when that visitor already asked."""
-    with get_connection() as connection:
-        cursor = connection.execute(
-            "INSERT INTO score_requests (race_id, visitor_key) VALUES (%s, %s) ON CONFLICT DO NOTHING", (race_id, visitor_key)
-        )
-    return cursor.rowcount == 1
-
-
-def count_score_requests_for_address(race_id: str, address_key: str) -> int:
-    with get_connection() as connection:
-        row = connection.execute(
-            "SELECT COUNT(*) AS n FROM score_requests WHERE race_id = %s AND visitor_key LIKE %s", (race_id, f"{address_key}:%")
-        ).fetchone()
-    return int(row["n"])
-
-
-def count_score_requests_by_race() -> dict[str, int]:
-    with get_connection() as connection:
-        rows = connection.execute("SELECT race_id, COUNT(*) AS n FROM score_requests GROUP BY race_id").fetchall()
-    return {row["race_id"]: int(row["n"]) for row in rows}
 
 
 def count_results_by_race() -> dict[str, int]:

@@ -57,79 +57,10 @@ class RaceSummary(BaseModel):
     elevation_loss_m: float | None = None
     # Uphill-only course (course/discipline.py). A label for finding races; never enters a score.
     is_vertical: bool = False
-    # Listings (docs/product/race-listings.md): 'scored' once results are published; a listed race
+    # 'scored' once results are published; a race its organizer listed ahead of them is 'upcoming'
     # without them is 'upcoming' or 'awaiting_results' by its date; anything else is 'private'.
     listing_status: str = "private"
     is_listed: bool = False
-    is_claimed: bool = True
-    request_count: int = 0
-    official_url: str | None = None
-    course_permission: str | None = None
-
-
-class ListingRaceIn(BaseModel):
-    course_name: str = Field(max_length=200)
-    distance_km: float
-    elevation_gain_m: float = 0.0
-
-
-class ListingCreate(BaseModel):
-    """Race facts for a public listing nobody has claimed yet. Facts only: a course file is attached
-    separately and needs a recorded licence or permission (DATA_POLICY.md)."""
-
-    event_name: str = Field(max_length=200)
-    event_date: date
-    location: str | None = Field(default=None, max_length=200)
-    country: str | None = Field(default=None, max_length=8)
-    website: str | None = Field(default=None, max_length=500)
-    source_url: str | None = Field(default=None, max_length=500)
-    races: list[ListingRaceIn] = Field(min_length=1, max_length=30)
-
-
-class ListingImportResult(BaseModel):
-    created_events: int = 0
-    created_races: int = 0
-    skipped: list[str] = []
-    # CSV rows left out because their race was before the import's ``since`` day.
-    before_since: int = 0
-
-
-class RaceListingUpdate(BaseModel):
-    course_permission: str | None = Field(default=None, max_length=500)
-
-
-class EventAssign(BaseModel):
-    organizer_email: str | None = Field(default=None, max_length=320)
-
-
-class EventMatch(BaseModel):
-    """An event already on OTRI that looks like the one an organizer is about to create."""
-
-    event_id: str
-    event_name: str
-    event_date: date
-    location: str | None = None
-    country: str | None = None
-    website: str | None = None
-    courses: list[str] = []
-    request_count: int = 0
-    # Already in the asking organizer's account, rather than an unclaimed listing.
-    is_yours: bool = False
-    # The asking organizer has an open claim on it.
-    claim_pending: bool = False
-
-
-class EventClaim(BaseModel):
-    message: str | None = Field(default=None, max_length=2000)
-
-
-class ScoreRequestIn(BaseModel):
-    client_id: str | None = Field(default=None, max_length=80)
-
-
-class ScoreRequestOut(BaseModel):
-    request_count: int
-    counted: bool
 
 
 class EventDetail(EventSummary):
@@ -345,8 +276,6 @@ class ReportCreate(BaseModel):
     message: str = Field(max_length=4000)
     reporter_email: str | None = Field(default=None, max_length=320)
     page_url: str | None = Field(default=None, max_length=1000)
-    # kind 'suggestion' only: the suggested race's facts, in the shape of a listing.
-    listing: ListingCreate | None = None
 
 
 class ReportOut(BaseModel):
@@ -448,8 +377,6 @@ class AdminEventOut(EventSummary):
     """An event as the admin sees it: who owns it and every race with its publish state."""
 
     organizer_email: str | None = None
-    website: str | None = None
-    source_url: str | None = None
     published_count: int = 0
     races: list[RaceSummary] = []
 

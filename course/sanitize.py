@@ -9,7 +9,7 @@ latitude, longitude, elevation, segment by segment.
 Two things this is *not*:
 
 - It is not a licence. Removing a notice from a file does not change who may publish the course;
-  that is what ``course_permission`` and DATA_POLICY.md are for. Whatever the file said about
+  that is for the organizer who uploads it to answer (DATA_POLICY.md). Whatever the file said about
   its origin (creator, author, copyright, licence, links) is therefore *moved*, not destroyed:
   ``source_metadata`` returns it so the API can keep it with the race's private record, where a
   licence's attribution terms or a later dispute can be answered from.

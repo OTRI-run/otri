@@ -48,17 +48,25 @@ The whole product in one call: a course and a results file in, the validated and
 
 ## What this means for what is already built
 
-Nothing is removed by this decision; the emphasis moves.
+**Retired (2026-09-19), code deleted:** everything that made OTRI a catalogue or an arbiter of who owns a race.
 
-- **Listings and the calendar** stay a convenience for finding a race's course, not a catalogue OTRI promises to keep complete. Bulk-importing another organization's race database is outside this direction and outside the handbook's rule against mirroring proprietary databases; listings should come from organizers, from runners' suggestions and from a small hand-checked set.
-- **Claims** still pass an admin, because handing a public listing to the wrong person is worse than a delay. The fewer unclaimed listings there are, the less this matters: an organizer who creates their own event needs no approval at all.
-- **The runner index** stays labelled provisional and is not promoted. It is a view over published races, not a ranking OTRI stands behind as official.
-- **Organizer verification** stays an internal flag against abuse, not a badge of approval.
+- OTRI-compiled ("unclaimed") listings: `POST /admin/listings`, the CSV import, the bulk course upload and the permission note on a course nobody owned.
+- "I'd like scores" requests and "Ask your organizer" (`POST /races/{id}/score-requests`).
+- Claims: the public "I organize this race" form, the claim step in the create-event form (`GET /events/matches`, `POST /events/{id}/claim`), and the admin hand-over (`POST /admin/events/{id}/assign`).
+- "Suggest a race" and its admin "Create listing" step: a suggestion's only outcome was an unclaimed listing.
+
+The columns and the `score_requests` table stay, unused, so nothing in production is destroyed. A listed race that nobody owns is never public (`db.list_races`); an admin deletes such leftovers under Admin → Events & races.
+
+**Kept:**
+
+- **An organizer's own listing.** They can show their race before it has results, which is also what the embedded calculator's `?race=` opens.
+- **The calendar view and the `.ics` feed**, now showing only races their organizers listed. It is a view over self-service pages, not a calendar OTRI curates.
+- **The runner index**, labelled provisional and not promoted. It is a view over published races, not a ranking OTRI stands behind as official.
+- **Reports** for corrections and removals, and **organizer verification** as an internal flag against abuse, not a badge of approval.
 
 ## Next
 
 1. Score my race: keep the result open in the page across a reload (browser storage only), and a printable result sheet.
 2. A column-mapping step for results files whose headers are not recognised, instead of an error.
 3. `POST /score` with several distances in one call (one file per distance).
-4. A self-service claim that needs no admin, by proving control of the race's domain.
-5. API terms: attribution, fair use, and a stability policy once the contract is 1.0.
+4. API terms: attribution, fair use, and a stability policy once the contract is 1.0.

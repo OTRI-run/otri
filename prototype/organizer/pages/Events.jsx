@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight, ArrowUpRight, CalendarDays, Plus } from 'lucide-react'
-import { claimEvent, createEvent, deleteEvent, findMatchingEvents, getEvent, listMyEvents, updateEvent } from '../../apiClient'
+import { createEvent, deleteEvent, getEvent, listMyEvents, updateEvent } from '../../apiClient'
 import { Link, navigate } from '../router'
 import { formatDistance, formatElevation, useUnits } from '../../../src/lib/units'
 import { Button, Card, EmptyState, Eyebrow, Field, Gradient, Notice, Page, StatusChip, formatDate, inputClass, raceStatus } from '../ui'
@@ -84,59 +84,6 @@ export function Dashboard({ session }) {
   )
 }
 
-// An event already on OTRI that looks like the one being created. An unclaimed listing is claimed
-// rather than created a second time, which would put the race on the calendar twice.
-function EventMatchCard({ match, token }) {
-  const [state, setState] = useState(match.claim_pending ? 'sent' : 'idle') // idle | sending | sent
-  const [error, setError] = useState(null)
-  const facts = [formatDate(match.event_date), match.location, match.courses.join(', ')].filter(Boolean).join(' · ')
-
-  async function claim() {
-    setError(null)
-    setState('sending')
-    try {
-      await claimEvent(match.event_id, null, token)
-      setState('sent')
-    } catch (err) {
-      setError(err.message)
-      setState('idle')
-    }
-  }
-
-  if (match.is_yours) {
-    return (
-      <Notice kind="warning" title="You already have this event.">
-        <p>
-          {match.event_name} · {facts}
-        </p>
-        <Link to={`/events/${encodeURIComponent(match.event_id)}`} className="mt-1 inline-block text-xs font-semibold text-blue-700">
-          Open it →
-        </Link>
-      </Notice>
-    )
-  }
-  if (state === 'sent') {
-    return (
-      <Notice kind="success" title="Claim sent.">
-        We check it and move {match.event_name} into your account, usually within a few days. There is no need to create it again.
-      </Notice>
-    )
-  }
-  return (
-    <Notice kind="info" title="Is this your race? It is already on the OTRI calendar.">
-      <p>
-        {match.event_name} · {facts}
-        {match.request_count > 0 ? ` · ${match.request_count} runner${match.request_count === 1 ? '' : 's'} asked for scores` : ''}
-      </p>
-      <p className="mt-1 text-xs">Claim it to manage that listing from your account. A new event would show the race twice.</p>
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-      <Button type="button" busy={state === 'sending'} className="mt-2 min-h-9 px-3 text-xs" onClick={claim}>
-        This is my race, claim it
-      </Button>
-    </Notice>
-  )
-}
-
 export function NewEvent({ session }) {
   const [name, setName] = useState('')
   const [date, setDate] = useState('')
@@ -144,45 +91,12 @@ export function NewEvent({ session }) {
   const [country, setCountry] = useState('')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
-  // Events already on OTRI that look like this one, and the name + date they were looked up for.
-  const [matches, setMatches] = useState([])
-  const [checkedKey, setCheckedKey] = useState(null)
-  const matchKey = name.trim().length >= 3 && date ? `${name.trim().toLowerCase()}|${date}` : null
-
-  useEffect(() => {
-    if (!matchKey) {
-      setMatches([])
-      setCheckedKey(null)
-      return undefined
-    }
-    let stale = false
-    const timer = setTimeout(() => {
-      findMatchingEvents(name.trim(), date, session.token)
-        .then((found) => {
-          if (stale) return
-          setMatches(found)
-          setCheckedKey(matchKey)
-        })
-        .catch(() => {}) // the check is a courtesy; creating the event still works without it
-    }, 400)
-    return () => {
-      stale = true
-      clearTimeout(timer)
-    }
-  }, [matchKey, session.token])
 
   async function submit(event) {
     event.preventDefault()
     setError(null)
     setBusy(true)
     try {
-      if (checkedKey !== matchKey) {
-        // Submitted before the look-up finished: show what is already there before creating a second one.
-        const found = await findMatchingEvents(name.trim(), date, session.token).catch(() => [])
-        setMatches(found)
-        setCheckedKey(matchKey)
-        if (found.length > 0) return
-      }
       const created = await createEvent(
         { event_name: name.trim(), event_date: date, location: location.trim() || null, country: country.trim() || null },
         session.token,
@@ -224,17 +138,10 @@ export function NewEvent({ session }) {
                 <CountrySelect id="ev-country" value={country} onChange={setCountry} className={inputClass} />
               </Field>
             </div>
-            {matches.length > 0 && (
-              <div className="grid gap-2">
-                {matches.map((match) => (
-                  <EventMatchCard key={match.event_id} match={match} token={session.token} />
-                ))}
-              </div>
-            )}
             {error && <Notice kind="error">{error}</Notice>}
             <div className="flex flex-wrap gap-3">
-              <Button type="submit" variant={matches.length > 0 ? 'secondary' : 'primary'} busy={busy} disabled={!name.trim() || !date}>
-                {matches.length > 0 ? 'Create a new event anyway' : 'Create event'} <ArrowRight size={15} />
+              <Button type="submit" busy={busy} disabled={!name.trim() || !date}>
+                Create event <ArrowRight size={15} />
               </Button>
               <Button type="button" variant="secondary" onClick={() => navigate('/events')}>
                 Cancel
