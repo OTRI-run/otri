@@ -1103,17 +1103,22 @@ def _measurement_cache_put(path, provider, measurement, points=()) -> None:
         pass  # a cache that cannot be written just means measuring again next time
 
 
+_MIN_COURSE_M = 100  # no race is this short; test courses of a couple of hundred metres stay usable
+
+
 def _measure_gpx_path(path):
     points = read_track_points(path)
     # Terrain tiles for a region nobody has uploaded a course from yet are fetched here, once
     # (course/dem_fetch.py); it never raises, and without them the course measures as before.
     dem_fetch.ensure_tiles(points)
     provider = configured_provider()
-    cached = _measurement_cache_get(path, provider, points)
-    if cached is not None:
-        return points, cached
-    measurement = measure_course(points, provider)
-    _measurement_cache_put(path, provider, measurement, points)
+    measurement = _measurement_cache_get(path, provider, points)
+    if measurement is None:
+        measurement = measure_course(points, provider)
+        _measurement_cache_put(path, provider, measurement, points)
+    # A recording of the start area, or a handful of points: a number for it would mean nothing.
+    if measurement.distance_m < _MIN_COURSE_M:
+        raise GpxParseError(f"This GPX is only {measurement.distance_m:.0f} m long: it does not hold the course. Export the whole track of the race and upload that.")
     return points, measurement
 
 

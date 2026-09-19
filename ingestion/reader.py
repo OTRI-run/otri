@@ -141,7 +141,7 @@ def _read_xlsx(path: Path) -> list[list[str]]:
     try:
         workbook = load_workbook(path, read_only=True, data_only=True)
     except Exception as error:  # noqa: BLE001 - openpyxl raises a zoo of errors for non-spreadsheets
-        raise ValueError(f"not a readable .xlsx file: {type(error).__name__}") from error
+        raise ValueError("this file is named .xlsx but is not an Excel workbook (it may be a CSV that was renamed, or a damaged download): open it in a spreadsheet, save it as .xlsx or CSV, and upload that") from error
     rows = None
     try:
         sheet = workbook.active
