@@ -358,14 +358,14 @@ function addCourseLayers(map, { line, markers, gradient }, { includeHillshade })
           minzoom: 10,
           layout: {
             'symbol-placement': 'line',
-            'symbol-spacing': ['interpolate', ['linear'], ['zoom'], 10, 90, 15, 150],
+            'symbol-spacing': ['interpolate', ['linear'], ['zoom'], 10, 110, 15, 170],
             'icon-image': 'otri-direction',
-            'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.8, 15, 1.15],
+            'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 1.2, 15, 1.7],
             'icon-allow-overlap': true,
             'icon-ignore-placement': true,
             'icon-rotation-alignment': 'map',
           },
-          paint: { 'icon-opacity': 0.85 },
+          paint: { 'icon-opacity': 0.92 },
         },
         map.getLayer('route-km') ? 'route-km' : undefined,
       )
