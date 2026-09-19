@@ -286,7 +286,7 @@ export default function Home() {
             </div>
             <div className="min-w-0">
               <p className="text-sm leading-7 text-slate-500">
-                Pick a verified course or upload a GPX, drag to a target finish time, and watch the score update live —
+                Pick a race or upload a GPX, set a target finish time, and watch the score update live —
                 with the full reasoning underneath.
               </p>
               <a href="#calculator" className={`${textLink} mt-3`}>

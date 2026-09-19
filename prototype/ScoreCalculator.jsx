@@ -591,8 +591,8 @@ function CoursePicker({ races, racesLoading, racesError, query, onQuery, onChoos
           </div>
           <div className="min-w-0">
             <p className="text-sm leading-7 text-slate-500">
-              Pick a race whose course has already been verified, or upload your own GPX. Either way the track is measured
-              on the server: distance along the ellipsoid, elevation from terrain data where it is installed.
+              Pick a race, or upload your own GPX. Either way OTRI measures the track itself: its distance, its climb and
+              how steep it is.
             </p>
             <details className="group mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
               <summary className="cursor-pointer list-none font-semibold text-[#0b1220]">
@@ -626,9 +626,9 @@ function CoursePicker({ races, racesLoading, racesError, query, onQuery, onChoos
           <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] sm:p-6">
             <div className="flex items-center gap-2">
               <Search size={16} className="text-blue-600" />
-              <h3 className="text-base font-bold tracking-[-.02em] text-[#0b1220]">Search a verified race</h3>
+              <h3 className="text-base font-bold tracking-[-.02em] text-[#0b1220]">Pick a race</h3>
             </div>
-            <p className="mt-1 text-xs text-slate-500">Courses submitted by organizers and measured by OTRI.</p>
+            <p className="mt-1 text-xs text-slate-500">Choose one and set your time.</p>
             <input
               type="text"
               value={query}
@@ -644,7 +644,7 @@ function CoursePicker({ races, racesLoading, racesError, query, onQuery, onChoos
             )}
             {racesError && <p className="mt-3 text-xs text-red-600">{racesError}</p>}
             {!racesLoading && !racesError && races.length === 0 && (
-              <p className="mt-3 text-xs text-slate-500">No races with a verified course match that search yet.</p>
+              <p className="mt-3 text-xs text-slate-500">No race matches that search. Upload the course as a GPX instead.</p>
             )}
             <div className="mt-3 max-h-[360px] space-y-2 overflow-y-auto pr-1">
               {races.map((race) => (
@@ -662,7 +662,7 @@ function CoursePicker({ races, racesLoading, racesError, query, onQuery, onChoos
                       {race.event_date} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
                     </span>
                   </span>
-                  <span className="shrink-0 font-mono text-[8px] tracking-[.08em] text-blue-600">VERIFIED</span>
+                  <ArrowUpRight size={14} className="shrink-0 text-slate-400" />
                 </button>
               ))}
             </div>
@@ -732,7 +732,7 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
             <p className="mt-2 text-sm text-slate-500">
               {courseLabel.meta ? `${courseLabel.meta} · ` : ''}
               <span className={courseLabel.verified ? 'font-semibold text-blue-600' : 'font-semibold text-amber-600'}>
-                {courseLabel.verified ? 'Verified course' : courseLabel.meta === 'Shared course' ? 'Shared course' : 'Your upload'}
+                {courseLabel.verified ? 'Race course' : courseLabel.meta === 'Shared course' ? 'Shared course' : 'Your upload'}
               </span>
             </p>
           </div>
