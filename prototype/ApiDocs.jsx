@@ -13,15 +13,14 @@ const SCORE_CURL = `curl -X POST ${API_BASE_URL}/score \\
   -F "gpx=@course.gpx" \\
   -F "race_name=Doi Suthep Trail 30K"`
 
-const SCORE_OFFICIAL_CURL = `# No course file: the official figures (scores carry Low confidence)
+const SCORE_CSV_CURL = `# The scored list as a CSV download
 curl -X POST "${API_BASE_URL}/score?format=csv" \\
-  -F "results=@results.xlsx" \\
-  -F "distance_km=50" -F "elevation_gain_m=2600" \\
+  -F "results=@results.xlsx" -F "gpx=@course.gpx" \\
   -o scored.csv`
 
 const SCORE_JS = `const form = new FormData()
 form.append('results', resultsFile)   // CSV or Excel
-form.append('gpx', courseFile)        // or distance_km + elevation_gain_m
+form.append('gpx', courseFile)        // the official track of the race
 
 const response = await fetch('${API_BASE_URL}/score', { method: 'POST', body: form })
 const race = await response.json()
@@ -127,10 +126,10 @@ export default function ApiDocs() {
         <div className="min-w-0">
           <Endpoint method="POST" path="/score">
             <p>
-              A results file validated and scored against a course. Send <code>results</code> (CSV or Excel) and the course as <code>gpx</code>, or without a course file <code>distance_km</code> and <code>elevation_gain_m</code>. Optional: <code>race_name</code>, <code>scoring_version</code>, and <code>?format=csv</code> for a download instead of JSON. The GUI for this call is <a href="#score" className="font-semibold text-blue-600 no-underline hover:underline">Score my race</a>.
+              A results file validated and scored against a course. Send <code>results</code> (CSV or Excel) and the course as <code>gpx</code>. Both are required: a score rests on where the climbing is, which a distance and a climb figure cannot say. Optional: <code>race_name</code>, <code>scoring_version</code>, and <code>?format=csv</code> for a download instead of JSON. The GUI for this call is <a href="#score" className="font-semibold text-blue-600 no-underline hover:underline">Score my race</a>.
             </p>
             <Code label="curl">{SCORE_CURL}</Code>
-            <Code label="curl · official figures, CSV back">{SCORE_OFFICIAL_CURL}</Code>
+            <Code label="curl · CSV back">{SCORE_CSV_CURL}</Code>
             <Code label="javascript · from any website">{SCORE_JS}</Code>
             <Code label="response (shortened)">{SCORE_RESPONSE}</Code>
             <ul className="mt-4 list-disc space-y-1.5 pl-5">

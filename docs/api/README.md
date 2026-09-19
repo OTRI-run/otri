@@ -8,7 +8,7 @@ Three calls need no account, no key and no approval, answer any origin (CORS `*`
 
 | Call | Purpose | Limit |
 | --- | --- | --- |
-| `POST /score` | A results file validated and scored against a course (GPX, or official distance and climb). JSON, or `?format=csv`. Nothing stored. | 10 a minute per address |
+| `POST /score` | A results file validated and scored against a course file (GPX, required). JSON, or `?format=csv`. Nothing stored. | 10 a minute per address |
 | `POST /gpx/analyze` | One course measured and, with `finish_time_seconds`, one time scored with its full breakdown. | 60 a minute per address |
 | `GET /scoring/models` | The scoring versions available; pass one to `/score` to pin it. | |
 

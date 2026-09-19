@@ -72,7 +72,6 @@ from .auth import (
 )
 from . import email as _email
 from .calendar_feed import CalendarEvent, CalendarRace, build_calendar
-from .event_match import name_key, same_edition
 from . import server_stats as _server
 from .email import send_password_reset_email, send_verification_email
 from .rate_limit import AccountLocked, check_account_lock, clear_login_failures, enforce_rate_limit, record_login_failure
@@ -101,16 +100,8 @@ from .schemas import (
     MeResponse,
     SharedCourseOut,
     EmailVerificationRequest,
-    EventAssign,
-    EventClaim,
     EventCreate,
-    EventMatch,
     EventDetail,
-    ListingCreate,
-    ListingImportResult,
-    RaceListingUpdate,
-    ScoreRequestIn,
-    ScoreRequestOut,
     EventSummary,
     EventUpdate,
     ScoredCourse,
@@ -727,9 +718,7 @@ def _listing_status(race: db.Race) -> str:
     return "upcoming" if race.event_date and race.event_date > date.today() else "awaiting_results"
 
 
-def _race_summary(race: db.Race, finisher_count: int | None = None, request_count: int | None = None) -> RaceSummary:
-    if request_count is None:
-        request_count = db.count_score_requests_by_race().get(race.race_id, 0) if race.listed_at is not None else 0
+def _race_summary(race: db.Race, finisher_count: int | None = None) -> RaceSummary:
     return RaceSummary(
         race_id=race.race_id,
         event_id=race.event_id,
@@ -754,10 +743,6 @@ def _race_summary(race: db.Race, finisher_count: int | None = None, request_coun
         is_vertical=is_vertical(race.distance_km, race.elevation_gain_m, race.elevation_loss_m),
         listing_status=_listing_status(race),
         is_listed=race.listed_at is not None,
-        is_claimed=race.organizer_id is not None,
-        request_count=request_count,
-        official_url=race.event_website,
-        course_permission=race.course_permission,
     )
 
 
@@ -809,47 +794,6 @@ def list_events(mine: bool = False, organizer: Organizer | None = Depends(_optio
     ]
 
 
-def _open_claim(event_id: str, email: str) -> db.Report | None:
-    """This organizer's open claim on an event, if they have filed one from their account."""
-    return next(
-        (r for r in db.list_reports("open") if r.kind == "claim" and r.reporter_email == email and (r.payload or {}).get("event_id") == event_id),
-        None,
-    )
-
-
-@app.get("/events/matches", response_model=list[EventMatch])
-def matching_events(name: str, event_date: date, organizer: Organizer = Depends(require_organizer)) -> list[EventMatch]:
-    """Events already on OTRI that look like the one this organizer is about to create: public
-    listings nobody owns (to claim instead of duplicating) and their own events. Asked by the
-    create-event form; a suggestion only, the organizer may still create a new event."""
-    requests = db.count_score_requests_by_race()
-    matches = []
-    for event in db.list_events():
-        if event.organizer_id not in (None, organizer.id) or not same_edition(name, event_date, event.event_name, event.event_date):
-            continue
-        races = db.list_races_for_event(event.event_id)
-        is_yours = event.organizer_id == organizer.id
-        if not is_yours:
-            races = [race for race in races if race.published_at is not None or race.listed_at is not None]
-            if not races:
-                continue
-        matches.append(
-            EventMatch(
-                event_id=event.event_id,
-                event_name=event.event_name,
-                event_date=event.event_date,
-                location=event.location,
-                country=event.country,
-                website=event.website,
-                courses=[race.course_name for race in races],
-                request_count=sum(requests.get(race.race_id, 0) for race in races),
-                is_yours=is_yours,
-                claim_pending=not is_yours and _open_claim(event.event_id, organizer.email) is not None,
-            )
-        )
-    return matches
-
-
 @app.get("/events/{event_id}", response_model=EventDetail)
 def get_event(event_id: str) -> EventDetail:
     event = db.find_event(event_id)
@@ -857,7 +801,6 @@ def get_event(event_id: str) -> EventDetail:
         raise HTTPException(status_code=404, detail=f"event {event_id!r} not found")
     races = db.list_races_for_event(event_id)
     counts = db.count_results_by_race()
-    requests = db.count_score_requests_by_race()
     return EventDetail(
         event_id=event.event_id,
         event_name=event.event_name,
@@ -865,7 +808,7 @@ def get_event(event_id: str) -> EventDetail:
         race_count=len(races),
         location=event.location,
         country=event.country,
-        races=[_race_summary(race, counts.get(race.race_id, 0), requests.get(race.race_id, 0)) for race in races],
+        races=[_race_summary(race, counts.get(race.race_id, 0)) for race in races],
     )
 
 
@@ -873,7 +816,6 @@ def get_event(event_id: str) -> EventDetail:
 def admin_list_events(organizer: Organizer = Depends(require_admin)) -> list[AdminEventOut]:
     """Every event on the platform with its owner and each race's publish state. Admin only."""
     counts = db.count_results_by_race()
-    requests = db.count_score_requests_by_race()
     # One query for every race, not one per event: the list runs to thousands once listings are imported.
     races_by_event: dict[str, list[db.Race]] = {}
     for race in db.list_races():
@@ -890,10 +832,8 @@ def admin_list_events(organizer: Organizer = Depends(require_admin)) -> list[Adm
                 location=event.location,
                 country=event.country,
                 organizer_email=event.organizer_email,
-                website=event.website,
-                source_url=event.source_url,
                 published_count=sum(1 for race in races if race.published_at is not None),
-                races=[_race_summary(race, counts.get(race.race_id, 0), requests.get(race.race_id, 0)) for race in races],
+                races=[_race_summary(race, counts.get(race.race_id, 0)) for race in races],
             )
         )
     out.sort(key=lambda e: e.event_date, reverse=True)
@@ -957,8 +897,7 @@ def list_races(all: bool = False, organizer: Organizer | None = Depends(_optiona
         if organizer is None or not organizer.is_admin:
             raise HTTPException(status_code=403, detail="admin access required")
     counts = db.count_results_by_race()
-    requests = db.count_score_requests_by_race()
-    return [_race_summary(race, counts.get(race.race_id, 0), requests.get(race.race_id, 0)) for race in db.list_races(published_only=not all)]
+    return [_race_summary(race, counts.get(race.race_id, 0)) for race in db.list_races(published_only=not all)]
 
 
 @app.get("/races/{race_id}", response_model=RaceSummary)
@@ -993,161 +932,19 @@ def unpublish_race(race_id: str, organizer: Organizer = Depends(require_organize
 
 # --- Listings -----------------------------------------------------------------------
 #
-# A listing is a race shown publicly before anyone has uploaded results: the facts (name, date,
-# place, distance, climb, official site), the course when OTRI may show it, and a count of runners
-# who asked for scores. Admins add unclaimed listings; an organizer can list their own race ahead
-# of race day. Results stay behind publishing. See docs/product/race-listings.md.
-
-
-def _clean_url(value: str | None) -> str | None:
-    url = (value or "").strip()[:500]
-    if not url:
-        return None
-    if not re.match(r"^https?://[^\s]+$", url):
-        raise HTTPException(status_code=422, detail=f"{url!r} is not an http(s) link")
-    return url
-
-
-def _validate_listing(payload: ListingCreate) -> tuple[str, str | None, str | None, str | None]:
-    """The cleaned name, country, website and source of a listing's facts; 422 when they are not usable."""
-    name = payload.event_name.strip()
-    if not name:
-        raise HTTPException(status_code=422, detail="event_name is required")
-    country, website, source_url = _clean_country(payload.country), _clean_url(payload.website), _clean_url(payload.source_url)
-    for race in payload.races:
-        if not race.course_name.strip() or not 0 < race.distance_km <= 2000 or not 0 <= race.elevation_gain_m <= 100_000:
-            raise HTTPException(status_code=422, detail=f"{name}: each race needs a course_name, distance_km > 0 and elevation_gain_m >= 0")
-    return name, country, website, source_url
-
-
-def _create_listings(payloads: list[ListingCreate], skipped: list[str]) -> tuple[int, int]:
-    """Create the events (or reuse one with the same name and date) and their missing races, listed.
-    Everything already on OTRI is read once and the new rows go in as one transaction, so a CSV of
-    a few thousand races is a matter of seconds. The same name means the same ``name_key``: the year,
-    accents and punctuation do not make a second event."""
-    events = {}
-    for event in db.list_events():
-        events.setdefault((name_key(event.event_name), event.event_date), event.event_id)
-    have: dict[str, set[str]] = {}
-    for race in db.list_races():
-        have.setdefault(race.event_id, set()).add(race.course_name.strip().lower())
-
-    new_events, new_races = [], []
-    for payload in payloads:
-        name, country, website, source_url = _validate_listing(payload)
-        key = (name_key(name), payload.event_date)
-        event_id = events.get(key)
-        if event_id is None:
-            event_id = events[key] = db.new_listing_id("evt")
-            new_events.append((event_id, name, payload.event_date, (payload.location or "").strip() or None, country, website, source_url))
-        courses = have.setdefault(event_id, set())
-        for race in payload.races:
-            course = race.course_name.strip()
-            if course.lower() in courses:
-                skipped.append(f"{name} · {course}: already on OTRI")
-                continue
-            courses.add(course.lower())
-            new_races.append((db.new_listing_id("race"), event_id, course, race.distance_km, race.elevation_gain_m))
-    db.insert_listings(new_events, new_races)
-    return len(new_events), len(new_races)
-
-
-def _create_listing(payload: ListingCreate, skipped: list[str]) -> tuple[int, int]:
-    return _create_listings([payload], skipped)
-
-
-@app.post("/admin/listings", response_model=ListingImportResult, status_code=201)
-def admin_create_listing(payload: ListingCreate, organizer: Organizer = Depends(require_admin)) -> ListingImportResult:
-    skipped: list[str] = []
-    events, races = _create_listing(payload, skipped)
-    return ListingImportResult(created_events=events, created_races=races, skipped=skipped)
-
-
-_LISTING_CSV_COLUMNS = ("event_name", "event_date", "location", "country", "website", "source_url", "course_name", "distance_km", "elevation_gain_m")
-# The proxy takes 20 MB; a calendar of 100 000 races is about 15.
-_LISTING_CSV_MAX_BYTES = 19_000_000
-_LISTING_CSV_MAX_ROWS = 250_000
-# Races added by one import. More than this is a catalogue, not a calendar: narrow the dates.
-_LISTING_IMPORT_MAX_RACES = 10_000
-_LISTING_SKIPPED_SHOWN = 100
-
-
-@app.post("/admin/listings/import", response_model=ListingImportResult)
-async def admin_import_listings(file: UploadFile, since: date | None = None, organizer: Organizer = Depends(require_admin)) -> ListingImportResult:
-    """Bulk-add listings from a CSV of race facts: one row per race distance, rows of the same
-    event (name and date) grouped. ``since`` leaves out every race before that day, so a file with
-    years of history can be imported for this season only. A bad row is skipped with its reason;
-    the rest are imported."""
-    import csv
-    import io
-
-    contents = await file.read(_LISTING_CSV_MAX_BYTES + 1)
-    if len(contents) > _LISTING_CSV_MAX_BYTES:
-        raise HTTPException(status_code=413, detail="Upload exceeds 19 MB; split the file")
-    try:
-        reader = csv.DictReader(io.StringIO(contents.decode("utf-8-sig")))
-    except UnicodeError as error:
-        raise HTTPException(status_code=422, detail="the file is not UTF-8 text") from error
-    missing = [column for column in ("event_name", "event_date", "course_name", "distance_km") if column not in (reader.fieldnames or [])]
-    if missing:
-        raise HTTPException(status_code=422, detail=f"missing column(s) {missing}; expected {list(_LISTING_CSV_COLUMNS)}")
-
-    def parse(rows) -> tuple[list[ListingCreate], list[str], int]:
-        grouped: dict[tuple[str, date], dict] = {}
-        skipped: list[str] = []
-        before = kept = 0
-        for line, row in enumerate(rows, start=2):
-            if line > _LISTING_CSV_MAX_ROWS + 1:
-                skipped.append(f"rows after the {_LISTING_CSV_MAX_ROWS}th were ignored")
-                break
-            row = {key: (value or "").strip() for key, value in row.items() if key}
-            try:
-                event_date = date.fromisoformat(row["event_date"])
-                race = {"course_name": row["course_name"], "distance_km": float(row["distance_km"]), "elevation_gain_m": float(row.get("elevation_gain_m") or 0)}
-            except ValueError:
-                skipped.append(f"line {line}: event_date must be YYYY-MM-DD and distance_km / elevation_gain_m numbers")
-                continue
-            if since is not None and event_date < since:
-                before += 1
-                continue
-            if kept >= _LISTING_IMPORT_MAX_RACES:
-                skipped.append(f"more than {_LISTING_IMPORT_MAX_RACES} races; the rest were ignored, import a shorter period")
-                break
-            kept += 1
-            entry = grouped.setdefault((name_key(row["event_name"]), event_date), {**{k: row.get(k) or None for k in ("event_name", "location", "country", "website", "source_url")}, "event_date": event_date, "races": [], "line": line})
-            entry["races"].append(race)
-
-        payloads = []
-        for entry in grouped.values():
-            line = entry.pop("line")
-            try:
-                payload = ListingCreate(**entry)
-                _validate_listing(payload)
-            except (HTTPException, ValueError) as error:
-                skipped.append(f"line {line}: {getattr(error, 'detail', error)}")
-                continue
-            payloads.append(payload)
-        return payloads, skipped, before
-
-    def run() -> ListingImportResult:
-        payloads, skipped, before = parse(reader)
-        events, races = _create_listings(payloads, skipped)
-        if len(skipped) > _LISTING_SKIPPED_SHOWN:
-            skipped = skipped[:_LISTING_SKIPPED_SHOWN] + [f"… and {len(skipped) - _LISTING_SKIPPED_SHOWN} more"]
-        return ListingImportResult(created_events=events, created_races=races, skipped=skipped, before_since=before)
-
-    return await run_in_threadpool(run)
+# An organizer can show their own race publicly before it has results: the facts and the course, so
+# runners can try a target time on it (and the embedded calculator can open it). Results stay
+# behind publishing. OTRI lists no race on anyone's behalf: see docs/product/open-scoring-tool.md.
 
 
 @app.post("/races/{race_id}/listing", response_model=RaceSummary)
-def list_race(race_id: str, payload: RaceListingUpdate | None = None, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
+def list_race(race_id: str, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
     """Show this race publicly before it has results. Owner or admin."""
     race = db.find_race(race_id)
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
-    permission = ((payload.course_permission if payload else None) or "").strip()[:500] or None
-    return _race_summary(db.set_race_listed(race_id, True, permission), db.count_results_by_race().get(race_id, 0))
+    return _race_summary(db.set_race_listed(race_id, True), db.count_results_by_race().get(race_id, 0))
 
 
 @app.delete("/races/{race_id}/listing", response_model=RaceSummary)
@@ -1157,74 +954,6 @@ def unlist_race(race_id: str, organizer: Organizer = Depends(require_organizer))
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
     return _race_summary(db.set_race_listed(race_id, False), db.count_results_by_race().get(race_id, 0))
-
-
-@app.post("/admin/events/{event_id}/assign", response_model=AdminEventOut)
-def admin_assign_event(event_id: str, payload: EventAssign, organizer: Organizer = Depends(require_admin)) -> AdminEventOut:
-    """Hand a claimed listing to its organizer's account (or release it with no email)."""
-    email = (payload.organizer_email or "").strip().lower()
-    organizer_id = None
-    if email:
-        organizer_id = db.find_organizer_id(email)
-        if organizer_id is None:
-            raise HTTPException(status_code=404, detail="no organizer account with that email; they need to sign up first")
-    try:
-        event = db.assign_event(event_id, organizer_id)
-    except db.NotFoundError as error:
-        raise HTTPException(status_code=404, detail=str(error)) from error
-    races = db.list_races_for_event(event_id)
-    counts = db.count_results_by_race()
-    return AdminEventOut(
-        event_id=event.event_id, event_name=event.event_name, event_date=event.event_date, race_count=len(races), location=event.location,
-        country=event.country, organizer_email=event.organizer_email, website=event.website, source_url=event.source_url,
-        published_count=sum(1 for race in races if race.published_at is not None),
-        races=[_race_summary(race, counts.get(race.race_id, 0)) for race in races],
-    )
-
-
-@app.post("/events/{event_id}/claim", response_model=MessageResponse, status_code=201)
-def claim_event(event_id: str, request: Request, payload: EventClaim | None = None, organizer: Organizer = Depends(require_organizer)) -> MessageResponse:
-    """An organizer asking for an unclaimed listing instead of creating the same event again. It is
-    a claim report like the public form's, but from a verified account, so an admin can hand the
-    event over in one step. Nothing changes hands until they do."""
-    enforce_rate_limit(request, max_requests=5)
-    event = db.find_event(event_id)
-    if event is None:
-        raise HTTPException(status_code=404, detail=f"event {event_id!r} not found")
-    if event.organizer_id == organizer.id:
-        raise HTTPException(status_code=409, detail="this event is already in your account")
-    if event.organizer_id is not None:
-        raise HTTPException(status_code=409, detail="this event already has an organizer; write to us if that is wrong")
-    if _open_claim(event_id, organizer.email) is None:
-        races = db.list_races_for_event(event_id)
-        note = ((payload.message if payload else None) or "").strip()
-        report = db.create_report(
-            kind="claim",
-            subject_id=races[0].race_id if races else event_id,
-            subject_label=event.event_name,
-            reason=None,
-            message=f"{organizer.email} asked from their organizer account to manage this event. {note}".strip(),
-            reporter_email=organizer.email,
-            page_url=None,
-            payload={"event_id": event_id},
-        )
-        for admin_email in sorted(_ADMIN_EMAILS):
-            _email.send_report_email(admin_email, report.kind, report.subject_label or report.subject_id, report.message, report.page_url)
-    return MessageResponse(message="Claim sent. We check it and move the event into your account, usually within a few days.")
-
-
-@app.post("/admin/reports/{report_id}/create-listing", response_model=ListingImportResult)
-def admin_create_listing_from_report(report_id: int, organizer: Organizer = Depends(require_admin)) -> ListingImportResult:
-    """Turn a runner's race suggestion into a public listing and close the report."""
-    report = next((r for r in db.list_reports(None) if r.id == report_id), None)
-    if report is None:
-        raise HTTPException(status_code=404, detail="no report with that id")
-    if report.kind != "suggestion" or not report.payload:
-        raise HTTPException(status_code=422, detail="that report is not a race suggestion")
-    skipped: list[str] = []
-    events, races = _create_listing(ListingCreate(**report.payload), skipped)
-    db.resolve_report(report_id, resolved_by=organizer.email, resolution=f"listed: {races} race(s) in {events} new event(s)")
-    return ListingImportResult(created_events=events, created_races=races, skipped=skipped)
 
 
 # --- Calendar -----------------------------------------------------------------------
@@ -1258,28 +987,6 @@ def race_calendar(event: str | None = None, country: str | None = None) -> Respo
         media_type="text/calendar; charset=utf-8",
         headers={"Content-Disposition": f'inline; filename="{filename}"', "Cache-Control": "public, max-age=3600"},
     )
-
-
-# One visitor, one request per race. The key is a salted hash of the address plus the browser's
-# own random id, so runners behind one shared mobile address still count separately; the cap per
-# address keeps a script from inflating a race. Nothing personal is stored.
-_SCORE_REQUESTS_PER_ADDRESS = 25
-
-
-@app.post("/races/{race_id}/score-requests", response_model=ScoreRequestOut)
-def request_scores(race_id: str, request: Request, payload: ScoreRequestIn | None = None) -> ScoreRequestOut:
-    enforce_rate_limit(request, max_requests=10)
-    race = db.find_race(race_id)
-    if race is None or race.listed_at is None:
-        raise HTTPException(status_code=404, detail="no listed race with that id")
-    if race.published_at is not None:
-        raise HTTPException(status_code=409, detail="this race already has scores")
-    address = sha256(f"{_auth.JWT_SECRET}:{race_id}:{request.client.host if request.client else 'unknown'}".encode()).hexdigest()[:24]
-    client = sha256(((payload.client_id if payload else None) or "").encode()).hexdigest()[:16]
-    counted = False
-    if db.count_score_requests_for_address(race_id, address) < _SCORE_REQUESTS_PER_ADDRESS:
-        counted = db.add_score_request(race_id, f"{address}:{client}")
-    return ScoreRequestOut(request_count=db.count_score_requests_by_race().get(race_id, 0), counted=counted)
 
 
 @app.post("/events/{event_id}/races", response_model=RaceSummary, status_code=201)
@@ -1429,7 +1136,7 @@ def _measure_gpx_path(path):
 
 @app.post("/races/{race_id}/gpx", response_model=RaceSummary)
 async def attach_race_gpx(
-    race_id: str, file: UploadFile, course_permission: str | None = Form(default=None), organizer: Organizer = Depends(require_organizer)
+    race_id: str, file: UploadFile, organizer: Organizer = Depends(require_organizer)
 ) -> RaceSummary:
     """Attach (or replace) a GPX file for a race distance. Recomputes distance_km/elevation_gain_m
     from the real parsed course data — the GPX becomes the authoritative source once attached."""
@@ -1437,9 +1144,6 @@ async def attach_race_gpx(
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
-    # Nobody who owns this course has uploaded it. The basis on which OTRI shows the file (its licence,
-    # the organizer's consent) is recorded when the admin gives one; it is not required to upload.
-    permission = (course_permission or "").strip()[:500] or race.course_permission
 
     suffix = _safe_suffix(file.filename, ".gpx")
     contents = await file.read(20_000_001)
@@ -1457,8 +1161,6 @@ async def attach_race_gpx(
     finally:
         _discard_temp(temp_path)
 
-    if race.organizer_id is None and permission:
-        db.set_race_listed(race_id, race.listed_at is not None, permission)
     # Stored and served: positions and elevations only (course/sanitize.py). What the upload said about
     # its origin stays with the race's private record; raw_sha256 still identifies the original file.
     stored = sanitized_gpx(points, name=f"{race.event_name or ''} {race.course_name}".strip())
@@ -1843,47 +1545,38 @@ def _save_upload(contents: bytes, suffix: str) -> Path:
 async def score_a_race(
     request: Request,
     results: UploadFile,
-    gpx: UploadFile | None = None,
-    distance_km: float | None = Form(default=None),
-    elevation_gain_m: float | None = Form(default=None),
+    gpx: UploadFile,
     race_name: str | None = Form(default=None, max_length=200),
     scoring_version: str | None = Form(default=None, max_length=80),
     format: str = "json",
 ):
     """Validate a results file and score it against a course, without an account and without
-    keeping anything. The course is a GPX file (`gpx`, measured like any OTRI course) or, without
-    one, the official `distance_km` and `elevation_gain_m`. `?format=csv` returns the scored list as
-    a CSV download. An invalid results file answers 200 with `is_valid: false` and the issues."""
+    keeping anything. The course is a GPX file (`gpx`), measured like any OTRI course: a score
+    rests on where the climbing is, which a distance and a climb figure cannot say, so there is no
+    scoring from official figures here. `?format=csv` returns the scored list as a CSV download.
+    An invalid results file answers 200 with `is_valid: false` and the issues."""
     enforce_rate_limit(request, max_requests=10)  # public, and a full course measurement plus thousands of rows
     if format not in ("json", "csv"):
         raise HTTPException(status_code=422, detail="format must be json or csv")
     version = scoring_version or DEFAULT_SCORING_VERSION
     _validate_scoring_version(version)
-    if gpx is None and (distance_km is None or elevation_gain_m is None):
-        raise HTTPException(status_code=422, detail="send the course as a gpx file, or distance_km and elevation_gain_m")
-    if gpx is None and (not 0 < distance_km <= 2000 or not 0 <= elevation_gain_m <= 100_000):
-        raise HTTPException(status_code=422, detail="distance_km must be above 0 and elevation_gain_m 0 or more")
 
     results_bytes = await results.read(20_000_001)
-    gpx_bytes = await gpx.read(20_000_001) if gpx is not None else None
-    if len(results_bytes) + len(gpx_bytes or b"") > 20_000_000:
+    gpx_bytes = await gpx.read(20_000_001)
+    if len(results_bytes) + len(gpx_bytes) > 20_000_000:
         raise HTTPException(status_code=413, detail="Upload exceeds 20 MB")
 
     def run() -> ScoreRaceResult:
         paths = [_save_upload(results_bytes, _safe_suffix(results.filename, ".csv"))]
         try:
-            points = measurement = None
-            if gpx_bytes is not None:
-                paths.append(_save_upload(gpx_bytes, _safe_suffix(gpx.filename, ".gpx")))
-                try:
-                    points, measurement = _measure_gpx_path(paths[1])
-                except (GpxParseError, ValueError, UnicodeError) as error:
-                    raise HTTPException(status_code=422, detail=f"course file: {error}") from error
-                features = features_from_measurement(measurement)
-                distance, climb = features.distance_km, features.elevation_gain_m
-            else:
-                distance, climb = distance_km, elevation_gain_m
-            course = ScoredCourse(name=(race_name or "").strip() or None, source="gpx" if points is not None else "official", distance_km=round(distance, 3), elevation_gain_m=round(climb, 1))
+            paths.append(_save_upload(gpx_bytes, _safe_suffix(gpx.filename, ".gpx")))
+            try:
+                points, measurement = _measure_gpx_path(paths[1])
+            except (GpxParseError, ValueError, UnicodeError) as error:
+                raise HTTPException(status_code=422, detail=f"course file: {error}") from error
+            features = features_from_measurement(measurement)
+            distance, climb = features.distance_km, features.elevation_gain_m
+            course = ScoredCourse(name=(race_name or "").strip() or None, distance_km=round(distance, 3), elevation_gain_m=round(climb, 1))
 
             try:
                 report = validate_result_file(paths[0])
@@ -1893,7 +1586,7 @@ async def score_a_race(
                 "errors": [ValidationIssueOut(**issue.to_dict()) for issue in report.errors],
                 "warnings": [ValidationIssueOut(**issue.to_dict()) for issue in report.warnings],
             }
-            shared = {"scoring_version": version, "course": course, "measurement": measurement.to_dict() if measurement is not None else None}
+            shared = {"scoring_version": version, "course": course, "measurement": measurement.to_dict()}
             if not report.is_valid:
                 return ScoreRaceResult(is_valid=False, scores=[], **issues, **shared)
 
@@ -2234,7 +1927,7 @@ async def admin_server(request: Request, organizer: Organizer = Depends(require_
 # the dashboard next to the actions that resolve them (unpublish, delete race, delete runner data,
 # delete a shared course) and mark them resolved.
 
-_REPORT_KINDS = {"runner", "race", "shared_course", "claim", "suggestion", "other"}
+_REPORT_KINDS = {"runner", "race", "shared_course", "other"}
 _REPORT_REASONS = {"not_me", "wrong_result", "remove_my_data", "wrong_course", "other"}
 
 
@@ -2254,14 +1947,6 @@ def create_report(payload: ReportCreate, request: Request) -> ReportOut:
     if email and ("@" not in email or len(email) > 254):
         raise HTTPException(status_code=422, detail="that does not look like an email address")
     reason = payload.reason if payload.reason in _REPORT_REASONS else None
-    listing = None
-    if payload.kind == "suggestion":
-        # A runner proposing a race for the calendar: facts only, checked like an admin's listing, and
-        # nothing is public until an admin has looked at it.
-        if payload.listing is None:
-            raise HTTPException(status_code=422, detail="a suggestion needs the race's facts")
-        _validate_listing(payload.listing)
-        listing = payload.listing.model_dump(mode="json")
     report = db.create_report(
         kind=payload.kind,
         subject_id=payload.subject_id.strip()[:120],
@@ -2270,7 +1955,6 @@ def create_report(payload: ReportCreate, request: Request) -> ReportOut:
         message=message,
         reporter_email=email,
         page_url=(payload.page_url or "").strip()[:500] or None,
-        payload=listing,
     )
     for admin_email in sorted(_ADMIN_EMAILS):
         _email.send_report_email(admin_email, report.kind, report.subject_label or report.subject_id, message, report.page_url)

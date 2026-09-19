@@ -1,7 +1,7 @@
 import { ArrowUpRight, Mountain, TrendingUp } from 'lucide-react'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import Flag from '../src/components/Flag'
-import { ListingBadge, requestCountLabel } from './RaceListing'
+import { ListingBadge } from './RaceListing'
 
 export function DemoBadge({ className = '' }) {
   return (
@@ -59,7 +59,7 @@ export default function RaceCard({ race }) {
         {race.has_gpx && <span className="text-blue-600">VERIFIED COURSE</span>}
       </div>
       <div className="mt-4 flex items-center justify-between text-xs font-semibold text-blue-600">
-        <span>{race.is_published === false ? requestCountLabel(race.request_count) : `${race.finisher_count ?? 0} ${race.is_vertical ? 'finishers' : 'scored'}`}</span>
+        <span>{race.is_published === false ? (race.listing_status === 'upcoming' ? 'Upcoming' : 'Results to come') : `${race.finisher_count ?? 0} ${race.is_vertical ? 'finishers' : 'scored'}`}</span>
         <span className="text-slate-400 transition group-hover:text-blue-600">{race.is_published === false ? 'Course and details →' : 'Leaderboard →'}</span>
       </div>
     </a>

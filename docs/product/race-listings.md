@@ -1,80 +1,24 @@
 # Race listings
 
-**Status:** phase 1 built (listings, requests for scores, admin import, claim by report) and the calendar (view, add to calendar, subscribable feed, suggested races). A claim can be sent from the public listing or from the organizer app's create-event form; an admin still checks it. Notification emails are not built.
+**Status:** reduced on 2026-09-19. OTRI-compiled listings, requests for scores, claims and race suggestions were retired when OTRI became an open scoring tool rather than a catalogue ([open-scoring-tool.md](open-scoring-tool.md)). This page describes what is left.
 
-A listing is a race shown on the public races page before anyone has uploaded its results. It exists so runners can find their race, see that it is not scored yet, say they want scores, and nudge the organizer; and so OTRI can see which organizers are worth writing to first.
+## An organizer's own listing
 
-## What a listing may contain
+An organizer can show their own race publicly before it has results.
 
-| | source | rule |
-|---|---|---|
-| Race facts: name, date, place, country, distance, climb, official website | compiled by an admin, by hand or CSV | Facts, not a copied database. `source_url` records where they were checked. |
-| Course file (GPX) | the organizer once they claim the race; or a file under an explicit open licence; or the organizer's written yes | **Never** a file copied from a race website or route-sharing site because it was reachable ([`pre-race-score-calculator.md`](pre-race-score-calculator.md), [`DATA_POLICY.md`](../../DATA_POLICY.md)). That is the policy; the API does not enforce it. On an unclaimed listing `course_permission` is optional: when the admin gives one it is stored with the race and the public page says "course shown with permission", otherwise the page says "course file". Uploading a file without a basis is the admin's responsibility. |
-| Results | the organizer, through the normal upload and publish steps | Unchanged. A listing never shows results. |
+| | Path | Who | |
+| --- | --- | --- | --- |
+| POST | `/races/{id}/listing` | owner, admin | Show the race without results: the facts, and the course once attached. |
+| DELETE | `/races/{id}/listing` | owner, admin | Take it down. |
 
-A runner's own GPX still works in the calculator for their own estimate; it does not become the listing's course.
+`listed_at` makes the race facts, the course and its measurement public. `published_at` still gates results: a listed race with uploaded, unpublished results shows no results. `listing_status` on every race summary is `scored` once results are published, otherwise `upcoming` or `awaiting_results` by the date, or `private`.
 
-## States
-
-`RaceSummary.listing_status`:
-
-| status | meaning |
-|---|---|
-| `private` | not listed, not published: only the owner and admins see it |
-| `upcoming` | listed, no published results, event date in the future |
-| `awaiting_results` | listed, no published results, event date today or past |
-| `scored` | results published (listed or not) |
-
-`listed_at` makes the race facts, the course and its measurement public. `published_at` still gates results: a claimed listing with uploaded, unpublished results shows no results.
-
-## API
-
-| method | path | who | what |
-|---|---|---|---|
-| POST | `/admin/listings` | admin | One event with its race distances, unowned and listed. Re-posting the same event (name and date) adds only the distances that are missing. |
-| POST | `/admin/listings/import` | admin | The same from a CSV: `event_name,event_date,location,country,website,source_url,course_name,distance_km,elevation_gain_m`, one row per distance. Bad rows are skipped and reported; the rest are imported. `?since=YYYY-MM-DD` leaves out earlier races, so a file with years of history can be imported for this season only (the admin page fills in 1 January). Up to 19 MB and 10,000 races per import, written as one transaction; an event whose name differs only by the year, accents or punctuation is the same event. |
-| POST / DELETE | `/races/{id}/listing` | owner or admin | List a race ahead of its results, or take the listing down. Organizers can list their own upcoming race. |
-| POST | `/races/{id}/gpx` (`course_permission` form field) | owner or admin | Optional; recorded with a race that has no owner. |
-| POST | `/races/{id}/score-requests` | anyone | "I'd like scores". One per visitor: the key is a salted hash of the address plus the browser's random id, at most 25 per address per race, rate limited. Nothing personal is stored. 409 once the race is scored. |
-| POST | `/reports` with `kind: "claim"` | anyone | "I organize this race". Lands in the admin reports queue and is emailed to admins. |
-| GET | `/events/matches?name=&event_date=` | organizer | Events that look like the one being created: unclaimed public listings and the organizer's own. A loose name match within three days (`api/event_match.py`); a suggestion, never a merge. |
-| POST | `/events/{id}/claim` | organizer | The same claim from a verified account. The report names the event (`payload.event_id`), one open claim per account and event. 409 when the event has an owner. |
-| POST | `/admin/events/{id}/assign` | admin | Hand the event to an organizer account (after checking the claim, e.g. the email's domain against the race website), or release it. |
-
-`GET /races` returns scored races and listings; `request_count`, `is_listed`, `is_claimed` and `official_url` are on every summary.
+A listed race with a course is what the calculator opens from the race page ("Try a target time on this course") and what the embedded calculator's `?race=` takes.
 
 ## The calendar
 
-Listings with a date ahead make the races page a race calendar (`#races?view=calendar`; the view and every filter live in the address, so `#races?view=calendar&country=THA` is a link that can be shared).
+The races page has a Calendar view (`#races?view=calendar`) of upcoming listed races by month, each with "Add to calendar", and `GET /calendar.ics` is the same as a subscribable feed (`?country=`, `?event=`). Both show only races their organizers listed or published: OTRI adds none itself.
 
-- **View:** upcoming events by month, one row per event with its distances, a countdown, and the distances whose course is on OTRI highlighted: those open the calculator for a target time before race day. Search, distance and country filters apply; the status filter and sorting belong to the list view.
-- **Add to calendar:** every event, and the page of every upcoming race, has an `.ics` download (`GET /calendar.ics?event=<id>`) and a Google Calendar link. Entries are all-day: OTRI does not hold start times.
-- **Subscribe:** `GET /calendar.ics` is the feed of upcoming public events, optionally `?country=THA`. The page links it as `webcal://`, so a calendar app keeps re-reading it: a corrected date corrects itself, a new race appears. One entry per event; the description lists the distances and links back to the race page.
-- **Suggest a race:** a form on the calendar (name, date, place, country, official website, distances; facts only). It is a report of kind `suggestion` carrying the facts as `listing`, validated like an admin listing. Nothing is public until an admin has checked it against the race's website: Admin → Reports → **Create listing** (`POST /admin/reports/{id}/create-listing`) lists it and resolves the report.
+## Leftovers
 
-What this is for: a runner who comes for the calendar meets the calculator on the races they are planning, and asks for scores after race day; every suggestion is a race OTRI did not have to find.
-
-## Adding course files in bulk
-
-Admin → Events & races → Listings → **Choose GPX files** takes many files at once. Each is matched to a race without a course by its file name (event name plus distance, e.g. `doi-inthanon-trail-50k.gpx`; a year helps when an event is listed twice); the match is a guess shown in a dropdown, and nothing is sent until the admin presses Attach. One optional permission note can cover every file, or a row can carry its own. Files go one at a time through `POST /races/{id}/gpx`, because the server measures each course. A failed file says why and can be retried.
-
-## Claiming, today
-
-1. The organizer presses "I organize this race" on the listing and leaves an email.
-2. An admin checks the claim, asks them to create an organizer account if they have none, and assigns the event (Admin → Events & races → Assign to organizer).
-3. The race is now theirs: course, results, publish, as for any race. Corrections to the facts are theirs to make.
-
-An organizer who signs up without claiming would otherwise create the event again and put the race on the calendar twice, with the requests for scores left on the old entry. So the create-event form looks the name and date up as they are typed and offers the listing ("This is my race, claim it"), or points to the organizer's own event when they already have it. A claim sent this way shows **Hand over the event** in Admin → Reports: one step, after the same check. The organizer can still create a new event when the match is wrong.
-
-## Rules of conduct
-
-- OTRI does not email organizers in bulk. The "Ask your organizer" button gives the runner a message to send themselves; admins write personally to the organizers of the most asked-for races (Admin → Events & races → Most asked for).
-- An organizer who asks for a listing to be removed gets it removed (Admin → Unlist, or delete).
-- The races page sorts scored races first, so a catalogue of listings does not bury the races that have something to show.
-
-## Not built yet
-
-- "Tell me when it is scored": an optional email on a request, with consent text and a purge rule, and the email sent on publish.
-- Claims that need no admin (for example by proving control of the race's domain).
-- Merging two events that are already duplicated; today an admin deletes one.
-- Listings on runner profiles or the home page.
+Rows created by the retired OTRI-compiled listings (events with no owner) stay in the database and are never public (`db.list_races`). An admin deletes them under Admin → Events & races. The columns `events.website`, `events.source_url`, `races.course_permission` and the table `score_requests` are no longer written or read.

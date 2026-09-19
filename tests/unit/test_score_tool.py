@@ -12,11 +12,11 @@ from test_api import DEMO_RESULT_001, SINGLE_CLIMB_GPX, client
 pytestmark = pytest.mark.usefixtures("clean_state")
 
 
-def _files(gpx=True, results=DEMO_RESULT_001):
-    files = {"results": (results.name, results.read_bytes(), "text/csv")}
-    if gpx:
-        files["gpx"] = (SINGLE_CLIMB_GPX.name, SINGLE_CLIMB_GPX.read_bytes(), "application/gpx+xml")
-    return files
+def _files(results=DEMO_RESULT_001):
+    return {
+        "results": (results.name, results.read_bytes(), "text/csv"),
+        "gpx": (SINGLE_CLIMB_GPX.name, SINGLE_CLIMB_GPX.read_bytes(), "application/gpx+xml"),
+    }
 
 
 def test_a_course_file_and_a_results_file_come_back_scored_and_nothing_is_stored():
@@ -36,28 +36,23 @@ def test_a_course_file_and_a_results_file_come_back_scored_and_nothing_is_stored
     assert (len(db.list_events()), len(db.list_races()), len(db.list_runners()) if hasattr(db, "list_runners") else 0) == before
 
 
-def test_official_figures_stand_in_for_a_course_file():
-    response = client.post("/score", files=_files(gpx=False), data={"distance_km": "50", "elevation_gain_m": "2600"})
-    assert response.status_code == 200, response.text
-    body = response.json()
-    assert body["course"] == {**body["course"], "source": "official", "distance_km": 50.0, "elevation_gain_m": 2600.0, "confidence": "Low"}
-    assert body["measurement"] is None and body["summary"]["finishers"] > 0
-
-    assert client.post("/score", files=_files(gpx=False)).status_code == 422
-    assert client.post("/score", files=_files(gpx=False), data={"distance_km": "0", "elevation_gain_m": "10"}).status_code == 422
-    assert client.post("/score", files=_files(gpx=False), data={"distance_km": "50", "elevation_gain_m": "2600", "scoring_version": "no-such-model"}).status_code == 422
+def test_a_course_file_is_required_and_official_figures_are_not_scored():
+    only_results = {"results": _files()["results"]}
+    assert client.post("/score", files=only_results).status_code == 422
+    assert client.post("/score", files=only_results, data={"distance_km": "50", "elevation_gain_m": "2600"}).status_code == 422
+    assert client.post("/score", files=_files(), data={"scoring_version": "no-such-model"}).status_code == 422
 
 
 def test_an_invalid_results_file_answers_with_its_issues_and_no_scores(tmp_path):
     bad = tmp_path / "bad.csv"
     bad.write_text("rank,finish_time,family_name,first_name,gender\n1,05:00:00,A,B,M\n1,04:00:00,C,D,F\n", encoding="utf-8")
-    body = client.post("/score", files=_files(gpx=False, results=bad), data={"distance_km": "50", "elevation_gain_m": "2600"}).json()
+    body = client.post("/score", files=_files(results=bad)).json()
     assert body["is_valid"] is False and body["scores"] == [] and body["errors"]
     assert all({"severity", "row", "field", "message"} <= issue.keys() for issue in body["errors"])
 
     notes = tmp_path / "notes.txt"
     notes.write_text("not a results file", encoding="utf-8")
-    assert client.post("/score", files=_files(gpx=False, results=notes), data={"distance_km": "50", "elevation_gain_m": "2600"}).status_code == 422
+    assert client.post("/score", files=_files(results=notes)).status_code == 422
     broken = {"results": _files()["results"], "gpx": ("course.gpx", b"<gpx>not a course", "application/gpx+xml")}
     assert client.post("/score", files=broken).status_code == 422
 
@@ -65,21 +60,21 @@ def test_an_invalid_results_file_answers_with_its_issues_and_no_scores(tmp_path)
 def test_the_scored_list_downloads_as_a_csv_that_a_spreadsheet_will_not_execute(tmp_path):
     hostile = tmp_path / "r.csv"
     hostile.write_text('rank,finish_time,family_name,first_name,gender\n1,04:00:00,"=HYPERLINK(""http://x"")",Ann,F\n2,05:00:00,Lee,Bo,M\nDNF,,Ray,Cy,M\n', encoding="utf-8")
-    response = client.post("/score?format=csv", files=_files(gpx=False, results=hostile), data={"distance_km": "50", "elevation_gain_m": "2600"})
+    response = client.post("/score?format=csv", files=_files(results=hostile))
     assert response.status_code == 200 and response.headers["content-type"].startswith("text/csv")
     assert "attachment" in response.headers["content-disposition"]
     rows = list(csv.DictReader(io.StringIO(response.text)))
     assert [row["rank"] for row in rows] == ["1", "2", "DNF"]
     assert rows[0]["family_name"].startswith("'=") and rows[0]["finish_time"] == "04:00:00" and int(rows[0]["otri_score"]) > int(rows[1]["otri_score"])
     assert rows[2]["otri_score"] == "" and rows[2]["status"] == "DNF"
-    assert client.post("/score?format=xml", files=_files(gpx=False), data={"distance_km": "50", "elevation_gain_m": "2600"}).status_code == 422
+    assert client.post("/score?format=xml", files=_files()).status_code == 422
 
 
 def test_any_website_may_call_the_tool_endpoints_but_not_the_rest():
     elsewhere = {"Origin": "https://timing.example"}
     preflight = client.options("/score", headers={**elsewhere, "Access-Control-Request-Method": "POST"})
     assert preflight.status_code == 204 and preflight.headers["access-control-allow-origin"] == "*"
-    scored = client.post("/score", files=_files(gpx=False), data={"distance_km": "50", "elevation_gain_m": "2600"}, headers=elsewhere)
+    scored = client.post("/score", files=_files(), headers=elsewhere)
     assert scored.headers["access-control-allow-origin"] == "*" and "access-control-allow-credentials" not in scored.headers
     assert client.get("/scoring/models", headers=elsewhere).headers["access-control-allow-origin"] == "*"
     # Everything with a session behind it stays closed to other origins ...
