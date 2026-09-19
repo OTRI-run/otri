@@ -7,6 +7,7 @@ import NextSteps from './NextSteps'
 import ReportForm from './ReportForm'
 import { modelLabel, modelShort } from '../src/lib/model'
 import { RACE_NAMES } from '../src/lib/raceNames'
+import { knownButNotHere, matchRank } from '../src/lib/suggest'
 import { distanceUnit, formatDistance, formatElevation, formatPace as formatPaceUnits, formatRate, kmToUnit, useUnits } from '../src/lib/units'
 
 // Published anchor tables, shown for context in the "why this score" breakdown. The actual
@@ -575,34 +576,6 @@ function ShareBox({ courseLabel, courseFile, targetSeconds, shareId, onShared, i
 
 // ----------------------------------------------------------------------------- course picker
 
-// "eiger ultra", "Tor des Geants" and "geants tor" all find their race: accents, punctuation, case
-// and word order are ignored, and every typed word must be found in the name.
-function normalise(text) {
-  return String(text ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
-}
-
-function matchRank(name, query) {
-  const words = normalise(query).split(' ').filter(Boolean)
-  const target = normalise(name)
-  if (words.length === 0 || !words.every((word) => target.includes(word))) return -1
-  const parts = target.split(' ')
-  // Best: the name starts with what was typed; then: every typed word starts a word of the name.
-  if (target.startsWith(words.join(' '))) return 0
-  return words.every((word) => parts.some((part) => part.startsWith(word))) ? 1 : 2
-}
-
-// Well-known races that match what was typed and have no course on OTRI: shown so the visitor
-// learns at once that the course is not here, and what to do about it, instead of an empty list.
-function knownRacesWithoutCourse(query, allRaces) {
-  if (normalise(query).length < 2) return []
-  const here = allRaces.map((race) => normalise(race.event_name))
-  return RACE_NAMES.map((name) => [name, matchRank(name, query)])
-    .filter(([name, rank]) => rank >= 0 && !here.some((event) => event.includes(normalise(name))))
-    .sort((a, b) => a[1] - b[1] || a[0].length - b[0].length)
-    .slice(0, 5)
-    .map(([name]) => name)
-}
-
 // What to do when the race a runner is looking for has no course here.
 function NoCourseHelp({ name, onClose }) {
   const search = `https://www.google.com/search?q=${encodeURIComponent(`${name} GPX course`)}`
@@ -650,7 +623,7 @@ function NoCourseHelp({ name, onClose }) {
 function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuery, onChooseRace, onUpload, loadingCourse, loadError }) {
   const units = useUnits()
   const [missing, setMissing] = useState(null) // a well-known race the visitor picked that has no course here
-  const known = useMemo(() => knownRacesWithoutCourse(query, allRaces ?? races), [query, allRaces, races])
+  const known = useMemo(() => knownButNotHere(RACE_NAMES, query, (allRaces ?? races).map((race) => race.event_name)), [query, allRaces, races])
   const nothingFound = !racesLoading && !racesError && races.length === 0 && query.trim().length >= 2
   return (
     <section className="border-b border-slate-200 bg-white py-10 sm:py-14">

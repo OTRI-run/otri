@@ -19,6 +19,8 @@ import ReportForm from './ReportForm'
 import { ShareResults } from './SharePanel'
 import Flag from '../src/components/Flag'
 import SearchSuggest from '../src/components/SearchSuggest'
+import { RACE_NAMES } from '../src/lib/raceNames'
+import { knownButNotHere } from '../src/lib/suggest'
 import { initMonitoring } from '../src/lib/monitoring'
 import { useDocumentTitle } from '../src/lib/title'
 
@@ -507,12 +509,16 @@ function RacesPage({ raceId }) {
                   onChange={setQuery}
                   placeholder="Search by race, place or year…"
                   ariaLabel="Search races"
-                  suggestions={shown.slice(0, 6).map((race) => ({
-                    key: race.race_id,
-                    label: `${race.event_name} · ${race.course_name}`,
-                    detail: `${String(race.event_date ?? '').slice(0, 4)}${race.event_country ? ` · ${race.event_country}` : ''}`,
-                    href: `#races/${encodeURIComponent(race.race_id)}`,
-                  }))}
+                  suggestions={[
+                    ...shown.slice(0, 6).map((race) => ({
+                      key: race.race_id,
+                      label: `${race.event_name} · ${race.course_name}`,
+                      detail: `${String(race.event_date ?? '').slice(0, 4)}${race.event_country ? ` · ${race.event_country}` : ''}`,
+                      href: `#races/${encodeURIComponent(race.race_id)}`,
+                    })),
+                    // Well-known races nobody has published here: said in the list, not by an empty page.
+                    ...knownButNotHere(RACE_NAMES, query, races.map((race) => race.event_name), 3).map((name) => ({ key: `known-${name}`, label: name, detail: 'not on OTRI yet' })),
+                  ]}
                 />
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="inline-flex max-w-full overflow-x-auto rounded-lg border border-slate-300 bg-white" role="group" aria-label="Distance">
@@ -557,9 +563,16 @@ function RacesPage({ raceId }) {
               </p>
             )}
             {races?.length > 0 && shown.length === 0 && (
-              <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
-                No race matches. Try fewer words, another distance, or{' '}
-                <button type="button" onClick={() => { setQuery(''); setBucket('all'); setCountry('all'); setStatus('all') }} className="font-semibold text-blue-600 hover:underline">clear the filters</button>.
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 text-sm leading-6 text-slate-600">
+                <p className="font-semibold text-[#0b1220]">{query.trim() ? `“${query.trim()}” is not on OTRI yet.` : 'No race matches.'}</p>
+                <p className="mt-1">
+                  OTRI shows the races their organizers have published here; it keeps no list of every race. Try fewer words, another distance, or{' '}
+                  <button type="button" onClick={() => { setQuery(''); setBucket('all'); setCountry('all'); setStatus('all') }} className="font-semibold text-blue-600 hover:underline">clear the filters</button>.
+                </p>
+                <p className="mt-3">
+                  Have its course as a GPX? <a href="#calculator" className="font-semibold text-blue-600 no-underline hover:underline">Work out what a time there is worth</a>.
+                  Have the results too? <a href="#score" className="font-semibold text-blue-600 no-underline hover:underline">Score the whole race</a>, free and without an account.
+                </p>
               </div>
             )}
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
