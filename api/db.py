@@ -695,13 +695,16 @@ def replace_results(race_id: str, results: list[ResultRecord]) -> None:
     Each result is attached to a runner (matched or created) as it is inserted, so runner
     profiles are consistent the moment a submission lands."""
     with get_connection() as connection:
-        race = connection.execute("SELECT published_at FROM races WHERE race_id = %s FOR UPDATE", (race_id,)).fetchone()
+        race = connection.execute(
+            "SELECT ra.published_at, e.organizer_id FROM races ra JOIN events e ON e.event_id = ra.event_id WHERE ra.race_id = %s FOR UPDATE OF ra", (race_id,)
+        ).fetchone()
         published = race is not None and race["published_at"] is not None
         before = _runner_ids(connection, "res.race_id = %s", (race_id,))
+        scope = MatchScope(organizer_id=race["organizer_id"] if race else None, keep=tuple(before))
         connection.execute("DELETE FROM results WHERE race_id = %s", (race_id,))
         with connection.cursor() as cursor:
             for result in results:
-                runner_id = _match_runner(connection, result, fill_in=published)
+                runner_id = _match_runner(connection, result, fill_in=published, scope=scope)
                 cursor.execute(
                     "INSERT INTO results (race_id, rank, finish_time_seconds, family_name, first_name, gender, bib_number, "
                     "birth_year, nationality, runner_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
@@ -749,7 +752,29 @@ class Runner:
     last_race_date: date | None = None
 
 
-def _match_runner(connection, result: ResultRecord, *, fill_in: bool = True) -> str:
+@dataclass(frozen=True)
+class MatchScope:
+    """Which runners an upload may be matched to: those the public already sees (a result in a
+    published race), those of the uploading organizer's own races, and those this race's results
+    pointed to before they were replaced (`keep`, so a re-upload keeps its runners' ids).
+
+    Without it a runner that exists only in somebody's private draft was a candidate for
+    everybody. An unconfirmed account could upload a draft naming people with a year of birth and
+    a nationality of its choosing; the next organizer to publish those names without such details
+    matched the planted runners, and the planted details became their public profile."""
+
+    organizer_id: int | None
+    keep: tuple[str, ...] = ()
+
+
+_VISIBLE_TO_SCOPE = """
+    AND (ru.runner_id = ANY(%s) OR EXISTS (
+        SELECT 1 FROM results res JOIN races ra ON ra.race_id = res.race_id JOIN events e ON e.event_id = ra.event_id
+        WHERE res.runner_id = ru.runner_id AND (ra.published_at IS NOT NULL OR e.organizer_id IS NOT DISTINCT FROM %s)))
+"""
+
+
+def _match_runner(connection, result: ResultRecord, *, fill_in: bool = True, scope: MatchScope | None = None) -> str:
     """The runner_id for a result, matching an existing runner or creating one (see the note).
 
     A match may complete the runner: a year of birth or a nationality the runner did not have yet.
@@ -760,8 +785,10 @@ def _match_runner(connection, result: ResultRecord, *, fill_in: bool = True) -> 
     they are; publishing the race completes them (`fill_in_runner_details`)."""
     key = runner_name_key(result.family_name, result.first_name, result.gender)
     candidates = connection.execute(
-        "SELECT runner_id, birth_year, nationality FROM runners WHERE name_key = %s ORDER BY created_at, runner_id",
-        (key,),
+        "SELECT ru.runner_id, ru.birth_year, ru.nationality FROM runners ru WHERE ru.name_key = %s"
+        + (_VISIBLE_TO_SCOPE if scope is not None else "")
+        + " ORDER BY ru.created_at, ru.runner_id",
+        (key, list(scope.keep), scope.organizer_id) if scope is not None else (key,),
     ).fetchall()
     nat = result.nationality
 

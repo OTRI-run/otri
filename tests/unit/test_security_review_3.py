@@ -316,3 +316,84 @@ def test_a_token_from_before_tokens_had_ids_can_still_be_signed_out():
     assert client.get("/auth/me", headers=old_headers).status_code == 401
     assert client.get("/auth/me", headers=headers).status_code == 200, "the session with an id of its own is another session"
     assert client.post("/auth/logout", headers={"Authorization": "Bearer not-a-token"}).status_code == 200, "nothing to end, no error"
+
+
+# --- a fourth review: what was on its way in when the protection changed --------------------
+
+
+def test_a_password_change_ends_the_reset_links_that_were_open():
+    """An owner changes the password because somebody may have been in the mailbox. The link that
+    somebody took from it could still set the password again, for up to an hour."""
+    headers = _account("changed@example.com")
+    _organizer, old_link = auth.create_password_reset_token("changed@example.com")
+    changed = client.post("/auth/change-password", json={"current_password": PASSWORD, "new_password": "the-owners-new-password-5"}, headers=headers)
+    assert changed.status_code == 200
+    taken = client.post("/auth/reset-password", json={"token": old_link, "new_password": "the-intruders-password-7"})
+    assert taken.status_code == 400 and "already been used" in taken.json()["detail"]
+    assert client.post("/auth/login", json={"email": "changed@example.com", "password": "the-owners-new-password-5"}).status_code == 200
+
+    # Signing out everywhere is the same alarm, and ends them too.
+    _organizer, another = auth.create_password_reset_token("changed@example.com")
+    fresh = _sign_in("changed@example.com", "the-owners-new-password-5")
+    assert client.post("/auth/logout-all", json={"password": "the-owners-new-password-5"}, headers=fresh).status_code == 200
+    assert client.post("/auth/reset-password", json={"token": another, "new_password": "the-intruders-password-7"}).status_code == 400
+
+
+def test_a_sign_in_started_with_email_codes_cannot_be_finished_after_the_switch_to_an_authenticator():
+    headers = _account("switch@example.com")
+    client.post("/auth/2fa/email/start", json={"password": PASSWORD}, headers=headers)
+    with db.get_connection() as connection:
+        connection.execute("UPDATE organizers SET email_code_hash = %s WHERE email = 'switch@example.com'", (security.hash_code("135790"),))
+    headers = {"Authorization": f"Bearer {client.post('/auth/2fa/email/enable', json={'code': '135790'}, headers=headers).json()['access_token']}"}
+
+    # Somebody with the password and the mailbox starts a sign-in and holds its emailed code ...
+    challenge = client.post("/auth/login", json={"email": "switch@example.com", "password": PASSWORD}).json()["challenge"]
+    with db.get_connection() as connection:
+        connection.execute("UPDATE login_challenges SET code_hash = %s", (security.hash_code("246802"),))
+    # ... the owner, who no longer trusts the mailbox, moves to an authenticator ...
+    secret = client.post("/auth/2fa/totp/setup", json={"password": PASSWORD}, headers=headers).json()["secret"]
+    assert client.post("/auth/2fa/totp/enable", json={"code": security.totp_now(secret)}, headers=headers).status_code == 200
+    # ... and the code from the mailbox opens nothing any more.
+    late = client.post("/auth/login/2fa", json={"challenge": challenge, "code": "246802"})
+    assert late.status_code == 401 and not late.json().get("access_token")
+
+    # Even a challenge that outlived the switch (say, written by an older worker) is for the wrong method.
+    organizer = auth.Organizer(id=1, email="switch@example.com")
+    with db.get_connection() as connection:
+        organizer_id = connection.execute("SELECT id FROM organizers WHERE email = 'switch@example.com'").fetchone()["id"]
+        connection.execute(
+            "INSERT INTO login_challenges (token, organizer_id, method, code_hash, expires_at) VALUES (%s, %s, 'email', %s, now() + interval '5 minutes')",
+            (auth._token_digest("left-over-challenge"), organizer_id, security.hash_code("246802")),
+        )
+    assert client.post("/auth/login/2fa", json={"challenge": "left-over-challenge", "code": "246802"}).status_code == 401
+    with db.get_connection() as connection:
+        assert connection.execute("SELECT COUNT(*) AS n FROM login_challenges").fetchone()["n"] == 0, "and it is gone"
+    del organizer
+
+
+def test_a_runner_planted_in_a_draft_is_not_who_a_later_publication_is_matched_to():
+    """The draft wrote nothing into existing runners any more, but it could create one: a name
+    with a year of birth and a nationality of the uploader's choosing, waiting for the first
+    organizer to publish that name without such details."""
+    stranger = _account("planter@example.com", verified=False)
+    _upload(stranger, _race(stranger, "Draft"), [("Seededname", "Sam", "1950", "THA")])
+
+    organizer = _account("honest@example.com")
+    race_id = _race(organizer, "Real 10K")
+    _upload(organizer, race_id, [("Seededname", "Sam", "", "")])
+    assert client.post(f"/races/{race_id}/publish", headers=organizer).status_code == 200
+
+    rows = _runner("Seededname")
+    assert len(rows) == 2, "the published result got a runner of its own"
+    with db.get_connection() as connection:
+        public_id = connection.execute("SELECT runner_id FROM results WHERE race_id = %s", (race_id,)).fetchone()["runner_id"]
+    profile = client.get(f"/runners/{public_id}").json()
+    assert profile.get("nationality") is None and profile.get("age_category") is None, profile
+
+    # The organizer's own drafts still meet their own runners, and a re-upload keeps the runner's id.
+    second = _race(organizer, "Real 21K")
+    _upload(organizer, second, [("Seededname", "Sam", "", "")])
+    _upload(organizer, race_id, [("Seededname", "Sam", "", "")])
+    with db.get_connection() as connection:
+        ids = {row["runner_id"] for row in connection.execute("SELECT runner_id FROM results WHERE race_id IN (%s, %s)", (race_id, second)).fetchall()}
+    assert ids == {public_id}
