@@ -106,6 +106,19 @@ function EngineCard({ raceCount, resultCount, scoringVersion, ticker }) {
 }
 
 export default function Home() {
+  // #contribute (the hero's link, the footer's, or an address someone shared) is the block below.
+  useEffect(() => {
+    const go = () => {
+      if (window.location.hash === '#contribute') document.getElementById('contribute')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+    const timer = setTimeout(go, 80) // after the page has laid out
+    window.addEventListener('hashchange', go)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('hashchange', go)
+    }
+  }, [])
+
   const [races, setRaces] = useState([])
   const [ticker, setTicker] = useState([])
   useEffect(() => {
@@ -159,6 +172,7 @@ export default function Home() {
               <a href={GITHUB_URL} className="inline-flex items-center gap-1 whitespace-nowrap font-semibold text-[#0b1220] no-underline hover:text-blue-600">
                 <GitBranch size={15} /> the code and the method are on GitHub <ArrowUpRight size={14} />
               </a>
+              , and <a href="#contribute" className="font-semibold text-blue-600 no-underline hover:underline">you can help improve both</a>.
             </p>
             <div className="mt-7 flex flex-col gap-2 sm:flex-row">
               <a className={primaryButton} href="#score">
@@ -325,6 +339,38 @@ export default function Home() {
                 </span>
               </a>
             ))}
+          </div>
+
+          {/* Contribute: the model and the course measurement get better with more eyes and more courses. */}
+          <div id="contribute" className="mt-12 scroll-mt-24 rounded-2xl border border-slate-700/80 bg-white/[.03] p-6 sm:p-8">
+            <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.4fr)]">
+              <div className="min-w-0">
+                <p className="font-mono text-[10px] tracking-[.08em] text-blue-400">CONTRIBUTE</p>
+                <h3 className="mt-3 text-[clamp(26px,3.2vw,38px)] font-bold leading-[1.02] tracking-[-.045em]">Help improve the model and the course measurement.</h3>
+                <p className="mt-3 text-sm leading-6 text-slate-400">
+                  OTRI belongs to nobody's federation. The model has known limits, written down where everyone can read them, and it gets better the way open software does: someone shows where it is wrong, with a course or a paper, and the fix becomes a new version.
+                </p>
+                <a href={`${GITHUB_URL}/blob/main/CONTRIBUTING.md`} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-white px-4 text-[13px] font-semibold text-[#0b1220] no-underline hover:bg-blue-50">
+                  <GitBranch size={15} /> How to contribute <ArrowUpRight size={14} />
+                </a>
+              </div>
+              <div className="grid min-w-0 gap-px overflow-hidden rounded-xl border border-slate-700/80 bg-slate-700/80 sm:grid-cols-2">
+                {[
+                  ['Challenge the scoring model', 'Every formula and constant is in one specification, with what it does not know yet. Propose a change as an OEP: tested on real results, versioned, never a silent edit.', 'The model and its open questions', DOCS.how],
+                  ['Improve course measurement', 'How a GPX becomes distance, climb and demand: denoising, terrain data, steep ground, altitude. A course that measures wrong is the most useful bug report there is.', 'The measurement specification', `${GITHUB_URL}/blob/main/docs/methodology/course-measurement/REAL-WORLD-COURSE-MEASUREMENT-SPEC.md`],
+                  ['Report what looks wrong', 'A score that cannot be right, a results file that should have passed, a confusing page. An issue with the file or the link is enough.', 'Open an issue', `${GITHUB_URL}/issues`],
+                  ['Write code', 'Python for scoring, measurement and the API; React for the site. Tests run in a minute and a half, and the good first issues are labelled.', 'Browse the code', GITHUB_URL],
+                ].map(([title, text, cta, href]) => (
+                  <a key={title} href={href} className="group block bg-[#0b1220] p-5 text-white no-underline transition hover:bg-[#101a33]">
+                    <p className="text-sm font-bold tracking-[-.01em]">{title}</p>
+                    <p className="mt-2 text-[12px] leading-5 text-slate-400">{text}</p>
+                    <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-300 transition group-hover:text-white">
+                      {cta} <ArrowUpRight size={12} />
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>

@@ -59,7 +59,8 @@ function parseHash(hash) {
   const runnerMatch = path.match(/^runners\/(.+)$/)
   if (runnerMatch) return { tab: 'runners', raceId: null, runnerId: decodeURIComponent(runnerMatch[1]) }
   if (path.startsWith('runners')) return { tab: 'runners', raceId: null, runnerId: null }
-  if (path === '' || path === 'home' || path === 'top') return { tab: 'home', raceId: null }
+  // #contribute is a place on the home page (Home.jsx scrolls to it), not a page of its own.
+  if (path === '' || path === 'home' || path === 'top' || path === 'contribute') return { tab: 'home', raceId: null }
   return { tab: 'notfound', raceId: null }
 }
 
@@ -158,6 +159,7 @@ function Footer() {
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <a href="#api" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">API and embed</a>
           <a href={GITHUB_URL} className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">GitHub</a>
+          <a href="#contribute" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Contribute</a>
           <a href="#faq" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">FAQ</a>
           <a href="https://github.com/OTRI-run/otri/blob/main/PRIVACY.md" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Privacy</a>
           <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">
