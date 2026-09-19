@@ -170,7 +170,7 @@ def test_without_a_course_file_a_vertical_race_is_not_scored():
 
 
 def test_the_calculator_scores_a_measured_vertical_and_refuses_official_figures():
-    assert 0 < estimate_score(1800, gpx_points=climb(3800, 0.26)).predicted_score <= 1000
+    assert estimate_score(1800, gpx_points=climb(3800, 0.26)).predicted_score > 0
     with pytest.raises(CourseNotScoredError, match="needs its course file"):
         estimate_score(1800, distance_km=3.8, elevation_gain_m=1000.0)
 

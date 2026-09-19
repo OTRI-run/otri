@@ -26,6 +26,9 @@ from .model import RunnerScore, ScoreBreakdown
 from .terrain import TERRAIN_MODEL, TerrainModel
 
 SCALE_MIN = 0.0
+# What the human-ceiling rate for a course scores. It is a reference point, not a cap: a performance
+# faster than the ceiling (the ceiling is a curve through three world bests, and held-out records
+# already run up to 2% above it) scores above 1000, and says so, instead of being flattened to it.
 SCALE_MAX = 1000.0
 
 # The course size the ceiling rate is quoted at (specification section 5). Scores do not depend on
@@ -153,12 +156,12 @@ class ScoreCurve:
 
     def required_q(self, score: float) -> float:
         """The (reference-size) performance rate required to reach `score`."""
-        if not math.isfinite(score) or not SCALE_MIN <= score <= SCALE_MAX:
-            raise ValueError(f"score must be between {SCALE_MIN} and {SCALE_MAX}")
+        if not math.isfinite(score) or score < SCALE_MIN:
+            raise ValueError(f"score must be {SCALE_MIN} or more")
         return self.q_1000 * (score / SCALE_MAX) ** (1.0 / self.power_exponent)
 
     def raw_score(self, q: float) -> float:
-        """Inverse of `required_q`: the unclipped score for (reference-size) performance rate `q`."""
+        """Inverse of `required_q`: the score for (reference-size) performance rate `q`."""
         if not math.isfinite(q) or q <= 0:
             raise ValueError("performance rate must be positive and finite")
         return SCALE_MAX * (q / self.q_1000) ** self.power_exponent
@@ -305,7 +308,7 @@ def performance_rate(equivalent_km: float, finish_time_seconds: float) -> float:
 def score_for_time(equivalent_km: float, finish_time_seconds: float, curve: ScoreCurve = MODEL_CURVE) -> dict:
     q = performance_rate(equivalent_km, finish_time_seconds)
     raw = curve.raw_score(q * curve.demand_scaling.factor(equivalent_km))
-    public = round(max(SCALE_MIN, min(SCALE_MAX, raw)))
+    public = round(max(SCALE_MIN, raw))  # no cap at 1000: see SCALE_MAX
     return {
         "performance_rate": q,
         "otri_raw": raw,

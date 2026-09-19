@@ -36,6 +36,20 @@ const TABS = [
   ['server', 'Server'],
 ]
 
+// The terrain tiles on disk. With fetching on demand the list grows by itself, so it shows a count
+// and the first few codes, not hundreds of them.
+function terrainCoverage(api) {
+  const tiles = api.dem_tiles ?? []
+  const fetch = api.dem_fetch
+  const codes = tiles.length > 8 ? `${tiles.slice(0, 8).join(' ')} +${tiles.length - 8} more` : tiles.join(' ')
+  const count = `${tiles.length} tile${tiles.length === 1 ? '' : 's'}`
+  if (fetch?.autofetch) {
+    const used = `${fetch.fetched_mb} of ${fetch.budget_mb} MB fetched`
+    return [tiles.length ? `${count} · ${codes} · new regions are fetched when a course needs them · ${used}` : `no tiles yet · fetched when a course needs them · budget ${fetch.budget_mb} MB`, 'ok']
+  }
+  return tiles.length ? [`${count} · ${codes} · courses outside score Low`, 'ok'] : ['no tiles installed → set OTRI_DEM_AUTOFETCH=1 or run scripts/deploy/06-install-dem.sh', 'bad']
+}
+
 function fmtBytes(bytes) {
   if (bytes == null) return '—'
   if (bytes < 1024) return `${bytes} B`
@@ -118,8 +132,8 @@ function Overview({ session }) {
             ['Started', when(api.started_at)],
             ['Scoring model (default)', `${modelLabel(api.scoring_version)} · build ${api.scoring_version}`],
             ['Course measurement', api.measurement_version],
-            ['Terrain model (DEM)', ...(api.dem_configured ? [`configured · ${api.dem_manifest}`, 'ok'] : ['not configured → every course scores Low confidence', 'bad'])],
-            ['Terrain coverage', ...(api.dem_tiles?.length ? [`${api.dem_tiles.length} tile${api.dem_tiles.length === 1 ? '' : 's'} · ${api.dem_tiles.join(' ')} · courses outside score Low`, 'ok'] : ['no tiles installed → add regions with scripts/deploy/06-install-dem.sh', 'bad'])],
+            ['Terrain model (DEM)', ...(api.dem_configured || api.dem_fetch?.autofetch ? [`configured · ${api.dem_manifest}${api.dem_fetch?.autofetch ? ' · tiles on demand' : ''}`, 'ok'] : ['not configured → every course scores Low confidence', 'bad'])],
+            ['Terrain coverage', ...terrainCoverage(api)],
             ['Measurement cache', `${api.measurement_cache_entries} entries (max ${api.measurement_cache_max})`],
             ['Python', api.python],
           ]}

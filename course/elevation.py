@@ -7,10 +7,14 @@ Install course/requirements-terrain.txt to enable this adapter.
 Performance notes (a 1-CPU, 1 GB droplet measures a 171 km course in ~60 s
 without them, ~3 s with them):
 
-- Tiles are checksummed and opened **once**, when the provider is built, and
-  `configured_provider()` reuses one provider per process for as long as the
-  manifest is unchanged. The first version re-hashed every tile (hundreds of
-  MB) on every call.
+- A tile is checksummed and opened **once per process, the first time a course
+  needs it**, and `configured_provider()` reuses one provider per process for as
+  long as the manifest is unchanged. With tiles fetched on demand
+  (`course/dem_fetch.py`) a manifest can name hundreds of them and changes
+  whenever one is added: verifying all of them on every change would read
+  gigabytes to measure one course. Which tiles a course needs is read from the
+  Copernicus file name (its 1x1 degree cell); a tile with any other name is
+  always opened, as before.
 - Sampling is vectorised: one bounding-window read per tile per course, then
   bilinear interpolation over all locations in numpy. The first version issued
   a separate windowed GDAL read for every bilinear neighbour of every point.
@@ -26,6 +30,7 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 import threading
 
 from .gpx import GpxParseError
@@ -37,6 +42,28 @@ _WEIGHT_EPS = 1e-12
 # Largest window (pixels) read in one go per tile; bigger courses are sampled in row bands so a
 # tiny droplet never has to hold more than a few MB of raster at once.
 _MAX_WINDOW_PIXELS = 4_000_000
+
+
+# Copernicus_DSM_COG_10_N45_00_E006_00_DEM.tif -> the cell whose south-west corner is 45N 6E.
+_CELL = re.compile(r"_([NS])(\d{2})_00_([EW])(\d{3})_00_")
+# Tiles are aligned to pixel centres, so a tile reaches half a pixel past its cell; a course point
+# that close to the edge also needs the neighbour. One hundredth of a degree covers both.
+_CELL_MARGIN = 0.01
+# Open rasters kept per process; the least recently used is closed beyond this.
+_MAX_OPEN_RASTERS = 24
+
+# Checksums already verified in this process, by (path, size, mtime): a rebuilt provider (the
+# manifest changed because a tile was added) does not read every other tile again.
+_verified: dict[tuple[str, int, int], str] = {}
+
+
+def cell_of(name: str) -> tuple[int, int] | None:
+    """(lat, lon) of the south-west corner of the 1x1 degree cell a Copernicus tile name covers."""
+    match = _CELL.search(name)
+    if not match:
+        return None
+    ns, lat, ew, lon = match.groups()
+    return (int(lat) if ns == "N" else -int(lat), int(lon) if ew == "E" else -int(lon))
 
 
 def _sha256_of(path: Path) -> str:
@@ -51,39 +78,75 @@ class RasterProvider:
     def __init__(self, manifest_path):
         self.path = Path(manifest_path)
         self.manifest = json.loads(self.path.read_text(encoding='utf-8'))
-        for key in ('dataset', 'release', 'datum', 'resolution_m', 'tiles'):
+        for key in ('dataset', 'release', 'datum', 'resolution_m'):
             if not self.manifest.get(key):
                 raise ValueError(f'terrain manifest requires {key}')
+        if not isinstance(self.manifest.get('tiles'), list):
+            raise ValueError('terrain manifest requires tiles')
         self.manifest['interpolation'] = 'bilinear-pixel-centers'
-        self._rasters = None
+        self._rasters = None  # {tile path: open raster}, least recently used first
+        self._row_height = None
         self._lock = threading.Lock()
 
     # ------------------------------------------------------------------ tiles
-    def _open(self):
-        """Verify checksums and open every tile once; keep the handles for the process."""
-        if self._rasters is not None:
-            return self._rasters
-        try:
-            import rasterio
-        except ImportError as error:
-            raise GpxParseError('terrain configured but rasterio is not installed') from error
-        rasters = []
-        for tile in self.manifest['tiles']:
-            path = self.path.parent / tile['path']
-            if _sha256_of(path) != tile['sha256']:
-                raise GpxParseError(f'terrain tile checksum mismatch: {path.name}')
+    def _raster(self, tile):
+        """The open raster for one manifest entry: checksum verified and geometry checked the first
+        time this process uses the tile, then kept open."""
+        if self._rasters is None:
+            self._rasters = {}
+        name = tile['path']
+        raster = self._rasters.pop(name, None)
+        if raster is None:
+            try:
+                import rasterio
+            except ImportError as error:
+                raise GpxParseError('terrain configured but rasterio is not installed') from error
+            path = self.path.parent / name
+            stat = path.stat()
+            key = (str(path), stat.st_size, stat.st_mtime_ns)
+            if _verified.get(key) != tile['sha256']:
+                if _sha256_of(path) != tile['sha256']:
+                    raise GpxParseError(f'terrain tile checksum mismatch: {path.name}')
+                _verified[key] = tile['sha256']
             raster = rasterio.open(path)
+            # Copernicus tiles narrow towards the poles (1" of longitude up to 50 degrees, 1.5" to
+            # 60, ...), so pixel widths may differ between tiles; rows are 1" everywhere. Bilinear
+            # interpolation runs in the home tile's grid and a neighbour past its edge is read by
+            # location from whichever tile holds it, so mixed widths are sound.
             if raster.crs != rasterio.crs.CRS.from_epsg(4326) or raster.transform.b or raster.transform.d or raster.transform.a <= 0 or raster.transform.e >= 0:
+                raster.close()
                 raise GpxParseError('terrain tiles must be north-up EPSG:4326 rasters')
-            if rasters and (raster.transform.a, raster.transform.e) != (rasters[0].transform.a, rasters[0].transform.e):
-                raise GpxParseError('terrain tiles must share one native resolution')
-            rasters.append(raster)
-        self._rasters = rasters
-        return rasters
+            if self._row_height is None:
+                self._row_height = raster.transform.e
+            elif raster.transform.e != self._row_height:
+                raster.close()
+                raise GpxParseError('terrain tiles must share one native row height')
+        self._rasters[name] = raster  # most recently used last
+        while len(self._rasters) > _MAX_OPEN_RASTERS:
+            self._rasters.pop(next(iter(self._rasters))).close()
+        return raster
+
+    def _rasters_for(self, lats, lons):
+        """The tiles that can hold these locations, opened; in manifest order, as before."""
+        south, north = float(min(lats)) - _CELL_MARGIN, float(max(lats)) + _CELL_MARGIN
+        west, east = float(min(lons)) - _CELL_MARGIN, float(max(lons)) + _CELL_MARGIN
+        needed = []
+        for tile in self.manifest['tiles']:
+            cell = cell_of(tile['path'])
+            if cell is None or (cell[0] <= north and cell[0] + 1 >= south and cell[1] <= east and cell[1] + 1 >= west):
+                needed.append(tile)
+        if len(needed) > _MAX_OPEN_RASTERS:
+            raise GpxParseError('this course spans more terrain tiles than can be read at once')
+        return [self._raster(tile) for tile in needed]
+
+    def _open(self):
+        """Every tile, verified and opened. For small manifests and the tests; sampling opens only
+        what a course needs."""
+        return [self._raster(tile) for tile in self.manifest['tiles']]
 
     def close(self):
         if self._rasters:
-            for raster in self._rasters:
+            for raster in self._rasters.values():
                 raster.close()
         self._rasters = None
 
@@ -92,7 +155,6 @@ class RasterProvider:
         """Elevation (m) at each (lat, lon), or None where the tiles cannot answer."""
         import numpy as np
 
-        rasters = self._open()
         n = len(locations)
         if n == 0:
             return []
@@ -103,6 +165,7 @@ class RasterProvider:
         assigned = np.zeros(n, dtype=bool)   # location has a home tile
 
         with self._lock:
+            rasters = self._rasters_for(lats, lons)
             # 1. Each location's neighbour grid is defined by the first tile that contains it.
             for raster in rasters:
                 b = raster.bounds
@@ -225,6 +288,10 @@ def configured_provider():
     path = os.environ.get('OTRI_DEM_MANIFEST')
     if not path:
         return None
+    # With tiles fetched on demand (course/dem_fetch.py) the manifest may not exist yet, or may
+    # only record cells that have no tile: there is no terrain to measure from, which is not an error.
+    if not os.path.exists(path) and os.environ.get('OTRI_DEM_AUTOFETCH'):
+        return None
     try:
         stat = os.stat(path)
         key = (os.path.abspath(path), stat.st_mtime_ns, stat.st_size)
@@ -236,6 +303,6 @@ def configured_provider():
                 _provider_cache.clear()
                 provider = RasterProvider(path)
                 _provider_cache[key] = provider
-            return provider
+            return provider if provider.manifest['tiles'] else None
     except (OSError, ValueError, KeyError) as error:
         raise GpxParseError(f'invalid terrain configuration: {error}') from error

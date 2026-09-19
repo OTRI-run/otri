@@ -7,9 +7,12 @@
 #   https://copernicus-dem-30m.s3.amazonaws.com/<TILE>/<TILE>.tif
 #   TILE = Copernicus_DSM_COG_10_<N|S><lat>_00_<E|W><lon>_00_DEM   (1x1 degree, ~25 MB each)
 #
-# Coverage is NOT global unless you install every tile. A course outside the installed tiles is
-# still measured, from its own uploaded elevations, and its score reports Low confidence with the
-# reason - never silently. Install the tiles for every region you expect organizers to upload.
+# With OTRI_DEM_AUTOFETCH=1 (the default 02-deploy-app.sh writes) the API downloads the tiles a
+# course needs by itself (course/dem_fetch.py) and deletes the ones unused for longest beyond
+# OTRI_DEM_BUDGET_MB. Tiles installed with this script are never deleted: use it for the regions
+# that must always be there, or when fetching on demand is switched off. Without either, a course
+# outside the installed tiles is still measured, from its own uploaded elevations, and its score
+# reports Low confidence with the reason - never silently.
 #
 # Usage (as the deploy user):
 #   ./06-install-dem.sh N45E006 N45E007 N46E006 N46E007 N07E098 N08E098
@@ -55,8 +58,10 @@ tile_name() {
   echo "Copernicus_DSM_COG_10_${BASH_REMATCH[1]}${BASH_REMATCH[2]}_00_${BASH_REMATCH[3]}${BASH_REMATCH[4]}_00_DEM"
 }
 
+asked=()
 for id in "$@"; do
   name="$(tile_name "${id}")"
+  asked+=("${name}.tif")
   target="${DEM_DIR}/${name}.tif"
   if [[ -f "${target}" ]]; then
     echo "==> ${name}.tif already present"
@@ -68,18 +73,27 @@ for id in "$@"; do
 done
 
 echo "==> Writing ${MANIFEST}"
-python3 - "${DEM_DIR}" "${MANIFEST}" <<'PY'
+python3 - "${DEM_DIR}" "${MANIFEST}" "${asked[@]}" <<'PY'
 import hashlib, json, sys
 from pathlib import Path
 dem_dir, manifest = Path(sys.argv[1]), Path(sys.argv[2])
+# Entries the API fetched on demand keep their record (fetched_at marks them as deletable when the
+# disk budget is reached), unless the tile was named here: then it is installed for good.
+previous = json.loads(manifest.read_text(encoding='utf-8')) if manifest.exists() else {}
+asked = set(sys.argv[3:])
+fetched = {t['path']: t for t in previous.get('tiles', []) if t.get('fetched_at') and t['path'] not in asked}
 tiles = []
 for tif in sorted(dem_dir.glob('Copernicus_DSM_COG_10_*_DEM.tif')):
+    if tif.name in fetched:
+        tiles.append(fetched[tif.name])
+        continue
     h = hashlib.sha256()
     with tif.open('rb') as f:
         for chunk in iter(lambda: f.read(1 << 20), b''):
             h.update(chunk)
     tiles.append({'path': tif.name, 'sha256': h.hexdigest()})
 manifest.write_text(json.dumps({
+    **({'absent': previous['absent']} if previous.get('absent') else {}),
     'dataset': 'Copernicus DEM GLO-30',
     'release': 'COG public bucket, 2022-05',
     'datum': 'EGM2008 (orthometric)',
@@ -93,4 +107,5 @@ PY
 echo
 echo "==> Done. Next:"
 echo "    OTRI_DEM_MANIFEST=${MANIFEST} is picked up automatically by 02-deploy-app.sh; re-run it."
-echo "    Courses outside these tiles fall back to uploaded elevations and score Low confidence."
+echo "    Other regions are fetched when a course needs them (OTRI_DEM_AUTOFETCH=1); with that off,"
+echo "    courses outside these tiles fall back to uploaded elevations and score Low confidence."

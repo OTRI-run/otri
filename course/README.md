@@ -20,7 +20,11 @@ The default geometry is the supplied route: there is no road snapping, GPS-wande
 
 Install core dependencies with `python -m pip install -r api/requirements.txt`. To use local DEMs, also install `python -m pip install -r course/requirements-terrain.txt`.
 
-Set `OTRI_DEM_MANIFEST` to an absolute JSON manifest path. The provider supports north-up, single-resolution EPSG:4326 GeoTIFF tiles, pixel-center bilinear interpolation including adjacent tiles, and nodata masks. It verifies SHA-256 before reading. Bad coverage, configuration or checksums produce an error, never a silent GPX fallback. Install a halo of neighboring tiles around the route so interpolation near tile edges has coverage.
+Set `OTRI_DEM_MANIFEST` to an absolute JSON manifest path. The provider supports north-up, single-resolution EPSG:4326 GeoTIFF tiles, pixel-center bilinear interpolation including adjacent tiles, and nodata masks. It verifies SHA-256 before reading. Bad coverage, configuration or checksums produce an error, never a silent GPX fallback. Install a halo of neighboring tiles around the route so interpolation near tile edges has coverage. Tiles named the Copernicus way (`Copernicus_DSM_COG_10_N45_00_E006_00_DEM.tif`) are verified and opened the first time a course needs them, and may differ in pixel width (GLO-30 narrows above 50° latitude); rows must share one height.
+
+### Tiles on demand
+
+With `OTRI_DEM_AUTOFETCH=1` (and `OTRI_DEM_MANIFEST` set; the file need not exist yet), `course/dem_fetch.py` downloads the Copernicus GLO-30 tiles under a course the first time one is measured there, from `https://copernicus-dem-30m.s3.amazonaws.com`, checks and checksums them and adds them to the manifest with a `fetched_at` time. Only the tile is requested; nothing about the course is sent. Fetched tiles are kept within `OTRI_DEM_BUDGET_MB` (default 8192) by deleting the ones unused for longest; entries without `fetched_at` (installed by hand or by `scripts/deploy/06-install-dem.sh`) are never deleted. At most 6 tiles per course, one download at a time, cells with no tile (sea) are remembered for 30 days under `absent`, and a failed fetch never fails the course: it is measured from its own elevations at Low confidence, as without terrain data. The folder of the manifest must be writable by the API.
 
 Example manifest structure (replace the placeholder values with the actual release and file hash):
 

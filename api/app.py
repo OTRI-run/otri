@@ -39,7 +39,8 @@ from course.discipline import is_vertical
 from course.sanitize import sanitized_gpx, source_metadata
 from course.measurement import Measurement, measure_course
 from course.features import features_from_measurement
-from course.elevation import configured_provider
+from course.elevation import cell_of, configured_provider
+from course import dem_fetch
 import logging
 
 _log = logging.getLogger("otri.api")
@@ -1059,26 +1060,27 @@ def _dem_tile_codes(provider) -> list[str]:
     return sorted(codes)
 
 
-def _manifest_fingerprint(provider) -> str:
+def _manifest_fingerprint(provider, points=()) -> str:
+    """What a cached measurement of this course depends on: the pinned tiles under it. Not the
+    manifest as a whole: with tiles fetched on demand the manifest changes whenever a course
+    somewhere new arrives, and that must not throw away every other course's measurement."""
     if provider is None:
         return "no-dem"
-    try:
-        st = os.stat(provider.path)
-        return sha256(f"{provider.path.resolve()}|{st.st_mtime_ns}|{st.st_size}".encode()).hexdigest()[:16]
-    except OSError:
-        return "dem-unknown"
+    cells = dem_fetch.cells_for(points)
+    under = sorted(f"{tile.get('path')}={tile.get('sha256')}" for tile in provider.manifest.get("tiles", []) if cell_of(str(tile.get("path", ""))) in (*cells, None))
+    return sha256("|".join([str(provider.manifest.get("dataset")), str(provider.manifest.get("release")), *under]).encode()).hexdigest()[:16]
 
 
-def _measurement_cache_key(path, provider) -> Path:
+def _measurement_cache_key(path, provider, points=()) -> Path:
     digest = sha256()
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(1 << 20), b""):
             digest.update(chunk)
-    return _MEASUREMENT_CACHE_DIR / f"{digest.hexdigest()}-{_manifest_fingerprint(provider)}.json"
+    return _MEASUREMENT_CACHE_DIR / f"{digest.hexdigest()}-{_manifest_fingerprint(provider, points)}.json"
 
 
-def _measurement_cache_get(path, provider):
-    key = _measurement_cache_key(path, provider)
+def _measurement_cache_get(path, provider, points=()):
+    key = _measurement_cache_key(path, provider, points)
     try:
         snapshot = json.loads(key.read_text(encoding="utf-8"))
         key.touch()  # keep recently used entries when trimming
@@ -1087,10 +1089,10 @@ def _measurement_cache_get(path, provider):
         return None
 
 
-def _measurement_cache_put(path, provider, measurement) -> None:
+def _measurement_cache_put(path, provider, measurement, points=()) -> None:
     try:
         _MEASUREMENT_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        key = _measurement_cache_key(path, provider)
+        key = _measurement_cache_key(path, provider, points)
         tmp = key.with_suffix(".tmp")
         tmp.write_text(json.dumps(asdict(measurement)), encoding="utf-8")
         os.replace(tmp, key)
@@ -1103,12 +1105,15 @@ def _measurement_cache_put(path, provider, measurement) -> None:
 
 def _measure_gpx_path(path):
     points = read_track_points(path)
+    # Terrain tiles for a region nobody has uploaded a course from yet are fetched here, once
+    # (course/dem_fetch.py); it never raises, and without them the course measures as before.
+    dem_fetch.ensure_tiles(points)
     provider = configured_provider()
-    cached = _measurement_cache_get(path, provider)
+    cached = _measurement_cache_get(path, provider, points)
     if cached is not None:
         return points, cached
     measurement = measure_course(points, provider)
-    _measurement_cache_put(path, provider, measurement)
+    _measurement_cache_put(path, provider, measurement, points)
     return points, measurement
 
 
@@ -1766,6 +1771,7 @@ def admin_overview(organizer: Organizer = Depends(require_admin)) -> AdminOvervi
             "dem_configured": provider is not None,
             "dem_manifest": Path(manifest).name if manifest else None,
             "dem_tiles": _dem_tile_codes(provider),
+            "dem_fetch": dem_fetch.status(),
             "measurement_cache_entries": cache_entries,
             "measurement_cache_max": _MEASUREMENT_CACHE_MAX_ENTRIES,
             "python": sys.version.split()[0],

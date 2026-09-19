@@ -604,7 +604,7 @@ def test_analyze_vertical_gpx_scores_it_and_says_the_calibration_is_provisional(
         )
     assert response.status_code == 200, response.text
     estimate = response.json()["estimate"]
-    assert 0 < estimate["predicted_score"] <= 1000 and estimate["confidence"] == "Low"
+    assert estimate["predicted_score"] > 0 and estimate["confidence"] == "Low"
     assert any(flag.startswith("vertical_calibration_provisional") for flag in estimate["quality_flags"])
 
 
