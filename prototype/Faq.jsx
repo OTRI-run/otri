@@ -51,6 +51,11 @@ const FAQ = [
         tags: 'hills elevation climb gradient demand flat equivalent terrain altitude',
       },
       {
+        q: 'What do the levels mean: Beginner, Advanced, Elite, World class?',
+        a: 'They are names for ranges of the score, shown in the calculator so you can see where a number stands: Beginner below 300, Recreational from 300, Intermediate from 400, Trained from 500, Advanced from 600, Expert from 700, Elite from 800, World class from 900, and anything above 1000 is beyond the record. The names are a reading aid and not part of the model; what they stand for is exact. A score is a share of the fastest pace a human has held on a course that demanding, so every score is also a time on a flat road marathon at that same share of the world best (2:00:35): 700 is 3:03, 600 is 3:40, 500 is 4:33, 400 is 5:54. It is one scale for everyone, men and women, every age. OTRI does not say how many runners are in each level, because it does not have the data to say so honestly. On technical trails expect to score a little under your road times: footing is not measured yet.',
+        tags: 'levels scale range beginner recreational intermediate trained advanced expert elite world class superhuman good score what is a good score where am I',
+      },
+      {
         q: 'Why does a 100-mile mountain winner score 984 and not 1000?',
         a: 'Because the ceiling is built from road and track records, and a mountain course costs more than its gradient profile says: rock, roots, mud and exposure are invisible to a GPX file. The model prices sustained steep ground and altitude; it cannot price footing. That limitation is written down, not hidden.',
         tags: 'ultra mountain technical footing limit',
