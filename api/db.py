@@ -306,8 +306,23 @@ def init_db() -> list[str]:
     return applied
 
 
-def _new_id(prefix: str) -> str:
-    return f"{prefix}-{secrets.token_hex(4)}"
+def _new_id(prefix: str, nbytes: int = 4) -> str:
+    return f"{prefix}-{secrets.token_hex(nbytes)}"
+
+
+def _insert_with_new_id(connection, prefix: str, sql: str, values: tuple, *, nbytes: int = 4) -> str:
+    """Run an INSERT whose first value is a fresh random id, again with another id if that one is
+    taken. `sql` must end in `ON CONFLICT (<id column>) DO NOTHING RETURNING <id column>`.
+
+    Eight hex digits are 32 bits. With 100,000 runners stored, one new id in 43,000 is already
+    taken, and a results file of 20,000 new names met one more often than not: the upload failed
+    with a server error, all of it, and the next try as likely as the first. Raising inside the
+    transaction would lose it, so the conflict is skipped and the insert repeated."""
+    for _ in range(8):
+        candidate = _new_id(prefix, nbytes)
+        if connection.execute(sql, (candidate, *values)).fetchone() is not None:
+            return candidate
+    raise RuntimeError(f"could not find a free {prefix} id")
 
 
 # --- Events --------------------------------------------------------------
@@ -343,12 +358,13 @@ def create_event(
     website: str | None = None,
     source_url: str | None = None,
 ) -> Event:
-    event_id = event_id or _new_id("evt")
+    sql = "INSERT INTO events (event_id, event_name, event_date, organizer_id, location, country, website, source_url) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+    values = (event_name, event_date_, organizer_id, location, country, website, source_url)
     with get_connection() as connection:
-        connection.execute(
-            "INSERT INTO events (event_id, event_name, event_date, organizer_id, location, country, website, source_url) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-            (event_id, event_name, event_date_, organizer_id, location, country, website, source_url),
-        )
+        if event_id:
+            connection.execute(sql, (event_id, *values))
+        else:
+            event_id = _insert_with_new_id(connection, "evt", sql + " ON CONFLICT (event_id) DO NOTHING RETURNING event_id", values)
     return Event(event_id=event_id, event_name=event_name, event_date=event_date_, organizer_id=organizer_id, location=location, country=country, website=website, source_url=source_url)
 
 
@@ -461,13 +477,13 @@ def create_race(
     # deployed schema could otherwise keep minting races on a stale/removed model version.
     from scoring import DEFAULT_SCORING_VERSION
 
-    race_id = race_id or _new_id("race")
+    sql = "INSERT INTO races (race_id, event_id, course_name, distance_km, elevation_gain_m, scoring_version) VALUES (%s, %s, %s, %s, %s, %s)"
+    values = (event_id, course_name, distance_km, elevation_gain_m, scoring_version or DEFAULT_SCORING_VERSION)
     with get_connection() as connection:
-        connection.execute(
-            "INSERT INTO races (race_id, event_id, course_name, distance_km, elevation_gain_m, scoring_version) "
-            "VALUES (%s, %s, %s, %s, %s, %s)",
-            (race_id, event_id, course_name, distance_km, elevation_gain_m, scoring_version or DEFAULT_SCORING_VERSION),
-        )
+        if race_id:
+            connection.execute(sql, (race_id, *values))
+        else:
+            race_id = _insert_with_new_id(connection, "race", sql + " ON CONFLICT (race_id) DO NOTHING RETURNING race_id", values)
     race = find_race(race_id)
     assert race is not None
     return race
@@ -619,6 +635,17 @@ def count_results_by_race() -> dict[str, int]:
     return {row["race_id"]: int(row["n"]) for row in rows}
 
 
+def count_result_rows_for_organizer(organizer_id: int, *, except_race_id: str | None = None) -> int:
+    """How many result rows an account holds, leaving out the race about to be replaced."""
+    with get_connection() as connection:
+        row = connection.execute(
+            "SELECT COUNT(*) AS n FROM results res JOIN races ra ON ra.race_id = res.race_id JOIN events e ON e.event_id = ra.event_id "
+            "WHERE e.organizer_id = %s AND res.race_id IS DISTINCT FROM %s",
+            (organizer_id, except_race_id),
+        ).fetchone()
+    return int(row["n"])
+
+
 def has_results(race_id: str) -> bool:
     with get_connection() as connection:
         row = connection.execute("SELECT 1 FROM results WHERE race_id = %s LIMIT 1", (race_id,)).fetchone()
@@ -714,13 +741,15 @@ def _match_runner(connection, result: ResultRecord) -> str:
             )
         return chosen
 
-    runner_id = _new_id("run")
-    connection.execute(
+    # Runners are the one table that grows by the hundred thousand: their new ids are 64 bits.
+    return _insert_with_new_id(
+        connection,
+        "run",
         "INSERT INTO runners (runner_id, family_name, first_name, gender, birth_year, nationality, name_key) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s)",
-        (runner_id, result.family_name.strip(), result.first_name.strip(), (result.gender or "").strip().upper()[:1] or "X", result.birth_year, nat, key),
+        "VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (runner_id) DO NOTHING RETURNING runner_id",
+        (result.family_name.strip(), result.first_name.strip(), (result.gender or "").strip().upper()[:1] or "X", result.birth_year, nat, key),
+        nbytes=8,
     )
-    return runner_id
 
 
 def assign_missing_runners() -> int:

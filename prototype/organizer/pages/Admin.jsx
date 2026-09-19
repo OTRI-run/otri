@@ -225,7 +225,18 @@ function subjectLink(report) {
   if (report.kind === 'runner') return `../#runners/${encodeURIComponent(report.subject_id)}`
   if (report.kind === 'race') return `../#races/${encodeURIComponent(report.subject_id)}`
   if (report.kind === 'shared_course') return `../#calculator?gpx=${encodeURIComponent(report.subject_id)}`
-  return report.page_url ?? '../#home'
+  return ownPage(report.page_url) ?? '../#home'
+}
+
+// A report comes from anyone, and so does the address it claims to be about: only a page of this
+// site becomes a link here. The API keeps nothing else either; this is the second lock.
+function ownPage(url) {
+  try {
+    const parsed = new URL(url)
+    return ['http:', 'https:'].includes(parsed.protocol) && parsed.origin === window.location.origin ? parsed.href : null
+  } catch {
+    return null
+  }
 }
 
 function ReportCard({ report, token, onChanged }) {

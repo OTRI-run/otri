@@ -15,9 +15,22 @@ Disk use is bounded by `OTRI_DEM_BUDGET_MB` (default 8192). Beyond it, the fetch
 gone longest without being used are deleted. Tiles installed by hand are never deleted.
 
 Guard rails, because any visitor can upload a course anywhere on Earth: at most
-`MAX_TILES_PER_COURSE` per course, one download at a time across all workers (a lock file), a
-cell with no tile (open sea) is remembered and not asked for again, and any failure leaves the
-course measured exactly as before this module existed: from its own elevations, at Low confidence.
+`MAX_TILES_PER_COURSE` per course, a cell with no tile (open sea) is remembered and not asked for
+again, and any failure leaves the course measured exactly as before this module existed: from its
+own elevations, at Low confidence.
+
+A request that fetches holds one of the API's worker threads while it does, and there are forty.
+So the time a request may spend here is bounded, whatever the network and however many ask:
+
+- the caller says whether these tiles may be fetched at all (`allow`: the API keeps a daily
+  allowance per visitor and per account and an hourly one for everyone, `api/app.py`);
+- at most `MAX_CONCURRENT_FETCHES` downloads run at once across all workers, and a request that
+  finds them taken does not queue, it measures without;
+- a tile somebody else is already fetching is waited for, briefly, not fetched twice;
+- a download has `DOWNLOAD_SECONDS` in all, not per read, and a course `COURSE_SECONDS`;
+- the manifest lock is held for the moment the manifest is rewritten, never across a download.
+  It used to be held across all of a course's downloads: eight requests for eight new tiles ran
+  one after the other, the last one waiting for the seven before it with its thread in hand.
 """
 
 from __future__ import annotations
@@ -39,9 +52,12 @@ log = logging.getLogger("otri.dem")
 
 BUCKET = "https://copernicus-dem-30m.s3.amazonaws.com"
 MAX_TILES_PER_COURSE = 6
-DOWNLOAD_TIMEOUT_SECONDS = 45
+DOWNLOAD_TIMEOUT_SECONDS = 20  # one read from the socket
+DOWNLOAD_SECONDS = 60  # one tile, start to end
+COURSE_SECONDS = 90  # everything one request may spend fetching
+MAX_CONCURRENT_FETCHES = 3
 LOCK_STALE_SECONDS = 300
-LOCK_WAIT_SECONDS = 100
+LOCK_WAIT_SECONDS = 10  # the lock covers a manifest rewrite, which takes milliseconds
 ABSENT_RETRY_DAYS = 30
 
 MANIFEST_HEADER = {
@@ -120,7 +136,7 @@ def _manifest_lock(manifest: Path):
                 continue
             if time.monotonic() > deadline:
                 raise TimeoutError("terrain tiles are being fetched by another request")
-            time.sleep(0.5)
+            time.sleep(0.05)
     try:
         yield
     finally:
@@ -139,14 +155,61 @@ def _write(manifest: Path, data: dict) -> None:
     os.replace(temporary, manifest)
 
 
+class _Busy(Exception):
+    """Every download slot is taken, or the tile did not arrive in time: measure without it."""
+
+
+def _take(path: Path) -> bool:
+    """Create a marker file if nobody holds it; a marker whose holder died is taken over."""
+    try:
+        os.close(os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+        return True
+    except FileExistsError:
+        try:
+            if time.time() - path.stat().st_mtime > LOCK_STALE_SECONDS:
+                path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        return False
+
+
+@contextmanager
+def _fetch_slot(manifest: Path, file_name: str, deadline: float):
+    """The right to download one tile: a marker for the tile, so it is not fetched twice, and one
+    of the few numbered slots, so not many are fetched at once. Yields False when another request
+    fetched this very tile while we waited for it (nothing left to download)."""
+    folder = manifest.parent
+    marker = folder / (file_name + ".fetching")
+    while not _take(marker):  # somebody is fetching this tile: wait for theirs
+        if time.monotonic() > deadline:
+            raise _Busy(f"{file_name} is still being fetched by another request")
+        time.sleep(0.5)
+    slot = None
+    try:
+        if any(tile.get("path") == file_name for tile in _read(manifest)["tiles"]):
+            yield False
+            return
+        slot = next((path for path in (folder / f"slot-{n}.fetching" for n in range(MAX_CONCURRENT_FETCHES)) if _take(path)), None)
+        if slot is None:
+            raise _Busy("terrain tiles are being fetched for other courses")
+        yield True
+    finally:
+        marker.unlink(missing_ok=True)
+        if slot is not None:
+            slot.unlink(missing_ok=True)
+
+
 def _download(name: str, target: Path) -> bool:
     """Fetch one tile. False when the bucket has none for this cell (sea); raises on anything else."""
     part = target.with_suffix(".part")
     request = urllib.request.Request(f"{BUCKET}/{name}/{name}.tif", headers={"User-Agent": "otri-dem-fetch"})
+    give_up = time.monotonic() + DOWNLOAD_SECONDS
     try:
         with urllib.request.urlopen(request, timeout=DOWNLOAD_TIMEOUT_SECONDS) as response, part.open("wb") as out:  # noqa: S310 - fixed https host
             while chunk := response.read(1 << 20):
                 out.write(chunk)
+                if time.monotonic() > give_up:  # the socket timeout is per read: a trickle would never trip it
+                    raise TimeoutError(f"{name} did not download within {DOWNLOAD_SECONDS} s")
     except urllib.error.HTTPError as error:
         part.unlink(missing_ok=True)
         if error.code in (403, 404):  # the bucket answers 403/404 for keys that do not exist
@@ -189,9 +252,28 @@ def _evict(manifest: Path, data: dict, keep: set[str]) -> list[str]:
     return removed
 
 
-def ensure_tiles(points) -> dict:
+def _record(manifest: Path, now: float, *, tile: dict | None = None, absent: str | None = None, keep: set[str] = frozenset()) -> list[str]:
+    """Add one fetched tile (or one cell known to have none) to the manifest, and evict to the
+    budget. The only place the manifest is written, and the only thing done under its lock."""
+    with _manifest_lock(manifest):
+        data = _read(manifest)
+        data["absent"] = {name: at for name, at in (data.get("absent") or {}).items() if now - at < ABSENT_RETRY_DAYS * 86400}
+        if absent:
+            data["absent"][absent] = now
+        if tile and all(entry["path"] != tile["path"] for entry in data["tiles"]):
+            data["tiles"].append(tile)
+        evicted = _evict(manifest, data, keep=keep)
+        data["tiles"].sort(key=lambda entry: entry["path"])
+        _write(manifest, data)
+    return evicted
+
+
+def ensure_tiles(points, allow=None) -> dict:
     """Make sure the tiles under `points` are installed, fetching what is missing. Never raises:
-    the answer says what happened and the caller measures with whatever is there."""
+    the answer says what happened and the caller measures with whatever is there.
+
+    `allow(n)` is asked once, when `n` tiles are missing, whether they may be fetched for this
+    caller; None means yes."""
     outcome = {"fetched": [], "absent": [], "evicted": [], "skipped": None}
     if not enabled():
         outcome["skipped"] = "disabled"
@@ -215,37 +297,37 @@ def ensure_tiles(points) -> dict:
         missing = sorted(wanted - installed - set(absent))
         if not missing:
             return outcome
+        if allow is not None and not allow(len(missing)):
+            outcome["skipped"] = "the caller's allowance of new terrain tiles is used up"
+            return outcome
 
         manifest.parent.mkdir(parents=True, exist_ok=True)
-        with _manifest_lock(manifest):
-            data = _read(manifest)  # another worker may have fetched them while we waited
-            have = {tile["path"] for tile in data["tiles"]}
-            data["absent"] = {name: at for name, at in (data.get("absent") or {}).items() if now - at < ABSENT_RETRY_DAYS * 86400}
-            for file_name in missing:
-                if file_name in have or file_name in data["absent"]:
-                    continue
+        deadline = time.monotonic() + COURSE_SECONDS
+        for file_name in missing:
+            if time.monotonic() > deadline:
+                raise _Busy(f"no time left for {file_name}")
+            with _fetch_slot(manifest, file_name, deadline) as mine:
+                if not mine:
+                    continue  # another request fetched it while we waited
                 target = manifest.parent / file_name
                 if not _download(file_name[:-4], target):
-                    data["absent"][file_name] = now
+                    _record(manifest, now, absent=file_name)
                     outcome["absent"].append(file_name)
                     continue
                 try:
                     _check_geotiff(target)
+                    tile = {
+                        "path": file_name,
+                        "sha256": _sha256_of(target),
+                        "bytes": target.stat().st_size,
+                        "cell": list(cell_of(file_name)),
+                        "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                    }
+                    outcome["evicted"] += _record(manifest, now, tile=tile, keep=wanted)
                 except Exception:
                     target.unlink(missing_ok=True)
                     raise
-                data["tiles"].append({
-                    "path": file_name,
-                    "sha256": _sha256_of(target),
-                    "bytes": target.stat().st_size,
-                    "cell": list(cell_of(file_name)),
-                    "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                })
                 outcome["fetched"].append(file_name)
-            outcome["evicted"] = _evict(manifest, data, keep=wanted)
-            if outcome["fetched"] or outcome["absent"] or outcome["evicted"]:
-                data["tiles"].sort(key=lambda tile: tile["path"])
-                _write(manifest, data)
         if outcome["fetched"] or outcome["evicted"]:
             log.info("terrain tiles: fetched %s, evicted %s", outcome["fetched"], outcome["evicted"])
     except Exception as error:  # noqa: BLE001 - terrain is an improvement, never a reason to fail a course
