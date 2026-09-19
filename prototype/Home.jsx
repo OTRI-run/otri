@@ -184,7 +184,7 @@ export default function Home() {
                   who: 'I organise a race',
                   Icon: Upload,
                   title: 'Score my whole race',
-                  text: 'Upload the course and the results file: every finisher scored in a minute. Publish it with one click.',
+                  text: 'Upload the course and the results file: every finisher scored in a minute. Optional: publish it here as a race page.',
                   href: '#score',
                   action: 'Score my race',
                   more: ['See an example', '#score?example=1'],
