@@ -165,6 +165,8 @@ def test_turning_two_factor_on_signs_out_every_other_session():
 
 
 def test_signing_out_ends_the_token_not_only_the_cookie():
+    with db.get_connection() as connection:
+        connection.execute("DELETE FROM revoked_tokens")
     headers = _account("bye@example.com")
     other_device = _sign_in("bye@example.com")
     assert client.post("/auth/logout", headers=headers).status_code == 200
@@ -182,7 +184,7 @@ def test_signing_out_ends_the_token_not_only_the_cookie():
     assert kept.get("/auth/me").status_code == 200
     with db.get_connection() as connection:
         stored = [row["token"] for row in connection.execute("SELECT token FROM revoked_tokens").fetchall()]
-    assert stored and all(len(token) == 64 for token in stored), "digests, not tokens"
+    assert stored and all(len(token) == 16 and token not in cookie for token in stored), "the token's id: neither the token nor a digest of it"
 
 
 def test_a_reset_lets_the_owner_of_a_locked_account_with_two_factor_back_in():
@@ -282,3 +284,36 @@ def test_the_deploy_user_may_not_write_anything_root_acts_on():
         assert forbidden not in sudoers, forbidden
     deploy = (REPO / "scripts" / "deploy" / "02-deploy-app.sh").read_text(encoding="utf-8")
     assert "sudo tee" not in deploy and "10-install-service.sh" in deploy
+
+
+# --- what the code scanner asked about -------------------------------------------------------
+
+
+def test_a_long_passphrase_never_meets_a_bare_fast_hash_and_still_signs_in():
+    import base64
+    import hashlib
+
+    long_password = "ภูเก็ตเทรล " * 9 + "correct horse battery staple"  # far over bcrypt's 72 bytes
+    assert len(long_password.encode()) > 72
+    assert auth._bcrypt_input(long_password) != base64.b64encode(hashlib.sha256(long_password.encode()).digest())
+    assert len(auth._bcrypt_input(long_password)) <= 72 and auth._bcrypt_input("short one") == b"short one"
+    client.cookies.clear()
+    assert client.post("/auth/register", json={"email": "long@example.com", "password": long_password, "accept_terms": True}).status_code == 201
+    client.cookies.clear()
+    assert client.post("/auth/login", json={"email": "long@example.com", "password": long_password}).status_code == 200
+    assert client.post("/auth/login", json={"email": "long@example.com", "password": long_password[:-1]}).status_code == 401
+
+
+def test_a_token_from_before_tokens_had_ids_can_still_be_signed_out():
+    import jwt
+
+    headers = _account("old-token@example.com")
+    with db.get_connection() as connection:
+        row = connection.execute("SELECT id, session_version FROM organizers WHERE email = 'old-token@example.com'").fetchone()
+    old = jwt.encode({"sub": str(row["id"]), "email": "old-token@example.com", "sv": row["session_version"], "exp": int(time.time()) + 3600}, auth.JWT_SECRET, algorithm="HS256")
+    old_headers = {"Authorization": f"Bearer {old}"}
+    assert client.get("/auth/me", headers=old_headers).status_code == 200
+    assert client.post("/auth/logout", headers=old_headers).status_code == 200
+    assert client.get("/auth/me", headers=old_headers).status_code == 401
+    assert client.get("/auth/me", headers=headers).status_code == 200, "the session with an id of its own is another session"
+    assert client.post("/auth/logout", headers={"Authorization": "Bearer not-a-token"}).status_code == 200, "nothing to end, no error"

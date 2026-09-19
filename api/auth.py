@@ -63,13 +63,21 @@ class WrongSecondFactor(AuthError):
 # bcrypt reads at most 72 bytes. Version 4 cut a longer password off silently; version 5 refuses it
 # with an exception, which made registering or signing in with a long passphrase (the site allows
 # 128 characters, and 25 Thai characters are already 75 bytes) a server error. A password over 72
-# bytes is therefore hashed with SHA-256 first and that digest goes to bcrypt; shorter ones go in as
+# bytes is therefore brought down to 32 bytes first and that goes to bcrypt; shorter ones go in as
 # they are, so every hash made before this still verifies.
+#
+# The shortening is PBKDF2 with a salt of OTRI's own, not a bare SHA-256: a bare digest of the
+# password is a value other sites' leaks may hold too (they let an attacker test a stolen
+# bcrypt(sha256(password)) against a list of known sha256(password) values without paying for the
+# passwords), and a code scanner rightly cannot tell a fast hash on its way into bcrypt from a fast
+# hash that is the whole protection. bcrypt remains what makes guessing expensive. (The first
+# version did use SHA-256, for some hours: no password was set on production in that time.)
+_LONG_PASSWORD_SALT = b"otri.run long passphrase v1"
 
 
 def _bcrypt_input(password: str) -> bytes:
     raw = password.encode("utf-8")
-    return raw if len(raw) <= 72 else base64.b64encode(hashlib.sha256(raw).digest())
+    return raw if len(raw) <= 72 else base64.b64encode(hashlib.pbkdf2_hmac("sha256", raw, _LONG_PASSWORD_SALT, 10_000))
 
 
 def hash_password(password: str) -> str:
@@ -104,10 +112,16 @@ def _token_lookup(token: str) -> tuple[str, str]:
 
 
 def _token_digest(token: str) -> str:
-    """How a one-time link token (email confirmation, password reset) is kept: as its SHA-256. The
-    token itself exists only in the email, so a copy of the database (a backup, a leak) holds
-    nothing that opens an account."""
-    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+    """How a one-time token (email confirmation, password reset, half-finished sign-in) is kept: as
+    a digest. The token itself exists only in the email or the browser, so a copy of the database
+    (a backup, a leak) holds nothing that opens an account.
+
+    The tokens are 256 random bits, for which one SHA-256 would do. It is PBKDF2 all the same: a
+    code scanner cannot tell a random token from a password somebody chose, asks for a slow hash
+    wherever it sees either, and a rule that is always satisfied is worth more than one with
+    standing exceptions. A thousand rounds cost a third of a millisecond, on requests that send an
+    email or run bcrypt anyway."""
+    return hashlib.pbkdf2_hmac("sha256", token.encode("utf-8"), b"otri.run one-time token v1", 1_000).hex()
 
 
 @dataclass(frozen=True)
@@ -120,6 +134,10 @@ class Organizer:
     # Read from the account on every request. An unconfirmed address may sign in and prepare a
     # race, but cannot make anything public and is never an admin (api/app.py `require_verified`).
     email_verified: bool = False
+    # Which token this request came with (its `jti`): what signing out revokes. None for an
+    # organizer that did not come from a token (just registered, just signed in).
+    token_id: str | None = None
+    token_expires_at: datetime | None = None
 
 
 def register_organizer(email: str, password: str, *, accept_terms: bool = True, marketing_opt_in: bool = False) -> Organizer:
@@ -194,24 +212,22 @@ def create_access_token(organizer: Organizer, remember: bool = False) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=_JWT_ALGORITHM)
 
 
-def token_expiry(token: str) -> datetime | None:
-    """When a token of ours stops working by itself; None for anything that is not one."""
-    try:
-        return datetime.fromtimestamp(int(jwt.decode(token, JWT_SECRET, algorithms=[_JWT_ALGORITHM])["exp"]), tz=timezone.utc)
-    except (jwt.PyJWTError, KeyError, ValueError):
-        return None
-
-
-def token_digest(token: str) -> str:
-    return _token_digest(token)
-
-
 def decode_access_token(token: str) -> Organizer:
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[_JWT_ALGORITHM])
     except jwt.PyJWTError as error:
         raise AuthError("invalid or expired token") from error
-    return Organizer(id=int(payload["sub"]), email=payload["email"], session_version=int(payload.get("sv", 1)))
+    # A token is known by its id, which says nothing about the token: signing out stores the id,
+    # never the credential nor a digest of it. Tokens from before ids existed are told apart by
+    # what they do carry (two of the same account and second share one; they are signed out together).
+    token_id = payload.get("jti") or f"{payload['sub']}.{payload.get('sv', 1)}.{payload['exp']}"
+    return Organizer(
+        id=int(payload["sub"]),
+        email=payload["email"],
+        session_version=int(payload.get("sv", 1)),
+        token_id=str(token_id),
+        token_expires_at=datetime.fromtimestamp(int(payload["exp"]), tz=timezone.utc),
+    )
 
 
 # --- Email verification -------------------------------------------------
