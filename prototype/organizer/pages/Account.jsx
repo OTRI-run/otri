@@ -17,7 +17,7 @@ import {
   totpSetup,
   updateProfile,
 } from '../../apiClient'
-import { Button, Card, Eyebrow, Field, Gradient, Notice, Page, inputClass } from '../ui'
+import { Button, Card, Eyebrow, Field, Gradient, inputClass, Notice, Page, PasswordInput } from '../ui'
 
 function RecoveryCodes({ codes, method }) {
   const [copied, setCopied] = useState(false)
@@ -149,14 +149,14 @@ function ChangePasswordForm({ email, onChanged }) {
   return (
     <form onSubmit={submit} className="grid gap-4" noValidate>
       <Field label="Current password" htmlFor="cp-current">
-        <input id="cp-current" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} className={inputClass} />
+        <PasswordInput id="cp-current" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} className={inputClass} />
       </Field>
       <Field label="New password" htmlFor="cp-next">
-        <input id="cp-next" type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} className={inputClass} />
+        <PasswordInput id="cp-next" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} className={inputClass} />
         <PasswordStrength password={next} email={email} />
       </Field>
       <Field label="Confirm new password" htmlFor="cp-confirm" error={mismatch ? 'Passwords do not match.' : null}>
-        <input id="cp-confirm" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inputClass} />
+        <PasswordInput id="cp-confirm" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inputClass} />
       </Field>
       {error && <Notice kind="error">{error}</Notice>}
       {done && <Notice kind="success">Password changed. Every other device has been signed out; this one stays signed in.</Notice>}
@@ -324,7 +324,7 @@ function TwoFactor({ me, email, onChanged, onToken }) {
       {(mode === 'disable' || mode === 'codes') && (
         <div className="grid gap-3">
           <Field label={mode === 'disable' ? 'Confirm with your password to turn two-factor off' : 'Confirm with your password to get new recovery codes'} htmlFor="tf-pw">
-            <input id="tf-pw" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+            <PasswordInput id="tf-pw" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
           </Field>
           <div className="flex gap-2">
             <Button variant={mode === 'disable' ? 'danger' : 'primary'} busy={busy} disabled={!password} onClick={mode === 'disable' ? disable : regenerate}>
@@ -373,7 +373,7 @@ function SessionsCard({ onSignedOut }) {
       {open && (
         <div className="mt-3 grid gap-3">
           <Field label="Confirm with your password" htmlFor="so-pw">
-            <input id="so-pw" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+            <PasswordInput id="so-pw" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
           </Field>
           {error && <Notice kind="error">{error}</Notice>}
           <div className="flex gap-2">
@@ -453,7 +453,7 @@ function DataCard({ email, onDeleted }) {
                 <input id="del-confirm" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} className={inputClass} autoComplete="off" />
               </Field>
               <Field label="Your password" htmlFor="del-pw">
-                <input id="del-pw" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+                <PasswordInput id="del-pw" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
               </Field>
               {error && <Notice kind="error">{error}</Notice>}
               <div className="flex gap-2">

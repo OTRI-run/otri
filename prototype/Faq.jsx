@@ -36,6 +36,11 @@ const FAQ = [
         tags: 'maximum world record best ceiling',
       },
       {
+        q: 'Can a score be higher than 1000? Is that a bug?',
+        a: 'It can, and it is not a bug. 1000 is not a maximum: it is the line drawn through three world records (5000 m, marathon, 24 hours), and it says what world-record level looks like on a course of any length. A performance better than that line scores more than 1000, and the score says so instead of being cut off at 1000. It is rare and it happens in two ways. A real record can sit a little above the line: the 1500 m world record scores 1020 and the half marathon 1005, because the line is a smooth curve and records are not. Or the input is off: in the calculator you can type any target time, including one no human has run, and a results file can carry a wrong time or a course file that is too short. So a published score above 1000 is either a historic run or a reason to look at the time and the course again.',
+        tags: 'above over more than 1000 1100 higher maximum cap capped bug error impossible world record',
+      },
+      {
         q: 'Why is the slowest score around 200 and not zero?',
         a: 'The curve only reaches zero at infinite time, and it falls slowly at the bottom: at 110 hours on a 170 km mountain course you would still score about 215. In practice, the slowest official finisher of a real race lands between roughly 200 and 300, and anyone slower is pulled at the cut-off and has no score. The calculator’s slider therefore stops at 200; type a time to go beyond it.',
         tags: 'zero minimum floor slider slow dnf cut-off cutoff bottom',

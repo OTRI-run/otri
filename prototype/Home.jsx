@@ -1,3 +1,4 @@
+import { scrollBehavior } from '../src/lib/comfort'
 import { ArrowRight, ArrowUpRight, Calculator, Database, FileText, GitBranch, Mountain, ShieldCheck, Timer, Upload, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import RaceCard from './RaceCard'
@@ -109,7 +110,7 @@ export default function Home() {
   // #contribute (the hero's link, the footer's, or an address someone shared) is the block below.
   useEffect(() => {
     const go = () => {
-      if (window.location.hash === '#contribute') document.getElementById('contribute')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      if (window.location.hash === '#contribute') document.getElementById('contribute')?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' })
     }
     const timer = setTimeout(go, 80) // after the page has laid out
     window.addEventListener('hashchange', go)

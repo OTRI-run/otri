@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import useFileDrop from '../../src/lib/useFileDrop'
 import { AlertTriangle, ArrowLeft, Check, CheckCircle2, Info, Upload, XCircle } from 'lucide-react'
 import { Link } from './router'
 
@@ -116,10 +118,23 @@ export function EmptyState({ title, children, action }) {
 
 /** File drop area in the calculator's style. */
 export function Dropzone({ id, accept, onChange, busy = false, busyLabel = 'Working…', label, hint, fileName, buttonLabel = 'Choose file' }) {
+  const [refused, setRefused] = useState(null)
+  // A dropped file goes the same way as a chosen one: the caller reads event.target.files.
+  const { dragging, dropProps } = useFileDrop({
+    accept,
+    disabled: busy,
+    onFiles: (files) => {
+      setRefused(null)
+      onChange({ target: { files, value: '' } })
+    },
+    onReject: setRefused,
+  })
   return (
+    <>
     <label
       htmlFor={id}
-      className="flex min-h-[200px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm transition hover:border-blue-400 hover:bg-blue-50/40"
+      {...dropProps}
+      className={`flex min-h-[200px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center text-sm transition hover:border-blue-400 hover:bg-blue-50/40 ${dragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-slate-50'}`}
     >
       {busy ? (
         <>
@@ -136,8 +151,10 @@ export function Dropzone({ id, accept, onChange, busy = false, busyLabel = 'Work
           </span>
         </>
       )}
-      <input id={id} type="file" accept={accept} onChange={onChange} disabled={busy} className="hidden" />
+      <input id={id} type="file" accept={accept} onChange={(event) => { setRefused(null); onChange(event) }} disabled={busy} className="hidden" />
     </label>
+    {refused && <p className="mt-2 text-xs text-red-600" role="alert">{refused}</p>}
+    </>
   )
 }
 
@@ -224,4 +241,24 @@ export function formatDate(iso) {
   } catch {
     return iso
   }
+}
+
+/** A password field with a way to look at what was typed: a mistyped password is otherwise found
+ * out only after the form has been sent. Takes what an <input> takes. */
+export function PasswordInput({ className = '', ...props }) {
+  const [shown, setShown] = useState(false)
+  return (
+    <span className="relative block">
+      <input {...props} type={shown ? 'text' : 'password'} className={`${className} pr-16`} />
+      <button
+        type="button"
+        onClick={() => setShown((value) => !value)}
+        aria-pressed={shown}
+        aria-label={shown ? 'Hide the password' : 'Show the password'}
+        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-[.06em] text-slate-500 hover:text-blue-600"
+      >
+        {shown ? 'Hide' : 'Show'}
+      </button>
+    </span>
+  )
 }

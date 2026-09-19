@@ -1,3 +1,5 @@
+import BackToTop from '../../src/components/BackToTop'
+import { installDropGuard, installScrollMemory, installSearchShortcut } from '../../src/lib/comfort'
 import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ArrowUpRight, ChevronDown, Mail } from 'lucide-react'
@@ -291,6 +293,7 @@ function App() {
       {unconfirmed && <ConfirmEmailBar email={session.email} />}
       <main className="flex-1">{page}</main>
       <Footer />
+      <BackToTop />
       <BuildBanner />
     </div>
   )
@@ -328,6 +331,10 @@ function NotFound() {
     </section>
   )
 }
+
+installScrollMemory()
+installDropGuard()
+installSearchShortcut()
 
 createRoot(document.getElementById('root')).render(
   <ErrorBoundary home="./">

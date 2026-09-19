@@ -1,3 +1,4 @@
+import { willNavigate } from '../../src/lib/comfort'
 import { useEffect, useState } from 'react'
 
 // Hash routing, on purpose: the site is static on GitHub Pages, so `/prototype/organizer/#/verify?token=…`
@@ -23,6 +24,7 @@ export function useRoute() {
 }
 
 export function navigate(to, { replace = false } = {}) {
+  willNavigate() // the next page opens at its top (src/lib/comfort.js)
   const target = to.startsWith('#') ? to : `#${to}`
   if (replace) {
     window.location.replace(`${window.location.pathname}${window.location.search}${target}`)
