@@ -43,7 +43,7 @@ Still missing on purpose (documented in `scoring/README.md`): cross-race calibra
 
 **Known limitation, documented in `course/README.md`:** elevation-noise filtering is per-segment, not accumulating, so a very gradual multi-step climb below the noise threshold per step could be under-counted. Revisit once real GPX data exists to tune it.
 
-**Important constraint:** a GPX→OTRI predictor cannot be calibrated until Phase 1 exists and real race results are available (`docs/gpx-predictor.md`). The feature extractor is built; wiring it to predictions is Phase 4+ work.
+**Important constraint:** a GPX→OTRI predictor cannot be calibrated until Phase 1 exists and real race results are available. The feature extractor is built; wiring it to predictions is Phase 4+ work.
 
 ## Phase 3 — Map / visualization layer ✅ done
 
@@ -54,7 +54,7 @@ Still missing on purpose (documented in `scoring/README.md`): cross-race calibra
 - [x] **Tiles:** defaults to MapLibre's official open demo style (no key, no paid infra) via a `styleUrl` prop, so it works out of the box; swap that prop for a self-hosted OpenStreetMap-based style (Protomaps, OpenMapTiles — ODbL, attribution required) in production.
 - [x] **Elevation cross-check:** not wired yet — open DEM sources (Copernicus DEM GLO-30, SRTM via OpenTopography) remain the plan once there's a backend to call them from.
 
-**Known gap:** no self-hosted tile server exists yet, and the component is not wired into any page — there is no organizer-upload / predictor UI to place it in yet (that's Phase 4). It's a ready-to-use building block, documented in `src/components/README.md`.
+**Known gap:** no self-hosted tile server exists yet. The component is in use on race pages, the calculator and the organizer's course step.
 
 Depends on Phase 2's parsed GPX data existing; otherwise there's nothing to render.
 
@@ -75,7 +75,7 @@ Depended on Phases 0–1 being stable enough to expose publicly — they were.
 
 ## Phase 5 — Ecosystem *(partially in scope for code — mostly business/community work)*
 
-- [x] **Formal governance (OEP process)** — `docs/governance/oep-template.md` plus an OEP index at `docs/governance/oep/README.md`. Retroactively documented the Phase 1 baseline scoring model as [`OEP-001`](governance/oep/OEP-001-baseline-scoring-model.md), so the process has a real, non-hypothetical example.
+- [x] **Formal governance (OEP process)** — `docs/governance/oep-template.md` plus an OEP index in `docs/governance/README.md`. Retroactively documented the Phase 1 baseline scoring model as [`OEP-001`](governance/oep/OEP-001-baseline-scoring-model.md), so the process has a real, non-hypothetical example.
 - [ ] More organizer partners, developer integrations, scientific advisors, international expansion — these are business-development and community activities, not something to build in code. See `HANDBOOK.md` "Phase 4 — Ecosystem" for the full list.
 
 ## Open-source constraints that apply to every phase

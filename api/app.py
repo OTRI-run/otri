@@ -1488,7 +1488,7 @@ async def analyze_gpx(request: Request, file: UploadFile, finish_time_seconds: i
 
     Uses the exact same formula as the real post-race scorer (no competitor
     assumption needed) — see ``scoring.estimator``'s module docstring and
-    ``docs/gpx-predictor.md``.
+    ``docs/methodology/0.1.0/HOW-OTRI-SCORES.md``.
     """
     enforce_rate_limit(request, max_requests=60)  # public and CPU-heavy: one call per slider move is fine, a flood is not
     suffix = _safe_suffix(file.filename, ".gpx")

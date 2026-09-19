@@ -591,7 +591,7 @@ function AdminRaceRow({ race, token, onChanged }) {
   )
 }
 
-// Listings: races shown publicly before anyone has uploaded results (docs/product/race-listings.md).
+// Listings: races shown publicly before anyone has uploaded results (docs/product/open-scoring-tool.md).
 const EVENTS_PER_PAGE = 40
 
 function EventsAdmin({ session }) {
