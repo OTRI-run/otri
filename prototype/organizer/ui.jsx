@@ -1,3 +1,4 @@
+import { fitFontSize } from '../../src/lib/fitText'
 import { useState } from 'react'
 import useFileDrop from '../../src/lib/useFileDrop'
 import { AlertTriangle, ArrowLeft, Check, CheckCircle2, Info, Upload, XCircle } from 'lucide-react'
@@ -28,7 +29,9 @@ export function Page({ title, eyebrow, intro, back, children, aside, headline })
       )}
       {eyebrow && <Eyebrow className={back ? 'mt-5' : ''}>{eyebrow}</Eyebrow>}
       {(headline || title) && (
-        <h1 className="mt-3 text-[clamp(32px,4.5vw,52px)] font-bold leading-[.98] tracking-[-.05em] text-[#0b1220]">{headline ?? title}</h1>
+        // A `title` is a name someone typed (an event, a distance): it is sized by its length. A
+        // `headline` is written for the page and keeps the designed size.
+        <h1 className="otri-fit mt-3 font-bold leading-[1.02] tracking-[-.05em] text-[#0b1220]" style={{ fontSize: headline ? 'clamp(32px, 4.5vw, 52px)' : fitFontSize(title, { min: 28, vw: 4.5, max: 52 }) }}>{headline ?? title}</h1>
       )}
       {intro && <p className="mt-4 max-w-[560px] text-sm leading-7 text-slate-500">{intro}</p>}
     </div>

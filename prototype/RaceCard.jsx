@@ -37,7 +37,7 @@ export default function RaceCard({ race }) {
           <ArrowUpRight size={14} className="text-slate-300 transition group-hover:text-blue-600" />
         </span>
       </div>
-      <h3 className="mt-2 text-xl font-bold tracking-[-.03em] text-[#0b1220]">{race.event_name}</h3>
+      <h3 className="otri-fit mt-2 text-xl font-bold leading-6 tracking-[-.03em] text-[#0b1220]">{race.event_name}</h3>
       <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
         <span>{race.course_name}</span>
         {(race.event_location || race.event_country) && (

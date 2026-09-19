@@ -1,3 +1,4 @@
+import { fitFontSize } from '../src/lib/fitText'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUpRight, Check, Copy, GitBranch, Link2, Mountain, RefreshCw, Search, Share2, Timer, Upload, Image as ImageIcon } from 'lucide-react'
 import CourseMap from '../src/components/CourseMap'
@@ -815,7 +816,7 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
             <Eyebrow>01 / COURSE</Eyebrow>
-            <h2 className="mt-3 text-[clamp(28px,4vw,44px)] font-bold leading-[1] tracking-[-.05em] text-[#0b1220]">{courseLabel.name}</h2>
+            <h2 className="otri-fit mt-3 font-bold leading-[1.05] tracking-[-.04em] text-[#0b1220]" style={{ fontSize: fitFontSize(courseLabel.name, { min: 26, vw: 4, max: 44 }) }}>{courseLabel.name}</h2>
             <p className="mt-2 text-sm text-slate-500">
               {courseLabel.meta ? `${courseLabel.meta} · ` : ''}
               <span className={courseLabel.verified ? 'font-semibold text-blue-600' : 'font-semibold text-amber-600'}>
@@ -1239,10 +1240,10 @@ export default function ScoreCalculator({ embedded = false }) {
             </div>
             {hasCourse ? (
               <>
-                <h1 className="mt-5 max-w-[760px] text-[clamp(34px,5vw,56px)] font-bold leading-[1.02] tracking-[-.06em] text-[#0b1220]">
+                <h1 className="otri-fit mt-5 max-w-[760px] font-bold leading-[1.06] tracking-[-.05em] text-[#0b1220]" style={{ fontSize: fitFontSize(courseLabel.name, { min: 30, vw: 5, max: 56 }) }}>
                   Your score on
                   <br />
-                  <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">{courseLabel.name}</em>
+                  <em className="otri-gradient-text not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">{courseLabel.name}</em>
                 </h1>
                 <p className="mt-4 max-w-[620px] text-[15px] leading-7 text-slate-500">
                   It starts at the time that scores {DEFAULT_TARGET_SCORE} here. Set your own target: type it, drag the slider, or pick
