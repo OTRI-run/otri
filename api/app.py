@@ -1843,47 +1843,38 @@ def _save_upload(contents: bytes, suffix: str) -> Path:
 async def score_a_race(
     request: Request,
     results: UploadFile,
-    gpx: UploadFile | None = None,
-    distance_km: float | None = Form(default=None),
-    elevation_gain_m: float | None = Form(default=None),
+    gpx: UploadFile,
     race_name: str | None = Form(default=None, max_length=200),
     scoring_version: str | None = Form(default=None, max_length=80),
     format: str = "json",
 ):
     """Validate a results file and score it against a course, without an account and without
-    keeping anything. The course is a GPX file (`gpx`, measured like any OTRI course) or, without
-    one, the official `distance_km` and `elevation_gain_m`. `?format=csv` returns the scored list as
-    a CSV download. An invalid results file answers 200 with `is_valid: false` and the issues."""
+    keeping anything. The course is a GPX file (`gpx`), measured like any OTRI course: a score
+    rests on where the climbing is, which a distance and a climb figure cannot say, so there is no
+    scoring from official figures here. `?format=csv` returns the scored list as a CSV download.
+    An invalid results file answers 200 with `is_valid: false` and the issues."""
     enforce_rate_limit(request, max_requests=10)  # public, and a full course measurement plus thousands of rows
     if format not in ("json", "csv"):
         raise HTTPException(status_code=422, detail="format must be json or csv")
     version = scoring_version or DEFAULT_SCORING_VERSION
     _validate_scoring_version(version)
-    if gpx is None and (distance_km is None or elevation_gain_m is None):
-        raise HTTPException(status_code=422, detail="send the course as a gpx file, or distance_km and elevation_gain_m")
-    if gpx is None and (not 0 < distance_km <= 2000 or not 0 <= elevation_gain_m <= 100_000):
-        raise HTTPException(status_code=422, detail="distance_km must be above 0 and elevation_gain_m 0 or more")
 
     results_bytes = await results.read(20_000_001)
-    gpx_bytes = await gpx.read(20_000_001) if gpx is not None else None
-    if len(results_bytes) + len(gpx_bytes or b"") > 20_000_000:
+    gpx_bytes = await gpx.read(20_000_001)
+    if len(results_bytes) + len(gpx_bytes) > 20_000_000:
         raise HTTPException(status_code=413, detail="Upload exceeds 20 MB")
 
     def run() -> ScoreRaceResult:
         paths = [_save_upload(results_bytes, _safe_suffix(results.filename, ".csv"))]
         try:
-            points = measurement = None
-            if gpx_bytes is not None:
-                paths.append(_save_upload(gpx_bytes, _safe_suffix(gpx.filename, ".gpx")))
-                try:
-                    points, measurement = _measure_gpx_path(paths[1])
-                except (GpxParseError, ValueError, UnicodeError) as error:
-                    raise HTTPException(status_code=422, detail=f"course file: {error}") from error
-                features = features_from_measurement(measurement)
-                distance, climb = features.distance_km, features.elevation_gain_m
-            else:
-                distance, climb = distance_km, elevation_gain_m
-            course = ScoredCourse(name=(race_name or "").strip() or None, source="gpx" if points is not None else "official", distance_km=round(distance, 3), elevation_gain_m=round(climb, 1))
+            paths.append(_save_upload(gpx_bytes, _safe_suffix(gpx.filename, ".gpx")))
+            try:
+                points, measurement = _measure_gpx_path(paths[1])
+            except (GpxParseError, ValueError, UnicodeError) as error:
+                raise HTTPException(status_code=422, detail=f"course file: {error}") from error
+            features = features_from_measurement(measurement)
+            distance, climb = features.distance_km, features.elevation_gain_m
+            course = ScoredCourse(name=(race_name or "").strip() or None, distance_km=round(distance, 3), elevation_gain_m=round(climb, 1))
 
             try:
                 report = validate_result_file(paths[0])
@@ -1893,7 +1884,7 @@ async def score_a_race(
                 "errors": [ValidationIssueOut(**issue.to_dict()) for issue in report.errors],
                 "warnings": [ValidationIssueOut(**issue.to_dict()) for issue in report.warnings],
             }
-            shared = {"scoring_version": version, "course": course, "measurement": measurement.to_dict() if measurement is not None else None}
+            shared = {"scoring_version": version, "course": course, "measurement": measurement.to_dict()}
             if not report.is_valid:
                 return ScoreRaceResult(is_valid=False, scores=[], **issues, **shared)
 

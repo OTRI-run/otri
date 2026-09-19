@@ -250,16 +250,11 @@ export function analyzeGpx(file, finishTimeSeconds) {
   return request('/gpx/analyze', { method: 'POST', body: formData })
 }
 
-/** Validate a results file and score it against a course, with no account and nothing stored.
- * The course is a GPX file, or without one the official distance and climb. */
-export function scoreRace({ results, gpx, distanceKm, elevationGainM, raceName }) {
+/** Validate a results file and score it against a course file, with no account and nothing stored. */
+export function scoreRace({ results, gpx, raceName }) {
   const formData = new FormData()
   formData.append('results', results)
-  if (gpx) formData.append('gpx', gpx)
-  else {
-    formData.append('distance_km', String(distanceKm))
-    formData.append('elevation_gain_m', String(elevationGainM))
-  }
+  formData.append('gpx', gpx)
   if (raceName) formData.append('race_name', raceName)
   return request('/score', { method: 'POST', body: formData })
 }

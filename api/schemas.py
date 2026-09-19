@@ -191,8 +191,8 @@ class ScoredCourse(BaseModel):
     """The course a results file was scored against, as `POST /score` understood it."""
 
     name: str | None = None
-    # 'gpx' when the figures were measured from the uploaded course file, 'official' when given.
-    source: str
+    # Always measured from the uploaded course file: `POST /score` does not score official figures.
+    source: str = "gpx"
     distance_km: float
     elevation_gain_m: float
     confidence: str | None = None

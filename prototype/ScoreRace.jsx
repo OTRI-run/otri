@@ -19,7 +19,7 @@ function formatHms(totalSeconds) {
 
 // Why a score carries Low confidence, in words. The machine-readable flag stays in the API answer.
 const FLAG_TEXT = {
-  elevation_not_dem_sourced: 'The climb comes from the file or the official figure, not from verified terrain data, so the scores can shift slightly with a better course file.',
+  elevation_not_dem_sourced: 'The climb comes from the course file, not from verified terrain data, so the scores can shift slightly with a better file.',
   route_not_reproducible: 'The course file is too sparse or broken in places to measure the same way twice.',
   gradient_domain_exceeded: 'Much of this course is steeper than the ground the model was calibrated on.',
   course_below_validated_range: 'This course is shorter than the range the model has been validated on.',
@@ -119,7 +119,7 @@ function Scored({ result, fileStem }) {
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Tile label="COURSE" value={`${formatDistance(course.distance_km, units)} · ${formatElevation(course.elevation_gain_m, units, { sign: '+' })}`} sub={course.source === 'gpx' ? 'measured from your course file' : 'official figures, no course file'} />
+        <Tile label="COURSE" value={`${formatDistance(course.distance_km, units)} · ${formatElevation(course.elevation_gain_m, units, { sign: '+' })}`} sub="measured from your course file" />
         <Tile label="CONFIDENCE" value={course.confidence ?? 'n/a'} sub={course.confidence === 'High' ? 'course verified against terrain data' : 'see the notes below'} />
         <Tile label="BEST · MEDIAN" value={summary.best_score != null ? `${summary.best_score} · ${summary.median_score}` : 'not scored'} sub={summary.non_finishers > 0 ? `${summary.non_finishers} did not finish` : 'every listed runner finished'} />
         <Tile label="MODEL" value={modelLabel(result.scoring_version)} sub={result.scoring_version} />
@@ -190,17 +190,13 @@ function Scored({ result, fileStem }) {
 
 export default function ScoreRace() {
   const [gpx, setGpx] = useState(null)
-  const [noCourseFile, setNoCourseFile] = useState(false)
-  const [distance, setDistance] = useState('')
-  const [climb, setClimb] = useState('')
   const [results, setResults] = useState(null)
   const [raceName, setRaceName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
 
-  const courseReady = noCourseFile ? Number(distance) > 0 && climb !== '' && Number(climb) >= 0 : Boolean(gpx)
-  const missing = !courseReady ? (noCourseFile ? 'Enter the official distance and climb.' : 'Choose the course file.') : !results ? 'Choose the results file.' : null
+  const missing = !gpx ? 'Choose the course file.' : !results ? 'Choose the results file.' : null
 
   async function useExample() {
     setError(null)
@@ -219,7 +215,7 @@ export default function ScoreRace() {
     setError(null)
     setResult(null)
     try {
-      setResult(await scoreRace({ results, gpx: noCourseFile ? null : gpx, distanceKm: distance, elevationGainM: climb, raceName: raceName.trim() }))
+      setResult(await scoreRace({ results, gpx, raceName: raceName.trim() }))
     } catch (err) {
       setError(err.status === 429 ? 'That was a lot of scoring in one minute. Wait a minute and try again.' : err.message)
     } finally {
@@ -258,24 +254,8 @@ export default function ScoreRace() {
           <form onSubmit={submit} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_44px_rgba(15,23,42,.07)] sm:p-6">
             <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">1 · THE COURSE</p>
             <div className="mt-2">
-              {noCourseFile ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="text-xs font-semibold text-[#0b1220]">
-                    Distance (km)
-                    <input type="number" min="0.1" step="0.01" inputMode="decimal" value={distance} onChange={(e) => setDistance(e.target.value)} className={`${input} mt-1`} placeholder="50" />
-                  </label>
-                  <label className="text-xs font-semibold text-[#0b1220]">
-                    Climb (m)
-                    <input type="number" min="0" step="1" inputMode="numeric" value={climb} onChange={(e) => setClimb(e.target.value)} className={`${input} mt-1`} placeholder="2600" />
-                  </label>
-                </div>
-              ) : (
-                <FilePick icon={MapIcon} label="Choose the course (GPX)" hint="The official track of the race, up to 20 MB" accept=".gpx,application/gpx+xml" file={gpx} onFile={setGpx} disabled={busy} />
-              )}
-              <button type="button" onClick={() => setNoCourseFile((value) => !value)} className="mt-2 text-xs font-semibold text-blue-600 hover:underline">
-                {noCourseFile ? 'I have a course file' : 'No course file? Use the official distance and climb'}
-              </button>
-              {noCourseFile && <p className="mt-1 text-xs text-slate-500">Scores from official figures carry Low confidence: the model cannot see where the climbing is.</p>}
+              <FilePick icon={MapIcon} label="Choose the course (GPX)" hint="The official track of the race, up to 20 MB" accept=".gpx,application/gpx+xml" file={gpx} onFile={setGpx} disabled={busy} />
+              <p className="mt-2 text-xs text-slate-500">A score rests on where the climbing is, so it needs the track: a distance and a climb figure are not enough.</p>
             </div>
 
             <p className="mt-5 font-mono text-[9px] tracking-[.08em] text-slate-500">2 · THE RESULTS</p>

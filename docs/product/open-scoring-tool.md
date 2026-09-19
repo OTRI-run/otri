@@ -31,7 +31,7 @@ This is a choice about where the project's effort goes. ITRA and UTMB are member
 
 The whole product in one call: a course and a results file in, the validated and scored result list out.
 
-- **Course:** a GPX file (`gpx`), measured like any OTRI course, or without one the official `distance_km` and `elevation_gain_m` (scores then carry Low confidence).
+- **Course:** a GPX file (`gpx`), required, measured like any OTRI course. There is no scoring from an official distance and climb here: a score rests on where the climbing is, and a tool whose whole claim is a measured, explainable number should not hand out guesses.
 - **Results:** `results`, CSV or Excel, the same validation as the organizer upload. An invalid file answers `200` with `is_valid: false` and the issues; nothing is scored.
 - **Answer:** `ScoreRaceResult`: `course` (figures, source, confidence, quality flags, `not_scored_reason`), `summary`, `errors`, `warnings`, `scores`, the `measurement`, and `stored: false`. `?format=csv` returns the list as a download; cells that a spreadsheet would run as a formula are made text.
 - **Nothing is kept.** Both uploads are written to temporary files and deleted before the answer is sent. No event, race, result or runner row is written, and `runner_id` is always null. The only trace is the course-measurement cache shared with `/gpx/analyze`: a derived profile keyed by the file's hash, 64 entries, no file and no names.
