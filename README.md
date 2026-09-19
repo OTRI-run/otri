@@ -2,7 +2,7 @@
 
 **The open-source performance layer for trail running.**
 
-OTRI is an open calculator and scoring tool for trail running: a course and a results file in, an explained, reproducible score for every finisher out. It is independent, its methodology is public and versioned, and it is not an approval body: a race can score itself, with no account and nothing stored ([the direction](docs/product/open-scoring-tool.md)).
+OTRI is an open calculator and scoring tool for trail running: a course and a results file in, an explained, reproducible score for every finisher out. It is independent, its methodology is public and versioned, and it is not an approval body: a race can score itself for free with no account, and publish the results as a race page with one click ([the direction](docs/product/open-scoring-tool.md)).
 
 ## Why OTRI?
 

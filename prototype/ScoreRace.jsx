@@ -10,7 +10,7 @@ import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import { modelLabel } from '../src/lib/model'
 
 // Score my race: a course and a results file in, the validated and scored result list out. No
-// account and nothing kept (POST /score); the same validation and scoring as a published race.
+// account (POST /score); the same validation and scoring as a published race, which is one click further.
 
 const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
 // The example race: a synthetic course and 100 made-up finishers (scripts/generate_example_race.py).
@@ -485,10 +485,10 @@ export default function ScoreRace() {
           </form>
           <div className="min-w-0 lg:col-start-1">
             <ul className="space-y-2 text-sm text-slate-600">
-              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Nothing is stored or published. Both files are deleted as soon as the scores are sent back.</li>
-              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> A score depends on the course and the runner's own time, never on who else raced.</li>
+              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Free and instant: no account, no approval, every score in about a minute.</li>
+              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Publish with one click: a leaderboard page for your runners, and podium images with a post for your channels.</li>
+              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> A score depends on the course and the runner's own time, never on who else raced, so it compares across races.</li>
               <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Where the model runs out of evidence it says so, per course, instead of guessing.</li>
-              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Like what you see? One click turns it into a public race page, free, with nothing to upload again.</li>
             </ul>
             <p className="mt-6 text-xs text-slate-500">
               Timing company or developer? The same call is a public API: <a href="#api" className="font-semibold text-blue-600 no-underline hover:underline">POST /score</a>.
@@ -505,7 +505,7 @@ export default function ScoreRace() {
             </p>
             <Issues issues={result.errors} kind="error" />
             {result.warnings.length > 0 && <Issues issues={result.warnings} kind="warning" />}
-            <p className="mt-3 text-xs text-slate-500">Correct the file and score it again. Nothing was kept.</p>
+            <p className="mt-3 text-xs text-slate-500">Correct the file and score it again.</p>
           </section>
         )}
         {result?.is_valid && (

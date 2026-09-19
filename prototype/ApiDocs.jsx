@@ -112,10 +112,10 @@ export default function ApiDocs() {
             <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">not a gatekeeper.</em>
           </h1>
           <p className="mt-5 max-w-[680px] text-base leading-7 text-slate-600">
-            Everything the site does with a course and a results file is a public HTTP call: no key, no account, no approval, and nothing kept. Use it from a timing system, a race website or a notebook. The model is open source, so a score from the API can be recomputed by anyone.
+            Everything the site does with a course and a results file is a public HTTP call: free, with no key, no account and no approval. Use it from a timing system, a race website or a notebook. The model is open source, so a score from the API can be recomputed by anyone.
           </p>
           <div className="mt-6 flex flex-wrap gap-2 font-mono text-[10px] tracking-[.06em] text-slate-600">
-            {['NO API KEY', 'ANY ORIGIN (CORS)', 'NOTHING STORED', 'VERSIONED MODEL'].map((tag) => (
+            {['FREE', 'NO API KEY', 'ANY ORIGIN (CORS)', 'VERSIONED MODEL'].map((tag) => (
               <span key={tag} className="rounded-full border border-slate-200 bg-white px-3 py-1">{tag}</span>
             ))}
           </div>
@@ -175,8 +175,8 @@ export default function ApiDocs() {
               <li>20 MB per request, 50,000 result rows</li>
               <li>Over the limit answers <code>429</code> with <code>Retry-After</code></li>
             </ul>
-            <p className="mt-4 font-mono text-[9px] tracking-[.08em] text-slate-500">WHAT IS KEPT</p>
-            <p className="mt-1">Nothing from <code>/score</code>: both files are deleted before the answer is sent, and no runner or race is recorded. <code>/gpx/analyze</code> keeps a short-lived cache of the course measurement, keyed by the file's hash, and no file.</p>
+            <p className="mt-4 font-mono text-[9px] tracking-[.08em] text-slate-500">YOUR FILES</p>
+            <p className="mt-1"><code>/score</code> answers and forgets: the files are not kept and no race is created. To keep a race and show it to runners, publish it from an organizer account.</p>
             <p className="mt-4 font-mono text-[9px] tracking-[.08em] text-slate-500">STABILITY</p>
             <p className="mt-1">The project is pre-1.0. Fields are added, not renamed; a change to how scores are computed is always a new <code>scoring_version</code>, never a silent change to an old one.</p>
             <a href={`${API_BASE_URL}/docs`} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1 font-semibold text-blue-600 no-underline hover:underline">

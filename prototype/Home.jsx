@@ -167,7 +167,8 @@ export default function Home() {
             </h1>
             <p className="mt-6 max-w-[620px] text-[15px] leading-7 text-slate-500 sm:text-[17px]">
               A calculator, not a governing body. Bring a course and a results file and every finisher is scored in
-              a minute: no account, no approval, nothing kept. Runners try a target time before race day.
+              a minute: free, no account, no approval. Publish the results as a race page with one click, and share
+              the podium. Runners try a target time before race day.
             </p>
             <div className="mt-7 flex flex-col gap-2 sm:flex-row">
               <a className={primaryButton} href="#score">
