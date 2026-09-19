@@ -726,7 +726,7 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
                       {race.event_name} · {race.course_name}
                     </span>
                     <span className="mt-0.5 block font-mono text-[10px] text-slate-500">
-                      {race.event_date} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
+                      {race.calculator_only ? [race.event_location, race.event_country].filter(Boolean).join(', ') || 'course' : race.event_date} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
                     </span>
                   </span>
                   <ArrowUpRight size={14} className="shrink-0 text-slate-400" />
@@ -821,6 +821,14 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
               <span className={courseLabel.verified ? 'font-semibold text-blue-600' : 'font-semibold text-amber-600'}>
                 {courseLabel.verified ? 'Race course' : courseLabel.meta === 'Shared course' ? 'Shared course' : 'Your upload'}
               </span>
+              {courseLabel.sourceUrl && (
+                <>
+                  {' · course file from '}
+                  <a href={courseLabel.sourceUrl} target="_blank" rel="noreferrer" className="font-semibold text-blue-600 no-underline hover:underline">
+                    {courseLabel.sourceUrl.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}
+                  </a>
+                </>
+              )}
             </p>
           </div>
           <button
@@ -1131,7 +1139,7 @@ export default function ScoreCalculator({ embedded = false }) {
   }
 
   function raceLabel(race) {
-    return { name: `${race.event_name} · ${race.course_name}`, meta: race.event_date, verified: true, raceId: race.race_id }
+    return { name: `${race.event_name} · ${race.course_name}`, meta: race.calculator_only ? [race.event_location, race.event_country].filter(Boolean).join(', ') : race.event_date, verified: true, raceId: race.race_id, sourceUrl: race.source_url ?? null }
   }
 
   function chooseExistingRace(race) {

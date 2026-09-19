@@ -25,6 +25,7 @@ import { formatDistance, formatElevation, useUnits } from '../../../src/lib/unit
 import { modelLabel } from '../../../src/lib/model'
 import { fetchNewsletterCsv } from '../../apiClient'
 import { Link } from '../router'
+import CalculatorCourses from './CalculatorCourses'
 import { Button, Gradient, Notice, Page, StatusChip, formatDate, raceStatus } from '../ui'
 
 const TABS = [
@@ -32,6 +33,7 @@ const TABS = [
   ['reports', 'Reports'],
   ['accounts', 'Accounts'],
   ['events', 'Events & races'],
+  ['calculator', 'Calculator courses'],
   ['shared', 'Shared courses'],
   ['server', 'Server'],
 ]
@@ -1053,6 +1055,7 @@ export function AdminEvents({ session, tab = 'overview' }) {
         {active === 'reports' && <Reports session={session} />}
         {active === 'accounts' && <Accounts session={session} />}
         {active === 'events' && <EventsAdmin session={session} />}
+        {active === 'calculator' && <CalculatorCourses session={session} />}
         {active === 'shared' && <SharedCourses session={session} />}
         {active === 'server' && <ServerTab session={session} />}
       </div>

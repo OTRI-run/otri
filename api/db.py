@@ -157,6 +157,9 @@ CREATE INDEX IF NOT EXISTS events_organizer_id_idx ON events (organizer_id);
 ALTER TABLE events ADD COLUMN IF NOT EXISTS website TEXT;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS source_url TEXT;
 ALTER TABLE races ADD COLUMN IF NOT EXISTS listed_at TIMESTAMPTZ;
+-- A course an admin put up for the calculator's "Pick a race" only: public for trying a target time,
+-- never shown as a race on the races page (OTRI lists no race on anyone's behalf).
+ALTER TABLE races ADD COLUMN IF NOT EXISTS calculator_only BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE races ADD COLUMN IF NOT EXISTS course_permission TEXT;
 CREATE INDEX IF NOT EXISTS races_listed_at_idx ON races (listed_at) WHERE listed_at IS NOT NULL;
 CREATE TABLE IF NOT EXISTS score_requests (
@@ -231,6 +234,9 @@ class Race:
     listed_at: datetime | None = None
     course_permission: str | None = None
     event_website: str | None = None
+    # Offered in the calculator's "Pick a race" only; not a race on the races page.
+    calculator_only: bool = False
+    event_source_url: str | None = None
 
     def to_race_record(self) -> RaceRecord:
         """Adapt to the shape ``scoring.score_race()`` expects."""
@@ -383,6 +389,7 @@ _RACE_JOIN_SELECT = """
            r.measurement->>'status' AS measurement_status,
            (r.measurement->'snapshot'->>'loss_m')::double precision AS elevation_loss_m,
            r.listed_at, r.course_permission, NULLIF(e.website, '') AS event_website,
+           r.calculator_only, NULLIF(e.source_url, '') AS event_source_url,
            r.published_at, COALESCE(o.is_demo, FALSE) AS is_demo, r.created_at,
            e.event_name, e.event_date, e.organizer_id, e.location AS event_location, e.country AS event_country,
            COALESCE(NULLIF(o.organization, ''), NULLIF(o.display_name, '')) AS organizer_display, NULLIF(o.website, '') AS organizer_website
@@ -548,6 +555,27 @@ def get_results(race_id: str) -> list[ResultRecord]:
         )
         for row in rows
     ]
+
+
+def set_race_calculator_only(race_id: str, calculator_only: bool) -> Race:
+    """A calculator course is listed (public without results) and marked as not being a race page."""
+    with get_connection() as connection:
+        cursor = connection.execute(
+            "UPDATE races SET calculator_only = %s, listed_at = CASE WHEN %s THEN COALESCE(listed_at, now()) ELSE listed_at END, "
+            "updated_at = now() WHERE race_id = %s",
+            (calculator_only, calculator_only, race_id),
+        )
+        if cursor.rowcount == 0:
+            raise NotFoundError(f"race {race_id!r} not found")
+    race = find_race(race_id)
+    assert race is not None
+    return race
+
+
+def list_calculator_courses() -> list[Race]:
+    with get_connection() as connection:
+        rows = connection.execute(_RACE_JOIN_SELECT + " WHERE r.calculator_only ORDER BY e.event_name, r.distance_km").fetchall()
+    return [Race(**row) for row in rows]
 
 
 def set_race_listed(race_id: str, listed: bool) -> Race:

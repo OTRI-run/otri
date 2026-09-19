@@ -87,6 +87,14 @@ MIGRATIONS: tuple[Migration, ...] = (
         "Build 0.10.0 scores uphill-only courses (OEP-003) and gives every other course the same score as "
         "0.9.0 to the last digit, so stored races move to it without any score changing.",
     ),
+    Migration(
+        "0006_calculator_courses",
+        """
+        ALTER TABLE races ADD COLUMN IF NOT EXISTS calculator_only BOOLEAN NOT NULL DEFAULT FALSE;
+        """,
+        "Courses an admin puts up for the calculator's Pick a race: public for trying a target time, "
+        "never shown as a race on the races page.",
+    ),
 )
 
 _TRACKING_SQL = """

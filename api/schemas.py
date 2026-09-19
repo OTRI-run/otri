@@ -61,7 +61,10 @@ class RaceSummary(BaseModel):
     # without them is 'upcoming' or 'awaiting_results' by its date; anything else is 'private'.
     listing_status: str = "private"
     is_listed: bool = False
-
+    # A course put up by OTRI for the calculator's "Pick a race": not a race page, no results to come.
+    calculator_only: bool = False
+    # Where the course file came from (the organizer's page), shown with a calculator course.
+    source_url: str | None = None
 
 class EventDetail(EventSummary):
     races: list[RaceSummary] = []
