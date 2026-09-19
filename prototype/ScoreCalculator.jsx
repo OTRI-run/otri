@@ -151,14 +151,21 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
             {pct != null ? (
               <>
                 <span className={`mt-2 block font-mono text-[11px] ${pct > 100 ? 'text-cyan-300' : 'text-slate-300'}`}>
-                  {pct}% of the world-best rate for this course{pct > 100 ? ': faster than any human has run ground like this' : ''}
+                  {pct}% of world-record speed for a course like this
                 </span>
+                {b?.world_best_time_seconds > 0 && (
+                  <span className="mx-auto mt-1.5 block max-w-[300px] text-[11px] leading-4 text-slate-400">
+                    {pct > 100
+                      ? `A world-record-level run here would take about ${formatHms(Math.round(b.world_best_time_seconds))} and score 1000. Your target is faster than that, so it scores above 1000.`
+                      : `A world-record-level run here would take about ${formatHms(Math.round(b.world_best_time_seconds))} and score 1000.`}
+                  </span>
+                )}
                 <div className="mx-auto mt-3 h-1.5 w-full max-w-[260px] overflow-hidden rounded-full bg-slate-700/70" aria-hidden="true">
                   <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-300" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
                 </div>
                 <span className="mx-auto mt-1 flex w-full max-w-[260px] justify-between font-mono text-[8px] text-slate-500">
                   <span>0</span>
-                  <span>1000 = WORLD BEST</span>
+                  <span>1000 = WORLD-RECORD LEVEL</span>
                 </span>
               </>
             ) : (
@@ -861,7 +868,7 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
         className="mt-4 w-full accent-blue-600"
       />
       <div className="mt-1 flex justify-between gap-3 font-mono text-[11px] tracking-[.04em] text-slate-500">
-        <span>{range.known ? `${formatHms(range.min)} · SCORE ${SLIDER_MAX_SCORE}` : formatHms(range.min)}{range.known && <span className="hidden sm:inline"> · 1000 = BEST HUMAN, {formatHms(ceilingSeconds)}</span>}</span>
+        <span>{range.known ? `${formatHms(range.min)} · SCORE ${SLIDER_MAX_SCORE}` : formatHms(range.min)}{range.known && <span className="hidden sm:inline"> · 1000 = WORLD-RECORD LEVEL, {formatHms(ceilingSeconds)}</span>}</span>
         <span>{range.known ? `${formatHms(range.max)} · SCORE ${SLIDER_MIN_SCORE}` : formatHms(range.max)}</span>
       </div>
       {range.known && (
