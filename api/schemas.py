@@ -340,6 +340,8 @@ class MeResponse(BaseModel):
     email: str
     is_admin: bool = False
     is_demo: bool = False
+    # False until the link in the confirmation email was opened; publishing and listing need it.
+    email_verified: bool = False
     profile: ProfileOut = ProfileOut()
     two_factor: TwoFactorStatus = TwoFactorStatus()
     password_changed_at: datetime | None = None
@@ -417,9 +419,14 @@ class TokenResponse(BaseModel):
     expires_in: int | None = None
     is_admin: bool = False
     is_demo: bool = False
+    email_verified: bool = False
     access_token: str
     token_type: str = "bearer"
     email: str
+
+
+class RegistrationResponse(TokenResponse):
+    message: str
 
 
 class MessageResponse(BaseModel):

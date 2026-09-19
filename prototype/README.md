@@ -13,7 +13,7 @@ A separate, working demonstration of the full pipeline built so far — kept apa
 ## Three tabs
 
 1. **Races** — static, pre-computed leaderboards (see "Why it's static" below).
-2. **Calculate score** — the guided runner pre-race calculator from `docs/AI_PRODUCT_IMPLEMENTATION_BRIEF.md` section 6: pick a course (search races with a verified/attached GPX via the live API, or upload your own), confirm it, enter a target finish time, watch the real computation stages, then see the projected OTRI score with a "why this score" explain layer and a nearby-times table — every number comes from real `POST /gpx/analyze` calls, nothing is hardcoded.
+2. **Calculate score** — the guided runner pre-race calculator: pick a course (search races with a verified/attached GPX via the live API, or upload your own), confirm it, enter a target finish time, watch the real computation stages, then see the projected OTRI score with a "why this score" explain layer and a nearby-times table — every number comes from real `POST /gpx/analyze` calls, nothing is hardcoded.
 3. **Organizer upload** — a full organizer dashboard against the live API: register + verify an email, create events, add one or more race distances per event, edit/delete either, attach a GPX to a distance, and submit a result file (`POST /races/{race_id}/results`) — shows validation errors/warnings or the computed leaderboard.
 
 The calculator and organizer tabs need the API running locally (or wherever `VITE_OTRI_API_BASE_URL` points — see `.env.example`):

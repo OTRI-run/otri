@@ -12,13 +12,31 @@ An **event** (e.g. "Phuket Mountain Trail Weekend") is owned by one organizer an
 
 Every event/race mutation (create/edit/delete, GPX attach, result submission) requires the requesting organizer to own the event — enforced server-side, 403 otherwise. `GET` endpoints (list/detail races, events, results) stay fully public.
 
+## The public contract
+
+Three calls need no account, no key and no approval, answer any origin (CORS `*`, no credentials), and are what OTRI commits to as a tool ([docs/product/open-scoring-tool.md](../docs/product/open-scoring-tool.md)). The human-readable version with examples is the site's API page (`prototype/ApiDocs.jsx`, `#api`).
+
+| Call | Purpose | Limit |
+| --- | --- | --- |
+| `POST /score` | A results file validated and scored against a course file (GPX, required). JSON, or `?format=csv`. Nothing stored. | 10 a minute per address |
+| `POST /gpx/analyze` | One course measured and, with `finish_time_seconds`, one time scored with its full breakdown. | 60 a minute per address |
+| `GET /scoring/models` | The scoring versions available; pass one to `/score` to pin it. | |
+
+20 MB per request, 50,000 result rows; over the limit answers `429` with `Retry-After`.
+
+### Stability, pre-1.0
+
+- Fields are added, not renamed or removed, on the three calls above.
+- A change to how scores are computed is always a new `scoring_version`; an existing version never changes its output (the replay tests in `tests/` hold every released version to that).
+- Everything else in the API serves OTRI's own pages and may change without notice.
+
 ## Endpoints
 
 | Method | Path | Description |
 | --- | --- | --- |
 | GET | `/` | App status. |
-| POST | `/auth/register` | Organizer sign-up: `email`, `password` (10–128 characters, not a common password, not built from the email), `accept_terms` (must be `true`; the acceptance time is stored) and optional `marketing_opt_in`. Creates an **unverified** account and sends a verification email — does **not** return an access token. 400 if the email already has an account, the password is rejected, or the terms are not accepted. Rate-limited. |
-| POST | `/auth/login` | Organizer sign-in. Returns an access token. 403 if the email isn't verified yet, 401 on wrong email/password. Rate-limited. |
+| POST | `/auth/register` | Organizer sign-up: `email`, `password` (10–128 characters, not a common password, not built from the email), `accept_terms` (must be `true`; the acceptance time is stored) and optional `marketing_opt_in`. Creates the account, emails a confirmation link and **signs the organizer in** (the same answer as `/auth/login`, plus `message`); `email_verified` is false until the link is opened. 400 if the email already has an account, the password is rejected, or the terms are not accepted. Rate-limited. |
+| POST | `/auth/login` | Organizer sign-in. Returns an access token and `email_verified`. 401 on wrong email/password. An unconfirmed address may sign in and prepare a race; `POST /races/{id}/publish` and `/listing` answer 403 until it is confirmed, and it is never an admin. Rate-limited. |
 | POST | `/auth/verify-email` | Confirm an organizer's email using the token from the verification email. 400 if the token is invalid/expired. |
 | POST | `/auth/resend-verification` | Resend the verification email. Always returns 200 with the same message whether or not the account exists/is already verified (prevents account enumeration). Rate-limited. |
 | POST | `/auth/request-password-reset` | Request a password reset email. Always returns 200 with the same message whether or not the email exists. Rate-limited. |
@@ -30,7 +48,7 @@ Every event/race mutation (create/edit/delete, GPX attach, result submission) re
 | DELETE | `/events/{event_id}` | **Requires ownership.** Deletes the event, cascading to its race distances and their results. 403/404 as above. |
 | POST | `/score` | **Public, nothing stored.** Validate a results file (`results`, CSV or Excel) and score it against the course file (`gpx`, required: there is no scoring from official figures here). Optional `race_name`, `scoring_version`; `?format=csv` downloads the scored list. An invalid results file answers 200 with `is_valid: false` and the issues; an unreadable file or course answers 422. Answers any origin (CORS `*`), as do `/gpx/analyze` and `/scoring/models`. 10 calls a minute per address. See `docs/product/open-scoring-tool.md`. |
 | GET | `/races` | Public races: those with published results, and races their organizer listed ahead of them (`listing_status`: `scored`, `upcoming`, `awaiting_results`; `is_listed`). A listed race nobody owns is never public. `?all=true` (admin) lists every race. |
-| POST · DELETE | `/races/{race_id}/listing` | **Requires ownership.** Show the race publicly before it has results, or take the listing down. Results stay behind publishing (`docs/product/race-listings.md`). |
+| POST · DELETE | `/races/{race_id}/listing` | **Requires ownership.** Show the race publicly before it has results, or take the listing down. Results stay behind publishing (`docs/product/open-scoring-tool.md`). |
 | GET | `/calendar.ics` | Public iCalendar feed of upcoming public events (one all-day entry per event, distances in the description). `?country=THA` narrows it; `?event=<event_id>` is a single event, past or future, for an add-to-calendar button. Cached for an hour. |
 | GET | `/races/{race_id}` | Race distance detail, 404 if unknown. |
 | GET | `/scoring/models` | List every available scoring algorithm (`version`, `name`, `description`, `uses_competitors`) a race distance can be configured to use — see `scoring/README.md`. |
@@ -48,7 +66,7 @@ Every event/race mutation (create/edit/delete, GPX attach, result submission) re
 | GET | `/races/{race_id}/gpx` | Raw GPX content for a race distance (`application/gpx+xml`), 404 if none attached. |
 | GET | `/races/{race_id}/results` | Scored results for a race already on file (scored with whichever model the race is configured for), 404 if unknown race or no results submitted yet. |
 | POST | `/races/{race_id}/results` | **Requires ownership of the race's event.** Upload a CSV/XLSX result file. Always validates first, then re-scores from the raw file using the race's configured scoring model — **the organizer can never supply a score directly** (`HANDBOOK.md` "Validation and anti-gaming"). A successful submission replaces any previously stored results for that race. Returns `is_valid`, `errors`, `warnings`, and `scores` (empty if invalid). |
-| POST | `/gpx/analyze` | Standalone tool (unrelated to stored races): upload a `.gpx` file, optionally with `finish_time_seconds`. Returns parsed course features and, if a time was given, the Course Standard model's predicted score (`scoring.estimator`) — the exact score that finish time will earn once real results are submitted for the same course, since that model has no competitor dependency. 422 if the course has a grade outside the model's supported ±45% domain. See `docs/gpx-predictor.md`. |
+| POST | `/gpx/analyze` | Standalone tool (unrelated to stored races): upload a `.gpx` file, optionally with `finish_time_seconds`. Returns parsed course features and, if a time was given, the Course Standard model's predicted score (`scoring.estimator`) — the exact score that finish time will earn once real results are submitted for the same course, since that model has no competitor dependency. 422 if the course has a grade outside the model's supported ±45% domain. See `docs/methodology/0.1.0/HOW-OTRI-SCORES.md`. |
 
 ## Environment variables
 

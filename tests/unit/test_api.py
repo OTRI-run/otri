@@ -647,19 +647,70 @@ def test_analyze_vertical_gpx_measures_the_course_and_explains_why_there_is_no_s
 # --- Auth ------------------------------------------------------------------
 
 
-def test_register_returns_message_not_a_token():
+def test_registering_signs_the_organizer_in_with_an_unconfirmed_address():
     response = client.post(
         "/auth/register", json={"accept_terms": True, "email": "roundtrip@example.com", "password": "correct horse battery"}
     )
     assert response.status_code == 201
-    assert "access_token" not in response.json()
-    assert "verify" in response.json()["message"].lower()
+    body = response.json()
+    assert body["access_token"] and body["email_verified"] is False and "confirm" in body["message"].lower()
+    me = client.get("/auth/me", headers={"Authorization": f"Bearer {body['access_token']}"})
+    assert me.status_code == 200 and me.json()["email_verified"] is False
 
 
-def test_login_before_verification_returns_403():
+def test_an_unconfirmed_account_builds_its_race_but_cannot_make_it_public():
     client.post("/auth/register", json={"accept_terms": True, "email": "unverified@example.com", "password": "correct horse battery"})
-    response = client.post("/auth/login", json={"email": "unverified@example.com", "password": "correct horse battery"})
-    assert response.status_code == 403
+    login = client.post("/auth/login", json={"email": "unverified@example.com", "password": "correct horse battery"})
+    assert login.status_code == 200 and login.json()["email_verified"] is False
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+    # Everything up to the public step works: event, race, course, results.
+    _event_id, race_id = _create_event_and_race(headers)
+    with SINGLE_CLIMB_GPX.open("rb") as handle:
+        assert client.post(f"/races/{race_id}/gpx", files={"file": ("c.gpx", handle, "application/gpx+xml")}, headers=headers).status_code == 200
+    with DEMO_RESULT_001.open("rb") as handle:
+        scored = client.post(f"/races/{race_id}/results", files={"file": ("r.csv", handle, "text/csv")}, headers=headers)
+    assert scored.status_code == 200 and scored.json()["is_valid"] is True
+
+    for path in (f"/races/{race_id}/publish", f"/races/{race_id}/listing"):
+        refused = client.post(path, headers=headers)
+        assert refused.status_code == 403 and "confirm your email" in refused.json()["detail"], path
+    assert all(r["race_id"] != race_id for r in client.get("/races").json())
+
+    # The same session publishes once the address is confirmed: no second sign-in.
+    with db.get_connection() as connection:
+        connection.execute("UPDATE organizers SET email_verified = TRUE WHERE email = %s", ("unverified@example.com",))
+    assert client.get("/auth/me", headers=headers).json()["email_verified"] is True
+    assert client.post(f"/races/{race_id}/publish", headers=headers).status_code == 200
+
+
+def test_an_unconfirmed_admin_address_is_not_an_admin(monkeypatch):
+    import importlib
+
+    api_module = importlib.import_module("api.app")
+    monkeypatch.setattr(api_module, "_ADMIN_EMAILS", {"boss@example.com"})
+    registered = client.post("/auth/register", json={"accept_terms": True, "email": "boss@example.com", "password": "correct horse battery"}).json()
+    assert registered["is_admin"] is False
+    login = client.post("/auth/login", json={"email": "boss@example.com", "password": "correct horse battery"}).json()
+    assert login["is_admin"] is False
+    headers = {"Authorization": f"Bearer {login['access_token']}"}
+    assert client.get("/admin/overview", headers=headers).status_code == 403
+    # Even a flag already on the account counts for nothing until the address is confirmed.
+    with db.get_connection() as connection:
+        connection.execute("UPDATE organizers SET is_admin = TRUE WHERE email = %s", ("boss@example.com",))
+    assert client.get("/admin/overview", headers=headers).status_code == 403
+    assert client.get("/auth/me", headers=headers).json()["is_admin"] is False
+
+
+def test_a_password_reset_confirms_the_address():
+    from api import auth as auth_module
+
+    client.post("/auth/register", json={"accept_terms": True, "email": "owner@example.com", "password": "correct horse battery"})
+    _organizer, token = auth_module.create_password_reset_token("owner@example.com")
+    reset = client.post("/auth/reset-password", json={"token": token, "new_password": "another long passphrase"})
+    assert reset.status_code == 200
+    me = client.get("/auth/me", headers={"Authorization": f"Bearer {reset.json()['access_token']}"})
+    assert me.json()["email_verified"] is True
 
 
 def test_login_after_verification_succeeds():
@@ -1012,10 +1063,10 @@ def test_admin_can_verify_and_delete_accounts_but_not_itself(monkeypatch):
     accounts = {a["email"]: a for a in client.get("/admin/organizers", headers=admin).json()}
     pending = accounts["pending@example.com"]
     assert pending["email_verified"] is False
-    assert client.post("/auth/login", json={"email": "pending@example.com", "password": "correct horse battery"}).status_code == 403
+    assert client.post("/auth/login", json={"email": "pending@example.com", "password": "correct horse battery"}).json()["email_verified"] is False
     verified = client.post(f"/admin/organizers/{pending['id']}/verify", headers=admin).json()
     assert verified["email_verified"] is True
-    assert client.post("/auth/login", json={"email": "pending@example.com", "password": "correct horse battery"}).status_code == 200
+    assert client.post("/auth/login", json={"email": "pending@example.com", "password": "correct horse battery"}).json()["email_verified"] is True
 
     owner = _organizer_auth_headers("doomed@example.com")
     race_id = _scored_race(owner)

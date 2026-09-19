@@ -38,6 +38,16 @@ The whole product in one call: a course and a results file in, the validated and
 - **It is the same computation** as a published race: `_scored_rows` in `api/app.py` serves both the stored leaderboard and this call.
 - **Abuse:** 10 calls a minute per address, 20 MB per request, 50,000 rows; nginx adds its own per-address budget.
 
+## From a scored race to a published race page
+
+Scoring without an account is the front door; keeping the race is one click further, and nothing is uploaded twice.
+
+1. After a valid result, the Score my race page invites: **Publish this race**. It says what the organizer gets (leaderboard, course map, target times, the embed), that it is free, that nobody approves anything and that nothing is public until they press Publish.
+2. The press writes the two files and the course figures to the browser's IndexedDB (`prototype/publishHandoff.js`) and opens the organizer app at `#/publish`. Nothing is sent by this step. The hand-over is deleted once the race page exists, after a day, or on "Forget this race".
+3. Signed out, `#/publish` shows what is waiting and offers "Create my free account" or "I already have an account". Creating the account signs the organizer in at once and lands back on `#/publish`: **the email confirmation does not stand in the way of building the race.** An unconfirmed account can create events and races, attach courses and upload results; only `POST /races/{id}/publish` and `POST /races/{id}/listing` answer 403 until the address is confirmed, an unconfirmed address is never an admin, and a bar in the organizer app says so with "Send it again". A password reset confirms the address too.
+4. Signed in, one form asks for what the files do not say: the event name (prefilled), the race date, the distance name (prefilled from the measured distance), and optionally place and country. **Build my race page** then creates the event and the race, attaches the course and submits the results through the normal endpoints, showing each step; a failure can be retried without creating anything twice.
+5. It ends on the race's review page. Publishing stays a separate, deliberate press: the results carry runners' names.
+
 ## Open to any origin
 
 `/score`, `/gpx/analyze` and `/scoring/models` answer every origin with `Access-Control-Allow-Origin: *` and no credentials (`_open_cors` in `api/app.py`). They carry no session and keep nothing, so there is nothing for a hostile page to reach. Every other route stays on the `OTRI_API_ALLOWED_ORIGINS` allow-list, and OTRI's own pages keep their credentialed answer on the open routes too.
@@ -63,6 +73,22 @@ The columns and the `score_requests` table stay, unused, so nothing in productio
 - **The calendar view and the `.ics` feed**, now showing only races their organizers listed. It is a view over self-service pages, not a calendar OTRI curates.
 - **The runner index**, labelled provisional and not promoted. It is a view over published races, not a ranking OTRI stands behind as official.
 - **Reports** for corrections and removals, and **organizer verification** as an internal flag against abuse, not a badge of approval.
+
+## An organizer's own listing
+An organizer can show their own race publicly before it has results.
+
+| | Path | Who | |
+| --- | --- | --- | --- |
+| POST | `/races/{id}/listing` | owner, admin | Show the race without results: the facts, and the course once attached. |
+| DELETE | `/races/{id}/listing` | owner, admin | Take it down. |
+
+`listed_at` makes the race facts, the course and its measurement public. `published_at` still gates results: a listed race with uploaded, unpublished results shows no results. `listing_status` on every race summary is `scored` once results are published, otherwise `upcoming` or `awaiting_results` by the date, or `private`.
+
+A listed race with a course is what the calculator opens from the race page ("Try a target time on this course") and what the embedded calculator's `?race=` takes.
+
+### The calendar
+
+The races page has a Calendar view (`#races?view=calendar`) of upcoming listed races by month, each with "Add to calendar", and `GET /calendar.ics` is the same as a subscribable feed (`?country=`, `?event=`). Both show only races their organizers listed or published: OTRI adds none itself.
 
 ## Next
 

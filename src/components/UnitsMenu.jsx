@@ -29,7 +29,8 @@ function Segment({ label, options, value, onChange }) {
 }
 
 /** Header control for the site-wide display units. Remembered per browser. */
-export default function UnitsMenu({ align = 'right' }) {
+/** `compact` shows the distance unit alone ("km"): the full summary is a line of its own in a busy header. */
+export default function UnitsMenu({ align = 'right', compact = false }) {
   const units = useUnits()
   const [open, setOpen] = useState(false)
   const rootRef = useRef(null)
@@ -62,7 +63,7 @@ export default function UnitsMenu({ align = 'right' }) {
         aria-label="Display units"
         className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-[11px] font-semibold text-[#0b1220] hover:border-blue-300"
       >
-        {unitsSummary(units)}
+        {compact ? units.distance : unitsSummary(units)}
         <ChevronDown size={12} className={`transition ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (

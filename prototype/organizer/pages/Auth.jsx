@@ -3,6 +3,7 @@ import { ArrowRight, ArrowUpRight, CalendarDays, FileSpreadsheet, Mountain, Shie
 import { completeTwoFactor, loginOrganizer, registerOrganizer, requestPasswordReset, resendVerification, resetPassword, verifyEmail } from '../../apiClient'
 import PasswordStrength, { assessPassword } from '../../../src/components/PasswordStrength'
 import { Link, navigate } from '../router'
+import { hasHandoff } from '../../publishHandoff'
 import { Button, CONTAINER, Card, Eyebrow, Field, Gradient, Notice, Page, inputClass } from '../ui'
 
 const DOCS = 'https://github.com/OTRI-run/otri/blob/main'
@@ -42,6 +43,10 @@ export function Welcome() {
                 Sign in
               </Button>
             </div>
+            <p className="mt-4 max-w-[620px] text-sm leading-6 text-slate-600">
+              Rather see your scores first?{' '}
+              <a href="../#score" className="font-semibold text-blue-600 no-underline hover:underline">Score your race without an account</a>, then publish it with one click: the course and the results come along.
+            </p>
             <div className="mt-7 flex flex-wrap gap-x-4 gap-y-2 font-mono text-[8px] tracking-[.08em] text-slate-500 sm:text-[9px]">
               <span className="text-blue-600">FREE</span>
               <span>OPEN SOURCE</span>
@@ -194,6 +199,13 @@ function AuthCard({ title, intro, children, footer, eyebrow = 'FOR ORGANIZERS' }
       intro={intro}
       aside={
         <>
+          {hasHandoff() && (
+            <div className="mb-4">
+              <Notice kind="success" title="Your scored race is waiting.">
+                Sign in from this browser and it becomes a race page in one step, with nothing to upload again.
+              </Notice>
+            </div>
+          )}
           <Card>{children}</Card>
           {footer && <p className="mt-4 text-sm text-slate-500">{footer}</p>}
         </>
@@ -202,7 +214,7 @@ function AuthCard({ title, intro, children, footer, eyebrow = 'FOR ORGANIZERS' }
   )
 }
 
-export function Register() {
+export function Register({ onSignedIn }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -220,8 +232,11 @@ export function Register() {
     setError(null)
     setBusy(true)
     try {
-      await registerOrganizer(email, password, { acceptTerms, marketingOptIn: news })
-      navigate(`/check-email?email=${encodeURIComponent(email)}`)
+      // The account is signed in straight away: the organizer builds their race now and confirms
+      // the address (the link we just emailed) before publishing.
+      const result = await registerOrganizer(email, password, { acceptTerms, marketingOptIn: news })
+      onSignedIn(result.access_token, result.email, result.is_admin)
+      navigate(hasHandoff() ? '/publish' : '/events', { replace: true })
     } catch (err) {
       setError(err.message)
     } finally {
@@ -372,11 +387,11 @@ export function Verify({ token }) {
       {state === 'checking' && <p className="text-sm text-slate-600">One moment…</p>}
       {state === 'ok' && (
         <>
-          <Notice kind="success" title="Your email is verified.">
-            You can sign in and add your first event.
+          <Notice kind="success" title="Your email is confirmed.">
+            You can publish your races now.
           </Notice>
-          <Button className="mt-4" onClick={() => navigate('/login')}>
-            Sign in <ArrowRight size={15} />
+          <Button className="mt-4" onClick={() => navigate('/')}>
+            Continue <ArrowRight size={15} />
           </Button>
         </>
       )}
@@ -422,7 +437,7 @@ export function Login({ onSignedIn }) {
         return
       }
       onSignedIn(result.access_token, result.email, result.is_admin)
-      navigate('/events', { replace: true })
+      navigate(hasHandoff() ? '/publish' : '/events', { replace: true })
     } catch (err) {
       setError(/invalid email or password/i.test(err.message) ? 'That email and password do not match. Check both, or use “Forgot your password?” below.' : err.message)
       if (/verif/i.test(err.message)) setNeedsVerification(true)
@@ -443,7 +458,7 @@ export function Login({ onSignedIn }) {
     try {
       const result = await completeTwoFactor(challenge.challenge, code)
       onSignedIn(result.access_token, result.email, result.is_admin)
-      navigate('/events', { replace: true })
+      navigate(hasHandoff() ? '/publish' : '/events', { replace: true })
     } catch (err) {
       setError(err.message)
     } finally {
@@ -607,7 +622,7 @@ export function Reset({ token, onSignedIn }) {
     try {
       const result = await resetPassword(token, password)
       onSignedIn(result.access_token, result.email, result.is_admin)
-      navigate('/events', { replace: true })
+      navigate(hasHandoff() ? '/publish' : '/events', { replace: true })
     } catch (err) {
       setError(err.message)
     } finally {

@@ -35,7 +35,7 @@ Competitor times, finishing position, winner time, field strength, participant c
 | Elevation | Copernicus GLO-30 (30 m grid, pinned by SHA-256) when the region is installed; otherwise the file's own elevations | the page says which was used |
 | Finish time | official result, or the calculator's target time | seconds |
 
-Measurement is specified in [`REAL-WORLD-COURSE-MEASUREMENT-SPEC.md`](../course-measurement/REAL-WORLD-COURSE-MEASUREMENT-SPEC.md) and validated in [`COURSE-MEASUREMENT-V1-VALIDATION.md`](../course-measurement/COURSE-MEASUREMENT-V1-VALIDATION.md). The parts the score depends on:
+Measurement is specified in [`REAL-WORLD-COURSE-MEASUREMENT-SPEC.md`](../course-measurement/REAL-WORLD-COURSE-MEASUREMENT-SPEC.md) and validated in [its validation appendix](../course-measurement/REAL-WORLD-COURSE-MEASUREMENT-SPEC.md#appendix-course-measurement-v1-implementation-and-validation). The parts the score depends on:
 
 - Distance along the WGS84 ellipsoid (Karney geodesics via `pyproj.Geod`).
 - Elevation sampled on a 10 m grid, then a rolling median and a rolling mean over ±10 m windows measured in distance, not point count, because real tracks are dense on bends and sparse on straights. Climbs count only when they exceed 8 m of prominence.

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, ArrowRight, CheckCircle2, Download, FileSpreadsheet, Map as MapIcon, ShieldCheck, XCircle } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CheckCircle2, Code2, Download, FileSpreadsheet, Map as MapIcon, ShieldCheck, Timer, Trophy, XCircle } from 'lucide-react'
 import { scoreRace } from './apiClient'
+import { saveHandoff } from './publishHandoff'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import { modelLabel } from '../src/lib/model'
 
@@ -90,7 +91,7 @@ function Tile({ label, value, sub }) {
   )
 }
 
-function Scored({ result, fileStem }) {
+function Scored({ result, fileStem, children }) {
   const units = useUnits()
   const [visible, setVisible] = useState(ROWS_AT_ONCE)
   const { course, summary, scores } = result
@@ -152,7 +153,9 @@ function Scored({ result, fileStem }) {
         </details>
       )}
 
-      <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+      {children}
+
+      <div className="mt-8 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
         <table className="w-full min-w-[560px] text-left text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
@@ -188,6 +191,63 @@ function Scored({ result, fileStem }) {
   )
 }
 
+// The invitation after a race has been scored: keep it. The two files go to the organizer app
+// through this browser (publishHandoff.js), so nothing is uploaded twice and nothing is sent
+// anywhere until the organizer is signed in.
+function PublishInvite({ result, files }) {
+  const [state, setState] = useState('idle') // idle | saving | failed
+  const finishers = result.summary.finishers
+
+  async function publish() {
+    setState('saving')
+    try {
+      await saveHandoff({ gpx: files.gpx, results: files.results, raceName: result.course.name ?? '', course: { distance_km: result.course.distance_km, elevation_gain_m: result.course.elevation_gain_m }, summary: result.summary })
+      window.location.href = 'organizer/#/publish'
+    } catch {
+      setState('failed')
+    }
+  }
+
+  return (
+    <section className="mt-8 overflow-hidden rounded-2xl bg-gradient-to-br from-[#0b1220] via-[#10204a] to-blue-700 p-6 text-white shadow-[0_18px_44px_rgba(15,23,42,.18)] sm:p-8">
+      <div className="grid min-w-0 items-center gap-8 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] tracking-[.1em] text-blue-200">THE HARD PART IS DONE</p>
+          <h2 className="mt-2 text-[clamp(24px,3.2vw,34px)] font-bold leading-[1.1] tracking-[-.04em]">
+            Give {finishers === 1 ? 'your finisher' : `your ${finishers} finishers`} a page to find their score.
+          </h2>
+          <p className="mt-3 max-w-[620px] text-sm leading-6 text-blue-100">
+            Publish this race on OTRI: the course and these results come with you, so there is nothing to upload again. It is free, there is no approval to wait for, and you can take it down whenever you like.
+          </p>
+          <ul className="mt-5 grid gap-x-6 gap-y-2 text-sm text-white sm:grid-cols-2">
+            {[
+              [Trophy, 'A public leaderboard with every score explained'],
+              [MapIcon, 'Your course on a map, measured and verified'],
+              [Timer, 'Runners try a target time for next year'],
+              [Code2, 'The calculator on your own website, one line of HTML'],
+            ].map(([Icon, text]) => (
+              <li key={text} className="flex items-start gap-2">
+                <Icon size={16} className="mt-0.5 shrink-0 text-cyan-300" /> {text}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="min-w-0 lg:w-[270px]">
+          <button type="button" onClick={publish} disabled={state === 'saving'} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#0b1220] shadow-lg transition hover:bg-blue-50 disabled:opacity-70">
+            {state === 'saving' ? 'One moment…' : <>Publish this race <ArrowRight size={16} /></>}
+          </button>
+          <p className="mt-3 text-center text-xs leading-5 text-blue-200">Two minutes: an email address, the race date, done. Nothing is public until you press Publish.</p>
+          {state === 'failed' && (
+            <p className="mt-2 text-center text-xs text-amber-200">
+              This browser would not keep the files. <a href="organizer/" className="font-semibold text-white underline">Create the account</a> and add the two files there.
+            </p>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export default function ScoreRace() {
   const [gpx, setGpx] = useState(null)
   const [results, setResults] = useState(null)
@@ -195,6 +255,7 @@ export default function ScoreRace() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
+  const [scoredFiles, setScoredFiles] = useState(null) // the two files the result on screen came from
 
   const missing = !gpx ? 'Choose the course file.' : !results ? 'Choose the results file.' : null
 
@@ -216,6 +277,7 @@ export default function ScoreRace() {
     setResult(null)
     try {
       setResult(await scoreRace({ results, gpx, raceName: raceName.trim() }))
+      setScoredFiles({ gpx, results })
     } catch (err) {
       setError(err.status === 429 ? 'That was a lot of scoring in one minute. Wait a minute and try again.' : err.message)
     } finally {
@@ -245,6 +307,7 @@ export default function ScoreRace() {
               <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Nothing is stored or published. Both files are deleted as soon as the scores are sent back.</li>
               <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> A score depends on the course and the runner's own time, never on who else raced.</li>
               <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Where the model runs out of evidence it says so, per course, instead of guessing.</li>
+              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Like what you see? One click turns it into a public race page, free, with nothing to upload again.</li>
             </ul>
             <p className="mt-6 text-xs text-slate-500">
               Timing company or developer? The same call is a public API: <a href="#api" className="font-semibold text-blue-600 no-underline hover:underline">POST /score</a>.
@@ -297,11 +360,15 @@ export default function ScoreRace() {
             <p className="mt-3 text-xs text-slate-500">Correct the file and score it again. Nothing was kept.</p>
           </section>
         )}
-        {result?.is_valid && <Scored result={result} fileStem={(result.course.name ?? results?.name ?? '').replace(/\.[a-z]+$/i, '').replace(/[^\w-]+/g, '-').toLowerCase()} />}
+        {result?.is_valid && (
+          <Scored result={result} fileStem={(result.course.name ?? results?.name ?? '').replace(/\.[a-z]+$/i, '').replace(/[^\w-]+/g, '-').toLowerCase()}>
+            {result.summary.finishers > 0 && scoredFiles && <PublishInvite result={result} files={scoredFiles} />}
+          </Scored>
+        )}
 
         <section className="mt-12 grid gap-4 md:grid-cols-3">
           {[
-            ['Want a public race page?', 'An organizer account keeps the race, shows the leaderboard with the course map, and lets runners find their score. It is self-service: you publish when you are ready.', 'organizer/', 'Create an organizer account'],
+            ['Want a public race page?', 'Score the race here first, then press Publish this race: the course and the results come with you into a free organizer account. No approval, and you decide when it goes public.', 'organizer/', 'Or start with an account'],
             ['Put the calculator on your site', 'Runners try a target time on your course before race day. One line of HTML, no account, free.', '#api', 'Embed the calculator'],
             ['How is a score worked out?', 'Course demand from the measured track, against a published human ceiling. Every step is documented and versioned.', '#faq', 'Read the answers'],
           ].map(([title, text, href, cta]) => (

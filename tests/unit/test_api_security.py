@@ -246,7 +246,9 @@ def test_security_headers_and_no_store_on_personal_responses():
 def test_flags_cannot_be_set_through_registration_or_profile():
     response = client.post("/auth/register", json={"email": "mass@example.com", "password": PASSWORD, "accept_terms": True, "is_admin": True, "email_verified": True})
     assert response.status_code == 201
-    assert client.post("/auth/login", json={"email": "mass@example.com", "password": PASSWORD}).status_code == 403, "still unverified"
+    assert response.json()["is_admin"] is False and response.json()["email_verified"] is False
+    login = client.post("/auth/login", json={"email": "mass@example.com", "password": PASSWORD}).json()
+    assert login["is_admin"] is False and login["email_verified"] is False, "still unconfirmed, and no admin"
     headers = _organizer_auth_headers("mass2@example.com")
     me = client.patch("/auth/profile", json={"display_name": "x", "is_admin": True, "is_demo": True, "session_version": 99}, headers=headers).json()
     assert me["is_admin"] is False and me["is_demo"] is False

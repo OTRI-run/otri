@@ -52,10 +52,10 @@ def test_authenticate_unknown_email_raises():
         auth_module.authenticate_organizer("nobody@example.com", "whatever password")
 
 
-def test_authenticate_before_verification_raises_email_not_verified():
+def test_authenticate_before_verification_says_the_address_is_unconfirmed():
     auth_module.register_organizer("unverified2@example.com", "correct horse battery")
-    with pytest.raises(auth_module.EmailNotVerifiedError):
-        auth_module.authenticate_organizer("unverified2@example.com", "correct horse battery")
+    organizer = auth_module.authenticate_organizer("unverified2@example.com", "correct horse battery")
+    assert organizer.email_verified is False
 
 
 def test_access_token_round_trips():

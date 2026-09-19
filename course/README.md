@@ -51,4 +51,4 @@ python scripts/diagnose_course.py route.gpx --output measurement.json
 python -m pytest tests/unit/test_course_measurement.py tests/unit/test_elevation_provider.py
 ```
 
-The diagnostic output includes raw-file identity, legacy/new features and demand, cleaned profile, provider metadata and flags. Terrain tests use tiny synthetic rasters, not live services. See [research and implementation specification](../docs/methodology/course-measurement/REAL-WORLD-COURSE-MEASUREMENT-SPEC.md) and [implementation validation](../docs/methodology/course-measurement/COURSE-MEASUREMENT-V1-VALIDATION.md).
+The diagnostic output includes raw-file identity, legacy/new features and demand, cleaned profile, provider metadata and flags. Terrain tests use tiny synthetic rasters, not live services. See [research and implementation specification](../docs/methodology/course-measurement/REAL-WORLD-COURSE-MEASUREMENT-SPEC.md) and [implementation validation](../docs/methodology/course-measurement/REAL-WORLD-COURSE-MEASUREMENT-SPEC.md#appendix-course-measurement-v1-implementation-and-validation).

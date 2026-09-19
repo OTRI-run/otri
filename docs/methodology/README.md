@@ -11,10 +11,8 @@ The next public model gets its own folder (`0.2.0/`) with its own pair of pages;
 
 ## [`course-measurement/`](course-measurement/) — how a GPX becomes a measured course
 
-- [`REAL-WORLD-COURSE-MEASUREMENT-SPEC.md`](course-measurement/REAL-WORLD-COURSE-MEASUREMENT-SPEC.md): geodesic distance, terrain-model elevation, denoising, prominence, quality flags, and the benchmarking programme that has not yet been run.
-- [`COURSE-MEASUREMENT-V1-VALIDATION.md`](course-measurement/COURSE-MEASUREMENT-V1-VALIDATION.md): the validation of that pipeline on real courses.
+- [`REAL-WORLD-COURSE-MEASUREMENT-SPEC.md`](course-measurement/REAL-WORLD-COURSE-MEASUREMENT-SPEC.md): geodesic distance, terrain-model elevation, denoising, prominence, quality flags, the benchmarking programme that has not yet been run, and as an appendix the validation of the pipeline on real courses.
 
 ## [`runner-index/`](runner-index/) — one number per runner
 
 - [`RUNNER-INDEX-v1.md`](runner-index/RUNNER-INDEX-v1.md): the rule in production (`runner-index-v1`): the recency-weighted mean of the best 3 published scores of the last 24 months, and the research behind it.
-- [`overall-runner-index.md`](runner-index/overall-runner-index.md): the earlier design proposal the v1 rule grew out of, kept as research.

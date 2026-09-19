@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowRight, ArrowUpRight, CalendarDays, Plus } from 'lucide-react'
 import { createEvent, deleteEvent, getEvent, listMyEvents, updateEvent } from '../../apiClient'
 import { Link, navigate } from '../router'
+import { hasHandoff } from '../../publishHandoff'
 import { formatDistance, formatElevation, useUnits } from '../../../src/lib/units'
 import { Button, Card, EmptyState, Eyebrow, Field, Gradient, Notice, Page, StatusChip, formatDate, inputClass, raceStatus } from '../ui'
 import CountrySelect from '../../../src/components/CountrySelect'
@@ -38,6 +39,14 @@ export function Dashboard({ session }) {
           </Button>
         )}
       </div>
+      {hasHandoff() && (
+        <div className="mt-4">
+          <Notice kind="success" title="The race you scored is waiting.">
+            The course and the results are in this browser.{' '}
+            <Link to="/publish" className="font-semibold text-emerald-900 underline">Build its race page</Link>
+          </Notice>
+        </div>
+      )}
       {error && (
         <div className="mt-4">
           <Notice kind="error">{error}</Notice>
