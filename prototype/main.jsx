@@ -14,6 +14,7 @@ import RaceListing, { ListingBadge } from './RaceListing'
 import ScoreCalculator from './ScoreCalculator'
 import ScoreRace from './ScoreRace'
 import ApiDocs from './ApiDocs'
+import Media from './Media'
 import FaqPage from './Faq'
 import { RunnerProfilePage, RunnersPage } from './Runners'
 import CourseMap from '../src/components/CourseMap'
@@ -36,6 +37,7 @@ const PAGE_TITLES = {
   score: 'Score my race · OTRI',
   api: 'API and embed · OTRI',
   faq: 'FAQ · OTRI',
+  media: 'Media and brand · OTRI',
   notfound: 'Page not found · OTRI',
 }
 import { fetchRaceGpxFile, getRace, getRaceMeasurement, getRaceResults, listRaces, raceGpxDownloadUrl } from './apiClient'
@@ -64,6 +66,7 @@ function parseHash(hash) {
   if (path.startsWith('calculator')) return { tab: 'calculator', raceId: null }
   if (path === 'score' || path.startsWith('score?')) return { tab: 'score', raceId: null }
   if (path === 'api' || path.startsWith('api?')) return { tab: 'api', raceId: null }
+  if (path === 'media' || path === 'brand' || path === 'press') return { tab: 'media', raceId: null }
   const raceMatch = path.match(/^races\/(.+)$/)
   if (raceMatch) return { tab: 'races', raceId: decodeURIComponent(raceMatch[1]) }
   if (path.startsWith('races')) return { tab: 'races', raceId: null }
@@ -172,6 +175,7 @@ function Footer() {
           <a href={GITHUB_URL} className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">GitHub</a>
           <a href="#contribute" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Contribute</a>
           <a href="#faq" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">FAQ</a>
+          <a href="#media" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Media and logo</a>
           <a href="https://github.com/OTRI-run/otri/blob/main/PRIVACY.md" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Privacy</a>
           <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">
             <Mail size={14} />
@@ -696,6 +700,7 @@ function App() {
         {route.tab === 'calculator' && <ScoreCalculator />}
         {route.tab === 'score' && <ScoreRace />}
         {route.tab === 'api' && <ApiDocs />}
+        {route.tab === 'media' && <Media />}
         {route.tab === 'faq' && <FaqPage initialQuery={route.faqQuery} />}
         {route.tab === 'notfound' && <NotFound where={window.location.hash} home="#home" />}
       </main>

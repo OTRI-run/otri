@@ -1,3 +1,5 @@
+import ScoreScale from '../src/components/ScoreScale'
+import { exponentOf } from '../src/lib/scoreLevels'
 import { fitFontSize } from '../src/lib/fitText'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUpRight, Check, Copy, GitBranch, Link2, Mountain, RefreshCw, Search, Share2, Timer, Upload, Image as ImageIcon, Download } from 'lucide-react'
@@ -166,13 +168,14 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
                       : `A world-record-level run here would take about ${formatHms(Math.round(b.world_best_time_seconds))} and score 1000.`}
                   </span>
                 )}
-                <div className="mx-auto mt-3 h-1.5 w-full max-w-[260px] overflow-hidden rounded-full bg-slate-700/70" aria-hidden="true">
-                  <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-300" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
-                </div>
-                <span className="mx-auto mt-1 flex w-full max-w-[260px] justify-between font-mono text-[8px] text-slate-500">
-                  <span>0</span>
-                  <span>1000 = WORLD-RECORD LEVEL</span>
-                </span>
+                {/* Where that stands, Beginner to World class (src/lib/scoreLevels.js). */}
+                <ScoreScale
+                  score={estimate.predicted_score}
+                  share={b.fraction_of_ceiling}
+                  exponent={exponentOf(estimate)}
+                  targetSeconds={targetSeconds}
+                  timeForScore={(score) => timeForScore(estimate, score)}
+                />
               </>
             ) : (
               <span className="mt-2 block font-mono text-[11px] text-slate-300">{formatHms(targetSeconds)}</span>
