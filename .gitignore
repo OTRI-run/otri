@@ -24,3 +24,7 @@ data/cache/
 # Course files collected for race listings, with the CSVs imported alongside them. Third-party GPX
 # stays local (DATA_POLICY.md); a file reaches OTRI only through the admin upload, with its permission.
 gpx courses/
+
+# Race calendars and results collected from third-party sources, kept to pick listings from. Local
+# only (DATA_POLICY.md: facts are re-compiled into a listings CSV, the source files are not published).
+docs/race result data/
