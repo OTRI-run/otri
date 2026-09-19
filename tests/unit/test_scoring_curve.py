@@ -71,10 +71,14 @@ def test_a_faster_time_never_scores_lower(demand_km):
     assert raws == sorted(raws, reverse=True)
 
 
-def test_the_public_score_is_clipped_to_the_scale_and_the_raw_one_is_not():
+def test_1000_is_the_ceiling_not_a_cap():
+    """A performance faster than the ceiling curve scores above 1000: the published score is the
+    rounded raw score, never flattened. It cannot go below zero (a power law approaches it)."""
     beyond = score_for_time(10.0, 600)  # 60 km/h
-    assert beyond["otri_score"] == 1000 and beyond["otri_raw"] > 1000
-    assert score_for_time(10.0, 10_000_000)["otri_score"] <= 1  # a power law approaches zero, never below
+    assert beyond["otri_score"] == round(beyond["otri_raw"]) > 1000
+    at_ceiling = score_for_time(42.195, 2 * 3600 + 35)  # one of the three records the ceiling is built from
+    assert at_ceiling["otri_score"] == 1000
+    assert score_for_time(10.0, 10_000_000)["otri_score"] <= 1
 
 
 @pytest.mark.parametrize("fraction", [0.3, 0.55, 0.8, 0.95])
@@ -88,10 +92,11 @@ def test_equal_calibre_scores_the_same_at_every_course_size(fraction):
 
 @pytest.mark.parametrize("name", sorted(WORLD_BESTS))
 def test_every_world_best_scores_near_the_top_of_the_scale(name):
-    """Including the held-out records the ceiling was not built from (the lowest, 50 km road, is 928)."""
+    """Including the held-out records the ceiling was not built from: the lowest, 50 km road, is 928,
+    and the 1500 m, which runs 2% above the curve, is just over 1000."""
     demand_km, seconds = WORLD_BESTS[name]
     score = score_for_time(demand_km, seconds)["otri_score"]
-    assert 920 <= score <= 1000, f"{name} scored {score}"
+    assert 920 <= score <= 1025, f"{name} scored {score}"
 
 
 def test_the_reported_performance_rate_is_the_plain_physical_one():
@@ -103,9 +108,10 @@ def test_bad_inputs_are_rejected():
     for demand_km, seconds in ((10.0, 0), (0.0, 3600), (-1.0, 3600), (float("nan"), 3600)):
         with pytest.raises(ValueError):
             score_for_time(demand_km, seconds)
-    for score in (-1, SCALE_MAX + 1, float("nan")):
+    for score in (-1, float("nan"), float("inf")):
         with pytest.raises(ValueError):
             target_time_seconds(10.0, score)
+    assert target_time_seconds(10.0, SCALE_MAX + 50) < target_time_seconds(10.0, SCALE_MAX), "a target above 1000 is a time, not an error"
     with pytest.raises(ValueError):
         target_time_seconds(0.0, 500)
 

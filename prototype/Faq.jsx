@@ -13,7 +13,7 @@ const FAQ = [
     items: [
       {
         q: 'What is an OTRI score?',
-        a: 'A number from 0 to 1000 for one performance on one course. It is your speed over the course, as a share of the fastest a human has ever sustained over a course of that demand, raised to a fixed power. Only two things go in: the course and your finish time.',
+        a: 'A number for one performance on one course, where 1000 is the best a human has done over that much ground. It is your speed over the course, as a share of the fastest a human has ever sustained over a course of that demand, raised to a fixed power. Only two things go in: the course and your finish time.',
         tags: 'definition meaning number scale',
       },
       {
@@ -23,7 +23,7 @@ const FAQ = [
       },
       {
         q: 'What does 1000 mean?',
-        a: 'The best rate a human has sustained over that much course demand, read from a curve through three public world-best performances: 5000 m, marathon and 24 hours. A 5 km world record and a 24-hour world record both score 1000. Everything else is a share of that.',
+        a: 'The best rate a human has sustained over that much course demand, read from a curve through three public world-best performances: 5000 m, marathon and 24 hours. A 5 km world record and a 24-hour world record both score 1000. Everything else is a share of that. It is a reference point, not a cap: a performance faster than the curve scores above 1000 (the 1500 m world record scores 1020).',
         tags: 'maximum world record best ceiling',
       },
       {

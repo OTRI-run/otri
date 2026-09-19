@@ -20,6 +20,10 @@ One performance: a winning 36:59 on a 3.76 km / +1,016 m vertical kilometre (ste
 
 No course that goes up and down has a steep share above 0.50 (measured mountain courses: 0–0.25), so the rule cannot reach a course that was scored before. Checked rather than argued: the previous build's outputs on every course fixture, six sets of official figures and the raw curve (28 reference entries, every intermediate value) were compared with the new build's. Three differ, and all three had no score before: two uphill-only fixtures, and the wording of the refusal for official figures.
 
+## Also in this build: no cap at 1000
+
+The published score was `round(clamp(raw, 0, 1000))`. It is now `round(max(raw, 0))`. The ceiling is a curve through three world bests, and held-out records already sit up to 2 % above it (1500 m: 1020, half marathon: 1005); cutting them off at 1000 threw information away and made two different performances look equal. No score of 1000 or less changes, so no published score moves. The calculator's slider now reaches 1100.
+
 ## Known weaknesses
 
 - One calibration point and a target chosen as a product decision, exactly the weakness of §4.1 of the specification.

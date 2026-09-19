@@ -151,12 +151,12 @@ Below 5 flat-km and above 319.614 flat-km the end segments extrapolate. Multi-da
 ```text
 f          = Q_lookup / Q_1000            Q_1000 = rate(D_ref) = 21.5331347785 flat-km/h
 otri_raw   = 1000 × f^0.85
-otri_score = round(clamp(otri_raw, 0, 1000))
+otri_score = round(max(otri_raw, 0))          no cap at 1000 (build 0.10.0)
 ```
 
 The inverse, for target times: `Q_lookup = Q_1000 × (score / 1000)^(1/0.85)`, then `T = D' / (Q_lookup / factor(D')) × 3600`. Forward scoring and target time use the same function; the API, the calculator and batch scoring call it rather than keeping copies.
 
-`otri_raw` is kept unclipped for audit. `performance_rate` in API responses is the raw, unscaled `Q = D' / hours`; only the lookup is scaled. Non-positive or non-finite inputs are rejected, never clamped.
+1000 is what the ceiling rate scores, not a limit. Until build `0.10.0` the published score was cut off at 1000; it no longer is, because the ceiling is a curve through three records and real performances sit on both sides of it: the 1500 m world record scores 1020, the half marathon 1005, and flattening them to 1000 hid exactly the information a score exists to carry. A score above 1000 reads "faster than the reference ceiling for a course of this size". No score of 1000 or less changes. `otri_raw` is the same number before rounding. `performance_rate` in API responses is the raw, unscaled `Q = D' / hours`; only the lookup is scaled. Non-positive or non-finite inputs are rejected, never clamped.
 
 ### 6.1 Why 0.85
 

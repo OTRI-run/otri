@@ -26,10 +26,12 @@ const POWER_EXPONENT = 0.85 // V0.8: score = 1000 × (rate / ceiling rate)^0.85
 // Absolute sanity bounds for a finish time (multi-day events exist; nothing runs 200 hours).
 const ABS_MIN_SECONDS = 60
 const ABS_MAX_SECONDS = 200 * 3600
-// The slider spans the scores that make sense on a course: from the human ceiling (1000) down to
-// a slow finish (SLIDER_MIN_SCORE), so a 10 km and a 100-mile course each get a range in
-// proportion to their own best time instead of one fixed 10 min to 24 h.
+// The slider spans the scores that make sense on a course: from a little beyond the human ceiling
+// (the score is not capped at 1000, so a time faster than the ceiling is a number too) down to a
+// slow finish, so a 10 km and a 100-mile course each get a range in proportion to their own best
+// time instead of one fixed 10 min to 24 h.
 const SLIDER_MIN_SCORE = 200
+const SLIDER_MAX_SCORE = 1100
 
 function clampSeconds(seconds) {
   return Math.min(ABS_MAX_SECONDS, Math.max(ABS_MIN_SECONDS, Math.round(seconds / 30) * 30))
@@ -41,9 +43,10 @@ function sliderRange(ceilingSeconds, targetSeconds) {
     return { min: Math.min(600, targetSeconds || 600), max, step: max > 86400 ? 300 : 30, known: false }
   }
   const slowest = ceilingSeconds / Math.pow(SLIDER_MIN_SCORE / 1000, 1 / POWER_EXPONENT)
-  const span = slowest - ceilingSeconds
-  const step = span > 86400 ? 300 : span > 21600 ? 60 : 30
-  const min = Math.floor(ceilingSeconds / step) * step
+  const fastest = ceilingSeconds / Math.pow(SLIDER_MAX_SCORE / 1000, 1 / POWER_EXPONENT)
+  const span = slowest - fastest
+  const step = span > 86400 ? 300 : span > 21600 ? 60 : span > 3600 ? 30 : 5
+  const min = Math.floor(fastest / step) * step
   const max = Math.ceil(slowest / step) * step
   return { min: Math.min(min, targetSeconds || min), max: Math.max(max, targetSeconds || max), step, known: true }
 }
@@ -147,7 +150,9 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
             </strong>
             {pct != null ? (
               <>
-                <span className="mt-2 block font-mono text-[11px] text-slate-300">{pct}% of the world-best rate for this course</span>
+                <span className={`mt-2 block font-mono text-[11px] ${pct > 100 ? 'text-cyan-300' : 'text-slate-300'}`}>
+                  {pct}% of the world-best rate for this course{pct > 100 ? ': faster than any human has run ground like this' : ''}
+                </span>
                 <div className="mx-auto mt-3 h-1.5 w-full max-w-[260px] overflow-hidden rounded-full bg-slate-700/70" aria-hidden="true">
                   <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-300" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
                 </div>
@@ -812,7 +817,7 @@ function TimePart({ id, label, value, max, onCommit, nextId, wide = false }) {
 }
 
 const NUDGES = [-300, -60, 60, 300]
-const SCORE_JUMPS = [300, 400, 500, 600, 700, 800]
+const SCORE_JUMPS = [300, 400, 500, 600, 700, 800, 900, 1000]
 
 function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError, ceilingSeconds, score }) {
   const units = useUnits()
@@ -856,7 +861,7 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
         className="mt-4 w-full accent-blue-600"
       />
       <div className="mt-1 flex justify-between gap-3 font-mono text-[11px] tracking-[.04em] text-slate-500">
-        <span>{range.known ? `${formatHms(range.min)} · SCORE 1000` : formatHms(range.min)}{range.known && <span className="hidden sm:inline"> · BEST HUMAN</span>}</span>
+        <span>{range.known ? `${formatHms(range.min)} · SCORE ${SLIDER_MAX_SCORE}` : formatHms(range.min)}{range.known && <span className="hidden sm:inline"> · 1000 = BEST HUMAN, {formatHms(ceilingSeconds)}</span>}</span>
         <span>{range.known ? `${formatHms(range.max)} · SCORE ${SLIDER_MIN_SCORE}` : formatHms(range.max)}</span>
       </div>
       {range.known && (

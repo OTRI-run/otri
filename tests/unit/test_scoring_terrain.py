@@ -129,7 +129,7 @@ def test_mountain_ultra_still_has_headroom_above_the_calibration_point():
     points = _points(REFERENCE_100MI)
     faster = estimate_score(REFERENCE_WIN_SECONDS - 1800, gpx_points=points)
     winner = estimate_score(REFERENCE_WIN_SECONDS, gpx_points=points)
-    assert winner.predicted_score < faster.predicted_score <= 1000
+    assert winner.predicted_score < faster.predicted_score
 
 
 @needs_real_courses
