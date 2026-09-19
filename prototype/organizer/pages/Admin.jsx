@@ -262,6 +262,13 @@ function ReportCard({ report, token, onChanged }) {
         <Trash2 size={13} /> Delete shared course
       </Button>
     ),
+    // A claim sent from an organizer's account names the event, so it can be handed over here.
+    // Check the address against the race's own website first.
+    claim: report.payload?.event_id && report.reporter_email && (
+      <Button busy={busy} className="min-h-9 px-3 text-xs" onClick={() => run(async () => { await assignEvent(report.payload.event_id, report.reporter_email, token); await resolveAdminReport(report.id, `event handed to ${report.reporter_email}`, token) }, `Hand "${report.subject_label ?? report.payload.event_id}" to ${report.reporter_email}? They will manage the listing, its course and its results.`)}>
+        <UserCheck size={13} /> Hand over the event
+      </Button>
+    ),
     // Check the facts against the race's own website first; listing makes them public.
     suggestion: report.payload && (
       <>

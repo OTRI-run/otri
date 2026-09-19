@@ -167,6 +167,20 @@ export function createEvent(payload, token) {
   })
 }
 
+/** Events already on OTRI that look like the one being created: unclaimed listings and the organizer's own. */
+export function findMatchingEvents(name, eventDate, token) {
+  return request(`/events/matches?name=${encodeURIComponent(name)}&event_date=${encodeURIComponent(eventDate)}`, { headers: authHeaders(token) })
+}
+
+/** Ask for an unclaimed listing to be moved into the signed-in organizer's account. */
+export function claimEvent(eventId, message, token) {
+  return request(`/events/${encodeURIComponent(eventId)}/claim`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ message: message || null }),
+  })
+}
+
 export function updateEvent(eventId, payload, token) {
   return request(`/events/${encodeURIComponent(eventId)}`, {
     method: 'PATCH',
