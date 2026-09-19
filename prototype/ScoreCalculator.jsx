@@ -6,6 +6,7 @@ import { ShareTarget } from './SharePanel'
 import NextSteps from './NextSteps'
 import ReportForm from './ReportForm'
 import { modelLabel, modelShort } from '../src/lib/model'
+import { RACE_NAMES } from '../src/lib/raceNames'
 import { distanceUnit, formatDistance, formatElevation, formatPace as formatPaceUnits, formatRate, kmToUnit, useUnits } from '../src/lib/units'
 
 // Published anchor tables, shown for context in the "why this score" breakdown. The actual
@@ -574,8 +575,83 @@ function ShareBox({ courseLabel, courseFile, targetSeconds, shareId, onShared, i
 
 // ----------------------------------------------------------------------------- course picker
 
-function CoursePicker({ races, racesLoading, racesError, query, onQuery, onChooseRace, onUpload, loadingCourse, loadError }) {
+// "eiger ultra", "Tor des Geants" and "geants tor" all find their race: accents, punctuation, case
+// and word order are ignored, and every typed word must be found in the name.
+function normalise(text) {
+  return String(text ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+function matchRank(name, query) {
+  const words = normalise(query).split(' ').filter(Boolean)
+  const target = normalise(name)
+  if (words.length === 0 || !words.every((word) => target.includes(word))) return -1
+  const parts = target.split(' ')
+  // Best: the name starts with what was typed; then: every typed word starts a word of the name.
+  if (target.startsWith(words.join(' '))) return 0
+  return words.every((word) => parts.some((part) => part.startsWith(word))) ? 1 : 2
+}
+
+// Well-known races that match what was typed and have no course on OTRI: shown so the visitor
+// learns at once that the course is not here, and what to do about it, instead of an empty list.
+function knownRacesWithoutCourse(query, allRaces) {
+  if (normalise(query).length < 2) return []
+  const here = allRaces.map((race) => normalise(race.event_name))
+  return RACE_NAMES.map((name) => [name, matchRank(name, query)])
+    .filter(([name, rank]) => rank >= 0 && !here.some((event) => event.includes(normalise(name))))
+    .sort((a, b) => a[1] - b[1] || a[0].length - b[0].length)
+    .slice(0, 5)
+    .map(([name]) => name)
+}
+
+// What to do when the race a runner is looking for has no course here.
+function NoCourseHelp({ name, onClose }) {
+  const search = `https://www.google.com/search?q=${encodeURIComponent(`${name} GPX course`)}`
+  const body = [
+    'Hello,',
+    `I would like to see ${name} on OTRI (https://otri.run), an open and free score for trail races. Runners can then work out what a finish time on your course is worth, and you can score and publish your results.`,
+    'Listing the course takes a few minutes and needs no approval: https://otri.run/organizer/',
+    'Thank you!',
+  ].join('\n\n')
+  const mail = `mailto:?subject=${encodeURIComponent(`${name} on OTRI`)}&body=${encodeURIComponent(body)}`
+  const button = 'inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border px-3 text-xs font-semibold no-underline'
+  return (
+    <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50/60 p-4 text-sm leading-6 text-slate-600" role="status">
+      <p className="font-semibold text-[#0b1220]">No course for &ldquo;{name}&rdquo; here yet.</p>
+      <p className="mt-1">
+        Most organizers put the route on their own website: look for Course, Route, Parcours, Strecke or a GPX download. Save the file and
+        upload it here, and you get the score straight away.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <a href={search} target="_blank" rel="noreferrer" className={`${button} border-blue-600 bg-blue-600 text-white hover:bg-blue-700`}>
+          <Search size={13} /> Search the web for the GPX
+        </a>
+        <label htmlFor="calc-gpx-input" className={`${button} cursor-pointer border-slate-300 bg-white text-[#0b1220] hover:border-blue-300`}>
+          <Upload size={13} /> Upload a GPX
+        </label>
+      </div>
+      <p className="mt-3 text-xs leading-5 text-slate-500">
+        Know the organizer? Listing a race on OTRI is free and needs no approval.{' '}
+        <a href={mail} className="font-semibold text-blue-600 no-underline hover:underline">
+          Write to them
+        </a>
+        {onClose && (
+          <>
+            {' · '}
+            <button type="button" onClick={onClose} className="font-semibold text-slate-500 underline-offset-2 hover:underline">
+              Close
+            </button>
+          </>
+        )}
+      </p>
+    </div>
+  )
+}
+
+function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuery, onChooseRace, onUpload, loadingCourse, loadError }) {
   const units = useUnits()
+  const [missing, setMissing] = useState(null) // a well-known race the visitor picked that has no course here
+  const known = useMemo(() => knownRacesWithoutCourse(query, allRaces ?? races), [query, allRaces, races])
+  const nothingFound = !racesLoading && !racesError && races.length === 0 && query.trim().length >= 2
   return (
     <section className="border-b border-slate-200 bg-white py-10 sm:py-14">
       <div className={CONTAINER}>
@@ -591,8 +667,8 @@ function CoursePicker({ races, racesLoading, racesError, query, onQuery, onChoos
           </div>
           <div className="min-w-0">
             <p className="text-sm leading-7 text-slate-500">
-              Pick a race whose course has already been verified, or upload your own GPX. Either way the track is measured
-              on the server: distance along the ellipsoid, elevation from terrain data where it is installed.
+              Pick a race, or upload your own GPX. Either way OTRI measures the track itself: its distance, its climb and
+              how steep it is.
             </p>
             <details className="group mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
               <summary className="cursor-pointer list-none font-semibold text-[#0b1220]">
@@ -626,15 +702,19 @@ function CoursePicker({ races, racesLoading, racesError, query, onQuery, onChoos
           <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] sm:p-6">
             <div className="flex items-center gap-2">
               <Search size={16} className="text-blue-600" />
-              <h3 className="text-base font-bold tracking-[-.02em] text-[#0b1220]">Search a verified race</h3>
+              <h3 className="text-base font-bold tracking-[-.02em] text-[#0b1220]">Pick a race</h3>
             </div>
-            <p className="mt-1 text-xs text-slate-500">Courses submitted by organizers and measured by OTRI.</p>
+            <p className="mt-1 text-xs text-slate-500">Choose one and set your time.</p>
             <input
               type="text"
               value={query}
-              onChange={(event) => onQuery(event.target.value)}
-              placeholder="Race or course name…"
+              onChange={(event) => {
+                onQuery(event.target.value)
+                setMissing(null)
+              }}
+              placeholder="Race name, e.g. Lavaredo, UTMB, Doi Inthanon…"
               aria-label="Search races"
+              autoComplete="off"
               className="mt-4 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-[#0b1220] outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
             {racesLoading && (
@@ -643,8 +723,8 @@ function CoursePicker({ races, racesLoading, racesError, query, onQuery, onChoos
               </p>
             )}
             {racesError && <p className="mt-3 text-xs text-red-600">{racesError}</p>}
-            {!racesLoading && !racesError && races.length === 0 && (
-              <p className="mt-3 text-xs text-slate-500">No races with a verified course match that search yet.</p>
+            {!racesLoading && !racesError && races.length === 0 && query.trim().length < 2 && (
+              <p className="mt-3 text-xs text-slate-500">No races with a course yet. Upload a GPX to start.</p>
             )}
             <div className="mt-3 max-h-[360px] space-y-2 overflow-y-auto pr-1">
               {races.map((race) => (
@@ -662,10 +742,29 @@ function CoursePicker({ races, racesLoading, racesError, query, onQuery, onChoos
                       {race.event_date} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
                     </span>
                   </span>
-                  <span className="shrink-0 font-mono text-[8px] tracking-[.08em] text-blue-600">VERIFIED</span>
+                  <ArrowUpRight size={14} className="shrink-0 text-slate-400" />
                 </button>
               ))}
             </div>
+            {known.length > 0 && !missing && (
+              <div className="mt-3">
+                <p className="font-mono text-[9px] tracking-[.08em] text-slate-400">WELL-KNOWN RACES · NO COURSE HERE YET</p>
+                <div className="mt-2 space-y-1.5">
+                  {known.map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => setMissing(name)}
+                      className="flex w-full items-center justify-between gap-3 rounded-xl border border-dashed border-slate-300 bg-white px-3 py-2.5 text-left transition hover:border-blue-300 hover:bg-blue-50/40"
+                    >
+                      <span className="min-w-0 truncate text-sm font-semibold text-slate-600">{name}</span>
+                      <span className="shrink-0 font-mono text-[9px] tracking-[.06em] text-slate-400">HOW TO GET THE GPX</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {missing ? <NoCourseHelp name={missing} onClose={() => setMissing(null)} /> : nothingFound && known.length === 0 && <NoCourseHelp name={query.trim()} />}
           </div>
 
           <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] sm:p-6">
@@ -732,7 +831,7 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
             <p className="mt-2 text-sm text-slate-500">
               {courseLabel.meta ? `${courseLabel.meta} · ` : ''}
               <span className={courseLabel.verified ? 'font-semibold text-blue-600' : 'font-semibold text-amber-600'}>
-                {courseLabel.verified ? 'Verified course' : courseLabel.meta === 'Shared course' ? 'Shared course' : 'Your upload'}
+                {courseLabel.verified ? 'Race course' : courseLabel.meta === 'Shared course' ? 'Shared course' : 'Your upload'}
               </span>
             </p>
           </div>
@@ -972,9 +1071,12 @@ export default function ScoreCalculator({ embedded = false }) {
   }, [])
 
   const filteredRaces = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return races
-    return races.filter((race) => `${race.event_name} ${race.course_name}`.toLowerCase().includes(q))
+    if (!query.trim()) return races
+    return races
+      .map((race) => [race, matchRank(`${race.event_name} ${race.course_name}`, query)])
+      .filter(([, rank]) => rank >= 0)
+      .sort((a, b) => a[1] - b[1])
+      .map(([race]) => race)
   }, [races, query])
 
   // Recompute the real score shortly after the target time settles (typing or dragging the
@@ -1116,6 +1218,7 @@ export default function ScoreCalculator({ embedded = false }) {
       ) : (
         <CoursePicker
           races={filteredRaces}
+          allRaces={races}
           racesLoading={racesLoading}
           racesError={racesError}
           query={query}

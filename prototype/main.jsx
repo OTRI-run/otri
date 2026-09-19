@@ -250,7 +250,7 @@ function Leaderboard({ raceId, onBack }) {
           <h2 className="mt-2 text-[clamp(32px,4.5vw,52px)] font-bold leading-[.98] tracking-[-.05em] text-[#0b1220]">{race.event_name}</h2>
           <p className="mt-3 text-sm text-slate-500">
             {race.course_name} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
-            {race.has_gpx ? ' · Verified course' : ' · Official figures, no course file'}
+            {race.has_gpx ? ' · Measured from the course file' : ' · Official figures, no course file'}
           </p>
           {race.organizer_display && (
             <p className="mt-2 text-xs text-slate-500">
