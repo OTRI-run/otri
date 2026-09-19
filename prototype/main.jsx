@@ -16,6 +16,7 @@ import FaqPage from './Faq'
 import { RunnerProfilePage, RunnersPage } from './Runners'
 import CourseMap from '../src/components/CourseMap'
 import ReportForm from './ReportForm'
+import { ShareResults } from './SharePanel'
 import Flag from '../src/components/Flag'
 import { initMonitoring } from '../src/lib/monitoring'
 import { useDocumentTitle } from '../src/lib/title'
@@ -58,7 +59,8 @@ function parseHash(hash) {
   const runnerMatch = path.match(/^runners\/(.+)$/)
   if (runnerMatch) return { tab: 'runners', raceId: null, runnerId: decodeURIComponent(runnerMatch[1]) }
   if (path.startsWith('runners')) return { tab: 'runners', raceId: null, runnerId: null }
-  if (path === '' || path === 'home' || path === 'top') return { tab: 'home', raceId: null }
+  // #contribute is a place on the home page (Home.jsx scrolls to it), not a page of its own.
+  if (path === '' || path === 'home' || path === 'top' || path === 'contribute') return { tab: 'home', raceId: null }
   return { tab: 'notfound', raceId: null }
 }
 
@@ -157,6 +159,7 @@ function Footer() {
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <a href="#api" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">API and embed</a>
           <a href={GITHUB_URL} className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">GitHub</a>
+          <a href="#contribute" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Contribute</a>
           <a href="#faq" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">FAQ</a>
           <a href="https://github.com/OTRI-run/otri/blob/main/PRIVACY.md" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Privacy</a>
           <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">
@@ -187,6 +190,7 @@ function Leaderboard({ raceId, onBack }) {
   const [results, setResults] = useState(null)
   const [course, setCourse] = useState(null)
   const [error, setError] = useState(null)
+  const [sharing, setSharing] = useState(false)
   useDocumentTitle(race ? `${race.event_name} · ${race.course_name} · OTRI` : 'Race · OTRI')
 
   useEffect(() => {
@@ -325,6 +329,18 @@ function Leaderboard({ raceId, onBack }) {
             <p className="mt-3 font-mono text-[10px] tracking-[.05em] text-slate-400">
               {modelLabel(race.scoring_version)} · depends only on the course and each runner's own finish time, never the field
             </p>
+            {results?.some((row) => row.status === 'finisher') && (
+              <div className="mt-5">
+                <button type="button" onClick={() => setSharing((open) => !open)} aria-expanded={sharing} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-xs font-semibold text-[#0b1220] hover:border-blue-300">
+                  {sharing ? 'Close sharing' : 'Share these results: image and post text'}
+                </button>
+                {sharing && (
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-5">
+                    <ShareResults raceName={`${race.event_name} ${race.course_name}`} distanceKm={race.distance_km} elevationGainM={race.elevation_gain_m} scores={results} url={window.location.href} />
+                  </div>
+                )}
+              </div>
+            )}
             </>
           )}
           <ReportForm kind="race" subjectId={race.race_id} subjectLabel={`${race.event_name} · ${race.course_name}`} prompt={race.is_published ? 'Wrong result, wrong course, or your name should not be here?' : 'Wrong details, or should this race not be listed?'} />

@@ -1,7 +1,8 @@
 import { Fragment, useMemo, useState } from 'react'
-import { AlertTriangle, ArrowRight, CheckCircle2, Code2, Download, FileSpreadsheet, Map as MapIcon, ShieldCheck, Timer, Trophy, XCircle } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CheckCircle2, Code2, Download, Share2, FileSpreadsheet, Map as MapIcon, ShieldCheck, Timer, Trophy, XCircle } from 'lucide-react'
 import { scoreRace } from './apiClient'
 import { saveHandoff } from './publishHandoff'
+import { ShareResults } from './SharePanel'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import { modelLabel } from '../src/lib/model'
 
@@ -107,6 +108,7 @@ function Tile({ label, value, sub }) {
 function Scored({ result, fileStem, children }) {
   const units = useUnits()
   const [visible, setVisible] = useState(ROWS_AT_ONCE)
+  const [sharing, setSharing] = useState(false)
   const { course, summary, scores } = result
   // The reasons in words; the full machine-readable list stays one click away.
   const flags = course.quality_flags ?? []
@@ -123,6 +125,11 @@ function Scored({ result, fileStem, children }) {
           <h2 className="mt-1 truncate text-2xl font-bold tracking-[-.03em] text-[#0b1220]">{course.name ?? 'Your race'}</h2>
         </div>
         <div className="flex flex-wrap gap-2">
+          {summary.finishers > 0 && (
+            <button type="button" onClick={() => setSharing((open) => !open)} aria-expanded={sharing} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700">
+              <Share2 size={14} /> {sharing ? 'Close sharing' : 'Share the podium'}
+            </button>
+          )}
           <button type="button" onClick={() => download(`${name}.csv`, 'text/csv;charset=utf-8', scoresCsv(result))} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-[#0b1220] px-4 text-xs font-semibold text-white">
             <Download size={14} /> Download CSV
           </button>
@@ -131,6 +138,14 @@ function Scored({ result, fileStem, children }) {
           </button>
         </div>
       </div>
+
+      {sharing && (
+        <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/40 p-5">
+          <p className="text-base font-bold tracking-[-.02em] text-[#0b1220]">An image and a post for your race's channels</p>
+          <p className="mt-1 mb-4 text-sm text-slate-600">Pick who to show. The picture and the text follow, ready for Facebook, Instagram or WhatsApp.</p>
+          <ShareResults raceName={course.name} distanceKm={course.distance_km} elevationGainM={course.elevation_gain_m} scores={scores} />
+        </div>
+      )}
 
       <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Tile label="COURSE" value={`${formatDistance(course.distance_km, units)} · ${formatElevation(course.elevation_gain_m, units, { sign: '+' })}`} sub="measured from your course file" />

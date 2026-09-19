@@ -48,6 +48,10 @@ Scoring without an account is the front door; keeping the race is one click furt
 4. Signed in, one form asks for what the files do not say: the event name (prefilled), the race date, the distance name (prefilled from the measured distance), and optionally place and country. **Build my race page** then creates the event and the race, attaches the course and submits the results through the normal endpoints, showing each step; a failure can be retried without creating anything twice.
 5. It ends on the race's review page. Publishing stays a separate, deliberate press: the results carry runners' names.
 
+## Sharing
+
+What an organizer does after the results are in is post them. "Share the podium" (Score my race, and every published race page) draws an image of the top 3, 5 or 10, overall or by gender, as a feed post, a square or a story, and writes the post to go with it; the calculator does the same for a runner's target time. The image is drawn in the browser (`prototype/shareImage.js`) and the text is a suggestion to edit (`prototype/SharePanel.jsx`): nothing is uploaded, stored or posted by OTRI, which keeps Score my race true to "nothing is kept". Platforms take an image only as an attachment, so the flow is download (or the phone's share sheet), then paste the text; link buttons appear only when the race has a public page to link to.
+
 ## Open to any origin
 
 `/score`, `/gpx/analyze` and `/scoring/models` answer every origin with `Access-Control-Allow-Origin: *` and no credentials (`_open_cors` in `api/app.py`). They carry no session and keep nothing, so there is nothing for a hostile page to reach. Every other route stays on the `OTRI_API_ALLOWED_ORIGINS` allow-list, and OTRI's own pages keep their credentialed answer on the open routes too.
