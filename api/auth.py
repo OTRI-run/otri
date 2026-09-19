@@ -342,7 +342,16 @@ def change_password(organizer_id: int, current_password: str, new_password: str)
             "UPDATE organizers SET password_hash = %s, password_changed_at = now(), session_version = session_version + 1 WHERE id = %s",
             (password_hash, organizer_id),
         )
-        connection.execute("DELETE FROM login_challenges WHERE organizer_id = %s", (organizer_id,))
+        _end_pending_access(connection, organizer_id)
+
+
+def _end_pending_access(connection, organizer_id: int) -> None:
+    """Whenever an account's protection changes (password, second factor, sign out everywhere):
+    whatever was on its way in under the old protection stops there. A half-finished sign-in is
+    dropped, and so is every open reset link: an owner who changes the password because somebody
+    may have been in the mailbox must not leave that somebody a link that sets it again."""
+    connection.execute("DELETE FROM login_challenges WHERE organizer_id = %s", (organizer_id,))
+    connection.execute("UPDATE password_reset_tokens SET used_at = now() WHERE organizer_id = %s AND used_at IS NULL", (organizer_id,))
 
 
 def _check_password(connection, organizer_id: int, password: str) -> None:
@@ -408,6 +417,7 @@ def enable_totp(organizer_id: int, code: str) -> list[str]:
             "email_code_hash = NULL, email_code_expires_at = NULL, session_version = session_version + 1 WHERE id = %s",
             (organizer_id,),
         )
+        _end_pending_access(connection, organizer_id)
         return _issue_recovery_codes(connection, organizer_id)
 
 
@@ -437,6 +447,7 @@ def enable_email_two_factor(organizer_id: int, code: str) -> list[str]:
             "email_code_hash = NULL, email_code_expires_at = NULL, session_version = session_version + 1 WHERE id = %s",  # as for the authenticator
             (organizer_id,),
         )
+        _end_pending_access(connection, organizer_id)
         return _issue_recovery_codes(connection, organizer_id)
 
 
@@ -449,7 +460,7 @@ def disable_two_factor(organizer_id: int, password: str) -> None:
             (organizer_id,),
         )
         connection.execute("DELETE FROM recovery_codes WHERE organizer_id = %s", (organizer_id,))
-        connection.execute("DELETE FROM login_challenges WHERE organizer_id = %s", (organizer_id,))
+        _end_pending_access(connection, organizer_id)
 
 
 def revoke_all_sessions(organizer_id: int, password: str) -> None:
@@ -457,7 +468,7 @@ def revoke_all_sessions(organizer_id: int, password: str) -> None:
     with get_connection() as connection:
         _check_password(connection, organizer_id, password)
         connection.execute("UPDATE organizers SET session_version = session_version + 1 WHERE id = %s", (organizer_id,))
-        connection.execute("DELETE FROM login_challenges WHERE organizer_id = %s", (organizer_id,))
+        _end_pending_access(connection, organizer_id)
 
 
 def delete_own_account(organizer_id: int, password: str) -> None:
@@ -529,13 +540,20 @@ def complete_login_challenge(token: str, code: str) -> tuple[Organizer, bool]:
 
     with get_connection() as connection:
         row = connection.execute(
-            "SELECT c.organizer_id, c.method, c.code_hash, c.remember, c.attempts, c.expires_at, o.email, o.totp_secret "
+            "SELECT c.organizer_id, c.method, c.code_hash, c.remember, c.attempts, c.expires_at, o.email, o.totp_secret, o.two_factor_method "
             "FROM login_challenges c JOIN organizers o ON o.id = c.organizer_id WHERE c.token = %s",
             (token,),
         ).fetchone()
         if row is None:
             raise AuthError("sign in again to get a new code")
 
+        # A challenge belongs to the second factor the account had when it was started. If that has
+        # changed since (email codes swapped for an authenticator, because the mailbox was not
+        # safe), the old challenge and its emailed code open nothing.
+        if row["method"] != row["two_factor_method"]:
+            connection.execute("DELETE FROM login_challenges WHERE token = %s", (token,))
+            connection.commit()
+            raise AuthError("sign in again to get a new code")
         ok = False
         if row["method"] == "totp" and row["totp_secret"]:
             ok = security.verify_totp(row["totp_secret"], code)
