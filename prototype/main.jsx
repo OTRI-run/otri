@@ -1,3 +1,4 @@
+import { fitFontSize } from '../src/lib/fitText'
 import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ArrowLeft, ArrowUpRight, Mail } from 'lucide-react'
@@ -255,7 +256,7 @@ function Leaderboard({ raceId, onBack }) {
             {race.is_vertical && <VerticalBadge />}
             {race.is_demo && <DemoBadge />}
           </p>
-          <h2 className="mt-2 text-[clamp(32px,4.5vw,52px)] font-bold leading-[.98] tracking-[-.05em] text-[#0b1220]">{race.event_name}</h2>
+          <h2 className="otri-fit mt-2 font-bold leading-[1.04] tracking-[-.045em] text-[#0b1220]" style={{ fontSize: fitFontSize(race.event_name, { min: 28, vw: 4.5, max: 52 }) }}>{race.event_name}</h2>
           <p className="mt-3 text-sm text-slate-500">
             {race.course_name} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
             {race.has_gpx ? ' · Measured from the course file' : ' · Official figures, no course file'}

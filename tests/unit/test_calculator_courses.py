@@ -60,3 +60,32 @@ def test_only_an_admin_may_and_a_bad_file_or_link_is_said_plainly():
     bad = client.post("/admin/calculator-courses", files={"file": ("x.gpx", b"<kml/>", "application/gpx+xml")}, data={"event_name": "Some race", "course_name": "50K"}, headers=admin)
     assert bad.status_code == 422 and "Google Earth KML" in bad.json()["detail"]
     assert client.get("/admin/calculator-courses", headers=admin).json() == [], "nothing is created when the file cannot be measured"
+
+
+def test_a_course_can_be_edited_cleared_and_given_another_file():
+    admin = _headers("calc-admin-3@example.com", True)
+    course = _add(admin).json()
+    url = f"/admin/calculator-courses/{course['race_id']}"
+
+    # Names and place change; a field sent empty is cleared; the course itself is untouched.
+    edited = client.patch(url, data={"event_name": "Lavaredo Ultra Trail 2027", "course_name": "LUT 120K", "location": "", "country": "", "source_url": ""}, headers=admin)
+    assert edited.status_code == 200, edited.text
+    body = edited.json()
+    assert (body["event_name"], body["course_name"], body["event_location"], body["event_country"], body["source_url"]) == ("Lavaredo Ultra Trail 2027", "LUT 120K", None, None, None)
+    assert body["distance_km"] == course["distance_km"] and body["calculator_only"] is True
+
+    # With a file, the course is measured again: here half of it.
+    half = GPX.decode("utf-8").split("</trkpt>")
+    shorter = ("</trkpt>".join(half[: len(half) // 2]) + "</trkpt></trkseg></trk></gpx>").encode("utf-8")
+    replaced = client.patch(url, files={"file": ("half.gpx", shorter, "application/gpx+xml")}, data={"event_name": "Lavaredo Ultra Trail 2027", "course_name": "LUT 60K", "country": "ITA"}, headers=admin)
+    assert replaced.status_code == 200, replaced.text
+    assert 11 < replaced.json()["distance_km"] < 13 and replaced.json()["event_country"] == "ITA"
+
+    # A file that cannot be measured changes nothing, names included.
+    refused = client.patch(url, files={"file": ("x.gpx", b"<kml/>", "application/gpx+xml")}, data={"event_name": "Renamed", "course_name": "X"}, headers=admin)
+    assert refused.status_code == 422
+    assert client.get("/admin/calculator-courses", headers=admin).json()[0]["course_name"] == "LUT 60K"
+
+    # Only calculator courses, only admins.
+    assert client.patch("/admin/calculator-courses/race-nope", data={"event_name": "Some race", "course_name": "X"}, headers=admin).status_code == 404
+    assert client.patch(url, data={"event_name": "Some race", "course_name": "X"}, headers=_headers("calc-organizer-2@example.com", False)).status_code == 403

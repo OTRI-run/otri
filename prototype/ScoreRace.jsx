@@ -130,7 +130,7 @@ function Scored({ result, fileStem, gpxText, children }) {
           <p className="flex items-center gap-2 font-mono text-[10px] tracking-[.08em] text-emerald-700">
             <CheckCircle2 size={13} /> VALID · {summary.finishers} FINISHER{summary.finishers === 1 ? '' : 'S'} SCORED
           </p>
-          <h2 className="mt-1 truncate text-2xl font-bold tracking-[-.03em] text-[#0b1220]">{course.name ?? 'Your race'}</h2>
+          <h2 className="otri-fit mt-1 text-2xl font-bold leading-7 tracking-[-.03em] text-[#0b1220]">{course.name ?? 'Your race'}</h2>
         </div>
         <div className="flex flex-wrap gap-2">
           {summary.finishers > 0 && (

@@ -85,7 +85,7 @@ export function Dashboard({ session }) {
                 </p>
                 <ArrowUpRight size={14} className="text-slate-300 transition group-hover:text-blue-600" />
               </div>
-              <h2 className="mt-2 text-xl font-bold tracking-[-.03em] text-[#0b1220]">{event.event_name}</h2>
+              <h2 className="otri-fit mt-2 text-xl font-bold tracking-[-.03em] text-[#0b1220]">{event.event_name}</h2>
               <p className="mt-4 text-xs font-semibold text-blue-600">
                 {event.race_count === 0 ? 'No races yet' : `${event.race_count} race${event.race_count === 1 ? '' : 's'}`}
               </p>

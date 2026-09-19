@@ -1202,6 +1202,55 @@ async def admin_add_calculator_course(
     return _race_summary(db.set_race_calculator_only(race.race_id, True))
 
 
+@app.patch("/admin/calculator-courses/{race_id}", response_model=RaceSummary)
+async def admin_edit_calculator_course(
+    race_id: str,
+    event_name: str = Form(..., min_length=2, max_length=200),
+    course_name: str = Form(..., min_length=1, max_length=120),
+    location: str | None = Form(default=None, max_length=200),
+    country: str | None = Form(default=None, max_length=3),
+    source_url: str | None = Form(default=None, max_length=500),
+    file: UploadFile | None = None,
+    organizer: Organizer = Depends(require_admin),
+) -> RaceSummary:
+    """Change a calculator course's names, place or source link; with a file, replace its course
+    too (measured again). A field left empty is cleared. Admin only."""
+    race = db.find_race(race_id)
+    if race is None or not race.calculator_only:
+        raise HTTPException(status_code=404, detail="no calculator course with that id")
+    if source_url and not re.match(r"^https?://", source_url.strip()):
+        raise HTTPException(status_code=422, detail="The source link must start with http:// or https://")
+    # The file first: if it cannot be measured, nothing about the course changes.
+    if file is not None and file.filename:
+        contents = await file.read(20_000_001)
+        if len(contents) > 20_000_000:
+            raise HTTPException(status_code=413, detail="Upload exceeds 20 MB")
+        temp_path = _save_upload(contents, _safe_suffix(file.filename, ".gpx"))
+        try:
+            points, measurement = await run_in_threadpool(_measure_gpx_path, temp_path)
+            features = features_from_measurement(measurement)
+        except (GpxParseError, ValueError, UnicodeError) as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        finally:
+            _discard_temp(temp_path)
+        db.attach_gpx(
+            race_id,
+            filename=file.filename,
+            distance_km=features.distance_km,
+            elevation_gain_m=features.elevation_gain_m,
+            **_stored_gpx_fields(points, measurement, contents, f"{event_name.strip()} {course_name.strip()}"),
+        )
+    updated = db.update_calculator_course(
+        race_id,
+        event_name=event_name.strip(),
+        course_name=course_name.strip(),
+        location=(location or "").strip() or None,
+        country=(country or "").strip().upper() or None,
+        source_url=(source_url or "").strip() or None,
+    )
+    return _race_summary(updated)
+
+
 @app.delete("/admin/calculator-courses/{race_id}", status_code=204)
 def admin_delete_calculator_course(race_id: str, organizer: Organizer = Depends(require_admin)) -> Response:
     race = db.find_race(race_id)

@@ -171,21 +171,7 @@ export default function Home() {
               body, and no black box: every number explains itself. Made for the local race as much as the famous one:
               free, no account, no approval.
             </p>
-            {/* The fastest way to understand OTRI is to see it: one press scores the example race. */}
-            <a
-              href="#score?example=1"
-              className="group mt-7 flex max-w-[680px] items-center gap-4 rounded-2xl bg-[#0b1220] px-5 py-4 text-white no-underline shadow-[0_18px_44px_rgba(11,18,32,.22)] transition hover:bg-[#13203a]"
-            >
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 shadow-[0_0_24px_rgba(56,189,248,.45)]">
-                <Play size={20} className="ml-0.5 fill-white text-white" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[18px] font-bold leading-6 tracking-[-.02em] sm:text-[20px]">See a race scored, live</span>
-                <span className="mt-0.5 block text-[13px] leading-5 text-slate-300">One click: the course on the map and 100 finishers scored. No files, no account.</span>
-              </span>
-              <ArrowRight size={20} className="shrink-0 text-cyan-300 transition group-hover:translate-x-1" />
-            </a>
-            <div className="mt-4 grid max-w-[680px] gap-3 sm:grid-cols-2">
+            <div className="mt-7 grid max-w-[680px] gap-3 sm:grid-cols-2">
               {[
                 {
                   who: 'I run',
@@ -224,6 +210,19 @@ export default function Home() {
                 </div>
               ))}
             </div>
+            {/* The fastest way to understand OTRI is to see it: one press scores the example race. */}
+            <a
+              href="#score?example=1"
+              className="group mt-3 flex max-w-[680px] items-center gap-3 rounded-xl bg-[#0b1220] px-4 py-2.5 text-white no-underline transition hover:bg-[#13203a]"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-400">
+                <Play size={13} className="ml-0.5 fill-white text-white" />
+              </span>
+              <span className="min-w-0 flex-1 text-[13px] leading-5">
+                <b className="font-semibold">See a race scored, live.</b> <span className="text-slate-300">The course on the map and 100 finishers, in one click.</span>
+              </span>
+              <ArrowRight size={16} className="shrink-0 text-cyan-300 transition group-hover:translate-x-1" />
+            </a>
             <p className="mt-4 text-sm text-slate-500">
               Building something?{' '}
               <a href="#api" className="font-semibold text-blue-600 no-underline hover:underline">

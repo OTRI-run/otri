@@ -1,3 +1,4 @@
+import { fitFontSize } from '../src/lib/fitText'
 import { useEffect, useMemo, useState } from 'react'
 import { useDocumentTitle } from '../src/lib/title'
 import { ArrowLeft, ArrowUpRight, Check, Image as ImageIcon, Link2 } from 'lucide-react'
@@ -292,7 +293,7 @@ export function RunnerProfilePage({ runnerId, onBack }) {
                   {profile.nationality && <Flag code={profile.nationality} />}
                   <span>{[profile.gender === 'F' ? 'WOMAN' : profile.gender === 'M' ? 'MAN' : 'RUNNER', profile.age_category].filter(Boolean).join(' · ')}</span>
                 </p>
-                <h1 className="mt-2 text-[clamp(32px,4.5vw,52px)] font-bold leading-[.98] tracking-[-.05em] text-[#0b1220]">{runnerName(profile)}</h1>
+                <h1 className="otri-fit mt-2 font-bold leading-[1.04] tracking-[-.045em] text-[#0b1220]" style={{ fontSize: fitFontSize(runnerName(profile), { min: 28, vw: 4.5, max: 52 }) }}>{runnerName(profile)}</h1>
                 <p className="mt-3 text-sm text-slate-500">
                   {profile.result_count} published result{profile.result_count === 1 ? '' : 's'}
                   {profile.last_race_date ? ` · last race ${profile.last_race_date}` : ''}

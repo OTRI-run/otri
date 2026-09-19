@@ -68,6 +68,9 @@ function contours() {
 const INK = '#0b1220'
 const TRAIL_BROWN = '#7c2d12'
 const CONTOUR_BROWN = '#92400e'
+// Which way the course is run: a small white chevron lying on the route every so often. Drawn pointing
+// east, because a symbol placed along a line is turned to the line's direction from there.
+const DIRECTION_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M8 5l8 7-8 7" fill="none" stroke="#0b1220" stroke-opacity=".55" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 5l8 7-8 7" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`
 const PEAK_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><path d="M14 5 25 23H3z" fill="#57534e" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/></svg>`
 const ROUTE_BLUE = '#2563eb'
 const START_GREEN = '#16a34a'
@@ -340,6 +343,34 @@ function addCourseLayers(map, { line, markers, gradient }, { includeHillshade })
       paint: { 'circle-radius': 7, 'circle-color': HOVER_CYAN, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2.5 },
     })
   }
+
+  // The direction of travel, kept quiet: small, well apart, and only once the map is zoomed in enough
+  // for a direction to mean something.
+  loadIcon('otri-direction', DIRECTION_ICON_SVG, 24)
+    .then((image) => {
+      if (!map.getStyle() || !map.getSource('route') || map.getLayer('route-direction')) return
+      if (!map.hasImage('otri-direction')) map.addImage('otri-direction', image, { pixelRatio: 2 })
+      map.addLayer(
+        {
+          id: 'route-direction',
+          type: 'symbol',
+          source: 'route',
+          minzoom: 10,
+          layout: {
+            'symbol-placement': 'line',
+            'symbol-spacing': ['interpolate', ['linear'], ['zoom'], 10, 90, 15, 150],
+            'icon-image': 'otri-direction',
+            'icon-size': ['interpolate', ['linear'], ['zoom'], 10, 0.8, 15, 1.15],
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true,
+            'icon-rotation-alignment': 'map',
+          },
+          paint: { 'icon-opacity': 0.85 },
+        },
+        map.getLayer('route-km') ? 'route-km' : undefined,
+      )
+    })
+    .catch(() => {})
 
   // Start / finish icons: images load asynchronously, so their layers are added once ready.
   Promise.all([loadIcon('otri-start', START_ICON_SVG), loadIcon('otri-finish', FINISH_ICON_SVG)])
