@@ -227,12 +227,12 @@ def measure_course(points: list[TrackPoint], provider=None) -> Measurement:
         def uploaded_profile():
             known = [(x, p.elevation_m) for x, p in zip(xs, clean) if p.elevation_m is not None]
             if len(known) < 2 or clean[0].elevation_m is None or clean[-1].elevation_m is None:
-                raise GpxParseError('elevation coverage incomplete: missing endpoint or profile; provide an elevation-complete GPX or configure a terrain provider')
+                raise GpxParseError('This GPX has no elevation (or none at its start or end), and OTRI has no terrain data for this place to fill it in, so the climb cannot be measured. Export the course with elevation: most route planners can add it (“add elevation” or “correct elevation”).')
             for i, p in enumerate(clean):
                 if p.elevation_m is None:
                     j = bisect_right([x for x, _ in known], xs[i])
                     if known[j][0] - known[j-1][0] > PARAMETERS['max_missing_gap_m']:
-                        raise GpxParseError('elevation coverage incomplete: missing interval exceeds 30 m')
+                        raise GpxParseError('This GPX has stretches of more than 30 m with no elevation, and OTRI has no terrain data for this place to fill them in. Export the course with elevation on every point: most route planners can add it (“add elevation” or “correct elevation”).')
                     flags.add('short_elevation_gap_interpolated')
             kx, kz = zip(*known)
             return [interpolate(kx, kz, x) for x in grid]

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import CourseMap from '../../../src/components/CourseMap'
 import ColumnsRead from '../../../src/components/ColumnsRead'
+import { DISTANCE_NAME_LIST, DistanceNameList } from '../../../src/components/PlaceNameList'
 import { formatDistance, formatElevation, useUnits } from '../../../src/lib/units'
 import { modelLabel, notScoredReason } from '../../../src/lib/model'
 import {
@@ -12,7 +13,6 @@ import {
   getRace,
   getRaceMeasurement,
   getRaceResults,
-  listScoringModels,
   publishRace,
   setRaceListed,
   submitRaceResults,
@@ -32,8 +32,9 @@ function raceSteps(raceId) {
   ]
 }
 
-// Numbered as on the welcome page: 1 account, 2 event, 3 race + course, 4 results, 5 review.
-const STEP_EYEBROW = ['STEP 3 OF 5 · RACE', 'STEP 3 OF 5 · COURSE', 'STEP 4 OF 5 · RESULTS', 'STEP 5 OF 5 · REVIEW']
+// Numbered as on the welcome page: 1 event, 2 race + course, 3 results, 4 review. The account is
+// not a step: whoever reads these has one.
+const STEP_EYEBROW = ['STEP 2 OF 4 · RACE', 'STEP 2 OF 4 · COURSE', 'STEP 3 OF 4 · RESULTS', 'STEP 4 OF 4 · REVIEW']
 
 function RaceShell({ race, step, children }) {
   return (
@@ -66,13 +67,8 @@ function useRace(raceId) {
 
 export function NewRace({ session, eventId }) {
   const [form, setForm] = useState({ course_name: '', distance_km: '', elevation_gain_m: '' })
-  const [models, setModels] = useState([])
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
-  useEffect(() => {
-    listScoringModels().then(setModels).catch(() => setModels([]))
-  }, [])
-  const current = models[0]
 
   async function submit(e) {
     e.preventDefault()
@@ -95,7 +91,7 @@ export function NewRace({ session, eventId }) {
   return (
     <Page
       back={{ to: `/events/${encodeURIComponent(eventId)}`, label: 'Event' }}
-      eyebrow="STEP 3 OF 5 · RACE"
+      eyebrow="STEP 2 OF 4 · RACE"
       headline={
         <>
           Add a
@@ -108,7 +104,8 @@ export function NewRace({ session, eventId }) {
       <Card>
         <form onSubmit={submit} className="grid gap-4" noValidate>
           <Field label="Race name" htmlFor="rc-name" hint="How this distance is listed — “50K”, “100 mile”, “Vertical”.">
-            <input id="rc-name" required value={form.course_name} onChange={(e) => setForm((f) => ({ ...f, course_name: e.target.value }))} className={inputClass} placeholder="50K" />
+            <input id="rc-name" required value={form.course_name} onChange={(e) => setForm((f) => ({ ...f, course_name: e.target.value }))} list={DISTANCE_NAME_LIST} autoComplete="off" className={inputClass} placeholder="50K" />
+            <DistanceNameList />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Official distance (km)" htmlFor="rc-dist">
@@ -117,10 +114,6 @@ export function NewRace({ session, eventId }) {
             <Field label="Official elevation gain (m)" htmlFor="rc-gain">
               <input id="rc-gain" required type="number" min="0" step="1" value={form.elevation_gain_m} onChange={(e) => setForm((f) => ({ ...f, elevation_gain_m: e.target.value }))} className={inputClass} placeholder="2800" />
             </Field>
-          </div>
-          <div className="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-600">
-            Scoring model: <span className="font-mono font-semibold text-[#0b1220]">{modelLabel(current?.version)}</span>
-            <p className="mt-1">Scores depend only on the course and each finisher's own time — never on who else raced.</p>
           </div>
           {error && <Notice kind="error">{error}</Notice>}
           <div className="flex flex-wrap gap-3">

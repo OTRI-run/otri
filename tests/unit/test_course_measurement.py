@@ -66,7 +66,7 @@ def test_identical_duplicate_cannot_trigger_additional_smoothing():
 
 @pytest.mark.parametrize('zs', [[None,None], [None,1,2], [0,1,None], [0,None,None,None,4]])
 def test_incomplete_elevation_is_never_published_as_zero(zs):
-    with pytest.raises(GpxParseError, match='coverage incomplete'):
+    with pytest.raises(GpxParseError, match='no elevation'):
         measure_course(track(zs))
 
 

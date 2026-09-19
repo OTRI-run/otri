@@ -167,7 +167,8 @@ export default function Home() {
             </h1>
             <p className="mt-6 max-w-[620px] text-[15px] leading-7 text-slate-500 sm:text-[17px]">
               OTRI turns a finish time on any trail course into one comparable score. A calculator, not a governing
-              body: free, no account, no approval.
+              body, and no black box: every number explains itself. Made for the local race as much as the famous one:
+              free, no account, no approval.
             </p>
             <div className="mt-7 grid max-w-[680px] gap-3 sm:grid-cols-2">
               {[
@@ -215,7 +216,7 @@ export default function Home() {
               </a>
             </p>
             <p className="mt-6 max-w-[620px] text-sm leading-6 text-slate-500">
-              One open, versioned model, and every number explains itself.{' '}
+              One open, versioned model.{' '}
               <a href={GITHUB_URL} className="inline-flex items-center gap-1 whitespace-nowrap font-semibold text-[#0b1220] no-underline hover:text-blue-600">
                 <GitBranch size={14} /> The code and the method are on GitHub <ArrowUpRight size={13} />
               </a>{' '}

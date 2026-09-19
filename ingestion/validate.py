@@ -154,9 +154,11 @@ def validate_result_table(table: ResultTable, source: str = "") -> ValidationRep
     canonical = {spec.canonical: spec.canonical for spec in RESULT_FIELDS}
     issues.extend(_validate_rows(table.rows, RESULT_FIELDS, canonical))
     for row_index, row in enumerate(table.rows, start=1):
+        if not ({"family_name", "full_name"} & set(table.columns)):
+            break  # the missing name column was said once, above
         if not row["family_name"].strip() and not row["first_name"].strip():
             issues.append(ValidationIssue("error", row_index, "family_name", "the runner has no name"))
-    issues.extend(_validate_result_cross_field(table.rows, canonical))
+    issues.extend(_validate_result_cross_field(table.rows, canonical, has_time_column="finish_time" in table.columns))
     issues.sort(key=_sort_key)
     return ValidationReport(source, len(table.rows), tuple(_capped(issues)), columns=dict(table.columns), ignored_columns=tuple(table.ignored))
 
@@ -176,7 +178,7 @@ def _capped(issues: list[ValidationIssue]) -> list[ValidationIssue]:
     return kept
 
 
-def _validate_result_cross_field(rows: list[dict[str, str]], mapping: dict[str, str]) -> list[ValidationIssue]:
+def _validate_result_cross_field(rows: list[dict[str, str]], mapping: dict[str, str], has_time_column: bool = True) -> list[ValidationIssue]:
     """Checks across rows. The finish time is what a score is made from, so a missing one is an
     error; an oddity in the ranking or the bibs is the organizer's to judge, and is a warning."""
     issues: list[ValidationIssue] = []
@@ -196,7 +198,7 @@ def _validate_result_cross_field(rows: list[dict[str, str]], mapping: dict[str, 
                 continue  # a malformed rank was already reported by the field validator
             if isinstance(resolved, str):
                 continue  # DNF/DNS/DSQ rows: no finish time, no place in the ranking order
-            if time_header and not clean_cell(row.get(time_header, "")):
+            if time_header and has_time_column and not clean_cell(row.get(time_header, "")):
                 issues.append(ValidationIssue("error", row_index, "finish_time", "value is required for finishers"))
             finishers.append((resolved, row_index, parse_hms_to_seconds(row.get(time_header, "")) if time_header else None))
 

@@ -16,19 +16,66 @@ function withCredentials(options = {}) {
   return { credentials: 'include', ...options, headers: { ...CLIENT_HEADERS, ...(options.headers || {}) } }
 }
 
+// What to say when the answer carries no message of its own: the proxy in front of the API answers
+// an oversized upload or a timeout with a page of HTML, not with JSON.
+const FRIENDLY_STATUS = {
+  413: 'That file is too large (the limit is 20 MB). For a GPX, export it with fewer points; for results, upload one race distance per file.',
+  429: 'Too many tries in a short time. Wait a minute and try again.',
+  502: 'OTRI is restarting. Try again in a moment.',
+  503: 'OTRI is restarting. Try again in a moment.',
+  504: 'That took too long and was stopped. Try again; if it keeps happening with this file, tell us.',
+}
+
+// FastAPI answers a missing or malformed field with a list of {loc, msg}: say which field, in words.
+function readableDetail(detail) {
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail)) {
+    const names = { gpx: 'the course file (GPX)', results: 'the results file', file: 'the file' }
+    return detail
+      .map((item) => {
+        const field = item?.loc?.[item.loc.length - 1]
+        if (item?.type === 'missing') return `${names[field] ?? field} is missing`
+        return `${names[field] ?? field ?? 'request'}: ${item?.msg ?? 'not accepted'}`
+      })
+      .join('; ')
+      .replace(/^./, (first) => first.toUpperCase())
+  }
+  return detail ? JSON.stringify(detail) : null
+}
+
+// The server refuses a body over 20 MB, and a refusal that late is a dropped connection, not a
+// message. Said before anything is sent, naming the file.
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+
+function checkUploadSize(body) {
+  if (typeof FormData === 'undefined' || !(body instanceof FormData)) return
+  let total = 0
+  for (const value of body.values()) {
+    if (!(value instanceof Blob)) continue
+    total += value.size
+    if (value.size === 0) throw new Error(`“${value.name ?? 'The file'}” is empty. Export it again and upload that.`)
+    if (value.size > MAX_UPLOAD_BYTES) {
+      const isGpx = /\.gpx$/i.test(value.name ?? '')
+      throw new Error(`“${value.name ?? 'The file'}” is ${(value.size / 1048576).toFixed(0)} MB; the limit is 20 MB. ${isGpx ? 'Export the course with fewer points (one every 5 to 10 m is plenty).' : 'Upload one race distance per file, or save it as CSV.'}`)
+    }
+  }
+  if (total > MAX_UPLOAD_BYTES) throw new Error('Together the files are larger than 20 MB, which is the limit for one upload. Export the course with fewer points (one every 5 to 10 m is plenty).')
+}
+
 async function request(path, options) {
+  checkUploadSize(options?.body)
   let response
   try {
     response = await fetch(`${API_BASE_URL}${path}`, withCredentials(options))
   } catch (networkError) {
-    throw new Error(`Could not reach the API at ${API_BASE_URL} (${networkError.message}). Is it running?`)
+    throw new Error(import.meta.env?.DEV ? `Could not reach the API at ${API_BASE_URL} (${networkError.message}). Is it running?` : 'Could not reach OTRI. Check your connection and try again; a very large file can also end a connection.')
   }
 
   if (!response.ok) {
-    let detail = response.statusText
+    let detail = FRIENDLY_STATUS[response.status] ?? response.statusText
     try {
       const body = await response.json()
-      detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail ?? body)
+      detail = readableDetail(body.detail ?? body) ?? detail
     } catch {
       // response had no JSON body; keep statusText
     }

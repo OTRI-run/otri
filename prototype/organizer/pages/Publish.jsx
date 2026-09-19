@@ -5,6 +5,8 @@ import { clearHandoff, loadHandoff } from '../../publishHandoff'
 import { formatDistance, formatElevation, useUnits } from '../../../src/lib/units'
 import CountrySelect from '../../../src/components/CountrySelect'
 import RaceNameList, { RACE_NAME_LIST } from '../../../src/components/RaceNameList'
+import PlaceNameList, { DISTANCE_NAME_LIST, DistanceNameList, PLACE_NAME_LIST } from '../../../src/components/PlaceNameList'
+import { countryOfPlace } from '../../../src/lib/placeNames'
 import { navigate } from '../router'
 import { Button, Card, Field, Gradient, Notice, Page, inputClass } from '../ui'
 
@@ -145,12 +147,27 @@ export default function PublishScoredRace({ session }) {
                 <input id="pb-date" required type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} disabled={busy} />
               </Field>
               <Field label="Distance name" htmlFor="pb-course" hint="How this distance is listed.">
-                <input id="pb-course" required value={courseName} onChange={(e) => setCourseName(e.target.value)} className={inputClass} placeholder="30K" disabled={busy} />
+                <input id="pb-course" required value={courseName} onChange={(e) => setCourseName(e.target.value)} list={DISTANCE_NAME_LIST} autoComplete="off" className={inputClass} placeholder="30K" disabled={busy} />
+                <DistanceNameList />
               </Field>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Location" htmlFor="pb-location" hint="Optional.">
-                <input id="pb-location" value={location} onChange={(e) => setLocation(e.target.value)} className={inputClass} placeholder="Chiang Mai" disabled={busy} />
+                <input
+                  id="pb-location"
+                  value={location}
+                  onChange={(e) => {
+                    setLocation(e.target.value)
+                    const known = countryOfPlace(e.target.value)
+                    if (known && !country) setCountry(known)
+                  }}
+                  list={PLACE_NAME_LIST}
+                  autoComplete="off"
+                  className={inputClass}
+                  placeholder="Chiang Mai"
+                  disabled={busy}
+                />
+                <PlaceNameList />
               </Field>
               <Field label="Country" htmlFor="pb-country" hint="Optional.">
                 <CountrySelect id="pb-country" value={country} onChange={setCountry} className={inputClass} />

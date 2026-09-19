@@ -7,6 +7,8 @@ import { formatDistance, formatElevation, useUnits } from '../../../src/lib/unit
 import { Button, Card, EmptyState, Eyebrow, Field, Gradient, Notice, Page, StatusChip, formatDate, inputClass, raceStatus } from '../ui'
 import CountrySelect from '../../../src/components/CountrySelect'
 import RaceNameList, { RACE_NAME_LIST } from '../../../src/components/RaceNameList'
+import PlaceNameList, { PLACE_NAME_LIST } from '../../../src/components/PlaceNameList'
+import { countryOfPlace } from '../../../src/lib/placeNames'
 
 export function Dashboard({ session }) {
   const [events, setEvents] = useState(null)
@@ -122,7 +124,7 @@ export function NewEvent({ session }) {
   return (
     <Page
       back={{ to: '/events', label: 'Your events' }}
-      eyebrow="STEP 2 OF 5 · EVENT"
+      eyebrow="STEP 1 OF 4 · EVENT"
       headline={
         <>
           Create
@@ -143,7 +145,21 @@ export function NewEvent({ session }) {
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Location" htmlFor="ev-location" hint="Town or area, as runners know it.">
-                <input id="ev-location" value={location} onChange={(e) => setLocation(e.target.value)} className={inputClass} placeholder="Chiang Mai" />
+                <input
+                  id="ev-location"
+                  value={location}
+                  onChange={(e) => {
+                    setLocation(e.target.value)
+                    // A suggested place knows its country: fill it in while the country is still empty.
+                    const known = countryOfPlace(e.target.value)
+                    if (known && !country) setCountry(known)
+                  }}
+                  list={PLACE_NAME_LIST}
+                  autoComplete="off"
+                  className={inputClass}
+                  placeholder="Chiang Mai"
+                />
+                <PlaceNameList />
               </Field>
               <Field label="Country" htmlFor="ev-country" hint="Where it takes place.">
                 <CountrySelect id="ev-country" value={country} onChange={setCountry} className={inputClass} />
@@ -268,7 +284,16 @@ export function EventPage({ session, eventId }) {
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Location" htmlFor="ed-location">
-                <input id="ed-location" value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} className={inputClass} placeholder="Chiang Mai" />
+                <input
+                  id="ed-location"
+                  value={form.location}
+                  onChange={(e) => setForm((f) => ({ ...f, location: e.target.value, country: f.country || countryOfPlace(e.target.value) || '' }))}
+                  list={PLACE_NAME_LIST}
+                  autoComplete="off"
+                  className={inputClass}
+                  placeholder="Chiang Mai"
+                />
+                <PlaceNameList />
               </Field>
               <Field label="Country" htmlFor="ed-country">
                 <CountrySelect id="ed-country" value={form.country} onChange={(value) => setForm((f) => ({ ...f, country: value }))} className={inputClass} />
@@ -288,7 +313,7 @@ export function EventPage({ session, eventId }) {
 
       <div className="mt-12 flex flex-wrap items-end justify-between gap-3 border-t border-slate-300 pt-8">
         <div>
-          <Eyebrow>STEP 3 OF 5 · RACES</Eyebrow>
+          <Eyebrow>STEP 2 OF 4 · RACES</Eyebrow>
           <h2 className="mt-2 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">Race distances</h2>
         </div>
         <Button onClick={() => navigate(`/events/${encodeURIComponent(eventId)}/races/new`)}>
