@@ -61,15 +61,13 @@ pip install -r course/requirements-terrain.txt
 pip install gunicorn
 deactivate
 
-# Terrain dataset (course-measurement-v2 / scoring V0.7): if 06-install-dem.sh has pinned tiles,
-# point the API at them. Without it every score reports Low confidence, on purpose.
-if [[ -z "${OTRI_DEM_MANIFEST:-}" ]] && [[ -f "${APP_DIR}/dem/manifest.json" ]]; then
-  OTRI_DEM_MANIFEST="${APP_DIR}/dem/manifest.json"
-  echo "==> Using terrain manifest ${OTRI_DEM_MANIFEST}"
-elif [[ -z "${OTRI_DEM_MANIFEST:-}" ]]; then
-  echo "WARNING: no terrain manifest - elevation will come from uploaded GPX files and every" >&2
-  echo "         score will report Low confidence. Run 06-install-dem.sh to pin DEM tiles." >&2
-fi
+# Terrain dataset: elevation comes from pinned Copernicus GLO-30 tiles in ${APP_DIR}/dem. The API
+# downloads the tiles a course needs the first time a course needs them (course/dem_fetch.py,
+# OTRI_DEM_AUTOFETCH=1) and keeps the fetched ones within OTRI_DEM_BUDGET_MB; 06-install-dem.sh
+# installs regions for good. The manifest need not exist yet: the first fetch writes it.
+OTRI_DEM_MANIFEST="${OTRI_DEM_MANIFEST:-${APP_DIR}/dem/manifest.json}"
+mkdir -p "$(dirname "${OTRI_DEM_MANIFEST}")"
+echo "==> Terrain manifest ${OTRI_DEM_MANIFEST}"
 
 # Preserve an existing JWT secret across re-deploys (regenerating it would log
 # out every organizer on every deploy); only generate one the first time.
@@ -88,6 +86,8 @@ keep_env() { grep "^$1=" "${APP_DIR}/.env" 2>/dev/null | head -1 | cut -d= -f2- 
 OTRI_ADMIN_EMAILS="${OTRI_ADMIN_EMAILS:-$(keep_env OTRI_ADMIN_EMAILS)}"
 OTRI_ALERT_EMAIL="${OTRI_ALERT_EMAIL:-$(keep_env OTRI_ALERT_EMAIL)}"
 OTRI_SHARED_COURSES_MAX_MB="${OTRI_SHARED_COURSES_MAX_MB:-$(keep_env OTRI_SHARED_COURSES_MAX_MB)}"
+OTRI_DEM_AUTOFETCH="${OTRI_DEM_AUTOFETCH:-$(keep_env OTRI_DEM_AUTOFETCH)}"
+OTRI_DEM_BUDGET_MB="${OTRI_DEM_BUDGET_MB:-$(keep_env OTRI_DEM_BUDGET_MB)}"
 OTRI_BACKUP_RCLONE_REMOTE="${OTRI_BACKUP_RCLONE_REMOTE:-$(keep_env OTRI_BACKUP_RCLONE_REMOTE)}"
 SENTRY_DSN="${SENTRY_DSN:-$(keep_env SENTRY_DSN)}"
 OTRI_ENV="${OTRI_ENV:-$(keep_env OTRI_ENV)}"
@@ -100,7 +100,9 @@ DATABASE_URL=${DATABASE_URL}
 RESEND_API_KEY=${RESEND_API_KEY:-}
 OTRI_EMAIL_FROM=${OTRI_EMAIL_FROM:-OTRI <noreply@otri.run>}
 OTRI_APP_BASE_URL=${OTRI_APP_BASE_URL:-https://otri.run}
-OTRI_DEM_MANIFEST=${OTRI_DEM_MANIFEST:-}
+OTRI_DEM_MANIFEST=${OTRI_DEM_MANIFEST}
+OTRI_DEM_AUTOFETCH=${OTRI_DEM_AUTOFETCH:-1}
+OTRI_DEM_BUDGET_MB=${OTRI_DEM_BUDGET_MB:-8192}
 OTRI_ADMIN_EMAILS=${OTRI_ADMIN_EMAILS}
 OTRI_ALERT_EMAIL=${OTRI_ALERT_EMAIL}
 OTRI_SHARED_COURSES_MAX_MB=${OTRI_SHARED_COURSES_MAX_MB:-2048}
@@ -145,7 +147,7 @@ Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true
 ProtectSystem=strict
-ReadWritePaths=${APP_DIR}/data
+ReadWritePaths=${APP_DIR}/data $(dirname "${OTRI_DEM_MANIFEST}")
 ProtectHome=true
 PrivateTmp=true
 
