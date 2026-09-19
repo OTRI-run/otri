@@ -290,12 +290,11 @@ def test_the_deploy_user_may_not_write_anything_root_acts_on():
 
 
 def test_a_long_passphrase_never_meets_a_bare_fast_hash_and_still_signs_in():
-    import base64
-    import hashlib
-
     long_password = "ภูเก็ตเทรล " * 9 + "correct horse battery staple"  # far over bcrypt's 72 bytes
     assert len(long_password.encode()) > 72
-    assert auth._bcrypt_input(long_password) != base64.b64encode(hashlib.sha256(long_password.encode()).digest())
+    # What goes to bcrypt is 32 bytes of salted PBKDF2, base64: 44 characters, and not the same for
+    # another passphrase. (No fast hash of a password here either, not even to compare against.)
+    assert len(auth._bcrypt_input(long_password)) == 44 and auth._bcrypt_input(long_password) != auth._bcrypt_input(long_password + "!")
     assert len(auth._bcrypt_input(long_password)) <= 72 and auth._bcrypt_input("short one") == b"short one"
     client.cookies.clear()
     assert client.post("/auth/register", json={"email": "long@example.com", "password": long_password, "accept_terms": True}).status_code == 201
