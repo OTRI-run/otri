@@ -36,6 +36,8 @@ limit_conn_zone \$binary_remote_addr zone=otri_conn:10m;
 server {
     listen 80;
     server_name ${DOMAIN};
+    # Do not tell every visitor which nginx version and distribution this is.
+    server_tokens off;
 
     # Only meaningful over TLS (certbot adds the 443 server below); harmless on the redirect.
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;

@@ -16,6 +16,7 @@ Run locally with: ``uvicorn api.app:app --reload``
 
 from __future__ import annotations
 
+import base64
 import gzip
 import json
 import os
@@ -152,7 +153,54 @@ app = FastAPI(
     description="Open Trail Running Index — events, race distances, scored results, and the organizer workflow.",
     version="0.1.0",
     lifespan=_lifespan,
+    # The generated pages are replaced below: FastAPI's own load whatever a CDN serves today for
+    # "swagger-ui-dist@5" and "redoc@next", as script on this origin, which is where organizers'
+    # and admins' session cookies count. See `interactive_docs`.
+    docs_url=None,
+    redoc_url=None,
 )
+
+# Swagger UI, one exact version, each file pinned by its hash (Subresource Integrity): the browser
+# refuses a file that is not byte for byte this one, so a tampered or hijacked CDN package cannot
+# run as api.otri.run and act with the session of whoever opened the page. To upgrade: pick the
+# version, download the two files and recompute `sha384` (openssl dgst -sha384 -binary | base64).
+_SWAGGER_VERSION = "5.33.0"
+_SWAGGER_FILES = {
+    "swagger-ui-bundle.js": "sha384-YDALVcy8kj8yltLBVi1vBiBAUqdxvus673gM8XKwiy6aDUJFXivF/KCufekjYbVf",
+    "swagger-ui.css": "sha384-Ov4/wv3j2bmct8cDc5X4ngJZohVPzEmc6uDPH8WeljUxO5vtoykvMEfbu9Vh6RaW",
+}
+_SWAGGER_CDN = f"https://cdn.jsdelivr.net/npm/swagger-ui-dist@{_SWAGGER_VERSION}"
+_DOCS_INIT = "window.ui = SwaggerUIBundle({ url: '/openapi.json', dom_id: '#swagger-ui', deepLinking: true, persistAuthorization: false, presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset], layout: 'BaseLayout' })"
+_DOCS_CSP = (
+    "default-src 'none'; "
+    f"script-src https://cdn.jsdelivr.net 'sha256-{base64.b64encode(sha256(_DOCS_INIT.encode()).digest()).decode()}'; "
+    "style-src https://cdn.jsdelivr.net 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; "
+    "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+)
+_DOCS_HTML = f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>OTRI API reference</title>
+<link rel="stylesheet" href="{_SWAGGER_CDN}/swagger-ui.css" integrity="{_SWAGGER_FILES['swagger-ui.css']}" crossorigin="anonymous">
+</head>
+<body>
+<div id="swagger-ui"></div>
+<script src="{_SWAGGER_CDN}/swagger-ui-bundle.js" integrity="{_SWAGGER_FILES['swagger-ui-bundle.js']}" crossorigin="anonymous"></script>
+<script>{_DOCS_INIT}</script>
+</body>
+</html>
+"""
+
+
+@app.get("/docs", include_in_schema=False)
+def interactive_docs() -> Response:
+    """The generated API reference. Public on purpose (the code is open, and so is the API): what it
+    must not be is a way for someone else's script to run on this origin."""
+    return Response(content=_DOCS_HTML, media_type="text/html; charset=utf-8", headers={"Content-Security-Policy": _DOCS_CSP, "Cache-Control": "public, max-age=3600"})
+
 
 # Captured once at process/worker start — the practical "last restarted at" for this API
 # instance (a deploy restarts the systemd service, spawning a fresh process).
@@ -191,6 +239,9 @@ async def _guardrails(request: Request, call_next):
     response = await call_next(request)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
+    # An API answers with data. Should a browser ever be talked into showing one as a page, nothing
+    # in it may load or run (the docs page sets its own, narrower-than-default policy).
+    response.headers.setdefault("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     personal = request.url.path.startswith(("/auth", "/admin")) or "authorization" in request.headers or _SESSION_COOKIE in request.cookies
     if personal:

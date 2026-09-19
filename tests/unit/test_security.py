@@ -109,3 +109,22 @@ def test_responses_carry_the_headers_that_stop_sniffing_and_framing():
     assert client.get("/auth/me", headers=headers).headers.get("cache-control") == "no-store"
     profile = client.patch("/auth/profile", json={"website": "javascript:alert(document.cookie)"}, headers=headers).json()["profile"]
     assert profile["website"].startswith("https://")
+
+
+def test_the_api_reference_runs_no_script_that_is_not_pinned_by_its_hash():
+    """/docs is a page on the API's own origin, where session cookies count. FastAPI's default loads
+    whatever a CDN serves for "swagger-ui-dist@5" (and ReDoc "@next"): one hijacked package would run
+    as api.otri.run with the session of whoever opened it."""
+    page = client.get("/docs")
+    assert page.status_code == 200
+    scripts = [tag for tag in page.text.split("<script")[1:] if "src=" in tag.split(">")[0]]
+    assert scripts and all('integrity="sha384-' in tag.split(">")[0] and 'crossorigin="anonymous"' in tag.split(">")[0] for tag in scripts)
+    assert 'rel="stylesheet"' in page.text and page.text.count('integrity="sha384-') == 2
+    assert "swagger-ui-dist@5.33.0/" in page.text and "swagger-ui-dist@5/" not in page.text, "an exact version, not a range"
+    policy = page.headers["content-security-policy"]
+    assert "default-src 'none'" in policy and "connect-src 'self'" in policy and "frame-ancestors 'none'" in policy
+    assert "'unsafe-inline'" not in policy.split("script-src")[1].split(";")[0], "only the hashed start-up script may run inline"
+    assert client.get("/redoc").status_code == 404
+    assert client.get("/openapi.json").status_code == 200, "the machine-readable description stays public"
+    # Everything else is data, and says that nothing in it may load or run.
+    assert client.get("/races").headers["content-security-policy"] == "default-src 'none'; frame-ancestors 'none'"
