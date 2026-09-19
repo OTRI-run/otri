@@ -16,6 +16,7 @@ Run locally with: ``uvicorn api.app:app --reload``
 
 from __future__ import annotations
 
+import base64
 import gzip
 import json
 import os
@@ -152,7 +153,54 @@ app = FastAPI(
     description="Open Trail Running Index — events, race distances, scored results, and the organizer workflow.",
     version="0.1.0",
     lifespan=_lifespan,
+    # The generated pages are replaced below: FastAPI's own load whatever a CDN serves today for
+    # "swagger-ui-dist@5" and "redoc@next", as script on this origin, which is where organizers'
+    # and admins' session cookies count. See `interactive_docs`.
+    docs_url=None,
+    redoc_url=None,
 )
+
+# Swagger UI, one exact version, each file pinned by its hash (Subresource Integrity): the browser
+# refuses a file that is not byte for byte this one, so a tampered or hijacked CDN package cannot
+# run as api.otri.run and act with the session of whoever opened the page. To upgrade: pick the
+# version, download the two files and recompute `sha384` (openssl dgst -sha384 -binary | base64).
+_SWAGGER_VERSION = "5.33.0"
+_SWAGGER_FILES = {
+    "swagger-ui-bundle.js": "sha384-YDALVcy8kj8yltLBVi1vBiBAUqdxvus673gM8XKwiy6aDUJFXivF/KCufekjYbVf",
+    "swagger-ui.css": "sha384-Ov4/wv3j2bmct8cDc5X4ngJZohVPzEmc6uDPH8WeljUxO5vtoykvMEfbu9Vh6RaW",
+}
+_SWAGGER_CDN = f"https://cdn.jsdelivr.net/npm/swagger-ui-dist@{_SWAGGER_VERSION}"
+_DOCS_INIT = "window.ui = SwaggerUIBundle({ url: '/openapi.json', dom_id: '#swagger-ui', deepLinking: true, persistAuthorization: false, presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset], layout: 'BaseLayout' })"
+_DOCS_CSP = (
+    "default-src 'none'; "
+    f"script-src https://cdn.jsdelivr.net 'sha256-{base64.b64encode(sha256(_DOCS_INIT.encode()).digest()).decode()}'; "
+    "style-src https://cdn.jsdelivr.net 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; "
+    "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+)
+_DOCS_HTML = f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>OTRI API reference</title>
+<link rel="stylesheet" href="{_SWAGGER_CDN}/swagger-ui.css" integrity="{_SWAGGER_FILES['swagger-ui.css']}" crossorigin="anonymous">
+</head>
+<body>
+<div id="swagger-ui"></div>
+<script src="{_SWAGGER_CDN}/swagger-ui-bundle.js" integrity="{_SWAGGER_FILES['swagger-ui-bundle.js']}" crossorigin="anonymous"></script>
+<script>{_DOCS_INIT}</script>
+</body>
+</html>
+"""
+
+
+@app.get("/docs", include_in_schema=False)
+def interactive_docs() -> Response:
+    """The generated API reference. Public on purpose (the code is open, and so is the API): what it
+    must not be is a way for someone else's script to run on this origin."""
+    return Response(content=_DOCS_HTML, media_type="text/html; charset=utf-8", headers={"Content-Security-Policy": _DOCS_CSP, "Cache-Control": "public, max-age=3600"})
+
 
 # Captured once at process/worker start — the practical "last restarted at" for this API
 # instance (a deploy restarts the systemd service, spawning a fresh process).
@@ -191,6 +239,9 @@ async def _guardrails(request: Request, call_next):
     response = await call_next(request)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
+    # An API answers with data. Should a browser ever be talked into showing one as a page, nothing
+    # in it may load or run (the docs page sets its own, narrower-than-default policy).
+    response.headers.setdefault("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     personal = request.url.path.startswith(("/auth", "/admin")) or "authorization" in request.headers or _SESSION_COOKIE in request.cookies
     if personal:
@@ -623,9 +674,14 @@ def delete_own_account(payload: PasswordConfirm, request: Request, response: Res
 
 
 @app.post("/auth/2fa/totp/setup", response_model=TotpSetupOut)
-def totp_setup(organizer: Organizer = Depends(require_organizer)) -> TotpSetupOut:
-    """Start authenticator-app setup: a secret to scan; nothing changes until a code confirms it."""
-    secret, uri = _auth.begin_totp_setup(organizer.id, organizer.email)
+def totp_setup(payload: PasswordConfirm, request: Request, organizer: Organizer = Depends(require_organizer)) -> TotpSetupOut:
+    """Start authenticator-app setup: a secret to scan; nothing changes until a code confirms it.
+    Needs the password: a session alone must not be able to replace the owner's second factor."""
+    enforce_rate_limit(request, max_requests=5)
+    try:
+        secret, uri = _auth.begin_totp_setup(organizer.id, organizer.email, payload.password)
+    except AuthError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
     return TotpSetupOut(secret=secret, otpauth_uri=uri)
 
 
@@ -639,9 +695,12 @@ def totp_enable(payload: TwoFactorCode, organizer: Organizer = Depends(require_o
 
 
 @app.post("/auth/2fa/email/start", response_model=MessageResponse)
-def email_two_factor_start(request: Request, organizer: Organizer = Depends(require_organizer)) -> MessageResponse:
+def email_two_factor_start(payload: PasswordConfirm, request: Request, organizer: Organizer = Depends(require_organizer)) -> MessageResponse:
     enforce_rate_limit(request, max_requests=5)
-    code = _auth.begin_email_two_factor(organizer.id)
+    try:
+        code = _auth.begin_email_two_factor(organizer.id, payload.password)
+    except AuthError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
     _email.send_login_code_email(organizer.email, code)
     return MessageResponse(message=f"a code was sent to {organizer.email}")
 
@@ -714,7 +773,12 @@ def confirm_password_reset(payload: PasswordResetConfirm, request: Request, resp
         organizer = reset_password(payload.token, payload.new_password)
     except AuthError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    return _finish_session(response, request, TokenResponse(access_token=create_access_token(organizer), email=organizer.email, expires_in=_auth.token_ttl_seconds(False)), False)
+    # A reset link proves the mailbox, which is one factor. An account with a second factor is not
+    # signed in by it: the password is changed, and the owner signs in the normal way, code included.
+    if _auth.two_factor_status(organizer.id)["enabled"]:
+        return TokenResponse(access_token="", email=organizer.email, requires_2fa=True)
+    organizer = _with_flags(organizer, check_session=False)
+    return _finish_session(response, request, TokenResponse(access_token=create_access_token(organizer), email=organizer.email, is_admin=organizer.is_admin, is_demo=organizer.is_demo, email_verified=organizer.email_verified, expires_in=_auth.token_ttl_seconds(False)), False)
 
 
 # --- Events ------------------------------------------------------------------
@@ -871,9 +935,36 @@ def admin_list_events(organizer: Organizer = Depends(require_admin)) -> list[Adm
     return out
 
 
+# What one account may hold and how fast it may add to it. An account costs nothing to make and
+# needs no confirmed address to start building a race, so without these a script could pile up
+# events and keep the course measurement busy with upload after upload. The numbers are far above
+# what an organizer does by hand (a big event has a dozen distances; a timing company a few
+# hundred events) and low enough that abuse stays small. Admins are not limited.
+_MAX_EVENTS_UNCONFIRMED = 3
+_MAX_EVENTS_PER_ACCOUNT = 500
+_MAX_RACES_PER_EVENT = 40
+_UPLOADS_PER_MINUTE = 12
+
+
+def _limit_writes(request: Request, organizer: Organizer, *, scope: str, per_minute: int) -> None:
+    """Per account and per address: whichever a script does not rotate still stops it."""
+    if organizer.is_admin:
+        return
+    enforce_rate_limit(request, max_requests=per_minute, scope=scope, subject=f"account-{organizer.id}")
+    enforce_rate_limit(request, max_requests=per_minute * 3, scope=f"{scope}-address")
+
+
 @app.post("/events", response_model=EventSummary, status_code=201)
-def create_event(payload: EventCreate, organizer: Organizer = Depends(require_organizer)) -> EventSummary:
-    """Requires a valid, verified organizer bearer token."""
+def create_event(payload: EventCreate, request: Request, organizer: Organizer = Depends(require_organizer)) -> EventSummary:
+    """Requires a signed-in organizer. An unconfirmed address may build a few events; more needs the
+    address confirmed."""
+    _limit_writes(request, organizer, scope="create", per_minute=20)
+    if not organizer.is_admin:
+        held = db.count_events_for_organizer(organizer.id)
+        if not organizer.email_verified and held >= _MAX_EVENTS_UNCONFIRMED:
+            raise HTTPException(status_code=403, detail=f"Confirm your email address to create more than {_MAX_EVENTS_UNCONFIRMED} events: the link is in your inbox, and you can have it sent again.")
+        if held >= _MAX_EVENTS_PER_ACCOUNT:
+            raise HTTPException(status_code=403, detail=f"This account holds {_MAX_EVENTS_PER_ACCOUNT} events, which is the limit. Write to us if you really need more.")
     if not payload.event_name.strip():
         raise HTTPException(status_code=422, detail="event_name is required")
     country = _clean_country(payload.country)
@@ -993,12 +1084,15 @@ def unlist_race(race_id: str, organizer: Organizer = Depends(require_organizer))
 
 
 @app.post("/events/{event_id}/races", response_model=RaceSummary, status_code=201)
-def add_race(event_id: str, payload: RaceCreate, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
+def add_race(event_id: str, payload: RaceCreate, request: Request, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
     """Add a race distance (e.g. "50K") to an event. Requires ownership of the event."""
     event = db.find_event(event_id)
     if event is None:
         raise HTTPException(status_code=404, detail=f"event {event_id!r} not found")
     _require_event_owner(event, organizer)
+    _limit_writes(request, organizer, scope="create", per_minute=20)
+    if not organizer.is_admin and len(db.list_races_for_event(event_id)) >= _MAX_RACES_PER_EVENT:
+        raise HTTPException(status_code=403, detail=f"An event holds at most {_MAX_RACES_PER_EVENT} race distances.")
 
     if not payload.course_name.strip():
         raise HTTPException(status_code=422, detail="course_name is required")
@@ -1281,7 +1375,7 @@ def admin_delete_calculator_course(race_id: str, organizer: Organizer = Depends(
 
 @app.post("/races/{race_id}/gpx", response_model=RaceSummary)
 async def attach_race_gpx(
-    race_id: str, file: UploadFile, organizer: Organizer = Depends(require_organizer)
+    race_id: str, file: UploadFile, request: Request, organizer: Organizer = Depends(require_organizer)
 ) -> RaceSummary:
     """Attach (or replace) a GPX file for a race distance. Recomputes distance_km/elevation_gain_m
     from the real parsed course data — the GPX becomes the authoritative source once attached."""
@@ -1289,6 +1383,7 @@ async def attach_race_gpx(
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
+    _limit_writes(request, organizer, scope="upload", per_minute=_UPLOADS_PER_MINUTE)  # measuring a course costs a core for seconds
 
     suffix = _safe_suffix(file.filename, ".gpx")
     contents = await file.read(20_000_001)
@@ -1446,7 +1541,7 @@ def get_race_results(race_id: str, organizer: Organizer | None = Depends(_option
 
 @app.post("/races/{race_id}/results", response_model=SubmissionResult)
 async def submit_race_results(
-    race_id: str, file: UploadFile, organizer: Organizer = Depends(require_organizer)
+    race_id: str, file: UploadFile, request: Request, organizer: Organizer = Depends(require_organizer)
 ) -> SubmissionResult:
     """Organizer submission workflow. Requires ownership of the race's event.
 
@@ -1459,6 +1554,7 @@ async def submit_race_results(
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
+    _limit_writes(request, organizer, scope="upload", per_minute=_UPLOADS_PER_MINUTE)
 
     suffix = _safe_suffix(file.filename, ".csv")
     contents = await file.read(20_000_001)

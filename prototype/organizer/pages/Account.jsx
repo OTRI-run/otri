@@ -192,9 +192,11 @@ function TwoFactor({ me, email, onChanged, onToken }) {
     }
   }
 
+  // Both setups start by asking for the password (mode "confirm-…"); it is kept for "Send again"
+  // and dropped when the setup ends either way.
   const startTotp = () =>
     run(async () => {
-      const data = await totpSetup()
+      const data = await totpSetup(password)
       const svg = await QRCode.toString(data.otpauth_uri, { type: 'svg', margin: 1, width: 180 })
       setSetup({ ...data, svg })
       setMode('totp')
@@ -210,7 +212,7 @@ function TwoFactor({ me, email, onChanged, onToken }) {
     })
   const startEmail = () =>
     run(async () => {
-      const result = await emailTwoFactorStart()
+      const result = await emailTwoFactorStart(password)
       setMessage(result.message)
       setMode('email')
       setCode('')
@@ -255,10 +257,10 @@ function TwoFactor({ me, email, onChanged, onToken }) {
         </p>
         {!status.enabled && mode == null && (
           <span className="flex flex-wrap gap-2">
-            <Button variant="secondary" busy={busy} onClick={startTotp} className="min-h-10 text-xs">
+            <Button variant="secondary" busy={busy} onClick={() => { setPassword(''); setError(null); setMode('confirm-totp') }} className="min-h-10 text-xs">
               <Smartphone size={14} /> Authenticator app
             </Button>
-            <Button variant="secondary" busy={busy} onClick={startEmail} className="min-h-10 text-xs">
+            <Button variant="secondary" busy={busy} onClick={() => { setPassword(''); setError(null); setMode('confirm-email') }} className="min-h-10 text-xs">
               <Mail size={14} /> Email codes
             </Button>
           </span>
@@ -278,6 +280,28 @@ function TwoFactor({ me, email, onChanged, onToken }) {
       {recovery && <RecoveryCodes codes={recovery.codes} method={recovery.method} />}
       {error && <Notice kind="error">{error}</Notice>}
 
+      {(mode === 'confirm-totp' || mode === 'confirm-email') && (
+        <form
+          className="mt-4 grid max-w-sm gap-3"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (mode === 'confirm-totp') startTotp()
+            else startEmail()
+          }}
+        >
+          <Field label="Your password" htmlFor="tf-confirm-pw" hint="Changing how your account is protected asks for it again.">
+            <PasswordInput id="tf-confirm-pw" autoFocus autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+          </Field>
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" busy={busy} disabled={!password}>
+              Continue
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => { setMode(null); setPassword(''); setError(null) }}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
       {mode === 'totp' && setup && (
         <div className="grid gap-4 sm:grid-cols-[200px_1fr]">
           <div className="rounded-xl border border-slate-200 bg-white p-2" dangerouslySetInnerHTML={{ __html: setup.svg }} aria-label="QR code for your authenticator app" />

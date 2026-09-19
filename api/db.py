@@ -373,6 +373,11 @@ def update_event(
     return Event(**row)
 
 
+def count_events_for_organizer(organizer_id: int) -> int:
+    with get_connection() as connection:
+        return int(connection.execute("SELECT COUNT(*) AS n FROM events WHERE organizer_id = %s", (organizer_id,)).fetchone()["n"])
+
+
 def delete_event(event_id: str) -> None:
     with get_connection() as connection:
         cursor = connection.execute("DELETE FROM events WHERE event_id = %s", (event_id,))
