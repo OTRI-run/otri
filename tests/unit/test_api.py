@@ -74,20 +74,20 @@ def test_root_reports_app_status():
 def test_there_is_one_scoring_model_to_choose():
     response = client.get("/scoring/models")
     assert response.status_code == 200
-    assert [model["version"] for model in response.json()] == ["0.9.0-course-standard-domain-gated"]
+    assert [model["version"] for model in response.json()] == ["0.10.0-course-standard-vertical"]
 
 
 def test_new_race_defaults_to_course_standard_scoring():
     headers = _organizer_auth_headers()
     _, race_id = _create_event_and_race(headers)
     response = client.get(f"/races/{race_id}")
-    assert response.json()["scoring_version"] == "0.9.0-course-standard-domain-gated"
+    assert response.json()["scoring_version"] == "0.10.0-course-standard-vertical"
 
 
 def test_a_race_can_name_the_model_explicitly():
     headers = _organizer_auth_headers()
-    _, race_id = _create_event_and_race(headers, scoring_version="0.9.0-course-standard-domain-gated")
-    assert client.get(f"/races/{race_id}").json()["scoring_version"] == "0.9.0-course-standard-domain-gated"
+    _, race_id = _create_event_and_race(headers, scoring_version="0.10.0-course-standard-vertical")
+    assert client.get(f"/races/{race_id}").json()["scoring_version"] == "0.10.0-course-standard-vertical"
 
 
 def test_race_creation_rejects_unknown_scoring_version():
@@ -120,11 +120,12 @@ def test_a_race_stored_under_a_retired_build_is_moved_to_the_model():
     _, race_id = _create_event_and_race(headers)
     with db.get_connection() as connection:
         connection.execute("UPDATE races SET scoring_version = '0.6.0-course-standard-smoothed-upper' WHERE race_id = %s", (race_id,))
-        connection.execute(next(m.sql for m in migrations.MIGRATIONS if m.name == "0004_single_scoring_model"))
-    assert client.get(f"/races/{race_id}").json()["scoring_version"] == "0.9.0-course-standard-domain-gated"
+        for name in ("0004_single_scoring_model", "0005_vertical_build"):
+            connection.execute(next(m.sql for m in migrations.MIGRATIONS if m.name == name))
+    assert client.get(f"/races/{race_id}").json()["scoring_version"] == "0.10.0-course-standard-vertical"
     with DEMO_RESULT_001.open("rb") as handle:
         scored = client.post(f"/races/{race_id}/results", files={"file": ("r.csv", handle, "text/csv")}, headers=headers)
-    assert scored.status_code == 200 and scored.json()["scores"][0]["scoring_version"] == "0.9.0-course-standard-domain-gated"
+    assert scored.status_code == 200 and scored.json()["scores"][0]["scoring_version"] == "0.10.0-course-standard-vertical"
 
 
 def test_list_races_returns_demo_races():
@@ -235,9 +236,9 @@ def test_submit_results_for_race_you_do_not_own_returns_403():
     assert response.status_code == 403
 
 
-def test_vertical_race_lists_finish_times_without_scores():
-    """An uphill-only course is over-scored by the steep-terrain term, so it is not scored yet
-    (OEP-002): every finisher keeps their time, none gets a score, and the reason is on the row."""
+def test_a_vertical_race_is_scored_with_its_own_provisional_coefficient():
+    """An uphill-only course gets the vertical steep coefficient (OEP-003): every finisher is scored,
+    at Low confidence, and the row says the calibration is provisional."""
     headers = _organizer_auth_headers()
     _, race_id = _create_event_and_race(headers)
     with STEEP_GPX.open("rb") as handle:
@@ -247,16 +248,22 @@ def test_vertical_race_lists_finish_times_without_scores():
     with DEMO_RESULT_001.open("rb") as handle:
         response = client.post(f"/races/{race_id}/results", files={"file": ("OTRI-DEMO-001.csv", handle, "text/csv")}, headers=headers)
     assert response.status_code == 200, response.text
-    rows = client.get(f"/races/{race_id}/results", headers=headers).json()
-    finishers = [row for row in rows if row["status"] == "finisher"]
+    finishers = [row for row in client.get(f"/races/{race_id}/results", headers=headers).json() if row["status"] == "finisher"]
     assert finishers
     for row in finishers:
-        assert row["otri_score"] is None
-        assert row["finish_time_seconds"] > 0
-        assert row["quality_flags"][0].startswith("course_not_scored: vertical races are not scored yet")
+        assert row["otri_score"] is not None and row["confidence"] == "Low"
+        assert any(flag.startswith("vertical_calibration_provisional") for flag in row["quality_flags"])
 
 
-# --- Events ------------------------------------------------------------------
+def test_a_vertical_race_without_its_course_file_lists_times_only():
+    headers = _organizer_auth_headers()
+    event_id, _ = _create_event_and_race(headers)
+    race_id = client.post(f"/events/{event_id}/races", json={"course_name": "VK", "distance_km": 3.8, "elevation_gain_m": 1000.0}, headers=headers).json()["race_id"]
+    with DEMO_RESULT_001.open("rb") as handle:
+        client.post(f"/races/{race_id}/results", files={"file": ("OTRI-DEMO-001.csv", handle, "text/csv")}, headers=headers)
+    finishers = [row for row in client.get(f"/races/{race_id}/results", headers=headers).json() if row["status"] == "finisher"]
+    assert finishers and all(row["otri_score"] is None and row["finish_time_seconds"] > 0 for row in finishers)
+    assert finishers[0]["quality_flags"][0].startswith("course_not_scored: a vertical race needs its course file")
 
 
 def test_create_event_then_appears_in_list():
@@ -543,7 +550,7 @@ def test_analyze_gpx_with_finish_time_returns_predicted_score():
     assert estimate is not None
     assert "predicted_score" in estimate
     assert estimate["predicted_score"] < 1000
-    assert estimate["scoring_version"] == "0.9.0-course-standard-domain-gated"
+    assert estimate["scoring_version"] == "0.10.0-course-standard-vertical"
     # The explanation the prototype renders comes from the API, not from client-side maths.
     # No DEM manifest in the test environment, so V0.7 must say Low and say why.
     assert estimate["confidence"] == "Low"
@@ -587,19 +594,18 @@ def test_analyze_invalid_gpx_returns_422():
     assert response.status_code == 422
 
 
-def test_analyze_vertical_gpx_measures_the_course_and_explains_why_there_is_no_score():
-    """The course still loads (features, measurement); asking for a score gets the plain reason."""
-    with STEEP_GPX.open("rb") as handle:
-        measured = client.post("/gpx/analyze", files={"file": ("steep.gpx", handle, "application/gpx+xml")})
-    assert measured.status_code == 200 and measured.json()["estimate"] is None
+def test_analyze_vertical_gpx_scores_it_and_says_the_calibration_is_provisional():
+    """The calculator scores an uphill-only course (OEP-003), at Low confidence with the reason."""
     with STEEP_GPX.open("rb") as handle:
         response = client.post(
             "/gpx/analyze",
             files={"file": ("steep.gpx", handle, "application/gpx+xml")},
             data={"finish_time_seconds": "3600"},
         )
-    assert response.status_code == 422
-    assert "vertical races are not scored yet" in response.json()["detail"]
+    assert response.status_code == 200, response.text
+    estimate = response.json()["estimate"]
+    assert 0 < estimate["predicted_score"] <= 1000 and estimate["confidence"] == "Low"
+    assert any(flag.startswith("vertical_calibration_provisional") for flag in estimate["quality_flags"])
 
 
 # --- Auth ------------------------------------------------------------------

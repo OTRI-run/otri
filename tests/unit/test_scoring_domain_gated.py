@@ -20,7 +20,6 @@ from scoring.course_demand import MAX_GRADE, demand_from_totals, equivalent_flat
 from scoring.course_standard import (
     MODEL_CURVE,
     MAX_CLAMPED_DEMAND_FRACTION,
-    MAX_SCORED_STEEP_FRACTION,
     MIN_VALIDATED_DEMAND_KM,
     CourseNotScoredError,
     confidence_for,
@@ -29,7 +28,7 @@ from scoring.course_standard import (
 from scoring.estimator import estimate_score
 from scoring.measured_demand import compute_measured_demand
 from scoring.registry import score_race
-from scoring.terrain import TERRAIN_MODEL
+from scoring.terrain import STEEP_COEFFICIENT, TERRAIN_MODEL, VERTICAL_STEEP_COEFFICIENT, VERTICAL_STEEP_FRACTION
 
 
 def profile(*sections: tuple[float, float], spacing_m: float = 10.0) -> list[TrackPoint]:
@@ -71,9 +70,11 @@ def test_clamped_demand_fraction_is_measured():
     assert compute_measured_demand(measurement=measure_course(climb(2000, 0.52))).clamped_demand_fraction > 0.9
 
 
-def test_a_normal_vertical_kilometre_keeps_high():
-    """3.8 km at 26% is steep but inside the measured domain: nothing to report."""
-    assert reasons_for(climb(3800, 0.26)) == ("High", ())
+def test_a_normal_vertical_kilometre_is_inside_the_gradient_domain():
+    """3.8 km at 26% is steep but inside the measured gradient domain: the only thing to report is that
+    uphill-only courses are scored on a provisional calibration."""
+    label, reasons = reasons_for(climb(3800, 0.26))
+    assert label == "Low" and [r.split(":")[0] for r in reasons] == ["vertical_calibration_provisional"]
 
 
 def test_a_course_mostly_beyond_the_domain_is_low_with_the_reason():
@@ -86,7 +87,8 @@ def test_a_course_mostly_beyond_the_domain_is_low_with_the_reason():
 def test_a_few_steep_pitches_do_not_block_high():
     """The clamp notice alone leaves High reachable (model section 7.2) - only the share matters."""
     measurement = on_terrain_model(measure_course(climb(3800, 0.26)))
-    demand = compute_measured_demand(measurement=measurement)
+    # The clamp rule on its own: the same demand on a course that goes up and down (a fifth of it steep).
+    demand = replace(compute_measured_demand(measurement=measurement), steep_distance_fraction=0.2)
     at_threshold = replace(demand, clamped_demand_fraction=MAX_CLAMPED_DEMAND_FRACTION)
     assert confidence_for(measurement, at_threshold, demand.course_demand_km) == ("High", ())
     above = replace(demand, clamped_demand_fraction=MAX_CLAMPED_DEMAND_FRACTION + 0.01)
@@ -127,40 +129,49 @@ def _finishers(*seconds) -> list[ResultRecord]:
     return [ResultRecord(rank=i + 1, bib_number=str(i + 1), family_name="Runner", first_name=str(i + 1), gender="F", finish_time_seconds=t) for i, t in enumerate(seconds)]
 
 
-def test_why_a_vertical_kilometre_is_not_scored():
-    """The defect being fenced off: an uphill-only course is ~100% steep, so the terrain term, calibrated
-    on courses at most a quarter that steep, multiplies its demand by more than half again and a mid-pack
-    50-minute vertical kilometre would score like a world best."""
+def test_why_a_vertical_kilometre_has_its_own_coefficient():
+    """The mountain coefficient stands mostly for descending and broken rhythm, which an uphill-only course
+    does not have: applied to one, it would add more than half again to the demand and a mid-pack 50-minute
+    vertical kilometre would score like a world best."""
     demand = compute_measured_demand(measurement=measure_course(climb(3800, 0.26)))
     assert demand.steep_distance_fraction > 0.9
-    assert TERRAIN_MODEL.factor(demand.steep_distance_fraction, demand.altitude_excess_m) > 1.55
+    assert 1.0 + STEEP_COEFFICIENT * demand.steep_distance_fraction > 1.55
+    assert TERRAIN_MODEL.factor(demand.steep_distance_fraction, demand.altitude_excess_m) < 1.15
 
-def test_a_vertical_race_lists_every_finisher_without_a_score():
+
+def test_a_vertical_race_is_scored_and_says_its_calibration_is_provisional():
     points = climb(3800, 0.26)
-    scores = score_race(_race(), _finishers(1800, 3000, 4200), gpx_points=points, measurement=measure_course(points))
+    scores = score_race(_race(), _finishers(1800, 3000, 4200), gpx_points=points, measurement=on_terrain_model(measure_course(points)))
     assert [s.rank for s in scores] == [1, 2, 3]
+    assert scores[0].score.otri_score > scores[1].score.otri_score > scores[2].score.otri_score > 0
+    assert scores[1].score.otri_score < 1000, "a mid-pack 50 minutes is not a world best any more"
     for row in scores:
-        assert row.score.otri_score is None
-        assert row.score.confidence == "n/a"
-        assert len(row.score.quality_flags) == 1 and row.score.quality_flags[0].startswith("course_not_scored: vertical races are not scored yet")
+        assert row.score.confidence == "Low"
+        assert any(flag.startswith("vertical_calibration_provisional") for flag in row.score.quality_flags)
+        assert any("uphill-only course, vertical coefficient" in flag for flag in row.score.quality_flags)
 
 
-def test_the_trigger_is_the_measured_steep_share():
+def test_the_vertical_rule_starts_above_half_the_distance_steep_and_touches_nothing_below():
     half_steep = compute_measured_demand(measurement=measure_course(profile((2000, 0.05), (2000, 0.26))))
-    assert half_steep.steep_distance_fraction <= MAX_SCORED_STEEP_FRACTION
+    assert half_steep.steep_distance_fraction <= VERTICAL_STEEP_FRACTION
+    assert not TERRAIN_MODEL.is_vertical(half_steep.steep_distance_fraction)
+    for share in (0.0, 0.1, 0.184, 0.25, 0.5):
+        assert TERRAIN_MODEL.factor(share, 0.0) == pytest.approx(1.0 + STEEP_COEFFICIENT * share, rel=1e-12)
+    for share in (0.51, 0.678, 1.0):
+        assert TERRAIN_MODEL.factor(share, 0.0) == pytest.approx(1.0 + VERTICAL_STEEP_COEFFICIENT * share, rel=1e-12)
     assert not_scored_reason(half_steep) is None
-    assert not_scored_reason(replace(half_steep, steep_distance_fraction=MAX_SCORED_STEEP_FRACTION + 0.01)) is not None
+    assert not_scored_reason(replace(half_steep, steep_distance_fraction=1.0)) is None, "a measured course is always scored"
 
 
-def test_without_a_course_file_the_vertical_label_decides():
-    assert score_race(_race(3.8, 1000.0), _finishers(1800))[0].score.otri_score is None
+def test_without_a_course_file_a_vertical_race_is_not_scored():
+    row = score_race(_race(3.8, 1000.0), _finishers(1800))[0].score
+    assert row.otri_score is None and row.quality_flags[0].startswith("course_not_scored: a vertical race needs its course file")
     assert score_race(_race(50.0, 2000.0), _finishers(18000))[0].score.otri_score is not None
 
 
-def test_the_calculator_gets_the_reason_instead_of_a_number():
-    with pytest.raises(CourseNotScoredError, match="vertical races are not scored yet"):
-        estimate_score(1800, gpx_points=climb(3800, 0.26))
-    with pytest.raises(CourseNotScoredError):
+def test_the_calculator_scores_a_measured_vertical_and_refuses_official_figures():
+    assert 0 < estimate_score(1800, gpx_points=climb(3800, 0.26)).predicted_score <= 1000
+    with pytest.raises(CourseNotScoredError, match="needs its course file"):
         estimate_score(1800, distance_km=3.8, elevation_gain_m=1000.0)
 
 

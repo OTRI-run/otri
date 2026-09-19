@@ -2,7 +2,7 @@
 
 OTRI model 0.1.0: a runner's score depends only on the course and their own finish time. The complete definition, every constant's provenance and the evidence are in [`docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md`](../docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md); the plain-language version is [`HOW-OTRI-SCORES.md`](../docs/methodology/0.1.0/HOW-OTRI-SCORES.md).
 
-There is **one model in the code**. The development builds that led to it were removed in September 2026 (they are in git history, and the specification's section 14 says what each contributed). Every score still names its `scoring_version` (build id `0.9.0-course-standard-domain-gated`), so a future model can sit beside this one without old scores changing.
+There is **one model in the code**. The development builds that led to it were removed in September 2026 (they are in git history, and the specification's section 14 says what each contributed). Every score still names its `scoring_version` (build id `0.10.0-course-standard-vertical`), so a future model can sit beside this one without old scores changing.
 
 | Module | What it holds |
 | --- | --- |

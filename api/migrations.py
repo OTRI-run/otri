@@ -77,6 +77,16 @@ MIGRATIONS: tuple[Migration, ...] = (
         "The development builds before OTRI model 0.1.0 were removed from the code; a race stored under one "
         "is scored with the model from now on instead of failing as an unknown version.",
     ),
+    Migration(
+        "0005_vertical_build",
+        """
+        UPDATE races SET scoring_version = '0.10.0-course-standard-vertical', updated_at = now()
+        WHERE scoring_version <> '0.10.0-course-standard-vertical';
+        ALTER TABLE races ALTER COLUMN scoring_version SET DEFAULT '0.10.0-course-standard-vertical';
+        """,
+        "Build 0.10.0 scores uphill-only courses (OEP-003) and gives every other course the same score as "
+        "0.9.0 to the last digit, so stored races move to it without any score changing.",
+    ),
 )
 
 _TRACKING_SQL = """

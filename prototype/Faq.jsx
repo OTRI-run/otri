@@ -52,9 +52,9 @@ const FAQ = [
         tags: 'confidence high low trust reproducible sparse',
       },
       {
-        q: 'Why does a vertical race have finish times but no scores?',
-        a: 'Because the model would get it wrong. One part of the score prices sustained steep ground, and it was tuned on mountain courses where up to a quarter of the distance is that steep and much of it is descent. On an uphill-only course, such as a vertical kilometre, nearly all of it is, and that factor over-scores everyone by about 60%: a mid-pack 50 minutes would score like a world best. Until it is recalibrated on vertical-race data, a course with more than half its distance at 20% or steeper is listed with ranks and times only, and it does not count toward a runner index.',
-        tags: 'vertical kilometer kilometre vk uphill only not scored no score steep',
+        q: 'How are vertical races scored?',
+        a: 'With a steep-ground factor of their own. One part of the score prices sustained steep ground, and it was tuned on mountain courses where up to a quarter of the distance is that steep and much of it is descent, hands and broken rhythm. An uphill-only course, such as a vertical kilometre, has none of that: it is one long climb, which the gradient cost already prices, and the mountain factor would over-score everyone by about 40%. So a course with more than half its distance at 20% or steeper gets a much smaller factor, set so that a winning 36:59 on a 1,000 m vertical kilometre scores 970. That is one calibration race, so every vertical score is marked Low confidence and says so, until there is enough vertical-race data to fit it properly. A vertical race entered without its course file is listed with finish times only: how much of it is steep decides how it is scored, and only the track says that.',
+        tags: 'vertical kilometer kilometre vk uphill only steep provisional low confidence',
       },
       {
         q: 'Another index gives me a different number. Which is right?',

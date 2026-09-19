@@ -174,16 +174,15 @@ POWER_EXPONENT = 0.85
 #   demand comes from clamped ground, confidence is Low;
 # - the ceiling is validated against world bests down to 1500 m; below 1.5 flat-km efforts are
 #   anaerobic and would score too high, so confidence is Low;
-# - the steep-terrain coefficient was calibrated on mountain courses with up to a quarter of their
-#   distance at 20% or steeper; an uphill-only course is ~100% steep and would score 1000 for a
-#   mid-pack runner, so a course more than half that steep is *not scored*: finish times stand,
-#   `otri_score` is None, the reason is on every row, and nothing reaches a runner index.
+# - an uphill-only course (more than half its distance at 20% or steeper) is scored with its own,
+#   provisional steep coefficient (`scoring/terrain.py`), calibrated on a single performance: its
+#   confidence is Low and says why. Without a course file the steep share is unknown, so a race
+#   whose official figures average 20% or more is *not scored* until its course is uploaded.
 MAX_CLAMPED_DEMAND_FRACTION = 0.20
 MIN_VALIDATED_DEMAND_KM = 1.5
-MAX_SCORED_STEEP_FRACTION = 0.50
 
 MODEL_CURVE = ScoreCurve(
-    version='0.9.0-course-standard-domain-gated',  # build id of OTRI model 0.1.0
+    version='0.10.0-course-standard-vertical',  # build id of OTRI model 0.1.0
     q_1000=ENDURANCE_REFERENCE.rate(REFERENCE_DEMAND_KM),
     power_exponent=POWER_EXPONENT,
     demand_scaling=ENDURANCE_REFERENCE,
@@ -220,21 +219,16 @@ def not_scored_reason(
 ) -> str | None:
     """Why the model gives this course no score, or None when it scores it.
 
-    Pass `demand` for a measured course, or the official figures when there is no course file.
+    A measured course is always scored. Official figures alone are refused for an uphill-only
+    race: how steep it is decides which terrain coefficient applies, and only the track says that.
     """
-    if demand is not None:
-        if demand.steep_distance_fraction <= MAX_SCORED_STEEP_FRACTION:
-            return None
-        measured = f"{demand.steep_distance_fraction:.0%} of this course is at or above 20% grade"
-    elif distance_km and elevation_gain_m and is_vertical(distance_km, elevation_gain_m):
-        measured = f"this course averages {elevation_gain_m / (distance_km * 1000.0):.0%} grade"
-    else:
+    if demand is not None or not (distance_km and elevation_gain_m and is_vertical(distance_km, elevation_gain_m)):
         return None
     return (
-        f"course_not_scored: vertical races are not scored yet. {measured}; the model's steep-terrain "
-        "adjustment was calibrated on mountain courses with at most about a quarter of their distance that "
-        "steep, and it over-scores an uphill-only course. Finish times are listed, no OTRI score is given "
-        "and the result does not count toward a runner index"
+        f"course_not_scored: a vertical race needs its course file to be scored. This course averages "
+        f"{elevation_gain_m / (distance_km * 1000.0):.0%} grade, and how much of it is steep decides how it is "
+        "scored, which a distance and a climb figure cannot say. Finish times are listed, no OTRI score is "
+        "given and the result does not count toward a runner index until the GPX is uploaded"
     )
 
 
@@ -269,6 +263,12 @@ def confidence_for(measurement, demand: CourseDemand | None = None, equivalent_k
             f"gradient_domain_exceeded: {demand.clamped_demand_fraction:.0%} of this course's demand comes "
             "from ground steeper than 45%, beyond what the gradient-cost model was measured on; those "
             "sections are scored as if they were 45% and are under-credited by an unknown amount"
+        )
+    if demand is not None and TERRAIN_MODEL.is_vertical(demand.steep_distance_fraction):
+        reasons.append(
+            f"vertical_calibration_provisional: {demand.steep_distance_fraction:.0%} of this course is at or above "
+            "20% grade, so it is scored as an uphill-only course. The steep-terrain coefficient for such courses "
+            "rests on a single calibration performance and will be refitted when there is vertical-race data"
         )
     if equivalent_km is not None and equivalent_km < MIN_VALIDATED_DEMAND_KM:
         reasons.append(

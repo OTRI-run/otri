@@ -31,7 +31,7 @@ else console.table(race.scores)                  // rank, name, finish_time_seco
 const SCORE_RESPONSE = `{
   "stored": false,
   "is_valid": true,
-  "scoring_version": "0.9.0-course-standard-domain-gated",
+  "scoring_version": "0.10.0-course-standard-vertical",
   "course": {
     "name": "Doi Suthep Trail 30K", "source": "gpx",
     "distance_km": 30.412, "elevation_gain_m": 1874.0,

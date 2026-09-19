@@ -70,7 +70,8 @@ D' = D × terrain_factor
 | constant | value | meaning | origin |
 |---|---:|---|---|
 | `STEEP_GRADE_THRESHOLD` | 0.20 | above about 20 % a course stops being run and is power-hiked or scrambled | where mountain courses stop being run |
-| `STEEP_COEFFICIENT` | 0.5951 | cost per unit share of distance at ≥ 20 % gradient | **calibrated** to one performance (§4.1) |
+| `STEEP_COEFFICIENT` | 0.5951 | cost per unit share of distance at ≥ 20 % gradient, for courses with a steep share up to 0.50 | **calibrated** to one performance (§4.1) |
+| `VERTICAL_STEEP_COEFFICIENT` | 0.1169 | the same, for uphill-only courses (steep share above `VERTICAL_STEEP_FRACTION` = 0.50) | **calibrated** to one performance (§4.2), provisional |
 | `ALTITUDE_THRESHOLD_M` | 1500 | onset of a measurable aerobic decrement | physiology literature |
 | `ALTITUDE_COEFFICIENT` | 0.07 | cost per 1,000 m of distance-weighted mean elevation above the threshold | ~6–8 % VO₂max loss per 1,000 m, midpoint |
 
@@ -81,6 +82,14 @@ Typical values: a road half marathon 1.000; a US trail 50 km with 2.4 % steep gr
 ### 4.1 The calibration performance
 
 `STEEP_COEFFICIENT` was set so that one strong, real trail performance — a 2026 alpine 100-mile win in 18:16:29 on a ~171 km / +9,890 m course — scored 970 under the development curve of the time. One coefficient fitted to one data point: the *shape* of the adjustment is physically motivated and independent of that choice, the altitude coefficient was not tuned, and the target of 970 was a product decision that the best trail performance in the world should sit near the top of a trail-running index. Read the constant as "OTRI's scale spans the sport it serves", not as a measurement of that course. It is the model's weakest constant and §12 says so.
+
+### 4.2 Uphill-only courses
+
+`STEEP_COEFFICIENT` stands for what steep *mountain* ground costs beyond the treadmill figure, and most of that is descending and broken rhythm: braking on loose rock, hands, poles. A vertical race has none of it. It is one sustained climb, which the gradient-cost integral of §3 already prices, so the mountain coefficient would add about 40 % to the demand of a course that needs a few percent, and a mid-pack 50-minute vertical kilometre would score 1000. Builds before `0.10.0` therefore did not score such courses at all.
+
+From build `0.10.0` ([OEP-003](../../governance/oep/OEP-003-scoring-vertical-races.md)) a course with a steep share above `VERTICAL_STEEP_FRACTION` = 0.50 uses `VERTICAL_STEEP_COEFFICIENT` = 0.1169 in place of `STEEP_COEFFICIENT`; the altitude term is unchanged. No course that goes up and down reaches that share (mountain courses measure 0–0.25), so **every course scored before is scored identically**: the reference outputs of the previous build were compared entry by entry, and the only ones that differ are courses that had no score.
+
+The coefficient is set so that one performance, a winning 36:59 on a 3.76 km / +1,016 m vertical kilometre (steep share 0.678, 13 % of its demand from segments clamped at 45 %), scores 970, measured from the file's own elevations. It has every weakness of §4.1 and one more: a single race, a target that is a product decision about where the best vertical running sits on the scale, and a step in the terrain factor at a steep share of 0.50 that no real course is known to sit near. Every score it produces is therefore `Low` confidence with the reason `vertical_calibration_provisional` (§7.4). Fitting it on vertical-race data, and replacing the step with a term that depends on how much of the steep ground is descent, is §12's item 10.
 
 ## 5. The ceiling `rate(D)`
 
@@ -223,15 +232,16 @@ A course outside the installed tiles is measured from its own elevations with `t
 
 ### 7.4 Where the model's own evidence ends
 
-Build `0.9.0` ([OEP-002](../../governance/oep/OEP-002-domain-gating-and-vertical-races.md)) changes no score. It adds what the model says about courses beyond what it was built and checked on:
+Build `0.9.0` ([OEP-002](../../governance/oep/OEP-002-domain-gating-and-vertical-races.md)) changed no score; it added what the model says about courses beyond what it was built and checked on. Build `0.10.0` ([OEP-003](../../governance/oep/OEP-003-scoring-vertical-races.md)) replaced its refusal of uphill-only courses with a provisional score:
 
 | condition | effect | why |
 |---|---|---|
 | more than 20 % of the course's demand comes from segments clamped at ±45 % | `Low`, `gradient_domain_exceeded` | a clamped segment is under-credited by an unknown amount (13.5 % at 50 %, 18.6 % at 52 % if the polynomial is extrapolated); at a fifth of the demand the course-level error passes the 3 % of §7.3. The clamp notice alone still never blocks `High` (§7.2) |
 | `D'` below 1.5 flat-km | `Low`, `course_below_validated_range` | 1,500 m is the shortest held-out record (§5.3); below it events are anaerobic and the records outrun the curve (800 m 107 %, 400 m 121 %) |
-| steep share above 0.50, or with no course file an average grade of 20 % or more | **not scored**: `otri_score` is null, the row carries `course_not_scored: …`, the result does not enter a runner index | the steep-terrain coefficient (§4) was calibrated at a steep share of 0.184 and real mountain courses measure 0–0.25; an uphill-only course is about 1.0, the linear term multiplies its demand by 1.6, and a 50-minute vertical kilometre would score 1000 |
+| steep share above 0.50 (an uphill-only course) | scored with `VERTICAL_STEEP_COEFFICIENT` (§4.2); `Low`, `vertical_calibration_provisional` | the coefficient rests on one calibration performance |
+| no course file, and official figures that average 20 % grade or more | **not scored**: `otri_score` is null, the row carries `course_not_scored: …`, the result does not enter a runner index | which terrain coefficient applies depends on the steep share, and only the track says that |
 
-Vertical races are therefore published with finish times and ranks and without scores until the term is recalibrated on vertical-race data (§12). Race summaries carry a descriptive `is_vertical` label (ascent ≥ 10 × descent and average grade ≥ 10 %; from official figures alone, average grade ≥ 20 %); the label never enters a score.
+A vertical race with its course file is scored from build `0.10.0`; without one it is published with finish times and ranks only. Race summaries carry a descriptive `is_vertical` label (ascent ≥ 10 × descent and average grade ≥ 10 %; from official figures alone, average grade ≥ 20 %); the label never enters a score.
 
 ## 8. Every constant
 
@@ -295,7 +305,7 @@ The scale is defined by three published world bests, two literature constants, o
 7. **Conditions do not enter** (heat, mud, snow, night), by design.
 8. **Beyond 320 flat-km the ceiling extrapolates** (§5.4).
 9. **Three anchors is a deliberately small basis**, justified by the held-out validation; an OTRI-owned dataset would justify more.
-10. **Vertical races cannot be scored.** The steep-terrain term is linear in the steep share and calibrated at 0.18; at 1.0 it over-scores by about 60 % of demand. Such courses are listed without scores (§7.4) until the term is refitted on vertical-race data, which would be a new model.
+10. **Vertical races are scored provisionally.** Uphill-only courses use their own steep coefficient, calibrated on one performance (§4.2), and carry `Low` confidence for it. The terrain factor steps down at a steep share of 0.50, which is a patch over the real cause: the mountain coefficient prices descending and broken ground, and the model does not yet separate steep climbing from steep descending. Refitting on vertical-race results, with a term that depends on the share of steep *descent*, would be a new model.
 
 What would make the model non-provisional: real, licensed finish data on real courses across sizes and ability levels, enough to fit the steep-terrain coefficient and the exponent instead of choosing them, and a same-route benchmark of the terrain model against a bare-earth model and calibrated barometric traversals.
 
@@ -318,6 +328,7 @@ Model 0.1.0 is the consolidation of eight development builds, plus one build sin
 | `0.6.0-course-standard-smoothed-upper` | dropped the last demo anchor from the upper curve |
 | `0.7.0-course-standard-dem-gated` | terrain-model elevation, the spacing gate and the confidence label (§7) |
 | `0.8.0-course-standard-power` | the single power curve (§6); the first build of model 0.1.0 |
-| `0.9.0-course-standard-domain-gated` | the same scores; confidence reports the model's own limits and vertical races are listed without scores (§7.4, OEP-002); the current build of model 0.1.0 |
+| `0.9.0-course-standard-domain-gated` | the same scores; confidence reports the model's own limits and vertical races were listed without scores (§7.4, OEP-002) |
+| `0.10.0-course-standard-vertical` | the same scores for every course scored before; uphill-only courses are scored with their own provisional coefficient (§4.2, OEP-003); the current build of model 0.1.0 |
 
 The retired baseline `0.1.0-field-relative` ([OEP-001](../../governance/oep/OEP-001-baseline-scoring-model.md)) shares the number but was a different, competitor-relative rule; it is not model 0.1.0, and its code was removed with the development builds.
