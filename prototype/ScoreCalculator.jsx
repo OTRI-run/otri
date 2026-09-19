@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUpRight, Check, Copy, GitBranch, Link2, Mountain, RefreshCw, Search, Share2, Timer, Upload } from 'lucide-react'
+import { ArrowUpRight, Check, Copy, GitBranch, Link2, Mountain, RefreshCw, Search, Share2, Timer, Upload, Image as ImageIcon } from 'lucide-react'
 import CourseMap from '../src/components/CourseMap'
 import { analyzeGpx, fetchRaceGpxFile, fetchSharedGpxFile, getRace, listRaces, shareGpx } from './apiClient'
 import { ShareTarget } from './SharePanel'
@@ -468,9 +468,8 @@ function buildShareUrl(args) {
   return `${window.location.origin}${window.location.pathname}${buildShareHash(args)}`
 }
 
-function ShareBox({ courseLabel, courseFile, targetSeconds, shareId, onShared, estimate, features }) {
+function ShareBox({ courseLabel, courseFile, targetSeconds, shareId, onShared, imageOpen, onToggleImage }) {
   const [state, setState] = useState('idle') // idle | sharing | ready | copied
-  const [imageOpen, setImageOpen] = useState(false)
   const [error, setError] = useState(null)
   const raceId = courseLabel.raceId ?? null
   const linkReady = Boolean(raceId || shareId)
@@ -535,6 +534,16 @@ function ShareBox({ courseLabel, courseFile, targetSeconds, shareId, onShared, e
             </>
           )}
         </button>
+        {onToggleImage && (
+          <button
+            type="button"
+            onClick={onToggleImage}
+            aria-expanded={imageOpen}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-[13px] font-semibold text-[#0b1220] hover:border-blue-300"
+          >
+            <ImageIcon size={16} className="text-blue-600" /> {imageOpen ? 'Hide image and post' : 'Image and post text'}
+          </button>
+        )}
         {url && canNativeShare && (
           <button
             type="button"
@@ -560,20 +569,9 @@ function ShareBox({ courseLabel, courseFile, targetSeconds, shareId, onShared, e
           : shareId
             ? 'Anyone with the link sees this course and your target time. Change the time and the link updates.'
             : 'Sharing stores your course file on OTRI so the link works for anyone; the target time travels in the link itself.'}
+        {onToggleImage ? ' For Facebook, Instagram or WhatsApp, make an image with a post written for it.' : ''}
       </p>
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
-      {estimate && features && (
-        <div className="mt-3 border-t border-blue-100 pt-3">
-          <button type="button" onClick={() => setImageOpen((open) => !open)} aria-expanded={imageOpen} className="text-xs font-semibold text-blue-600 hover:underline">
-            {imageOpen ? 'Hide the image and post text' : 'Make an image and a post of this target →'}
-          </button>
-          {imageOpen && (
-            <div className="mt-4">
-              <ShareTarget courseName={courseLabel.name} distanceKm={features.distance_km} elevationGainM={features.elevation_gain_m} seconds={targetSeconds} score={estimate.predicted_score} fractionOfCeiling={estimate.breakdown?.fraction_of_ceiling} url={url} />
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }
@@ -830,6 +828,10 @@ function TargetTimeControls({ targetSeconds, timeInput, onSlider, onInput, dista
 // `embedded`: the calculator inside another website's page (prototype/embed/): no share links and no
 // links into the rest of OTRI, which the host page does not have.
 export default function ScoreCalculator({ embedded = false }) {
+  const [shareImageOpen, setShareImageOpen] = useState(false)
+  useEffect(() => {
+    if (shareImageOpen) setTimeout(() => document.getElementById('calculator-share')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+  }, [shareImageOpen])
   const [query, setQuery] = useState('')
   const [races, setRaces] = useState([])
   const [racesLoading, setRacesLoading] = useState(true)
@@ -1024,6 +1026,7 @@ export default function ScoreCalculator({ embedded = false }) {
   }
 
   const hasCourse = Boolean(courseFile && features)
+  const shareUrl = courseLabel && (courseLabel.raceId || shareId) ? buildShareUrl({ raceId: courseLabel.raceId ?? null, shareId, name: courseLabel.name, seconds: targetSeconds }) : null
 
   return (
     <>
@@ -1053,7 +1056,7 @@ export default function ScoreCalculator({ embedded = false }) {
                   analysisError={analysisError}
                   ceilingSeconds={estimate?.breakdown?.world_best_time_seconds}
                 />
-                {!embedded && <ShareBox courseLabel={courseLabel} courseFile={courseFile} targetSeconds={targetSeconds} shareId={shareId} onShared={setShareId} estimate={estimate} features={features} />}
+                {!embedded && <ShareBox courseLabel={courseLabel} courseFile={courseFile} targetSeconds={targetSeconds} shareId={shareId} onShared={setShareId} imageOpen={shareImageOpen} onToggleImage={estimate ? () => setShareImageOpen((open) => !open) : null} />}
               </>
             ) : (
               <>
@@ -1098,6 +1101,20 @@ export default function ScoreCalculator({ embedded = false }) {
           <ScorePanel estimate={estimate} scoring={scoring} targetSeconds={targetSeconds} features={features} courseLabel={courseLabel} />
         </div>
       </section>
+
+      {!embedded && hasCourse && estimate && shareImageOpen && (
+        <section id="calculator-share" className="scroll-mt-[68px] border-b border-slate-200 bg-white py-10">
+          <div className={CONTAINER}>
+            <p className="font-mono text-[10px] tracking-[.08em] text-blue-600">SHARE YOUR TARGET</p>
+            <h2 className="mt-2 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">An image and a post, ready for your feed</h2>
+            <p className="mt-1 mb-6 max-w-2xl text-sm leading-6 text-slate-600">
+              Pick a format, change the words if you like, then download the image or send both to an app.
+              {shareUrl ? ' The post carries your link, so friends open this course with your time and try their own.' : ' Press “Share this score” first if you want the post to carry a link to this course.'}
+            </p>
+            <ShareTarget courseName={courseLabel.name} distanceKm={features.distance_km} elevationGainM={features.elevation_gain_m} seconds={targetSeconds} score={estimate.predicted_score} fractionOfCeiling={estimate.breakdown?.fraction_of_ceiling} url={shareUrl} />
+          </div>
+        </section>
+      )}
 
       <div id="calculator-course" className="scroll-mt-[68px]">
         {hasCourse ? (
