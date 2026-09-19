@@ -1088,14 +1088,14 @@ def platform_stats() -> dict:
 # --- Organizer flags (admin / demo) ------------------------------------------
 
 
-def get_organizer_flags(organizer_id: int, token_digest: str | None = None) -> dict | None:
+def get_organizer_flags(organizer_id: int, token_id: str | None = None) -> dict | None:
     """Flags plus the current session version, and whether this very token was signed out; None
     when the account no longer exists. One query: it runs on every authenticated request."""
     with get_connection() as connection:
         row = connection.execute(
             "SELECT is_admin, is_demo, session_version, email_verified, "
             "EXISTS (SELECT 1 FROM revoked_tokens WHERE token = %s) AS revoked FROM organizers WHERE id = %s",
-            (token_digest, organizer_id),
+            (token_id, organizer_id),
         ).fetchone()
     if row is None:
         return None
@@ -1110,10 +1110,11 @@ def get_organizer_flags(organizer_id: int, token_digest: str | None = None) -> d
     }
 
 
-def revoke_token(token_digest: str, expires_at: datetime) -> None:
-    """Signing out ends that one session on the server too. Rows go when the token would have expired anyway."""
+def revoke_token(token_id: str, expires_at: datetime) -> None:
+    """Signing out ends that one session on the server too: the token's id (its `jti`, which opens
+    nothing) is kept until the token would have expired anyway."""
     with get_connection() as connection:
-        connection.execute("INSERT INTO revoked_tokens (token, expires_at) VALUES (%s, %s) ON CONFLICT (token) DO NOTHING", (token_digest, expires_at))
+        connection.execute("INSERT INTO revoked_tokens (token, expires_at) VALUES (%s, %s) ON CONFLICT (token) DO NOTHING", (token_id, expires_at))
         connection.execute("DELETE FROM revoked_tokens WHERE expires_at < now()")
 
 

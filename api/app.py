@@ -380,10 +380,10 @@ _bearer_scheme = HTTPBearer(auto_error=False)
 _ADMIN_EMAILS = {email.strip().lower() for email in os.environ.get("OTRI_ADMIN_EMAILS", "").split(",") if email.strip()}
 
 
-def _with_flags(organizer: Organizer, *, check_session: bool = True, token: str | None = None) -> Organizer:
+def _with_flags(organizer: Organizer, *, check_session: bool = True) -> Organizer:
     """The token carries identity; the admin/demo flags are read from the account on every request,
     so revoking admin takes effect immediately."""
-    flags = db.get_organizer_flags(organizer.id, _auth.token_digest(token) if token else None)
+    flags = db.get_organizer_flags(organizer.id, organizer.token_id)
     if flags is None:
         raise AuthError("this account no longer exists")
     if flags.pop("revoked") or (check_session and flags["session_version"] != organizer.session_version):
@@ -457,7 +457,7 @@ def require_organizer(request: Request, credentials: HTTPAuthorizationCredential
     if from_cookie and request.method not in _SAFE_METHODS and not _is_web_client(request):
         raise HTTPException(status_code=403, detail="cookie sessions must send the X-OTRI-Client header on state-changing requests")
     try:
-        return _with_flags(decode_access_token(token), token=token)
+        return _with_flags(decode_access_token(token))
     except AuthError as error:
         raise HTTPException(status_code=401, detail=str(error)) from error
 
@@ -483,7 +483,7 @@ def _optional_organizer(request: Request, credentials: HTTPAuthorizationCredenti
     if from_cookie and request.method not in _SAFE_METHODS and not _is_web_client(request):
         return None
     try:
-        return _with_flags(decode_access_token(token), token=token)
+        return _with_flags(decode_access_token(token))
     except AuthError:
         return None
 
@@ -703,9 +703,11 @@ def logout(request: Request, response: Response, credentials: HTTPAuthorizationC
     # A cookie counts only with the web client's header, like every other state change by cookie:
     # another site must not be able to end a visitor's session.
     if token and not (from_cookie and not _is_web_client(request)):
-        expires_at = _auth.token_expiry(token)
-        if expires_at is not None:
-            db.revoke_token(_auth.token_digest(token), expires_at)
+        try:
+            session = decode_access_token(token)
+            db.revoke_token(session.token_id, session.token_expires_at)
+        except AuthError:
+            pass  # not a token of ours, or one that has expired: nothing to end
     _clear_session_cookie(response, request)
     return MessageResponse(message="signed out")
 
