@@ -1,3 +1,4 @@
+import { NOT_MEASURED, WHAT_WE_SCORE, WhatWeScoreTable } from '../src/components/WhatWeScore'
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowUpRight, Mail, Search } from 'lucide-react'
 import NextSteps from './NextSteps'
@@ -17,6 +18,14 @@ const FAQ = [
         tags: 'definition meaning number scale',
       },
       {
+        q: 'Which races can OTRI score: trail, road, vertical?',
+        a: 'Anything with a fixed, measurable course and a finish time. Trail and mountain races are what the model was built for; road races work too; some kinds are scored with a warning, and a few cannot be scored at all.',
+        table: true,
+        // The table is drawn from the same data; this keeps it findable by the search box.
+        search: `${WHAT_WE_SCORE.map((row) => row.slice(1).join(' ')).join(' ')} ${NOT_MEASURED}`,
+        tags: 'limits what can score road race marathon vertical kilometre steep short 24 hour backyard relay stage race technical terrain mud heat',
+      },
+      {
         q: 'Why does the score not depend on who else raced?',
         a: 'By design. Same course, same time, same model version gives the same score anywhere, whether you ran alone or in a field of five thousand. Winner time, field strength, finishing position and previous results are never used, so a score from a village race and a score from a championship mean the same thing.',
         tags: 'field competitors winner rank relative',
@@ -25,6 +34,11 @@ const FAQ = [
         q: 'What does 1000 mean?',
         a: 'The best rate a human has sustained over that much course demand, read from a curve through three public world-best performances: 5000 m, marathon and 24 hours. A 5 km world record and a 24-hour world record both score 1000. Everything else is a share of that. It is a reference point, not a cap: a performance faster than the curve scores above 1000 (the 1500 m world record scores 1020).',
         tags: 'maximum world record best ceiling',
+      },
+      {
+        q: 'Can a score be higher than 1000? Is that a bug?',
+        a: 'It can, and it is not a bug. 1000 is not a maximum: it is the line drawn through three world records (5000 m, marathon, 24 hours), and it says what world-record level looks like on a course of any length. A performance better than that line scores more than 1000, and the score says so instead of being cut off at 1000. It is rare and it happens in two ways. A real record can sit a little above the line: the 1500 m world record scores 1020 and the half marathon 1005, because the line is a smooth curve and records are not. Or the input is off: in the calculator you can type any target time, including one no human has run, and a results file can carry a wrong time or a course file that is too short. So a published score above 1000 is either a historic run or a reason to look at the time and the course again.',
+        tags: 'above over more than 1000 1100 higher maximum cap capped bug error impossible world record',
       },
       {
         q: 'Why is the slowest score around 200 and not zero?',
@@ -126,13 +140,13 @@ const FAQ = [
       },
       {
         q: 'What do I need to get my race scored?',
-        a: 'Three things: the course as a GPX file, the official results as CSV or XLSX (the layout your timing company already exports), and permission to share them. The whole flow takes about ten minutes: create an account, add the event and its distances, upload the course, upload the results, review, publish.',
+        a: 'Two files: the course as a GPX and the official results as CSV or Excel, the export you already have. Score my race gives you every score in a minute with no account. To publish them as a race page you also need a free account and the right to share the results: add the event, the course and the results, review, publish. About ten minutes.',
         link: ['organizer/', 'Start as an organizer'],
         tags: 'organizer start upload results course requirements time',
       },
       {
         q: 'Which result file formats and columns are accepted?',
-        a: 'CSV or XLSX, one row per participant. Column names are matched loosely (rank, time, last name, first name, gender, status, bib, nationality, birth date are recognised in most spellings) and extra columns are ignored. The results step shows an example file and validates yours before anything is scored.',
+        a: 'CSV, TSV or Excel (.xlsx), one row per participant, one file per race distance: the export from your timing company, or the sheet you send to ITRA or UTMB. It needs a finish time and a name. Position, gender (also from a category such as SEH or M40-44), status, bib, nationality and year of birth are read where the file has them, under whatever the columns are called in eight languages; a single name column, semicolons, title lines above the header and times like 12h34m56s are all fine. After every upload you are shown how your file was read, and exactly what to fix if something a score needs is missing.',
         tags: 'csv xlsx excel columns format results file',
       },
       {
@@ -186,7 +200,7 @@ export default function FaqPage({ initialQuery = '' }) {
   const matches = useMemo(() => {
     if (!words.length) return ALL
     return ALL.filter((item) => {
-      const hay = normalise(`${item.q} ${item.a} ${item.tags} ${item.group}`)
+      const hay = normalise(`${item.q} ${item.a} ${item.tags} ${item.group} ${item.search ?? ''}`)
       return words.every((word) => hay.includes(word))
     })
   }, [words])
@@ -260,6 +274,7 @@ export default function FaqPage({ initialQuery = '' }) {
                     </span>
                   </summary>
                   <p className="mt-3 max-w-[720px] text-sm leading-7 text-slate-600">{item.a}</p>
+                  {item.table && <WhatWeScoreTable className="mt-3 max-w-[720px]" />}
                   {item.link && (
                     <a href={item.link[0]} className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-blue-600 no-underline hover:underline" target={item.link[0].startsWith('http') ? '_blank' : undefined} rel="noreferrer">
                       {item.link[1]} <ArrowUpRight size={14} />

@@ -7,6 +7,9 @@ import NextSteps from './NextSteps'
 import ReportForm from './ReportForm'
 import { modelLabel, modelShort } from '../src/lib/model'
 import { RACE_NAMES } from '../src/lib/raceNames'
+import WhatWeScore from '../src/components/WhatWeScore'
+import useFileDrop from '../src/lib/useFileDrop'
+import { scrollBehavior } from '../src/lib/comfort'
 import { knownButNotHere, matchRank } from '../src/lib/suggest'
 import { distanceUnit, formatDistance, formatElevation, formatPace as formatPaceUnits, formatRate, kmToUnit, useUnits } from '../src/lib/units'
 
@@ -625,6 +628,16 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
   const [missing, setMissing] = useState(null) // a well-known race the visitor picked that has no course here
   const known = useMemo(() => knownButNotHere(RACE_NAMES, query, (allRaces ?? races).map((race) => race.event_name)), [query, allRaces, races])
   const nothingFound = !racesLoading && !racesError && races.length === 0 && query.trim().length >= 2
+  const [refused, setRefused] = useState(null)
+  const { dragging, dropProps } = useFileDrop({
+    accept: '.gpx',
+    disabled: loadingCourse,
+    onFiles: (files) => {
+      setRefused(null)
+      onUpload({ target: { files, value: '' } })
+    },
+    onReject: (message) => setRefused(`${message} Export the course as GPX and drop that.`),
+  })
   return (
     <section className="border-b border-slate-200 bg-white py-10 sm:py-14">
       <div className={CONTAINER}>
@@ -668,6 +681,7 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
                 </p>
               </div>
             </details>
+            <WhatWeScore className="mt-2" />
           </div>
         </div>
 
@@ -748,7 +762,8 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
             <p className="mt-1 text-xs text-slate-500">Any course, from your watch or the organizer's website.</p>
             <label
               htmlFor="calc-gpx-input"
-              className="mt-4 flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm transition hover:border-blue-400 hover:bg-blue-50/40"
+              {...dropProps}
+              className={`mt-4 flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center text-sm transition hover:border-blue-400 hover:bg-blue-50/40 ${dragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-slate-50'}`}
             >
               {loadingCourse ? (
                 <>
@@ -771,7 +786,7 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
               )}
               <input id="calc-gpx-input" type="file" accept=".gpx" onChange={onUpload} disabled={loadingCourse} className="hidden" />
             </label>
-            {loadError && <p className="mt-3 text-xs text-red-600">{loadError}</p>}
+            {(refused || loadError) && <p className="mt-3 text-xs leading-5 text-red-600" role="alert">{refused || loadError}</p>}
           </div>
         </div>
       </div>
@@ -992,7 +1007,7 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
 export default function ScoreCalculator({ embedded = false }) {
   const [shareImageOpen, setShareImageOpen] = useState(false)
   useEffect(() => {
-    if (shareImageOpen) setTimeout(() => document.getElementById('calculator-share')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+    if (shareImageOpen) setTimeout(() => document.getElementById('calculator-share')?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' }), 50)
   }, [shareImageOpen])
   const [query, setQuery] = useState('')
   const [races, setRaces] = useState([])
@@ -1107,7 +1122,7 @@ export default function ScoreCalculator({ embedded = false }) {
       }
       const clamped = clampSeconds(suggested ?? guess)
       setTargetSeconds(clamped)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      window.scrollTo({ top: 0, behavior: scrollBehavior() })
     } catch (err) {
       setLoadError(err.message)
     } finally {
@@ -1172,7 +1187,7 @@ export default function ScoreCalculator({ embedded = false }) {
     setEstimate(null)
     setScoring(false)
     setAnalysisError(null)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    window.scrollTo({ top: 0, behavior: scrollBehavior() })
   }
 
   function updateTargetSeconds(seconds) {

@@ -1,3 +1,4 @@
+import { autoFocusOnDesktop } from '../../../src/lib/comfort'
 import { useEffect, useState } from 'react'
 import { ArrowRight, ArrowUpRight, CalendarDays, Plus } from 'lucide-react'
 import { createEvent, deleteEvent, getEvent, listMyEvents, updateEvent } from '../../apiClient'
@@ -137,7 +138,7 @@ export function NewEvent({ session }) {
         <Card>
           <form onSubmit={submit} className="grid gap-4" noValidate>
             <Field label="Event name" htmlFor="ev-name" hint="As runners know it, including the year if it is an annual event.">
-              <input id="ev-name" required value={name} onChange={(e) => setName(e.target.value)} list={RACE_NAME_LIST} autoComplete="off" className={inputClass} placeholder="Doi Suthep Trail 2027" />
+              <input id="ev-name" autoFocus={autoFocusOnDesktop} required value={name} onChange={(e) => setName(e.target.value)} list={RACE_NAME_LIST} autoComplete="off" className={inputClass} placeholder="Doi Suthep Trail 2027" />
               <RaceNameList />
             </Field>
             <Field label="Event date" htmlFor="ev-date" hint="The first day of the event.">

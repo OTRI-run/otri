@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import CourseMap from '../../../src/components/CourseMap'
 import ColumnsRead from '../../../src/components/ColumnsRead'
+import { autoFocusOnDesktop, revealElement } from '../../../src/lib/comfort'
 import { DISTANCE_NAME_LIST, DistanceNameList } from '../../../src/components/PlaceNameList'
 import { formatDistance, formatElevation, useUnits } from '../../../src/lib/units'
 import { modelLabel, notScoredReason } from '../../../src/lib/model'
@@ -104,7 +105,7 @@ export function NewRace({ session, eventId }) {
       <Card>
         <form onSubmit={submit} className="grid gap-4" noValidate>
           <Field label="Race name" htmlFor="rc-name" hint="How this distance is listed — “50K”, “100 mile”, “Vertical”.">
-            <input id="rc-name" required value={form.course_name} onChange={(e) => setForm((f) => ({ ...f, course_name: e.target.value }))} list={DISTANCE_NAME_LIST} autoComplete="off" className={inputClass} placeholder="50K" />
+            <input id="rc-name" autoFocus={autoFocusOnDesktop} required value={form.course_name} onChange={(e) => setForm((f) => ({ ...f, course_name: e.target.value }))} list={DISTANCE_NAME_LIST} autoComplete="off" className={inputClass} placeholder="50K" />
             <DistanceNameList />
           </Field>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -506,8 +507,10 @@ export function ResultsStep({ session, raceId }) {
     setBusy(true)
     try {
       setSubmission(await submitRaceResults(raceId, file, session.token))
+      revealElement('results-outcome', { focus: true })
     } catch (err) {
       setError(err.message)
+      revealElement('results-error')
     } finally {
       setBusy(false)
     }
@@ -596,9 +599,10 @@ export function ResultsStep({ session, raceId }) {
             </Button>
             {!file && <span className="text-xs text-slate-500">Choose a file first.</span>}
           </div>
-          {error && <div className="mt-3"><Notice kind="error">{error}</Notice></div>}
+          {error && <div id="results-error" className="mt-3 scroll-mt-24"><Notice kind="error">{error}</Notice></div>}
         </Card>
 
+        <div id="results-outcome" className="scroll-mt-24 outline-none" aria-live="polite">
         {submission && !submission.is_valid && (
           <Notice kind="error" title={`The file has ${submission.errors.length} error${submission.errors.length === 1 ? '' : 's'} — fix them and upload again.`}>
             <IssueList issues={submission.errors} kind="error" />
@@ -625,6 +629,7 @@ export function ResultsStep({ session, raceId }) {
             </Button>
           </Card>
         )}
+        </div>
       </div>
     </RaceShell>
   )

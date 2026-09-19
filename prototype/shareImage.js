@@ -234,6 +234,67 @@ export function drawScoreCard(canvas, { format = 'post', heading, courseName, fa
   footer(ctx, frame, note)
 }
 
+/** A runner's index and their best results. `results`: [{ race, detail, score }], best first. */
+export function drawRunnerCard(canvas, { format = 'post', heading, name, facts, index, indexLabel, results = [], note }) {
+  const frame = setup(canvas, format)
+  const { ctx, width, height, pad } = frame
+  const inner = width - pad * 2
+  let y = pad + (format === 'story' ? 160 : 20)
+
+  eyebrow(ctx, heading, pad, y)
+  y += 78
+  ctx.font = `800 76px ${SANS}`
+  ctx.fillStyle = INK
+  for (const line of wrap(ctx, name, inner, 2)) {
+    ctx.fillText(line, pad, y)
+    y += 84
+  }
+  if (facts) {
+    ctx.font = `500 32px ${SANS}`
+    ctx.fillStyle = SOFT
+    ctx.fillText(fit(ctx, facts, inner), pad, y - 8)
+  }
+
+  // the rows of results sit above the footer; the index takes what is left between
+  const rows = results.slice(0, format === 'square' ? 2 : 3)
+  const rowHeight = format === 'story' ? 132 : 112
+  const listTop = height - pad - 96 - rows.length * rowHeight
+  const centre = y + (listTop - y) / 2
+  const size = format === 'square' ? 220 : format === 'story' ? 340 : 280
+  ctx.textAlign = 'center'
+  ctx.font = `800 ${size}px ${SANS}`
+  const number = ctx.createLinearGradient(pad, 0, width - pad, 0)
+  number.addColorStop(0, '#ffffff')
+  number.addColorStop(1, ACCENT)
+  ctx.fillStyle = number
+  ctx.fillText(index == null ? '—' : String(index), width / 2, centre + size * 0.3)
+  ctx.font = `600 28px ${MONO}`
+  ctx.fillStyle = ACCENT
+  ctx.fillText(indexLabel.toUpperCase().split('').join(' '), width / 2, centre + size * 0.3 + 62)
+  ctx.textAlign = 'left'
+
+  rows.forEach((row, position) => {
+    const top = listTop + position * rowHeight
+    ctx.fillStyle = FAINT
+    ctx.fillRect(pad, top, inner, 2)
+    ctx.font = `800 ${Math.round(rowHeight * 0.46)}px ${SANS}`
+    ctx.fillStyle = ACCENT
+    ctx.textAlign = 'right'
+    const score = row.score == null ? '' : String(row.score)
+    ctx.fillText(score, width - pad, top + rowHeight * 0.64)
+    const scoreWidth = ctx.measureText(score).width + 36
+    ctx.textAlign = 'left'
+    ctx.font = `700 ${Math.round(rowHeight * 0.33)}px ${SANS}`
+    ctx.fillStyle = INK
+    ctx.fillText(fit(ctx, row.race, inner - scoreWidth), pad, top + rowHeight * 0.46)
+    ctx.font = `500 ${Math.round(rowHeight * 0.23)}px ${MONO}`
+    ctx.fillStyle = SOFT
+    ctx.fillText(fit(ctx, row.detail, inner - scoreWidth), pad, top + rowHeight * 0.8)
+  })
+
+  footer(ctx, frame, note)
+}
+
 export function canvasToBlob(canvas) {
   return new Promise((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('could not draw the image'))), 'image/png'))
 }

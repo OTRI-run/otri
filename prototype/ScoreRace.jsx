@@ -1,4 +1,7 @@
 import ColumnsRead from '../src/components/ColumnsRead'
+import WhatWeScore from '../src/components/WhatWeScore'
+import useFileDrop from '../src/lib/useFileDrop'
+import { revealElement } from '../src/lib/comfort'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, ArrowRight, CheckCircle2, Code2, Download, Share2, FileSpreadsheet, Map as MapIcon, ShieldCheck, Timer, Trophy, XCircle } from 'lucide-react'
 import { scoreRace } from './apiClient'
@@ -412,7 +415,7 @@ export default function ScoreRace() {
 
   // The answer appears below the form: bring it into view instead of leaving the visitor at the top.
   useEffect(() => {
-    if (result) document.getElementById('score-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    if (result) revealElement('score-result', { focus: true })
   }, [result])
 
   // #score?example=1 scores the example race straight away: a link that shows the result, not the form.
@@ -441,10 +444,23 @@ export default function ScoreRace() {
       setScoredFiles({ gpx, results, gpxText: await gpx.text() })
     } catch (err) {
       setError(err.status === 429 ? 'That was a lot of scoring in one minute. Wait a minute and try again.' : err.message)
+      revealElement('score-error', { block: 'center' })
     } finally {
       setBusy(false)
     }
   }
+
+  // Both files can be dropped anywhere on the form, together or one at a time: the ending says
+  // which is the course and which the results.
+  const { dragging, dropProps } = useFileDrop({
+    accept: '.gpx,.csv,.tsv,.txt,.xlsx,.xlsm',
+    disabled: busy,
+    onFiles: (files) => {
+      setError(null)
+      for (const file of files) (/\.gpx$/i.test(file.name) ? setGpx : setResults)(file)
+    },
+    onReject: setError,
+  })
 
   const input = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-[#0b1220] outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
 
@@ -464,10 +480,12 @@ export default function ScoreRace() {
             <p className="mt-5 max-w-[560px] text-base leading-7 text-slate-600">
               Bring the course and the results file of any trail race. OTRI measures the course, checks the file, and gives every finisher a score you can explain: the same open model as every race here, with no account and no approval.
             </p>
+            <WhatWeScore className="mt-4 max-w-[560px]" />
             <ExampleRace onUse={useExample} busy={busy} rowsOpen={rowsOpen} onToggleRows={() => setRowsOpen((open) => !open)} />
           </div>
 
-          <form onSubmit={submit} className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_44px_rgba(15,23,42,.07)] sm:p-6">
+          <form onSubmit={submit} {...dropProps} className={`min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 rounded-2xl border bg-white p-5 shadow-[0_18px_44px_rgba(15,23,42,.07)] transition sm:p-6 ${dragging ? 'border-blue-500 ring-4 ring-blue-100' : 'border-slate-200'}`}>
+            {dragging && <p className="mb-3 rounded-lg bg-blue-50 px-3 py-2 text-center text-xs font-semibold text-blue-700">Drop the course (.gpx) and the results (.csv, .xlsx) here, together or one at a time</p>}
             <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">1 · THE COURSE</p>
             <div className="mt-2">
               <FilePick icon={MapIcon} label="Choose the course (GPX)" hint="The official track of the race, up to 20 MB" accept=".gpx,application/gpx+xml" file={gpx} onFile={setGpx} disabled={busy} />
@@ -486,7 +504,7 @@ export default function ScoreRace() {
             </label>
 
             {error && (
-              <div role="alert" className="mt-4 flex gap-2 rounded-xl border border-red-100 bg-red-50/70 px-3 py-2.5 text-sm text-red-900">
+              <div id="score-error" role="alert" role="alert" className="mt-4 flex gap-2 rounded-xl border border-red-100 bg-red-50/70 px-3 py-2.5 text-sm text-red-900">
                 <XCircle size={16} className="mt-0.5 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
               </div>
             )}

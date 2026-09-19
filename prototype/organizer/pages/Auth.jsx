@@ -1,10 +1,11 @@
+import { autoFocusOnDesktop } from '../../../src/lib/comfort'
 import { useEffect, useState } from 'react'
 import { ArrowRight, ArrowUpRight, CalendarDays, FileSpreadsheet, Mountain, ShieldCheck } from 'lucide-react'
 import { completeTwoFactor, loginOrganizer, registerOrganizer, requestPasswordReset, resendVerification, resetPassword, verifyEmail } from '../../apiClient'
 import PasswordStrength, { assessPassword } from '../../../src/components/PasswordStrength'
 import { Link, navigate } from '../router'
 import { hasHandoff } from '../../publishHandoff'
-import { Button, CONTAINER, Card, Eyebrow, Field, Gradient, Notice, Page, inputClass } from '../ui'
+import { Button, Card, CONTAINER, Eyebrow, Field, Gradient, inputClass, Notice, Page, PasswordInput } from '../ui'
 
 const DOCS = 'https://github.com/OTRI-run/otri/blob/main'
 const MIN_PASSWORD = 10
@@ -265,14 +266,14 @@ export function Register({ onSignedIn }) {
     >
       <form onSubmit={submit} className="grid gap-4" noValidate>
         <Field label="Work email" htmlFor="reg-email" hint="We send the verification link and race notifications here.">
-          <input id="reg-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
+          <input id="reg-email" autoFocus={autoFocusOnDesktop} type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
         </Field>
         <Field label="Password" htmlFor="reg-pw">
-          <input id="reg-pw" type="password" required autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+          <PasswordInput id="reg-pw" required autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
           <PasswordStrength password={password} email={email} />
         </Field>
         <Field label="Confirm password" htmlFor="reg-pw2" error={mismatch ? 'Passwords do not match.' : null}>
-          <input id="reg-pw2" type="password" required autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inputClass} />
+          <PasswordInput id="reg-pw2" required autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inputClass} />
         </Field>
         <div className="grid gap-2 rounded-xl bg-slate-50 px-4 py-3">
           <label className="flex items-start gap-2 text-sm text-slate-700">
@@ -520,10 +521,10 @@ export function Login({ onSignedIn }) {
     >
       <form onSubmit={submit} className="grid gap-4" noValidate>
         <Field label="Email" htmlFor="login-email">
-          <input id="login-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
+          <input id="login-email" autoFocus={autoFocusOnDesktop} type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
         </Field>
         <Field label="Password" htmlFor="login-pw">
-          <input id="login-pw" type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+          <PasswordInput id="login-pw" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
         </Field>
         {error && (
           <Notice kind="error">
@@ -654,11 +655,11 @@ export function Reset({ token, onSignedIn }) {
     <AuthCard title={title}>
       <form onSubmit={submit} className="grid gap-4" noValidate>
         <Field label="New password" htmlFor="reset-pw">
-          <input id="reset-pw" type="password" required autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+          <PasswordInput id="reset-pw" required autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
           <PasswordStrength password={password} />
         </Field>
         <Field label="Confirm new password" htmlFor="reset-pw2" error={mismatch ? 'Passwords do not match.' : null}>
-          <input id="reset-pw2" type="password" required autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inputClass} />
+          <PasswordInput id="reset-pw2" required autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inputClass} />
         </Field>
         {error && <Notice kind="error">{error}</Notice>}
         <Button type="submit" busy={busy} disabled={!password || tooShort || mismatch}>

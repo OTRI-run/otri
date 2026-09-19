@@ -41,7 +41,13 @@ import BuildBanner from '../src/components/BuildBanner'
 import ErrorBoundary from '../src/components/ErrorBoundary'
 import NotFound from '../src/components/NotFound'
 import { modelLabel, notScoredReason } from '../src/lib/model'
+import BackToTop from '../src/components/BackToTop'
+import { installDropGuard, installScrollMemory, installSearchShortcut, willNavigate } from '../src/lib/comfort'
 import '../src/styles.css'
+
+installScrollMemory()
+installDropGuard()
+installSearchShortcut()
 
 const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 
@@ -78,8 +84,8 @@ function useRoute() {
 }
 
 function navigate(hash) {
+  willNavigate() // the next page opens at its top (src/lib/comfort.js)
   window.location.hash = hash
-  window.scrollTo({ top: 0 })
 }
 
 // ------------------------------------------------------------------------------------- shell
@@ -638,6 +644,7 @@ function App() {
         {route.tab === 'notfound' && <NotFound where={window.location.hash} home="#home" />}
       </main>
       <Footer />
+      <BackToTop />
       <BuildBanner />
     </div>
   )

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { FullscreenControl, LngLatBounds, Map as MapLibreMap, NavigationControl, ScaleControl, setWorkerUrl } from 'maplibre-gl'
+import { FullscreenControl, LngLatBounds, Map as MapLibreMap, NavigationControl, ScaleControl, addProtocol, setWorkerUrl } from 'maplibre-gl'
+import mlcontour from 'maplibre-contour'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { buildElevationProfile, parseGpxTrackPoints, toGeoJsonLine } from '../lib/gpx'
 import { distanceUnit, elevationUnit, kmToUnit, metresToUnit, useUnits } from '../lib/units'
+import { GRADE_CLASSES, lineGradientExpression, steepnessStretches, steepnessSummary } from '../lib/steepness'
 
 // MapLibre's default worker-URL auto-detection breaks under Vite's
 // production build (the worker chunk gets content-hashed, but MapLibre's
@@ -49,7 +51,24 @@ const SATELLITE_STYLE = {
   layers: [{ id: 'satellite', type: 'raster', source: 'satellite' }],
 }
 
+// Contour lines, worked out in the browser (in a web worker) from the same elevation tiles the
+// hillshade uses: what makes a map read as terrain and not as a street plan. No extra service.
+let contourSource = null
+function contours() {
+  if (contourSource) return contourSource
+  try {
+    contourSource = new mlcontour.DemSource({ url: TERRAIN_TILES_URL, encoding: 'terrarium', maxzoom: 13, worker: true, cacheSize: 100, timeoutMs: 10_000 })
+    contourSource.setupMaplibre({ addProtocol })
+  } catch {
+    contourSource = null // a map without contour lines is still a map
+  }
+  return contourSource
+}
+
 const INK = '#0b1220'
+const TRAIL_BROWN = '#7c2d12'
+const CONTOUR_BROWN = '#92400e'
+const PEAK_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><path d="M14 5 25 23H3z" fill="#57534e" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/></svg>`
 const ROUTE_BLUE = '#2563eb'
 const START_GREEN = '#16a34a'
 const HOVER_CYAN = '#06b6d4'
@@ -61,10 +80,10 @@ const START_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="48" heigh
 const FINISH_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="${INK}" stroke="#ffffff" stroke-width="4"/><path d="M17 14v22" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/><rect x="18.5" y="15" width="15" height="11" fill="#ffffff"/><g fill="${INK}"><rect x="18.5" y="15" width="5" height="3.67"/><rect x="28.5" y="15" width="5" height="3.67"/><rect x="23.5" y="18.67" width="5" height="3.67"/><rect x="18.5" y="22.33" width="5" height="3.67"/><rect x="28.5" y="22.33" width="5" height="3.67"/></g></svg>`
 
 const iconImages = {}
-function loadIcon(name, svg) {
+function loadIcon(name, svg, size = 48) {
   if (iconImages[name]) return iconImages[name]
   iconImages[name] = new Promise((resolve, reject) => {
-    const image = new Image(48, 48)
+    const image = new Image(size, size)
     image.onload = () => resolve(image)
     image.onerror = reject
     image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
@@ -149,7 +168,93 @@ function firstLineLayerId(map) {
   return map.getStyle().layers.find((layer) => layer.type === 'line' || layer.type === 'symbol')?.id
 }
 
-function addCourseLayers(map, { line, markers }, { includeHillshade }) {
+// What turns the street map into a trail map: contour lines, footpaths and tracks picked out as
+// dashed brown lines (on the base style they are hair-thin and grey), and summits with their height.
+function addOutdoorLayers(map) {
+  const before = firstSymbolLayerId(map)
+  const dem = contours()
+  if (dem && !map.getSource('contours')) {
+    map.addSource('contours', {
+      type: 'vector',
+      tiles: [
+        dem.contourProtocolUrl({
+          // metres between [minor, major] lines, by zoom
+          thresholds: { 9: [200, 1000], 10: [100, 500], 11: [50, 250], 12: [50, 250], 13: [20, 100], 14: [10, 50] },
+          elevationKey: 'ele',
+          levelKey: 'level',
+          contourLayer: 'contours',
+        }),
+      ],
+      maxzoom: 15,
+    })
+    map.addLayer(
+      {
+        id: 'contour-lines',
+        type: 'line',
+        source: 'contours',
+        'source-layer': 'contours',
+        minzoom: 9,
+        paint: { 'line-color': CONTOUR_BROWN, 'line-opacity': ['match', ['get', 'level'], 1, 0.55, 0.3], 'line-width': ['match', ['get', 'level'], 1, 1.1, 0.7] },
+      },
+      before,
+    )
+    map.addLayer({
+      id: 'contour-labels',
+      type: 'symbol',
+      source: 'contours',
+      'source-layer': 'contours',
+      minzoom: 11,
+      filter: ['==', ['get', 'level'], 1],
+      layout: { 'symbol-placement': 'line', 'text-field': ['concat', ['number-format', ['get', 'ele'], {}], ' m'], 'text-font': ['Noto Sans Regular'], 'text-size': 9, 'symbol-spacing': 420 },
+      paint: { 'text-color': CONTOUR_BROWN, 'text-halo-color': 'rgba(255,255,255,.85)', 'text-halo-width': 1.2, 'text-opacity': 0.8 },
+    })
+  }
+  const vector = Object.entries(map.getStyle().sources).find(([, source]) => source.type === 'vector' && source.url)?.[0]
+  if (vector && !map.getLayer('otri-trails')) {
+    map.addLayer(
+      {
+        id: 'otri-trails',
+        type: 'line',
+        source: vector,
+        'source-layer': 'transportation',
+        minzoom: 11,
+        filter: ['in', ['get', 'class'], ['literal', ['path', 'track']]],
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': TRAIL_BROWN, 'line-opacity': 0.7, 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.7, 15, 1.8], 'line-dasharray': [2.5, 1.5] },
+      },
+      before,
+    )
+  }
+  if (vector && !map.getLayer('otri-peaks')) {
+    loadIcon('otri-peak', PEAK_ICON_SVG, 28)
+      .then((image) => {
+        if (!map.getStyle() || map.getLayer('otri-peaks')) return
+        if (!map.hasImage('otri-peak')) map.addImage('otri-peak', image, { pixelRatio: 2 })
+        map.addLayer({
+          id: 'otri-peaks',
+          type: 'symbol',
+          source: vector,
+          'source-layer': 'mountain_peak',
+          minzoom: 10,
+          layout: {
+            'icon-image': 'otri-peak',
+            'text-field': ['case', ['has', 'ele'], ['concat', ['coalesce', ['get', 'name:latin'], ['get', 'name'], ''], '\n', ['to-string', ['get', 'ele']], ' m'], ['coalesce', ['get', 'name:latin'], ['get', 'name'], '']],
+            'text-font': ['Noto Sans Regular'],
+            'text-size': 10,
+            'text-anchor': 'top',
+            'text-offset': [0, 0.7],
+            'text-optional': true,
+            'symbol-sort-key': ['-', 0, ['coalesce', ['to-number', ['get', 'ele']], 0]],
+          },
+          paint: { 'text-color': '#44403c', 'text-halo-color': 'rgba(255,255,255,.9)', 'text-halo-width': 1.3 },
+        })
+        for (const id of ['route-start', 'route-finish', 'route-hover']) if (map.getLayer(id)) map.moveLayer(id)
+      })
+      .catch(() => {})
+  }
+}
+
+function addCourseLayers(map, { line, markers, gradient }, { includeHillshade }) {
   if (!map.getSource('terrain-dem')) {
     map.addSource('terrain-dem', {
       type: 'raster-dem',
@@ -168,7 +273,7 @@ function addCourseLayers(map, { line, markers }, { includeHillshade }) {
         type: 'hillshade',
         source: 'terrain-dem',
         paint: {
-          'hillshade-exaggeration': 0.32,
+          'hillshade-exaggeration': 0.5,
           'hillshade-shadow-color': '#334155',
           'hillshade-highlight-color': '#ffffff',
           'hillshade-accent-color': '#64748b',
@@ -178,17 +283,20 @@ function addCourseLayers(map, { line, markers }, { includeHillshade }) {
     )
   }
 
+  if (includeHillshade) addOutdoorLayers(map)
+
   const beforeLabels = firstSymbolLayerId(map)
 
   if (!map.getSource('route')) {
-    map.addSource('route', { type: 'geojson', data: line })
+    // lineMetrics: the route is coloured along its length (steepness), which needs line-progress.
+    map.addSource('route', { type: 'geojson', data: line, lineMetrics: true })
     map.addLayer(
       {
         id: 'route-casing',
         type: 'line',
         source: 'route',
         layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#ffffff', 'line-width': 7, 'line-opacity': 0.95 },
+        paint: { 'line-color': '#ffffff', 'line-width': 8, 'line-opacity': 0.95 },
       },
       beforeLabels,
     )
@@ -198,7 +306,7 @@ function addCourseLayers(map, { line, markers }, { includeHillshade }) {
         type: 'line',
         source: 'route',
         layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': ROUTE_BLUE, 'line-width': 3.5 },
+        paint: gradient ? { 'line-gradient': gradient, 'line-width': 4.5 } : { 'line-color': ROUTE_BLUE, 'line-width': 4 },
       },
       beforeLabels,
     )
@@ -211,7 +319,7 @@ function addCourseLayers(map, { line, markers }, { includeHillshade }) {
       type: 'circle',
       source: 'route-markers',
       filter: ['==', ['get', 'kind'], 'km'],
-      paint: { 'circle-radius': 9, 'circle-color': ROUTE_BLUE, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 },
+      paint: { 'circle-radius': 9, 'circle-color': '#ffffff', 'circle-stroke-color': INK, 'circle-stroke-width': 1.5 },
     })
     map.addLayer({
       id: 'route-km-label',
@@ -219,7 +327,7 @@ function addCourseLayers(map, { line, markers }, { includeHillshade }) {
       source: 'route-markers',
       filter: ['==', ['get', 'kind'], 'km'],
       layout: { 'text-field': ['get', 'label'], 'text-font': LABEL_FONT, 'text-size': 10, 'text-allow-overlap': true },
-      paint: { 'text-color': '#ffffff' },
+      paint: { 'text-color': INK },
     })
   }
 
@@ -294,6 +402,9 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
   }, [gpxText])
 
   const profile = measurement?.profile ?? []
+  // The course cut into stretches of one steepness, shared by the line on the map and the profile.
+  const stretches = useMemo(() => steepnessStretches(profile), [profile])
+  const [showSteepness, setShowSteepness] = useState(true)
   const line = useMemo(() => (points.length > 1 ? toGeoJsonLine(points) : null), [points])
   const cumulativeKm = useMemo(() => buildElevationProfile(points).map((point) => point.distanceKm), [points])
   const totalKm = cumulativeKm[cumulativeKm.length - 1] ?? 0
@@ -306,8 +417,23 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
     [points, cumulativeKm, stepKm, kmPerUnit, totalKm],
   )
   // Read at load time by the map effects, so a units change never rebuilds the map.
-  const courseDataRef = useRef({ line, markers })
-  courseDataRef.current = { line, markers }
+  const gradient = useMemo(() => (showSteepness && stretches.length ? lineGradientExpression(stretches, ROUTE_BLUE) : null), [showSteepness, stretches])
+  const courseDataRef = useRef({ line, markers, gradient })
+  courseDataRef.current = { line, markers, gradient }
+
+  // Recolour the route without rebuilding the map: the switch, or a measurement that arrived later.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map?.getLayer?.('route-line')) return
+    if (gradient) {
+      map.setPaintProperty('route-line', 'line-gradient', gradient)
+      map.setPaintProperty('route-line', 'line-width', 4.5)
+    } else {
+      map.setPaintProperty('route-line', 'line-gradient', undefined)
+      map.setPaintProperty('route-line', 'line-color', ROUTE_BLUE)
+      map.setPaintProperty('route-line', 'line-width', 4)
+    }
+  }, [gradient])
 
   useEffect(() => {
     is3DRef.current = is3D
@@ -437,6 +563,16 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
       <div className="relative">
         <div ref={mapContainerRef} className="h-[360px] w-full overflow-hidden rounded-xl sm:h-[460px]" />
         <div className="absolute right-2 top-2 flex gap-1.5">
+          {stretches.length > 0 && (
+            <button
+              onClick={() => setShowSteepness((value) => !value)}
+              aria-pressed={showSteepness}
+              title="Colour the route by how steep it is"
+              className={`rounded-md px-2.5 py-1.5 text-[10px] font-semibold shadow-sm ${showSteepness ? 'bg-[#0b1220] text-white' : 'bg-white/95 text-slate-700 hover:bg-white'}`}
+            >
+              Steepness
+            </button>
+          )}
           <button
             onClick={() => setIs3D((value) => !value)}
             className="rounded-md bg-white/95 px-2.5 py-1.5 text-[10px] font-semibold text-slate-700 shadow-sm hover:bg-white"
@@ -451,7 +587,8 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
           </button>
         </div>
       </div>
-      <ElevationProfile profile={profile} stepUnit={stepUnit} units={units} onHover={handleProfileHover} />
+      <ElevationProfile profile={profile} stretches={showSteepness ? stretches : []} stepUnit={stepUnit} units={units} onHover={handleProfileHover} />
+      {stretches.length > 0 && <SteepnessFigures stretches={stretches} profile={profile} units={units} shown={showSteepness} />}
       <p className="mt-2 text-xs text-slate-500">{measurement ? elevationCaption(measurement) : 'Route preview. Analyze the GPX to calculate its elevation profile.'}</p>
     </div>
   )
@@ -466,6 +603,63 @@ function elevationCaption(measurement) {
     ? `Elevation from the Copernicus GLO-30 terrain model (30 m grid, ${dataset})`
     : 'Elevation from the GPX file itself — no terrain model is installed for this region'
   return `${which} · distance along the WGS84 ellipsoid · ${measurement.version}`
+}
+
+// ---------------------------------------------------------------------------- steepness figures
+
+// What the colours mean, and what they add up to: how the distance divides into climbing, flat and
+// descending, and how much of it is steep ground (20 % and beyond), which is the part of a course
+// the score's terrain factor counts.
+function SteepnessFigures({ stretches, profile, units, shown }) {
+  const summary = useMemo(() => steepnessSummary(stretches), [stretches])
+  const extremes = useMemo(() => {
+    let low = Infinity
+    let high = -Infinity
+    for (const point of profile) {
+      if (point.elevation == null) continue
+      if (point.elevation < low) low = point.elevation
+      if (point.elevation > high) high = point.elevation
+    }
+    return Number.isFinite(low) ? { low, high } : null
+  }, [profile])
+  if (!summary) return null
+  const percent = (value) => `${Math.round(value * 100)}%`
+  const elevationLabel = elevationUnit(units)
+  const figures = [
+    ['CLIMBING', percent(summary.climbShare)],
+    ['FLAT', percent(summary.share.flat)],
+    ['DESCENDING', percent(summary.descentShare)],
+    ['STEEP GROUND · 20%+', percent(summary.steepShare)],
+    ...(extremes ? [['LOW · HIGH', `${formatNumber(metresToUnit(extremes.low, units))} · ${formatNumber(metresToUnit(extremes.high, units))} ${elevationLabel}`]] : []),
+  ]
+  return (
+    <div className="mt-3">
+      {/* The whole course as one bar: where the climbing and the steep ground sit. */}
+      <div className="flex h-2 w-full overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+        {GRADE_CLASSES.filter((entry) => summary.share[entry.id] > 0).map((entry) => (
+          <span key={entry.id} style={{ width: `${summary.share[entry.id] * 100}%`, background: entry.color }} title={`${entry.label}: ${percent(summary.share[entry.id])}`} />
+        ))}
+      </div>
+      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-5">
+        {figures.map(([label, value]) => (
+          <div key={label} className="min-w-0">
+            <dt className="font-mono text-[8px] tracking-[.08em] text-slate-500">{label}</dt>
+            <dd className="mt-0.5 truncate font-mono text-[13px] font-semibold text-[#0b1220]">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      {shown && (
+        <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5" aria-label="What the colours mean">
+          {GRADE_CLASSES.map((entry) => (
+            <li key={entry.id} className="flex items-center gap-1.5 font-mono text-[9px] text-slate-500" title={entry.label}>
+              <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: entry.color }} />
+              {entry.range}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
 }
 
 // ---------------------------------------------------------------------------- elevation profile
@@ -507,7 +701,7 @@ function decimate(points, toX) {
   return out
 }
 
-function ElevationProfile({ profile, stepUnit, units, onHover }) {
+function ElevationProfile({ profile, stretches = [], stepUnit, units, onHover }) {
   const wrapperRef = useRef(null)
   const [width, setWidth] = useState(0)
   const [hover, setHover] = useState(null)
@@ -637,8 +831,18 @@ function ElevationProfile({ profile, stepUnit, units, onHover }) {
                 <stop offset="60%" stopColor="#60a5fa" stopOpacity="0.22" />
                 <stop offset="100%" stopColor="#93c5fd" stopOpacity="0.04" />
               </linearGradient>
+              <linearGradient id="elevation-fade" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
+                <stop offset="100%" stopColor="#ffffff" stopOpacity="0.55" />
+              </linearGradient>
               <clipPath id="elevation-clip">
                 <rect x={PAD.left} y={PAD.top} width={geometry.chartWidth} height={geometry.chartHeight} />
+              </clipPath>
+              {/* The shape under the profile line: coloured bands are clipped to it. */}
+              <clipPath id="elevation-area">
+                {geometry.paths.map((path, index) => (
+                  <polygon key={index} points={path.area} />
+                ))}
               </clipPath>
             </defs>
 
@@ -669,11 +873,21 @@ function ElevationProfile({ profile, stepUnit, units, onHover }) {
             ))}
 
             <g clipPath="url(#elevation-clip)">
-              {geometry.paths.map((path, index) => (
-                <g key={index}>
-                  <polygon points={path.area} fill="url(#elevation-fill)" />
-                  <polyline points={path.line} fill="none" stroke="#1d4ed8" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+              {stretches.length > 0 ? (
+                <g clipPath="url(#elevation-area)">
+                  {stretches.map((stretch, index) => {
+                    const x1 = geometry.toX(kmToUnit(stretch.fromKm, units))
+                    const x2 = geometry.toX(kmToUnit(stretch.toKm, units))
+                    return <rect key={index} x={x1} y={PAD.top} width={Math.max(0.5, x2 - x1 + 0.5)} height={geometry.chartHeight} fill={stretch.cls.color} fillOpacity="0.78" />
+                  })}
+                  {/* Fades the colour out towards the baseline, so the line above it carries the shape. */}
+                  <rect x={PAD.left} y={PAD.top} width={geometry.chartWidth} height={geometry.chartHeight} fill="url(#elevation-fade)" />
                 </g>
+              ) : (
+                geometry.paths.map((path, index) => <polygon key={index} points={path.area} fill="url(#elevation-fill)" />)
+              )}
+              {geometry.paths.map((path, index) => (
+                <polyline key={index} points={path.line} fill="none" stroke={stretches.length > 0 ? INK : '#1d4ed8'} strokeWidth={stretches.length > 0 ? 1.6 : 2} strokeLinejoin="round" strokeLinecap="round" />
               ))}
             </g>
 

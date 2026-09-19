@@ -1,5 +1,6 @@
 import { useId, useRef, useState } from 'react'
 import { Search } from 'lucide-react'
+import { willNavigate } from '../lib/comfort'
 
 /**
  * A search box that also offers the best few matches to jump to: type "sri", press the arrow and
@@ -20,8 +21,8 @@ export default function SearchSuggest({ value, onChange, suggestions, placeholde
   function go(suggestion) {
     setOpen(false)
     if (!suggestion.href) return onChange(suggestion.label)
+    willNavigate()
     window.location.hash = suggestion.href
-    window.scrollTo({ top: 0 })
   }
 
   function onKeyDown(event) {
