@@ -166,10 +166,13 @@ export default function Home() {
               <br />
               <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">for any trail race.</em>
             </h1>
-            <p className="mt-6 max-w-[620px] text-[15px] leading-7 text-slate-500 sm:text-[17px]">
-              OTRI turns a finish time on any trail course into one comparable score. A calculator, not a governing
-              body, and no black box: every number explains itself. Made for the local race as much as the famous one:
-              free, no account, no approval.
+            {/* The words that carry the promise are set in ink and semibold; the rest stays grey, so the
+                paragraph can be read at a glance by its dark words alone. */}
+            <p className="mt-6 max-w-[620px] text-[15px] leading-7 text-slate-500 sm:text-[17px] [&_b]:whitespace-nowrap [&_b]:font-semibold [&_b]:text-[#0b1220]">
+              OTRI turns a <b>finish time</b> on <b>any trail course</b> into{' '}
+              <b className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text !text-transparent">one comparable score</b>. A <b>calculator</b>, not a
+              governing body, and <b>no black box</b>: every number <b>explains itself</b>. Made for the <b>local race</b> as much as the famous one:{' '}
+              <b>free</b>, <b>no account</b>, <b>no approval</b>.
             </p>
             <div className="mt-7 grid max-w-[680px] gap-3 sm:grid-cols-2">
               {[
