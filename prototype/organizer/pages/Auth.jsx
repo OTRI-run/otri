@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, ArrowUpRight, CalendarDays, FileSpreadsheet, Mountain, ShieldCheck, UserRound } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, CalendarDays, FileSpreadsheet, Mountain, ShieldCheck } from 'lucide-react'
 import { completeTwoFactor, loginOrganizer, registerOrganizer, requestPasswordReset, resendVerification, resetPassword, verifyEmail } from '../../apiClient'
 import PasswordStrength, { assessPassword } from '../../../src/components/PasswordStrength'
 import { Link, navigate } from '../router'
@@ -10,7 +10,6 @@ const DOCS = 'https://github.com/OTRI-run/otri/blob/main'
 const MIN_PASSWORD = 10
 
 const STEPS = [
-  [UserRound, 'ACCOUNT', 'Create an organizer account and confirm your email.'],
   [CalendarDays, 'EVENT', 'Name the event and its date. It holds every race distance.'],
   [Mountain, 'RACE + COURSE', 'Add each distance, then upload its GPX. OTRI measures it and compares it with your official figures.'],
   [FileSpreadsheet, 'RESULTS', 'Upload the results file. It is validated first, then every finisher is scored.'],
@@ -59,7 +58,7 @@ export function Welcome() {
               <span>OTRI / ORGANIZERS</span>
               <span className="flex items-center gap-1.5">
                 <i className="h-1.5 w-1.5 rounded-full bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,.9)]" />
-                FIVE STEPS
+                FOUR STEPS
               </span>
             </div>
             <div className="border-b border-slate-700/70 py-8">
@@ -94,7 +93,7 @@ export function Welcome() {
             <div className="min-w-0">
               <Eyebrow>01 / HOW IT WORKS</Eyebrow>
               <h2 className="mt-3 text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
-                Five steps.
+                Four steps.
                 <br />
                 <Gradient>Nothing hidden.</Gradient>
               </h2>
@@ -246,7 +245,7 @@ export function Register({ onSignedIn }) {
 
   return (
     <AuthCard
-      eyebrow="STEP 1 OF 5 · ACCOUNT"
+      eyebrow="ORGANIZER ACCOUNT"
       title={
         <>
           Create your
@@ -254,7 +253,7 @@ export function Register({ onSignedIn }) {
           <Gradient>organizer account.</Gradient>
         </>
       }
-      intro="You will confirm your email before adding a race. One account can hold every event you organize."
+      intro="You can build your race straight away; confirming your email is only needed to make it public. One account can hold every event you organize."
       footer={
         <>
           Already have an account?{' '}
@@ -336,7 +335,7 @@ export function CheckEmail({ email }) {
   }
   return (
     <AuthCard
-      eyebrow="STEP 1 OF 5 · ACCOUNT"
+      eyebrow="ORGANIZER ACCOUNT"
       title={
         <>
           Check
@@ -375,7 +374,7 @@ export function Verify({ token }) {
   }, [token])
   return (
     <AuthCard
-      eyebrow="STEP 1 OF 5 · ACCOUNT"
+      eyebrow="ORGANIZER ACCOUNT"
       title={
         <>
           Verifying
