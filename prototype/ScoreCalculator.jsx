@@ -586,7 +586,7 @@ function CoursePicker({ races, racesLoading, racesError, query, onQuery, onChoos
     <section className="bg-white py-14 sm:py-20">
       <div className={CONTAINER}>
         <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
-          <div className="font-mono text-xs text-blue-600">01</div>
+          <div className="hidden font-mono text-xs text-blue-600 md:block">01</div>
           <div className="min-w-0">
             <Eyebrow className="mb-3">COURSE</Eyebrow>
             <h2 className="text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">

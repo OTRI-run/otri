@@ -479,8 +479,7 @@ function RacesPage({ raceId }) {
           <Leaderboard raceId={raceId} onBack={() => navigate(address)} />
         ) : (
           <>
-            <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
-              <div className="font-mono text-xs text-blue-600">01</div>
+            <div className="grid min-w-0 items-end gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,.8fr)]">
               <div className="min-w-0">
                 <p className="mb-3 font-mono text-[10px] tracking-[.08em] text-slate-500">RACES</p>
                 <h1 className="text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
@@ -490,7 +489,7 @@ function RacesPage({ raceId }) {
                 </h1>
               </div>
               <p className="min-w-0 text-sm leading-7 text-slate-500">
-                Races their organizers have published, scored under the Course Standard model. Each score depends only on the
+                Races their organizers have published, all scored with the same open model. Each score depends only on the
                 course and the runner's own finish time — never on who else raced.
                 {hasListings ? ' Races marked UPCOMING or AWAITING RESULTS are listed by their organizer ahead of the results: open one to try a target time on its course.' : ''}
                 {hasDemo ? ' Races marked DEMO DATA are synthetic examples.' : ''}
@@ -581,8 +580,8 @@ function RacesPage({ raceId }) {
             )}
             <NextSteps
               items={[
-                ['Your race is not here?', 'Score any course yourself: pick a verified one or upload a GPX.', 'Calculate your score', '#calculator'],
-                ['Organize a race?', 'Upload official results and the course file; every finisher gets a score.', 'For organizers', 'organizer/'],
+                ['Your race is not here?', 'Organizers score a race in a minute, with no account. Runners can try a target time on any course.', 'Score a race', '#score'],
+                ['Just a target time?', 'Pick a course or upload a GPX and see what a finish time would be worth.', 'Open the calculator', '#calculator'],
                 ['Why these numbers?', 'The plain-language explainer, then every constant in the model.', 'How a score is made', 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/0.1.0/HOW-OTRI-SCORES.md'],
               ]}
             />

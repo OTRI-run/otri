@@ -180,9 +180,9 @@ export function Welcome() {
             </button>
             <a
               className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/40 px-4 text-[13px] font-semibold text-white no-underline hover:bg-white/10"
-              href="../#calculator"
+              href="../#score"
             >
-              Try the calculator first <ArrowUpRight size={15} />
+              Score your race first, no account <ArrowUpRight size={15} />
             </a>
           </div>
         </div>

@@ -408,7 +408,7 @@ export default function ScoreRace() {
   return (
     <>
       <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
-        <div className={`${CONTAINER} grid min-w-0 items-start gap-10 py-12 sm:py-14 lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16 lg:py-16`}>
+        <div className={`${CONTAINER} grid min-w-0 items-start gap-8 py-10 sm:py-14 lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-x-16 lg:gap-y-6 lg:py-16`}>
           <div className="min-w-0">
             <div className="font-mono text-[10px] font-medium tracking-[.1em] text-blue-600">
               OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> SCORE MY RACE
@@ -421,19 +421,10 @@ export default function ScoreRace() {
             <p className="mt-5 max-w-[560px] text-base leading-7 text-slate-600">
               Bring the course and the results file of any trail race. OTRI measures the course, checks the file, and gives every finisher a score you can explain: the same open model as every race here, with no account and no approval.
             </p>
-            <ul className="mt-6 space-y-2 text-sm text-slate-600">
-              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Nothing is stored or published. Both files are deleted as soon as the scores are sent back.</li>
-              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> A score depends on the course and the runner's own time, never on who else raced.</li>
-              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Where the model runs out of evidence it says so, per course, instead of guessing.</li>
-              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Like what you see? One click turns it into a public race page, free, with nothing to upload again.</li>
-            </ul>
             <ExampleRace onUse={useExample} busy={busy} />
-            <p className="mt-6 text-xs text-slate-500">
-              Timing company or developer? The same call is a public API: <a href="#api" className="font-semibold text-blue-600 no-underline hover:underline">POST /score</a>.
-            </p>
           </div>
 
-          <form onSubmit={submit} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_44px_rgba(15,23,42,.07)] sm:p-6">
+          <form onSubmit={submit} className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_44px_rgba(15,23,42,.07)] sm:p-6">
             <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">1 · THE COURSE</p>
             <div className="mt-2">
               <FilePick icon={MapIcon} label="Choose the course (GPX)" hint="The official track of the race, up to 20 MB" accept=".gpx,application/gpx+xml" file={gpx} onFile={setGpx} disabled={busy} />
@@ -460,6 +451,17 @@ export default function ScoreRace() {
             </button>
             {!busy && missing && <p className="mt-2 text-center text-xs text-slate-500">{missing}</p>}
           </form>
+          <div className="min-w-0 lg:col-start-1">
+            <ul className="space-y-2 text-sm text-slate-600">
+              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Nothing is stored or published. Both files are deleted as soon as the scores are sent back.</li>
+              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> A score depends on the course and the runner's own time, never on who else raced.</li>
+              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Where the model runs out of evidence it says so, per course, instead of guessing.</li>
+              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Like what you see? One click turns it into a public race page, free, with nothing to upload again.</li>
+            </ul>
+            <p className="mt-6 text-xs text-slate-500">
+              Timing company or developer? The same call is a public API: <a href="#api" className="font-semibold text-blue-600 no-underline hover:underline">POST /score</a>.
+            </p>
+          </div>
         </div>
       </section>
 
