@@ -231,21 +231,8 @@ function Scored({ result, fileStem, gpxText, children }) {
 
 // Nothing to hand? Try the whole thing on a made-up race: one press fills in the course and the
 // results, and the rows can be looked at first, which is also the quickest way to see the format.
-function ExampleRace({ onUse, busy }) {
-  const [open, setOpen] = useState(false)
-  const [rows, setRows] = useState(null)
+function ExampleRace({ onUse, busy, rowsOpen, onToggleRows }) {
   const [state, setState] = useState('idle') // idle | loading | failed
-
-  async function toggleRows() {
-    setOpen((value) => !value)
-    if (rows) return
-    try {
-      const { text } = await fetchExample(EXAMPLE.results)
-      setRows(text.trim().split('\n').map((line) => line.split(',')))
-    } catch {
-      setRows([])
-    }
-  }
 
   async function use() {
     setState('loading')
@@ -258,9 +245,6 @@ function ExampleRace({ onUse, busy }) {
     }
   }
 
-  const header = rows?.[0] ?? []
-  const body = rows?.slice(1) ?? []
-  const shown = [...body.slice(0, EXAMPLE_ROWS_SHOWN), ...body.slice(-2)]
   return (
     <div className="mt-7 min-w-0 max-w-[620px] rounded-xl border border-slate-200 bg-white/80">
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
@@ -272,50 +256,71 @@ function ExampleRace({ onUse, busy }) {
           <button type="button" onClick={use} disabled={busy || state === 'loading'} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-[#0b1220] px-3 text-xs font-semibold text-white disabled:opacity-60">
             {state === 'loading' ? 'Loading…' : 'Use the example race'}
           </button>
-          <button type="button" onClick={toggleRows} className="text-xs font-semibold text-blue-600 hover:underline">
-            {open ? 'Hide' : 'Show'} rows
+          <button type="button" onClick={onToggleRows} aria-expanded={rowsOpen} aria-controls="example-rows" className="text-xs font-semibold text-blue-600 hover:underline">
+            {rowsOpen ? 'Hide' : 'Show'} rows
           </button>
           <a href={EXAMPLE.results.url} download={EXAMPLE.results.file} className="text-xs font-semibold text-blue-600 no-underline hover:underline">CSV</a>
           <a href={EXAMPLE.course.url} download={EXAMPLE.course.file} className="text-xs font-semibold text-blue-600 no-underline hover:underline">GPX</a>
         </div>
       </div>
       {state === 'failed' && <p className="border-t border-slate-200 px-4 py-2 text-xs text-red-600">The example files could not be loaded. Try again in a moment.</p>}
-      {open && (
-        <div className="overflow-x-auto border-t border-slate-200">
-          {rows === null ? (
-            <p className="px-4 py-3 text-xs text-slate-500">Loading the rows…</p>
-          ) : (
-            <table className="w-full min-w-[720px] text-left font-mono text-[11px]">
-              <thead>
-                <tr className="bg-white text-[9px] uppercase tracking-[.06em] text-slate-500">
-                  {header.map((cell) => (
-                    <th key={cell} className="whitespace-nowrap px-3 py-2 font-semibold">{cell}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {shown.map((row, index) => (
-                  <Fragment key={index}>
-                    {index === EXAMPLE_ROWS_SHOWN && (
-                      <tr className="border-t border-slate-100 text-slate-400">
-                        <td colSpan={header.length} className="px-3 py-1.5">… {body.length - shown.length} more rows …</td>
-                      </tr>
-                    )}
-                    <tr className="border-t border-slate-100 text-[#0b1220]">
-                      {row.map((cell, column) => (
-                        <td key={column} className="whitespace-nowrap px-3 py-1.5">{cell || <span className="text-slate-300">—</span>}</td>
-                      ))}
-                    </tr>
-                  </Fragment>
+    </div>
+  )
+}
+
+// The example results file, laid out as a spreadsheet would show it. Ten columns do not fit beside
+// the form, so it takes the page's full width underneath.
+function ExampleRows({ onClose }) {
+  const [rows, setRows] = useState(null)
+  useEffect(() => {
+    fetchExample(EXAMPLE.results)
+      .then(({ text }) => setRows(text.trim().split('\n').map((line) => line.split(','))))
+      .catch(() => setRows([]))
+  }, [])
+
+  const header = rows?.[0] ?? []
+  const body = rows?.slice(1) ?? []
+  const shown = [...body.slice(0, EXAMPLE_ROWS_SHOWN), ...body.slice(-2)]
+  return (
+    <div id="example-rows" className="min-w-0 scroll-mt-24 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)] lg:col-span-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-3">
+        <div className="min-w-0">
+          <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">THE EXAMPLE RESULTS FILE · {EXAMPLE.results.file}</p>
+          <p className="mt-0.5 text-sm text-slate-600">A finisher needs a rank, a time, a name and a gender; DNF and DNS rows carry their status instead of a time. Any file laid out like this passes.</p>
+        </div>
+        <button type="button" onClick={onClose} className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-[#0b1220] hover:border-blue-300">Hide rows</button>
+      </div>
+      {rows === null ? (
+        <p className="px-5 py-4 text-sm text-slate-500">Loading the rows…</p>
+      ) : rows.length === 0 ? (
+        <p className="px-5 py-4 text-sm text-red-600">The example file could not be loaded. Try again in a moment.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left font-mono text-[12px]">
+            <thead>
+              <tr className="bg-slate-50 text-[10px] uppercase tracking-[.06em] text-slate-500">
+                {header.map((cell) => (
+                  <th key={cell} className="whitespace-nowrap px-4 py-2.5 font-semibold">{cell}</th>
                 ))}
-              </tbody>
-            </table>
-          )}
-          {rows?.length > 0 && (
-            <p className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-500">
-              The first {EXAMPLE_ROWS_SHOWN} and the last 2 of {body.length} rows. A finisher needs a rank, a time, a name and a gender; DNF and DNS rows carry their status instead of a time. Any file laid out like this passes.
-            </p>
-          )}
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((row, index) => (
+                <Fragment key={index}>
+                  {index === EXAMPLE_ROWS_SHOWN && (
+                    <tr className="border-t border-slate-100 bg-white text-slate-400">
+                      <td colSpan={header.length} className="px-4 py-2 text-center">… {body.length - shown.length} more rows …</td>
+                    </tr>
+                  )}
+                  <tr className="border-t border-slate-100 text-[#0b1220] odd:bg-white even:bg-slate-50/70">
+                    {row.map((cell, column) => (
+                      <td key={column} className="whitespace-nowrap px-4 py-2">{cell || <span className="text-slate-300">—</span>}</td>
+                    ))}
+                  </tr>
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
@@ -387,6 +392,10 @@ export default function ScoreRace() {
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
   const [scoredFiles, setScoredFiles] = useState(null) // the two files the result on screen came from
+  const [rowsOpen, setRowsOpen] = useState(false)
+  useEffect(() => {
+    if (rowsOpen) setTimeout(() => document.getElementById('example-rows')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50)
+  }, [rowsOpen])
 
   const missing = !gpx ? 'Choose the course file.' : !results ? 'Choose the results file.' : null
 
@@ -452,7 +461,7 @@ export default function ScoreRace() {
             <p className="mt-5 max-w-[560px] text-base leading-7 text-slate-600">
               Bring the course and the results file of any trail race. OTRI measures the course, checks the file, and gives every finisher a score you can explain: the same open model as every race here, with no account and no approval.
             </p>
-            <ExampleRace onUse={useExample} busy={busy} />
+            <ExampleRace onUse={useExample} busy={busy} rowsOpen={rowsOpen} onToggleRows={() => setRowsOpen((open) => !open)} />
           </div>
 
           <form onSubmit={submit} className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_44px_rgba(15,23,42,.07)] sm:p-6">
@@ -494,6 +503,7 @@ export default function ScoreRace() {
               Timing company or developer? The same call is a public API: <a href="#api" className="font-semibold text-blue-600 no-underline hover:underline">POST /score</a>.
             </p>
           </div>
+          {rowsOpen && <ExampleRows onClose={() => setRowsOpen(false)} />}
         </div>
       </section>
 
