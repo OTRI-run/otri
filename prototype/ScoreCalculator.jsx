@@ -48,20 +48,13 @@ function sliderRange(ceilingSeconds, targetSeconds) {
   return { min: Math.min(min, targetSeconds || min), max: Math.max(max, targetSeconds || max), step, known: true }
 }
 
-// The finish time that would score `score` on the course an estimate was made for. Uses the
-// ceiling time the API reports; only defined for the power curve, null otherwise.
+// The finish time that would score `score` on the course an estimate was made for, from the
+// ceiling time the API reports (score = 1000 x (ceiling time / time) ^ 0.85).
 function timeForScore(estimate, score) {
   const best = estimate?.breakdown?.world_best_time_seconds
-  if (!best || !estimate.scoring_version?.includes('-power')) return null
+  if (!best) return null
   const fraction = Math.pow(score / 1000, 1 / POWER_EXPONENT)
   return best / fraction
-}
-
-function parseHmsToSeconds(value) {
-  const parts = value.trim().split(':').map(Number)
-  if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) return null
-  const [hours, minutes, seconds] = parts
-  return hours * 3600 + minutes * 60 + seconds
 }
 
 function formatHms(totalSeconds) {
@@ -223,13 +216,20 @@ function Stat({ label, value, mono = true }) {
 
 // One quiet line, only when elevation was not verified against terrain data; silent otherwise.
 function MeasurementTrust({ estimate }) {
-  const unverified = (estimate.quality_flags ?? []).some((flag) => flag.startsWith('elevation_not_dem_sourced'))
-  if (!unverified) return null
+  const has = (name) => (estimate.quality_flags ?? []).some((flag) => flag.startsWith(name))
+  const notes = [
+    has('elevation_not_dem_sourced') && 'Elevation for this course comes from your GPX file rather than verified terrain data, so the score can differ slightly between devices.',
+    has('route_not_reproducible') && 'The track is recorded too sparsely to measure the route reliably: a denser file (a point at least every 30 m) gives a trustworthy score.',
+    has('vertical_calibration_provisional') && 'This is an uphill-only course. Vertical races are scored with a steep-ground factor that rests on a single calibration race so far, so treat the score as provisional.',
+    has('gradient_domain_exceeded') && 'Much of this course is steeper than the ground the model was calibrated on, so the score is less certain.',
+  ].filter(Boolean)
+  if (notes.length === 0) return null
   return (
-    <p className="mt-4 text-xs text-slate-500">
-      Elevation for this course comes from your GPX file rather than verified terrain data, so the score can differ
-      slightly between devices.
-    </p>
+    <div className="mt-4 space-y-1.5 text-xs leading-5 text-slate-500">
+      {notes.map((note) => (
+        <p key={note}>{note}</p>
+      ))}
+    </div>
   )
 }
 
@@ -395,7 +395,6 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
               {b?.lookup_rate != null && <Stat label="Rate looked up in table" value={`${b.lookup_rate} demand-km/h`} />}
               <Stat label="Raw score (unrounded)" value={estimate.otri_raw} />
               <Stat label="Model" value={modelLabel(estimate.scoring_version)} />
-              <Stat label="Build id" value={estimate.scoring_version} />
             </dl>
 
             <p className="mt-5 text-[11px] text-slate-500">
@@ -404,21 +403,6 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
               road at Minetti's metabolic cost — the unit called "flat km" above.
             </p>
 
-            {estimate.quality_flags?.length > 0 && (
-              <>
-                <p className="mt-5 font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">Quality flags</p>
-                <ul className="mt-1 space-y-1 text-[11px] text-slate-500">
-                  {estimate.quality_flags.map((flag) => (
-                    <li key={flag} className="break-words font-mono">{flag}</li>
-                  ))}
-                </ul>
-              </>
-            )}
-
-            <p className="mt-5 text-[11px] text-slate-500">
-              Methodology: <code>docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md</code> — course demand §3, terrain §4, human ceiling §5,
-              curve §6, measurement and confidence §7.
-            </p>
           </div>
         </details>
 
@@ -780,25 +764,86 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
 
 // ----------------------------------------------------------------------------- hero
 
-function TargetTimeControls({ targetSeconds, timeInput, onSlider, onInput, distanceKm, analysisError, ceilingSeconds }) {
+// One part of a finish time (hours, minutes or seconds) as its own field: typed digits replace what
+// is there, two digits move on to the next part, and the arrow keys step it. Far less fiddly than
+// one text box that only accepts "4:30:00" typed exactly.
+function TimePart({ id, label, value, max, onCommit, nextId, wide = false }) {
+  const [draft, setDraft] = useState(null) // what is being typed, until it is committed
+  const shown = draft ?? String(value).padStart(wide ? 1 : 2, '0')
+
+  function commit(text, advance) {
+    const number = Math.min(max, Math.max(0, parseInt(text, 10) || 0))
+    onCommit(number)
+    setDraft(null)
+    if (advance && nextId) document.getElementById(nextId)?.focus()
+  }
+
+  return (
+    <label className="flex flex-col items-center">
+      <input
+        id={id}
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        aria-label={label}
+        value={shown}
+        onFocus={(event) => event.target.select()}
+        onChange={(event) => {
+          const digits = event.target.value.replace(/\D/g, '').slice(0, wide ? 3 : 2)
+          setDraft(digits)
+          if (digits.length >= 2 && !wide) commit(digits, true)
+        }}
+        onBlur={() => draft !== null && commit(draft, false)}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+            event.preventDefault()
+            commit(String(Math.min(max, Math.max(0, value + (event.key === 'ArrowUp' ? 1 : -1)))), false)
+          } else if (event.key === 'Enter' || event.key === ':') {
+            event.preventDefault()
+            commit(shown, true)
+          }
+        }}
+        className={`${wide ? 'w-[2.1ch]' : 'w-[2.1ch]'} rounded-lg border border-transparent bg-transparent p-0 text-center font-mono text-[44px] font-bold leading-none tracking-[-.04em] text-[#0b1220] outline-none hover:border-slate-200 focus:border-blue-500 focus:bg-blue-50/50`}
+        style={{ width: `${Math.max(shown.length, wide ? 1 : 2) + 0.35}ch` }}
+      />
+      <span className="mt-1 font-mono text-[9px] tracking-[.08em] text-slate-400">{label}</span>
+    </label>
+  )
+}
+
+const NUDGES = [-300, -60, 60, 300]
+const SCORE_JUMPS = [300, 400, 500, 600, 700, 800]
+
+function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError, ceilingSeconds, score }) {
   const units = useUnits()
   const range = sliderRange(ceilingSeconds, targetSeconds)
+  const hours = Math.floor(targetSeconds / 3600)
+  const minutes = Math.floor((targetSeconds % 3600) / 60)
+  const seconds = targetSeconds % 60
+  const set = (h, m, s) => onChange(h * 3600 + m * 60 + s)
+  // The time that scores `target` here, from the model's ceiling for this course.
+  const timeFor = (target) => (ceilingSeconds ? Math.round(ceilingSeconds / Math.pow(target / 1000, 1 / POWER_EXPONENT)) : null)
+  const chip = 'rounded-full border px-3 py-1.5 font-mono text-[11px] font-semibold transition'
+
   return (
     <div className="mt-8 rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] backdrop-blur">
-      <label htmlFor="calc-time-input" className="font-mono text-[9px] tracking-[.08em] text-blue-600">
-        YOUR TARGET FINISH TIME
-      </label>
-      <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2">
-        <p className="font-mono text-[44px] font-bold leading-none tracking-[-.04em] text-[#0b1220]">{formatHms(targetSeconds)}</p>
-        <input
-          id="calc-time-input"
-          type="text"
-          value={timeInput}
-          onChange={(event) => onInput(event.target.value)}
-          placeholder="HH:MM:SS"
-          className="w-28 rounded-lg border border-slate-300 px-2 py-1.5 text-center font-mono text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-        />
-        <p className="font-mono text-xs text-slate-400">{formatPace(targetSeconds, distanceKm, units)}</p>
+      <p className="font-mono text-[9px] tracking-[.08em] text-blue-600">YOUR TARGET FINISH TIME · TYPE IT, DRAG IT, OR PICK A SCORE</p>
+      <div className="mt-3 flex flex-wrap items-start gap-x-5 gap-y-3">
+        <div className="flex items-start gap-1" role="group" aria-label="Target finish time">
+          <TimePart id="calc-hours" label="HOURS" value={hours} max={199} wide onCommit={(h) => set(h, minutes, seconds)} nextId="calc-minutes" />
+          <span className="font-mono text-[44px] font-bold leading-none text-slate-300">:</span>
+          <TimePart id="calc-minutes" label="MIN" value={minutes} max={59} onCommit={(m) => set(hours, m, seconds)} nextId="calc-seconds" />
+          <span className="font-mono text-[44px] font-bold leading-none text-slate-300">:</span>
+          <TimePart id="calc-seconds" label="SEC" value={seconds} max={59} onCommit={(s) => set(hours, minutes, s)} />
+        </div>
+        <p className="pt-3 font-mono text-xs text-slate-400">{formatPace(targetSeconds, distanceKm, units)}</p>
+        <div className="flex flex-wrap gap-1.5 pt-1.5 sm:ml-auto">
+          {NUDGES.map((delta) => (
+            <button key={delta} type="button" onClick={() => onChange(targetSeconds + delta)} className={`${chip} border-slate-300 bg-white text-[#0b1220] hover:border-blue-300`}>
+              {delta > 0 ? '+' : '−'}{Math.abs(delta) / 60} min
+            </button>
+          ))}
+        </div>
       </div>
       <input
         type="range"
@@ -806,7 +851,7 @@ function TargetTimeControls({ targetSeconds, timeInput, onSlider, onInput, dista
         max={range.max}
         step={range.step}
         value={targetSeconds}
-        onChange={(event) => onSlider(Number(event.target.value))}
+        onChange={(event) => onChange(Number(event.target.value))}
         aria-label="Target finish time"
         className="mt-4 w-full accent-blue-600"
       />
@@ -815,10 +860,20 @@ function TargetTimeControls({ targetSeconds, timeInput, onSlider, onInput, dista
         <span>{range.known ? `${formatHms(range.max)} · SCORE ${SLIDER_MIN_SCORE}` : formatHms(range.max)}</span>
       </div>
       {range.known && (
-        <p className="mt-2 text-[11px] leading-5 text-slate-500">
-          The slider runs from the fastest a human has ever covered a course this hard (1000) to a slow finish ({SLIDER_MIN_SCORE}). Type a
-          time to go outside it.
-        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 font-mono text-[9px] tracking-[.08em] text-slate-500">WHAT TIME SCORES</span>
+          {SCORE_JUMPS.map((target) => (
+            <button
+              key={target}
+              type="button"
+              onClick={() => onChange(timeFor(target))}
+              title={`${formatHms(timeFor(target))} scores ${target} on this course`}
+              className={`${chip} ${score === target ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white text-[#0b1220] hover:border-blue-300'}`}
+            >
+              {target}
+            </button>
+          ))}
+        </div>
       )}
       {analysisError && <p className="mt-2 text-xs text-red-600">{analysisError}</p>}
     </div>
@@ -846,7 +901,6 @@ export default function ScoreCalculator({ embedded = false }) {
   const [measurement, setMeasurement] = useState(null)
 
   const [targetSeconds, setTargetSeconds] = useState(17700)
-  const [timeInput, setTimeInput] = useState(formatHms(17700))
 
   const [estimate, setEstimate] = useState(null)
   const [scoring, setScoring] = useState(false)
@@ -943,7 +997,6 @@ export default function ScoreCalculator({ embedded = false }) {
       }
       const clamped = clampSeconds(suggested ?? guess)
       setTargetSeconds(clamped)
-      setTimeInput(formatHms(clamped))
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (err) {
       setLoadError(err.message)
@@ -1013,16 +1066,7 @@ export default function ScoreCalculator({ embedded = false }) {
   }
 
   function updateTargetSeconds(seconds) {
-    setTargetSeconds(seconds)
-    setTimeInput(formatHms(seconds))
-  }
-
-  function updateTimeInput(value) {
-    setTimeInput(value)
-    const seconds = parseHmsToSeconds(value)
-    if (seconds !== null && seconds > 0) {
-      setTargetSeconds(Math.min(ABS_MAX_SECONDS, Math.max(ABS_MIN_SECONDS, seconds)))
-    }
+    if (Number.isFinite(seconds)) setTargetSeconds(Math.min(ABS_MAX_SECONDS, Math.max(ABS_MIN_SECONDS, Math.round(seconds))))
   }
 
   const hasCourse = Boolean(courseFile && features)
@@ -1044,17 +1088,16 @@ export default function ScoreCalculator({ embedded = false }) {
                   <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">{courseLabel.name}</em>
                 </h1>
                 <p className="mt-4 max-w-[620px] text-[15px] leading-7 text-slate-500">
-                  The slider starts at the time that scores {DEFAULT_TARGET_SCORE} here. Drag to your target finish time; the score
-                  is calculated by the same code that scores official results.
+                  It starts at the time that scores {DEFAULT_TARGET_SCORE} here. Set your own target: type it, drag the slider, or pick
+                  a score to see the time it takes. The same code scores official results.
                 </p>
                 <TargetTimeControls
                   targetSeconds={targetSeconds}
-                  timeInput={timeInput}
-                  onSlider={updateTargetSeconds}
-                  onInput={updateTimeInput}
+                  onChange={updateTargetSeconds}
                   distanceKm={features.distance_km}
                   analysisError={analysisError}
                   ceilingSeconds={estimate?.breakdown?.world_best_time_seconds}
+                  score={estimate?.predicted_score}
                 />
                 {!embedded && <ShareBox courseLabel={courseLabel} courseFile={courseFile} targetSeconds={targetSeconds} shareId={shareId} onShared={setShareId} imageOpen={shareImageOpen} onToggleImage={estimate ? () => setShareImageOpen((open) => !open) : null} />}
               </>
