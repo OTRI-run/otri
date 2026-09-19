@@ -203,7 +203,8 @@ export function listScoringModels() {
 }
 
 export function getEvent(eventId) {
-  return request(`/events/${encodeURIComponent(eventId)}`)
+  // Signed in, the owner sees every race of the event; anyone else sees the public ones.
+  return request(`/events/${encodeURIComponent(eventId)}`, { headers: authHeaders(sessionToken()) })
 }
 
 export function createEvent(payload, token) {
@@ -308,7 +309,8 @@ export async function fetchSharedGpxFile(shareId, name) {
 }
 
 export function getRace(raceId) {
-  return request(`/races/${encodeURIComponent(raceId)}`)
+  // A race that is not public yet answers only to its owner.
+  return request(`/races/${encodeURIComponent(raceId)}`, { headers: authHeaders(sessionToken()) })
 }
 
 /** The stored, versioned measurement for a race with an attached GPX (404 if none). */

@@ -11,6 +11,7 @@ from __future__ import annotations
 import csv
 import datetime as dt
 import io
+import zipfile
 from pathlib import Path
 from typing import Callable
 
@@ -137,7 +138,26 @@ def _read_text(path: Path) -> list[list[str]]:
 # ---------------------------------------------------------------------------- spreadsheets
 
 
+# An .xlsx is a zip. A few kilobytes can unpack to gigabytes (a "zip bomb"), and the workbook's
+# shared strings are read into memory whole, so what the archive claims to hold is checked before
+# anything is unpacked. A real results sheet of 50,000 rows is a few tens of megabytes unpacked.
+MAX_XLSX_UNPACKED_BYTES = 200_000_000
+MAX_XLSX_ENTRIES = 2_000
+_NOT_A_WORKBOOK = "this file is named .xlsx but is not an Excel workbook (it may be a CSV that was renamed, or a damaged download): open it in a spreadsheet, save it as .xlsx or CSV, and upload that"
+
+
+def _refuse_oversized_archive(path: Path) -> None:
+    try:
+        with zipfile.ZipFile(path) as archive:
+            entries = archive.infolist()
+    except (zipfile.BadZipFile, OSError) as error:
+        raise ValueError(_NOT_A_WORKBOOK) from error
+    if len(entries) > MAX_XLSX_ENTRIES or sum(entry.file_size for entry in entries) > MAX_XLSX_UNPACKED_BYTES:
+        raise ValueError("this workbook is far larger inside than a results sheet can be; save the results as CSV and upload that")
+
+
 def _read_xlsx(path: Path) -> list[list[str]]:
+    _refuse_oversized_archive(path)
     try:
         workbook = load_workbook(path, read_only=True, data_only=True)
     except Exception as error:  # noqa: BLE001 - openpyxl raises a zoo of errors for non-spreadsheets

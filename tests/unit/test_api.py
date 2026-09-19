@@ -80,14 +80,14 @@ def test_there_is_one_scoring_model_to_choose():
 def test_new_race_defaults_to_course_standard_scoring():
     headers = _organizer_auth_headers()
     _, race_id = _create_event_and_race(headers)
-    response = client.get(f"/races/{race_id}")
+    response = client.get(f"/races/{race_id}", headers=headers)
     assert response.json()["scoring_version"] == "0.10.0-course-standard-vertical"
 
 
 def test_a_race_can_name_the_model_explicitly():
     headers = _organizer_auth_headers()
     _, race_id = _create_event_and_race(headers, scoring_version="0.10.0-course-standard-vertical")
-    assert client.get(f"/races/{race_id}").json()["scoring_version"] == "0.10.0-course-standard-vertical"
+    assert client.get(f"/races/{race_id}", headers=headers).json()["scoring_version"] == "0.10.0-course-standard-vertical"
 
 
 def test_race_creation_rejects_unknown_scoring_version():
@@ -122,7 +122,7 @@ def test_a_race_stored_under_a_retired_build_is_moved_to_the_model():
         connection.execute("UPDATE races SET scoring_version = '0.6.0-course-standard-smoothed-upper' WHERE race_id = %s", (race_id,))
         for name in ("0004_single_scoring_model", "0005_vertical_build"):
             connection.execute(next(m.sql for m in migrations.MIGRATIONS if m.name == name))
-    assert client.get(f"/races/{race_id}").json()["scoring_version"] == "0.10.0-course-standard-vertical"
+    assert client.get(f"/races/{race_id}", headers=headers).json()["scoring_version"] == "0.10.0-course-standard-vertical"
     with DEMO_RESULT_001.open("rb") as handle:
         scored = client.post(f"/races/{race_id}/results", files={"file": ("r.csv", handle, "text/csv")}, headers=headers)
     assert scored.status_code == 200 and scored.json()["scores"][0]["scoring_version"] == "0.10.0-course-standard-vertical"
@@ -272,8 +272,9 @@ def test_create_event_then_appears_in_list():
     assert response.status_code == 201
     event_id = response.json()["event_id"]
 
-    listed = client.get("/events").json()
-    assert event_id in {event["event_id"] for event in listed}
+    assert event_id in {event["event_id"] for event in client.get("/events?mine=true", headers=headers).json()}
+    # A draft is not announced: the public list holds events with something published or listed.
+    assert event_id not in {event["event_id"] for event in client.get("/events").json()}
 
 
 def test_create_event_without_token_returns_401():
@@ -300,7 +301,7 @@ def test_get_event_includes_its_races():
     headers = _organizer_auth_headers()
     event_id, race_id = _create_event_and_race(headers)
 
-    response = client.get(f"/events/{event_id}")
+    response = client.get(f"/events/{event_id}", headers=headers)
     assert response.status_code == 200
     body = response.json()
     assert body["race_count"] == 1
@@ -374,7 +375,7 @@ def test_add_second_distance_to_same_event():
     )
     assert response.status_code == 201
 
-    event = client.get(f"/events/{event_id}").json()
+    event = client.get(f"/events/{event_id}", headers=headers).json()
     assert event["race_count"] == 2
 
 
@@ -834,8 +835,15 @@ def test_publishing_controls_what_the_public_sees():
     headers = _organizer_auth_headers()
     race_id = _scored_race(headers)
 
-    # Unpublished: metadata is public, results are the owner's.
-    assert client.get(f"/races/{race_id}").json()["is_published"] is False
+    # Unpublished: the race is its owner's, down to its name. To anyone else it does not exist.
+    assert client.get(f"/races/{race_id}", headers=headers).json()["is_published"] is False
+    assert client.get(f"/races/{race_id}").status_code == 404
+    event_id = client.get(f"/races/{race_id}", headers=headers).json()["event_id"]
+    assert client.get(f"/events/{event_id}").status_code == 404
+    assert event_id not in {event["event_id"] for event in client.get("/events").json()}
+    other = _organizer_auth_headers("someone-else@example.com")
+    assert client.get(f"/races/{race_id}", headers=other).status_code == 404
+    assert client.get(f"/events/{event_id}", headers=other).status_code == 404
     assert client.get(f"/races/{race_id}/results").status_code == 403
     assert client.get(f"/races/{race_id}/results", headers=headers).status_code == 200
     assert race_id not in {r["race_id"] for r in client.get("/races").json()}
@@ -913,9 +921,9 @@ def test_admin_flag_comes_from_the_environment_and_unlocks_moderation(monkeypatc
 def test_demo_flag_marks_races_from_a_demo_account():
     headers = _organizer_auth_headers("demo-account@example.com")
     race_id = _scored_race(headers)
-    assert client.get(f"/races/{race_id}").json()["is_demo"] is False
+    assert client.get(f"/races/{race_id}", headers=headers).json()["is_demo"] is False
     assert db.set_organizer_flags("demo-account@example.com", is_demo=True)
-    assert client.get(f"/races/{race_id}").json()["is_demo"] is True
+    assert client.get(f"/races/{race_id}", headers=headers).json()["is_demo"] is True
     assert client.post("/auth/login", json={"email": "demo-account@example.com", "password": "correct horse battery"}).json()["is_demo"] is True
 
 
@@ -1231,7 +1239,8 @@ def test_change_password_and_profile():
     assert me["profile"]["website"] == "https://doitrail.example" and me["profile"]["country"] == "THA"
     event = client.post("/events", json={"event_name": "Org Shown", "event_date": "2026-11-01"}, headers=headers).json()
     race = client.post(f"/events/{event['event_id']}/races", json={"course_name": "10K", "distance_km": 10, "elevation_gain_m": 100}, headers=headers).json()
-    public = client.get(f"/races/{race['race_id']}").json()
+    # The summary has one shape for everyone; a draft answers only to its owner, so the owner asks.
+    public = client.get(f"/races/{race['race_id']}", headers=headers).json()
     assert public["organizer_display"] == "Doi Trail Club" and public["organizer_website"] == "https://doitrail.example"
     assert "phone" not in public
 
