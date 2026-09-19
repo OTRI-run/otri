@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import CourseMap from '../../../src/components/CourseMap'
+import ColumnsRead from '../../../src/components/ColumnsRead'
 import { formatDistance, formatElevation, useUnits } from '../../../src/lib/units'
 import { modelLabel, notScoredReason } from '../../../src/lib/model'
 import {
@@ -328,18 +329,19 @@ export function CourseStep({ session, raceId }) {
 
 // The layout timing companies already export. Column names are matched loosely: the last
 // column lists the variants that are also recognised. Extra columns are ignored.
+// What the upload reads. Only a finish time and a name are needed; everything else is read when the
+// export has it (ingestion/normalize.py). Headers are matched in English, French, German, Spanish,
+// Italian, Portuguese, Dutch and Thai; these are examples, not the whole list.
 const COLUMNS = [
-  ['Rank', 'required', 'finishing position, or DNF / DNS / DSQ', 'Ranking, Position, Place, Overall'],
-  ['Time', 'finishers', 'H:MM:SS; blank for non-finishers', 'Finish time, Net time, Chip time, Official time'],
-  ['Last name', 'required', '', 'Family name, Surname, Lastname'],
-  ['First name', 'required', '', 'Firstname, Given name'],
-  ['Gender', 'required', 'M / F / X, or Male / Female', 'Sex'],
-  ['Status', 'optional', 'Finisher, DNF, DNS, DSQ; may replace the rank', 'Result status'],
-  ['Bib', 'recommended', 'as printed, letters allowed', 'Bib number, Race number, Start number'],
-  ['Nationality', 'optional', '3-letter country code', 'Country, Nat'],
-  ['Birthdate', 'optional', 'YYYY-MM-DD; only if you may share it', 'Date of birth, DOB, YOB'],
-  ['City', 'optional', '', 'Town'],
-  ['Team', 'optional', '', 'Club'],
+  ['Time', 'required', 'H:MM:SS, 12h34m56s, 1d 02:03:04 or a spreadsheet time cell; blank, DNF or Abandon for non-finishers', 'Finish time, Chip time, Net time, Temps, Zeit, Tiempo'],
+  ['Name', 'required', 'two columns, or one: “WALMSLEY Jim”, “Walmsley, Jim”, “Jim Walmsley”', 'Last name + First name, Runner, Athlete, Nom + Prénom, Name'],
+  ['Rank', 'recommended', 'finishing position, or DNF / DNS / DSQ; worked out from the times if missing', 'Ranking, Position, Place, Pos, Clt, Platz'],
+  ['Gender', 'recommended', 'M / F / X, Male / Female, H / F; also read from a category such as SEH, V1F, M40-44', 'Sex, Sexe, Geschlecht, Category, Cat, AK'],
+  ['Status', 'optional', 'Finisher, DNF, DNS, DSQ, Abandon; may replace the rank', 'Result status, Statut'],
+  ['Bib', 'optional', 'as printed, letters allowed', 'Bib number, Race number, Dossard, Stnr'],
+  ['Nationality', 'optional', 'FRA, FR, France or GER: stored as the 3-letter code', 'Country, Nat, Pays, Land'],
+  ['Birthdate', 'optional', 'any date layout, or a year; only the year is kept', 'Date of birth, DOB, YOB, Jahrgang'],
+  ['City / Team', 'optional', 'read, not stored', 'Town, Ville, Club, Verein'],
 ]
 
 // The example file lives in public/examples/ (served at the site root) in both formats; the
@@ -546,9 +548,10 @@ export function ResultsStep({ session, raceId }) {
         <Card>
           <Eyebrow>{existing?.length ? 'REPLACE RESULTS' : 'UPLOAD RESULTS'}</Eyebrow>
           <p className="mt-1 text-sm text-slate-600">
-            One file per race distance, CSV or XLSX, one row per participant: the layout your timing company already
-            exports. Column names are matched loosely and extra columns are ignored. OTRI validates the file first and
-            tells you exactly what to fix; nothing is scored until it passes.
+            Upload the export you already have: from your timing company, or the sheet you send to ITRA or UTMB.
+            One file per race distance, CSV or Excel, one row per participant. It needs a finish time and a name;
+            positions, gender, nationality and the rest are read where the file has them, under whatever the columns
+            are called, and you are shown how it was read before anything counts.
           </p>
           <ExampleFile onUse={useExample} busy={loadingExample} />
           <div className="mt-3">
@@ -587,7 +590,7 @@ export function ResultsStep({ session, raceId }) {
           <div className="mt-4">
             <Dropzone
               id="results-file"
-              accept=".csv,.xlsx"
+              accept=".csv,.tsv,.txt,.xlsx,.xlsm"
               onChange={(e) => { setFile(e.target.files?.[0] ?? null); setSubmission(null); setError(null) }}
               label="Drop a .csv or .xlsx file here, or browse"
               hint="One row per finisher. The file is validated before anything is scored."
@@ -606,6 +609,7 @@ export function ResultsStep({ session, raceId }) {
         {submission && !submission.is_valid && (
           <Notice kind="error" title={`The file has ${submission.errors.length} error${submission.errors.length === 1 ? '' : 's'} — fix them and upload again.`}>
             <IssueList issues={submission.errors} kind="error" />
+            <ColumnsRead columns={submission.columns} ignored={submission.ignored_columns} className="mt-3" />
           </Notice>
         )}
         {submission?.is_valid && (
@@ -620,6 +624,7 @@ export function ResultsStep({ session, raceId }) {
               </details>
             )}
             <div className="mt-4">
+              <ColumnsRead columns={submission.columns} ignored={submission.ignored_columns} className="mb-3" />
               <ScoresTable rows={submission.scores} limit={8} />
             </div>
             <Button className="mt-4" onClick={() => navigate(`/races/${encodeURIComponent(raceId)}/review`)}>

@@ -15,6 +15,7 @@ variants seen in practice; matching is case- and punctuation-insensitive.
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass
 from datetime import date
 from typing import Callable
@@ -24,8 +25,20 @@ FieldIssue = tuple[Severity, str]
 FieldValidator = Callable[[str], list[FieldIssue]]
 
 
+_THAI = (chr(0x0E00), chr(0x0E7F))  # Thai vowel and tone marks are part of the word, not accents to drop
+
+
 def _normalize_header(name: str) -> str:
-    return re.sub(r"[^a-z0-9]+", " ", name.strip().lower()).strip()
+    """A header as a key: lower case, accents dropped ("Prénom" = "prenom"), punctuation and
+    underscores as spaces. Letters of every script are kept, so Thai headers match too."""
+    text = unicodedata.normalize("NFKD", name.strip().lower())
+    kept = []
+    for ch in text:
+        if _THAI[0] <= ch <= _THAI[1] or ch.isalnum():
+            kept.append(ch)
+        elif not unicodedata.combining(ch):
+            kept.append(" ")
+    return " ".join("".join(kept).split())
 
 
 def clean_cell(value: str) -> str:
@@ -244,32 +257,83 @@ RACE_FIELDS: tuple[FieldSpec, ...] = (
     FieldSpec("country", ("country", "country code", "nation"), False, _nationality),
 )
 
-# Aliases are matched after lower-casing and collapsing punctuation, so "Last Name", "LASTNAME"
-# and "last_name" all reach "last name" / "lastname". Order matters only where two aliases could
-# appear in the same file; the first listed wins.
+# Aliases are matched after lower-casing, dropping accents and collapsing punctuation, so
+# "Last Name", "LASTNAME", "last_name" and "Prénom" / "prenom" need one entry each. A unit or hint in
+# brackets is ignored ("Time (hh:mm:ss)"). Where two aliases could appear in the same file, the
+# first listed wins: "Time" before "Chip time" before "Gun time". They cover the exports seen in
+# practice: the ITRA and UTMB results sheets, RaceResult / my.raceresult, LiveTrail, ChronoTrack,
+# Sportstiming, and spreadsheets in English, French, German, Spanish, Italian, Portuguese, Dutch
+# and Thai.
+#
+# Only the finish time and a name are required as columns. Positions are worked out from the times
+# when there is no rank column, and gender may come from a category column, or be missing (those
+# runners are scored and left out of the gender rankings): see `ingestion/normalize.py`.
 RESULT_FIELDS: tuple[FieldSpec, ...] = (
     FieldSpec(
         "rank",
-        ("ranking", "rank", "position", "place", "overall", "overall rank", "overall position", "overall place", "pos", "classement", "rang", "scratch", "general", "gen"),
-        True,
+        (
+            "ranking", "rank", "position", "place", "overall", "overall rank", "overall position", "overall place", "overall ranking", "pos", "pos overall", "place overall",
+            "general ranking", "scratch", "scratch rank", "classement", "classement general", "classement scratch", "clt", "clt scratch", "clas", "rang", "general", "gen",
+            "platz", "rang gesamt", "gesamtrang", "gesamtplatz", "platz gesamt", "plaats", "posicion", "puesto", "clasificacion", "posizione", "classifica", "pos ass",
+            "posicao", "classificacao", "อันดับ", "ลำดับ", "อันดับรวม", "ลำดับที่",
+        ),
+        False,
         _rank,
     ),
     FieldSpec(
         "finish_time",
-        ("time", "finish time", "finish", "chip time", "official time", "net time", "gun time", "race time", "total time", "elapsed", "elapsed time", "result", "temps", "zeit", "duration"),
+        (
+            "time", "finish time", "finish", "final time", "race time", "official time", "chip time", "net time", "nett time", "gun time", "total time", "elapsed", "elapsed time",
+            "result", "performance", "duration", "finishing time", "temps", "temps officiel", "temps final", "chrono", "zeit", "endzeit", "zielzeit", "laufzeit", "nettozeit", "bruttozeit",
+            "tiempo", "tiempo oficial", "tempo", "tempo finale", "tempo ufficiale", "tijd", "eindtijd", "netto tijd", "เวลา", "เวลารวม", "เวลาที่ทำได้",
+        ),
         True,
         _finish_time,
     ),
-    FieldSpec("family_name", ("family name", "last name", "lastname", "surname", "last", "family", "nom", "apellido", "nachname"), True, _required_nonempty),
-    FieldSpec("first_name", ("first name", "firstname", "given name", "forename", "first", "prenom", "prénom", "nombre", "vorname"), True, _required_nonempty),
-    FieldSpec("gender", ("gender", "sex", "genre", "sexo", "geschlecht", "m f"), True, _gender),
-    FieldSpec("status", ("status", "result status", "finish status", "race status", "state", "statut"), False, _status),
-    FieldSpec("birthdate", ("birthdate", "date of birth", "dob", "birth date", "birthday", "born", "date de naissance", "geburtsdatum"), False, _iso_date_optional),
-    FieldSpec("birth_year", ("yob", "year of birth", "birth year", "born year", "jahrgang", "annee de naissance"), False, _birth_year),
-    FieldSpec("nationality", ("nationality", "country", "nat", "nation", "country code", "ioc", "ctry", "nationalite", "nationalité", "land"), False, _nationality),
-    FieldSpec("bib_number", ("bib number", "bib", "bib no", "bib nr", "bib #", "race number", "start number", "startnummer", "number", "dossard", "pettorale"), False, _optional),
-    FieldSpec("city", ("city", "town", "ville", "ort", "wohnort"), False, _optional),
-    FieldSpec("team", ("team", "club", "equipe", "équipe", "verein"), False, _optional),
+    FieldSpec(
+        "family_name",
+        ("family name", "last name", "lastname", "surname", "last", "family", "familyname", "name last", "nom", "nom de famille", "apellido", "apellidos", "nachname", "familienname", "cognome", "achternaam", "sobrenome", "apelido", "นามสกุล", "สกุล"),
+        False,
+        _optional,
+    ),
+    FieldSpec(
+        "first_name",
+        ("first name", "firstname", "given name", "givenname", "forename", "first", "name first", "prenom", "nombre", "vorname", "nome", "voornaam", "primeiro nome", "ชื่อ"),
+        False,
+        _optional,
+    ),
+    FieldSpec("gender", ("gender", "sex", "sexe", "genre", "sexo", "genero", "geschlecht", "sesso", "geslacht", "m f", "f m", "g", "เพศ"), False, _gender),
+    FieldSpec("status", ("status", "result status", "finish status", "race status", "state", "statut", "etat", "estado", "stato", "สถานะ"), False, _status),
+    FieldSpec("birthdate", ("birthdate", "date of birth", "dob", "birth date", "birthday", "born", "date de naissance", "naissance", "geburtsdatum", "fecha de nacimiento", "data di nascita", "geboortedatum", "วันเกิด"), False, _optional),
+    FieldSpec("birth_year", ("yob", "year of birth", "birth year", "born year", "year", "jahrgang", "jg", "annee de naissance", "annee", "ano de nacimiento", "anno di nascita", "anno", "geboortejaar", "ปีเกิด"), False, _birth_year),
+    FieldSpec(
+        "nationality",
+        ("nationality", "country", "nat", "nation", "country code", "ioc", "noc", "ctry", "cio", "nationalite", "pays", "land", "nationalitat", "staatsangehorigkeit", "nacionalidad", "pais", "nazionalita", "nazione", "nationaliteit", "สัญชาติ", "ประเทศ"),
+        False,
+        _nationality,
+    ),
+    FieldSpec(
+        "bib_number",
+        ("bib number", "bib", "bib no", "bib nr", "bib #", "bibnumber", "race number", "race no", "start number", "startnummer", "startnr", "stnr", "start nr", "number", "no", "num", "dossard", "dos", "pettorale", "pett", "dorsal", "rugnummer", "หมายเลข", "เลขบิบ", "หมายเลขวิ่ง", "บิบ"),
+        False,
+        _optional,
+    ),
+    FieldSpec("city", ("city", "town", "hometown", "residence", "ville", "ort", "wohnort", "ciudad", "localidad", "citta", "woonplaats", "จังหวัด"), False, _optional),
+    FieldSpec("team", ("team", "club", "team name", "club name", "team club", "equipe", "verein", "equipo", "squadra", "societa", "vereniging", "sponsor", "ทีม", "ชมรม", "สังกัด"), False, _optional),
     # Used only to catch files that mix several distances; never stored.
-    FieldSpec("race", ("race", "distance", "course", "event", "competition", "epreuve", "épreuve", "strecke"), False, _optional),
+    FieldSpec("race", ("race", "distance", "course", "event", "competition", "contest", "epreuve", "strecke", "wettbewerb", "bewerb", "carrera", "prueba", "gara", "ระยะ", "ประเภท"), False, _optional),
 )
+
+# Columns that are not a result field themselves but from which one is read: a single name column is
+# split into family and first name, and a category or age group may carry the gender.
+EXTRA_RESULT_ALIASES: dict[str, tuple[str, ...]] = {
+    "full_name": (
+        "name", "full name", "fullname", "runner", "runner name", "athlete", "athlete name", "participant", "participant name", "competitor", "racer", "finisher",
+        "nom prenom", "nom et prenom", "prenom nom", "nom prenom du coureur", "coureur", "concurrent", "laufer", "teilnehmer", "sportler", "nombre y apellidos", "nombre completo",
+        "corredor", "atleta", "nome e cognome", "cognome e nome", "concorrente", "nome completo", "naam", "deelnemer", "ชื่อ นามสกุล", "ชื่อ สกุล", "ชื่อนามสกุล", "ชื่อผู้เข้าแข่งขัน", "นักวิ่ง",
+    ),
+    "category": (
+        "category", "cat", "categorie", "age group", "agegroup", "age category", "ag", "age grp", "division", "div", "class", "klasse", "ak", "altersklasse", "categoria",
+        "kategorie", "leeftijdscategorie", "gender category", "รุ่น", "รุ่นอายุ", "กลุ่มอายุ",
+    ),
+}

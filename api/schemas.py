@@ -116,6 +116,11 @@ class SubmissionResult(BaseModel):
     errors: list[ValidationIssueOut]
     warnings: list[ValidationIssueOut]
     scores: list[RunnerScoreOut] = []
+    # How the results file was understood: the header each field was read from ("finish_time":
+    # "Temps", "full_name": "Runner" when one column held the whole name, "category" when gender
+    # came from it), and the headers nothing was read from.
+    columns: dict[str, str] = {}
+    ignored_columns: list[str] = []
 
 
 class ScoredCourse(BaseModel):

@@ -11,10 +11,11 @@ from datetime import date
 import re
 from pathlib import Path
 
+from .normalize import load_result_table
 from .reader import read_rows
-from .schema import RACE_FIELDS, RESULT_FIELDS, FieldSpec, _normalize_header, clean_cell, normalize_gender, resolve_rank
+from .schema import RACE_FIELDS, FieldSpec, _normalize_header, clean_cell, normalize_gender, resolve_rank
 from .time_utils import parse_hms_to_seconds
-from .validate import validate_race_file, validate_result_file
+from .validate import validate_race_file, validate_result_table
 
 
 class InvalidFileError(ValueError):
@@ -90,60 +91,35 @@ def race_records(path: str | Path) -> list[RaceRecord]:
     ]
 
 
-def _birth_year_of(row: dict[str, str], mapping: dict[str, str]) -> int | None:
-    """The year from a birthdate (YYYY-MM-DD) or a year-of-birth column, when plausible."""
-    for field in ("birthdate", "birth_year"):
-        header = mapping.get(field)
-        if not header:
-            continue
-        raw = clean_cell(row.get(header, ""))
-        match = re.match(r"^(19|20)\d\d", raw)
-        if match:
-            return int(match.group(0))
-    return None
-
-
 def result_records(path: str | Path) -> list[ResultRecord]:
     """Parse and validate a result file, returning one record per row.
 
-    Raises ``InvalidFileError`` if the file does not pass ``validate_result_file``.
+    Raises ``InvalidFileError`` if the file does not pass validation. The file is read as
+    ``ingestion/normalize.py`` understands it: whatever the export called its columns.
     """
     path = Path(path)
-    report = validate_result_file(path)
+    table = load_result_table(path)
+    report = validate_result_table(table, str(path))
     if not report.is_valid:
         raise InvalidFileError(f"{path} failed validation: {[issue.message for issue in report.errors]}")
 
-    rows = read_rows(path)
-    mapping = _column_map(list(rows[0].keys()) if rows else [], RESULT_FIELDS)
-
     records: list[ResultRecord] = []
-    status_header = mapping.get("status")
-    for row in rows:
-        rank = resolve_rank(row[mapping["rank"]], row.get(status_header, "") if status_header else "")
+    for row in table.rows:
+        rank = resolve_rank(row["rank"], row["status"])
         if rank is None:  # unreachable after validation, kept as a guard
             raise InvalidFileError(f"{path}: a row has neither a rank nor a non-finisher status")
-
-        time_header = mapping.get("finish_time")
-        time_raw = clean_cell(row.get(time_header, "")) if time_header else ""
-        finish_time_seconds = parse_hms_to_seconds(time_raw) if (time_raw and isinstance(rank, int)) else None
-
-        bib_header = mapping.get("bib_number")
-        bib_raw = clean_cell(row.get(bib_header, "")) if bib_header else ""
-
-        gender_raw = row[mapping["gender"]]
-        birth_year = _birth_year_of(row, mapping)
-        nationality_header = mapping.get("nationality")
-        nationality_raw = clean_cell(row.get(nationality_header, "")) if nationality_header else ""
+        time_raw = clean_cell(row["finish_time"])
+        nationality = clean_cell(row["nationality"])
         records.append(
             ResultRecord(
                 rank=rank,
-                finish_time_seconds=finish_time_seconds,
-                family_name=row[mapping["family_name"]].strip(),
-                first_name=row[mapping["first_name"]].strip(),
-                gender=normalize_gender(gender_raw) or gender_raw.strip().upper(),
-                bib_number=bib_raw or None,
-                birth_year=birth_year,
-                nationality=nationality_raw.upper() if re.fullmatch(r"[A-Za-z]{3}", nationality_raw) else None,
+                finish_time_seconds=parse_hms_to_seconds(time_raw) if (time_raw and isinstance(rank, int)) else None,
+                family_name=row["family_name"].strip(),
+                first_name=row["first_name"].strip(),
+                gender=normalize_gender(row["gender"]) or "X",
+                bib_number=clean_cell(row["bib_number"]) or None,
+                birth_year=int(row["birth_year"]) if re.fullmatch(r"(19|20)\d\d", row["birth_year"]) else None,
+                nationality=nationality.upper() if re.fullmatch(r"[A-Za-z]{3}", nationality) else None,
             )
         )
     return records

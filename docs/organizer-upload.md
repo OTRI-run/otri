@@ -51,22 +51,27 @@ A race submission should contain:
 
 ## Result file
 
-One file per race distance (CSV or XLSX), one row per participant. The layout is the one timing companies already export; header names are matched case- and punctuation-insensitively, and the variants below are all recognised. Extra columns (category, age group, splits, chip id) are ignored.
+Upload the export you already have: from your timing company, or the sheet you send to ITRA or UTMB. One file per race distance (CSV, TSV or XLSX; the old `.xls` must be saved as `.xlsx` first), one row per participant.
 
-| Column | Required | Description | Also accepted as |
+**Only a finish time and a name are needed.** Everything else is read where the file has it, and what OTRI did with your file is shown after every upload ("How your file was read": the column each field came from, and the columns left alone).
+
+| Column | Needed | What is accepted | Also recognised as |
 |---|---|---|---|
-| Rank | Yes | Finishing position (`12`, `12.`, `12th`), or `DNF` / `DNS` / `DSQ` | Ranking, Position, Place, Overall, Pos |
-| Time | Finishers | `H:MM:SS`, fractional seconds allowed; `MM:SS` for short races; blank for non-finishers | Finish time, Net time, Chip time, Official time, Gun time, Result |
-| Last name | Yes | Family name | Family name, Surname, Lastname |
-| First name | Yes | Given name | Firstname, Given name, Forename |
-| Gender | Yes | `M`, `F` or `X`; `Male` / `Female` / `Man` / `Woman` and common translations are normalised | Sex |
-| Status | Optional | `Finisher`, `DNF`, `DNS`, `DSQ` (also "Did not finish", "Abandon", "DQ" …). A non-finisher status may replace the rank | Result status |
-| Bib | Recommended | Race bib as printed; letters allowed | Bib number, Race number, Start number |
-| Nationality | Optional | 3-letter country code | Country, Nat |
-| Birthdate | Optional | `YYYY-MM-DD`, only if the organizer has the right to provide it | Date of birth, DOB |
-| Year of birth | Optional | Four-digit year, when a full date is not shared | YOB |
-| City | Optional | City supplied by organizer | Town |
-| Team | Optional | Team or club | Club |
+| Time | Yes | `H:MM:SS` (fractional seconds allowed), `MM:SS` for short races, `12h34m56s`, `12h34'56''`, `1d 02:03:04`, a spreadsheet time cell. Blank, `DNF` or `Abandon` for non-finishers | Finish time, Chip time, Net time, Official time, Temps, Zeit, Tiempo, Tempo, Tijd, เวลา |
+| Name | Yes | Two columns, or one: `WALMSLEY Jim`, `Walmsley, Jim`, `Jim Walmsley`. A single-word name is accepted | Last name + First name, Family name, Surname, Runner, Athlete, Participant, Nom + Prénom, Name, ชื่อ + นามสกุล |
+| Rank | Recommended | Finishing position (`12`, `12.`, `12th`, `12/250`), or `DNF` / `DNS` / `DSQ`. Without it, or when the column turns out to be a category ranking, positions are worked out from the times (equal times share a position). A "Category rank" column is never taken for it | Ranking, Position, Place, Overall, Pos, Clt, Classement, Platz, อันดับ |
+| Gender | Recommended | `M`, `F` or `X`; `Male` / `Female`, `H` / `F` and common translations. Otherwise read from a category such as `SEH`, `V1F`, `M40-44`, `F 35-39`, `W35`. Runners with none are scored and left out of the women's and men's rankings | Sex, Sexe, Geschlecht, Category, Cat, Age group, AK, เพศ |
+| Status | Optional | `Finisher`, `DNF`, `DNS`, `DSQ` (also "Did not finish", "Abandon", "DQ" …). A row with no time and no position counts as DNF | Result status, Statut |
+| Bib | Optional | Race bib as printed; letters allowed | Bib number, Race number, Start number, Dossard, Stnr |
+| Nationality | Optional | `FRA`, `FR`, `France`, `Frankreich` or the Olympic `GER`: stored as the ISO 3-letter code | Country, Nat, Pays, Land, สัญชาติ |
+| Birthdate / year | Optional | Any date layout or a four-digit year. Only the year is kept. Provide it only if you have the right to | Date of birth, DOB, YOB, Jahrgang |
+| City, Team | Optional | Read, not stored | Town, Ville, Club, Verein |
+
+Also absorbed: semicolon- or tab-separated files (a spreadsheet in a European locale), UTF-8, UTF-16 and Windows-1252 text, a title and blank lines above the header, blank and sub-total rows, a unit in a header (`Time (hh:mm:ss)`).
+
+**What stops an upload** is only what a score cannot be made without: a finisher with no readable time, a runner with no name, no time or name column at all, or several race distances in one file. Everything else odd about the file (a position given twice with different times, a time faster than the position ranked before it, the same bib twice, an unknown country) is a warning for you to judge; the score always uses the time.
+
+If OTRI picks the wrong column of your export, or does not recognise one, open an issue with the column names: adding them is a one-line change in `ingestion/schema.py`.
 
 A file whose `Race` / `Distance` / `Event` column holds more than one value is rejected: results for a 50K and a 30K must be uploaded to their own race distances, because each is scored against its own course.
 
