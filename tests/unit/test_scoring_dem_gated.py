@@ -19,7 +19,7 @@ from rasterio.transform import from_origin
 from course.elevation import RasterProvider
 from course.gpx import GpxParseError, TrackPoint, parse_track_points
 from course.measurement import CONFIDENCE_BLOCKING_FLAGS, PARAMETERS, REVIEW_FLAGS, VERSION, Measurement, measure_course
-from scoring.course_standard import DEM_GATED_CURVE, SMOOTHED_UPPER_CURVE, confidence_for
+from scoring.course_standard import confidence_for
 from scoring.estimator import estimate_score
 from scoring.measured_demand import compute_measured_demand
 
@@ -170,22 +170,20 @@ def test_accepted_density_keeps_demand_within_three_percent_on_the_same_dem(dem)
 
 def test_confidence_is_high_only_with_dem_on_a_dense_track(dem):
     dense = measure_course(switchback_track(), dem)
-    assert confidence_for(dense, DEM_GATED_CURVE, True) == ("High", ())
+    assert confidence_for(dense) == ("High", ())
 
     sparse = measure_course(switchback_track()[::4], dem)
-    label, reasons = confidence_for(sparse, DEM_GATED_CURVE, True)
+    label, reasons = confidence_for(sparse)
     assert label == "Low" and any(r.startswith("route_not_reproducible") for r in reasons)
     assert any("median point spacing" in r for r in reasons)
 
     uploaded = measure_course(with_uploaded_elevation(switchback_track()))
-    label, reasons = confidence_for(uploaded, DEM_GATED_CURVE, True)
+    label, reasons = confidence_for(uploaded)
     assert label == "Low" and any(r.startswith("elevation_not_dem_sourced") for r in reasons)
 
 
-def test_older_curves_keep_their_historical_confidence_rule(dem):
-    dense = measure_course(switchback_track(), dem)
-    assert confidence_for(dense, SMOOTHED_UPPER_CURVE, True) == ("Medium", ())
-    assert confidence_for(None, DEM_GATED_CURVE, False) == ("Low", ())
+def test_official_figures_alone_are_low_confidence():
+    assert confidence_for(None) == ("Low", ())
 
 
 def test_estimate_carries_confidence_and_reasons(dem):
@@ -196,16 +194,6 @@ def test_estimate_carries_confidence_and_reasons(dem):
     low = estimate_score(3600, gpx_points=with_uploaded_elevation(pts))
     assert low.confidence == "Low"
     assert any(f.startswith("elevation_not_dem_sourced") for f in low.quality_flags)
-
-
-def test_v07_scores_identically_to_v06_for_the_same_measurement(dem):
-    """V0.7 changes what a score claims, not what it is."""
-    pts = switchback_track()
-    m = measure_course(pts, dem)
-    v6 = estimate_score(3600, gpx_points=pts, measurement=m, curve=SMOOTHED_UPPER_CURVE)
-    v7 = estimate_score(3600, gpx_points=pts, measurement=m, curve=DEM_GATED_CURVE)
-    assert v7.predicted_score == v6.predicted_score
-    assert v7.otri_raw == v6.otri_raw
 
 
 @needs_real_courses
@@ -234,7 +222,7 @@ def test_grade_domain_flag_marks_review_but_does_not_block_confidence(dem):
     steep = replace(m, quality_flags=m.quality_flags + ("sustained_grade_outside_scoring_domain",))
     assert steep.needs_review and steep.to_dict()["status"] == "needs_review"
     assert not steep.blocks_confidence
-    assert confidence_for(steep, DEM_GATED_CURVE, True) == ("High", ())
+    assert confidence_for(steep) == ("High", ())
 
 
 def test_noisy_uploaded_points_do_not_block_confidence_when_the_dem_is_the_source(dem):
@@ -246,10 +234,10 @@ def test_noisy_uploaded_points_do_not_block_confidence_when_the_dem_is_the_sourc
     assert "uploaded_elevation_implausible_unused" in on_dem.quality_flags
     assert "implausible_local_elevation_change" not in on_dem.quality_flags
     assert not on_dem.blocks_confidence
-    assert confidence_for(on_dem, DEM_GATED_CURVE, True)[0] == "High"
+    assert confidence_for(on_dem)[0] == "High"
     # Same file with the upload as the elevation source: the noise is real and blocks.
     on_upload = measure_course(spiky)
     assert "implausible_local_elevation_change" in on_upload.quality_flags
     assert on_upload.blocks_confidence and on_upload.needs_review
-    label, reasons = confidence_for(on_upload, DEM_GATED_CURVE, True)
+    label, reasons = confidence_for(on_upload)
     assert label == "Low" and any(r.startswith("route_not_reproducible") for r in reasons)

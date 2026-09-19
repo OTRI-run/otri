@@ -147,7 +147,7 @@ export default function ApiDocs() {
           </Endpoint>
 
           <Endpoint method="GET" path="/scoring/models">
-            <p>The scoring model versions this API can score with. Every score names its <code>scoring_version</code>; pass one to <code>/score</code> to pin it, so a race scored today is scored the same way next year.</p>
+            <p>The scoring model versions this API can score with: today one, OTRI model 0.1.0. Every score names its <code>scoring_version</code>, and a published version never changes its output, so a score can be recomputed next year.</p>
           </Endpoint>
 
           <section className="mt-12 min-w-0 scroll-mt-24" id="embed">

@@ -18,18 +18,18 @@ from course.measurement import measure_course
 from ingestion.records import RaceRecord, ResultRecord
 from scoring.course_demand import MAX_GRADE, demand_from_totals, equivalent_flat_distance_from_totals, gradient_ratio
 from scoring.course_standard import (
-    DOMAIN_GATED_CURVE,
+    MODEL_CURVE,
     MAX_CLAMPED_DEMAND_FRACTION,
     MAX_SCORED_STEEP_FRACTION,
     MIN_VALIDATED_DEMAND_KM,
-    POWER_CURVE,
     CourseNotScoredError,
     confidence_for,
     not_scored_reason,
 )
 from scoring.estimator import estimate_score
 from scoring.measured_demand import compute_measured_demand
-from scoring.registry import DOMAIN_GATED_VERSION, POWER_VERSION, score_race
+from scoring.registry import score_race
+from scoring.terrain import TERRAIN_MODEL
 
 
 def profile(*sections: tuple[float, float], spacing_m: float = 10.0) -> list[TrackPoint]:
@@ -57,24 +57,10 @@ def on_terrain_model(measurement):
     return replace(measurement, source={"dataset": "synthetic-test-dem"})
 
 
-def reasons_for(points, curve):
+def reasons_for(points):
     measurement = on_terrain_model(measure_course(points))
     demand = compute_measured_demand(measurement=measurement)
-    return confidence_for(measurement, curve, True, demand, demand.course_demand_km)
-
-
-# ------------------------------------------------------------------ the numbers do not move
-
-
-@pytest.mark.parametrize("sections", [((3000, 0.0),), ((3000, 0.15),), ((2000, 0.10), (1500, 0.30), (2000, -0.12)), WALL_COURSE])
-def test_v09_scores_identically_to_v08(sections):
-    points = profile(*sections)
-    measurement = measure_course(points)
-    v8 = estimate_score(1800, gpx_points=points, measurement=measurement, curve=POWER_CURVE)
-    v9 = estimate_score(1800, gpx_points=points, measurement=measurement, curve=DOMAIN_GATED_CURVE)
-    assert v9.otri_raw == v8.otri_raw
-    assert v9.predicted_score == v8.predicted_score
-    assert v9.equivalent_distance_km == v8.equivalent_distance_km
+    return confidence_for(measurement, demand, demand.course_demand_km)
 
 
 # ------------------------------------------------------------------ the gradient domain
@@ -87,15 +73,14 @@ def test_clamped_demand_fraction_is_measured():
 
 def test_a_normal_vertical_kilometre_keeps_high():
     """3.8 km at 26% is steep but inside the measured domain: nothing to report."""
-    assert reasons_for(climb(3800, 0.26), DOMAIN_GATED_CURVE) == ("High", ())
+    assert reasons_for(climb(3800, 0.26)) == ("High", ())
 
 
 def test_a_course_mostly_beyond_the_domain_is_low_with_the_reason():
-    label, reasons = reasons_for(climb(1920, 0.52), DOMAIN_GATED_CURVE)
+    label, reasons = reasons_for(climb(1920, 0.52))
     assert label == "Low"
     assert [r for r in reasons if r.startswith("gradient_domain_exceeded")]
     # V0.8 said nothing about it, and still does: its scores replay with their published label.
-    assert reasons_for(climb(1920, 0.52), POWER_CURVE) == ("High", ())
 
 
 def test_a_few_steep_pitches_do_not_block_high():
@@ -103,31 +88,30 @@ def test_a_few_steep_pitches_do_not_block_high():
     measurement = on_terrain_model(measure_course(climb(3800, 0.26)))
     demand = compute_measured_demand(measurement=measurement)
     at_threshold = replace(demand, clamped_demand_fraction=MAX_CLAMPED_DEMAND_FRACTION)
-    assert confidence_for(measurement, DOMAIN_GATED_CURVE, True, at_threshold, demand.course_demand_km) == ("High", ())
+    assert confidence_for(measurement, at_threshold, demand.course_demand_km) == ("High", ())
     above = replace(demand, clamped_demand_fraction=MAX_CLAMPED_DEMAND_FRACTION + 0.01)
-    assert confidence_for(measurement, DOMAIN_GATED_CURVE, True, above, demand.course_demand_km)[0] == "Low"
+    assert confidence_for(measurement, above, demand.course_demand_km)[0] == "Low"
 
 
 # ------------------------------------------------------------------ the validated range
 
 
 def test_a_course_shorter_than_the_validated_range_is_low_with_the_reason():
-    label, reasons = reasons_for(climb(1000, 0.0), DOMAIN_GATED_CURVE)
+    label, reasons = reasons_for(climb(1000, 0.0))
     assert label == "Low"
     assert [r for r in reasons if r.startswith("course_below_validated_range")]
-    assert reasons_for(climb(1000, 0.0), POWER_CURVE) == ("High", ())
 
 
 def test_the_validated_range_starts_at_the_1500_m_record():
     measurement = on_terrain_model(measure_course(climb(3000, 0.0)))
     demand = compute_measured_demand(measurement=measurement)
-    assert confidence_for(measurement, DOMAIN_GATED_CURVE, True, demand, MIN_VALIDATED_DEMAND_KM) == ("High", ())
-    assert confidence_for(measurement, DOMAIN_GATED_CURVE, True, demand, MIN_VALIDATED_DEMAND_KM - 0.001)[0] == "Low"
+    assert confidence_for(measurement, demand, MIN_VALIDATED_DEMAND_KM) == ("High", ())
+    assert confidence_for(measurement, demand, MIN_VALIDATED_DEMAND_KM - 0.001)[0] == "Low"
 
 
 def test_estimate_carries_the_new_reasons():
     estimate = estimate_score(1733, gpx_points=profile(*WALL_COURSE))
-    assert estimate.scoring_version == DOMAIN_GATED_CURVE.version
+    assert estimate.scoring_version == MODEL_CURVE.version
     assert estimate.confidence == "Low"
     assert any(flag.startswith("gradient_domain_exceeded") for flag in estimate.quality_flags)
 
@@ -144,36 +128,33 @@ def _finishers(*seconds) -> list[ResultRecord]:
 
 
 def test_why_a_vertical_kilometre_is_not_scored():
-    """The defect being fenced off: under V0.8 a mid-pack 50 minutes scores like a world best."""
-    points = climb(3800, 0.26)
-    assert estimate_score(3000, gpx_points=points, curve=POWER_CURVE).predicted_score == 1000
-    assert estimate_score(3000, gpx_points=points, curve=POWER_CURVE).breakdown.terrain_factor > 1.55
-
+    """The defect being fenced off: an uphill-only course is ~100% steep, so the terrain term, calibrated
+    on courses at most a quarter that steep, multiplies its demand by more than half again and a mid-pack
+    50-minute vertical kilometre would score like a world best."""
+    demand = compute_measured_demand(measurement=measure_course(climb(3800, 0.26)))
+    assert demand.steep_distance_fraction > 0.9
+    assert TERRAIN_MODEL.factor(demand.steep_distance_fraction, demand.altitude_excess_m) > 1.55
 
 def test_a_vertical_race_lists_every_finisher_without_a_score():
     points = climb(3800, 0.26)
-    scores = score_race(_race(), _finishers(1800, 3000, 4200), model_version=DOMAIN_GATED_VERSION, gpx_points=points, measurement=measure_course(points))
+    scores = score_race(_race(), _finishers(1800, 3000, 4200), gpx_points=points, measurement=measure_course(points))
     assert [s.rank for s in scores] == [1, 2, 3]
     for row in scores:
         assert row.score.otri_score is None
         assert row.score.confidence == "n/a"
         assert len(row.score.quality_flags) == 1 and row.score.quality_flags[0].startswith("course_not_scored: vertical races are not scored yet")
-    # V0.8 results replay as published.
-    replay = score_race(_race(), _finishers(1800), model_version=POWER_VERSION, gpx_points=points, measurement=measure_course(points))
-    assert replay[0].score.otri_score == 1000
 
 
 def test_the_trigger_is_the_measured_steep_share():
     half_steep = compute_measured_demand(measurement=measure_course(profile((2000, 0.05), (2000, 0.26))))
     assert half_steep.steep_distance_fraction <= MAX_SCORED_STEEP_FRACTION
-    assert not_scored_reason(DOMAIN_GATED_CURVE, half_steep) is None
-    assert not_scored_reason(DOMAIN_GATED_CURVE, replace(half_steep, steep_distance_fraction=MAX_SCORED_STEEP_FRACTION + 0.01)) is not None
-    assert not_scored_reason(POWER_CURVE, replace(half_steep, steep_distance_fraction=1.0)) is None
+    assert not_scored_reason(half_steep) is None
+    assert not_scored_reason(replace(half_steep, steep_distance_fraction=MAX_SCORED_STEEP_FRACTION + 0.01)) is not None
 
 
 def test_without_a_course_file_the_vertical_label_decides():
-    assert score_race(_race(3.8, 1000.0), _finishers(1800), model_version=DOMAIN_GATED_VERSION)[0].score.otri_score is None
-    assert score_race(_race(50.0, 2000.0), _finishers(18000), model_version=DOMAIN_GATED_VERSION)[0].score.otri_score is not None
+    assert score_race(_race(3.8, 1000.0), _finishers(1800))[0].score.otri_score is None
+    assert score_race(_race(50.0, 2000.0), _finishers(18000))[0].score.otri_score is not None
 
 
 def test_the_calculator_gets_the_reason_instead_of_a_number():
@@ -192,7 +173,6 @@ def test_totals_beyond_the_domain_are_clamped_and_flagged_not_refused():
     assert demand_km == pytest.approx(1.92 * gradient_ratio(MAX_GRADE), abs=1e-3)
     assert len(flags) == 1 and flags[0].startswith("gradient_out_of_supported_domain")
     assert equivalent_flat_distance_from_totals(1.92, 1000.0) == demand_km
-    assert estimate_score(1733, distance_km=1.92, elevation_gain_m=1000.0, curve=POWER_CURVE).quality_flags[0] == flags[0]
 
 
 def test_totals_inside_the_domain_are_unchanged_and_unflagged():

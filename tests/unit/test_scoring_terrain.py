@@ -5,11 +5,7 @@ from pathlib import Path
 import pytest
 
 from course.gpx import parse_track_points
-from scoring.course_standard import (
-    ENDURANCE_REFERENCED_CURVE,
-    TERRAIN_ADJUSTED_CURVE,
-    adjusted_demand,
-)
+from scoring.course_standard import MODEL_CURVE, adjusted_demand
 from scoring.estimator import estimate_score
 from scoring.measured_demand import compute_measured_demand
 from scoring.terrain import TERRAIN_MODEL, TerrainModel
@@ -111,44 +107,35 @@ def test_terrain_ordering_across_real_courses():
 
 
 @needs_real_courses
-def test_road_course_scores_identically_under_v04_and_v05():
-    points = _points(ROAD_HALF)
-    v4 = estimate_score(4800, gpx_points=points, curve=ENDURANCE_REFERENCED_CURVE)
-    v5 = estimate_score(4800, gpx_points=points, curve=TERRAIN_ADJUSTED_CURVE)
-    assert v5.equivalent_distance_km == v4.equivalent_distance_km
-    assert v5.predicted_score == v4.predicted_score
+def test_a_road_course_is_scored_on_its_gradient_demand_alone():
+    demand = _demand(ROAD_HALF)
+    km, flags = adjusted_demand(demand, MODEL_CURVE)
+    assert km == demand.course_demand_km and flags == tuple(demand.quality_flags)
+    assert estimate_score(4800, gpx_points=_points(ROAD_HALF)).breakdown.terrain_factor == 1.0
 
 
 @needs_real_courses
-def test_real_mountain_ultra_winner_reaches_the_calibration_target():
-    """STEEP_COEFFICIENT is calibrated so this one real performance scores 970. If this moves,
-    the calibration moved — which is a new model version, not an edit (V0.1 spec section 21)."""
-    estimate = estimate_score(REFERENCE_WIN_SECONDS, gpx_points=_points(REFERENCE_100MI), curve=TERRAIN_ADJUSTED_CURVE)
-    assert estimate.predicted_score == 970
+def test_real_course_pins():
+    """One real performance per course, from uploaded elevations (production measures from the DEM
+    and differs by a few percent). STEEP_COEFFICIENT was calibrated on the mountain 100-miler; if
+    these move, the model moved, which is a new version and not an edit."""
+    assert estimate_score(REFERENCE_WIN_SECONDS, gpx_points=_points(REFERENCE_100MI)).predicted_score == 958
+    assert estimate_score(8430, gpx_points=_points(CM6)).predicted_score == 653
 
 
 @needs_real_courses
 def test_mountain_ultra_still_has_headroom_above_the_calibration_point():
-    """The trap V0.3 documented and rejected: the top of the scale must keep separating
-    performances better than the one it was calibrated on."""
+    """The top of the scale must keep separating performances better than the one it was calibrated on."""
     points = _points(REFERENCE_100MI)
-    faster = estimate_score(REFERENCE_WIN_SECONDS - 1800, gpx_points=points, curve=TERRAIN_ADJUSTED_CURVE)
-    winner = estimate_score(REFERENCE_WIN_SECONDS, gpx_points=points, curve=TERRAIN_ADJUSTED_CURVE)
+    faster = estimate_score(REFERENCE_WIN_SECONDS - 1800, gpx_points=points)
+    winner = estimate_score(REFERENCE_WIN_SECONDS, gpx_points=points)
     assert winner.predicted_score < faster.predicted_score <= 1000
 
 
 @needs_real_courses
 def test_adjustment_is_surfaced_as_a_quality_flag():
-    estimate = estimate_score(REFERENCE_WIN_SECONDS, gpx_points=_points(REFERENCE_100MI), curve=TERRAIN_ADJUSTED_CURVE)
+    estimate = estimate_score(REFERENCE_WIN_SECONDS, gpx_points=_points(REFERENCE_100MI))
     assert any(flag.startswith("terrain_adjustment_applied") for flag in estimate.quality_flags)
-
-
-@needs_real_courses
-def test_adjusted_demand_is_a_no_op_for_curves_without_a_terrain_model():
-    demand = _demand(REFERENCE_100MI)
-    km, flags = adjusted_demand(demand, ENDURANCE_REFERENCED_CURVE)
-    assert km == demand.course_demand_km
-    assert flags == tuple(demand.quality_flags)
 
 
 @needs_real_courses

@@ -71,24 +71,10 @@ def test_root_reports_app_status():
     assert body["started_at"]
 
 
-def test_list_scoring_models_includes_all_options():
+def test_there_is_one_scoring_model_to_choose():
     response = client.get("/scoring/models")
     assert response.status_code == 200
-    versions = {model["version"] for model in response.json()}
-    assert versions == {
-        "0.9.0-course-standard-domain-gated",
-        "0.8.0-course-standard-power",
-        "0.7.0-course-standard-dem-gated",
-        "0.6.0-course-standard-smoothed-upper",
-        "0.5.0-course-standard-terrain-adjusted",
-        "0.4.0-course-standard-endurance-referenced",
-        "0.3.0-course-standard-duration-scaled",
-        "0.1.0-course-standard-calibrated",
-        "0.2.0-course-standard-measured",
-        "1.1.0-course-standard",
-        "1.0.0-course-standard",
-        "0.1.0-field-relative",
-    }
+    assert [model["version"] for model in response.json()] == ["0.9.0-course-standard-domain-gated"]
 
 
 def test_new_race_defaults_to_course_standard_scoring():
@@ -98,11 +84,10 @@ def test_new_race_defaults_to_course_standard_scoring():
     assert response.json()["scoring_version"] == "0.9.0-course-standard-domain-gated"
 
 
-def test_race_can_be_created_with_explicit_scoring_version():
+def test_a_race_can_name_the_model_explicitly():
     headers = _organizer_auth_headers()
-    _, race_id = _create_event_and_race(headers, scoring_version="0.1.0-field-relative")
-    response = client.get(f"/races/{race_id}")
-    assert response.json()["scoring_version"] == "0.1.0-field-relative"
+    _, race_id = _create_event_and_race(headers, scoring_version="0.9.0-course-standard-domain-gated")
+    assert client.get(f"/races/{race_id}").json()["scoring_version"] == "0.9.0-course-standard-domain-gated"
 
 
 def test_race_creation_rejects_unknown_scoring_version():
@@ -118,13 +103,28 @@ def test_race_creation_rejects_unknown_scoring_version():
     assert response.status_code == 422
 
 
-def test_edit_race_can_change_scoring_version():
+def test_a_retired_scoring_version_is_refused_on_create_and_on_edit():
+    headers = _organizer_auth_headers()
+    event_id, race_id = _create_event_and_race(headers)
+    for retired in ("0.1.0-field-relative", "0.8.0-course-standard-power"):
+        created = client.post(f"/events/{event_id}/races", json={"course_name": "21K", "distance_km": 21.0, "elevation_gain_m": 900.0, "scoring_version": retired}, headers=headers)
+        assert created.status_code == 422, retired
+        assert client.patch(f"/races/{race_id}", json={"scoring_version": retired}, headers=headers).status_code == 422, retired
+
+
+def test_a_race_stored_under_a_retired_build_is_moved_to_the_model():
+    """What migration 0004 does to races created before the development builds were removed."""
+    from api import migrations
+
     headers = _organizer_auth_headers()
     _, race_id = _create_event_and_race(headers)
-
-    response = client.patch(f"/races/{race_id}", json={"scoring_version": "0.1.0-field-relative"}, headers=headers)
-    assert response.status_code == 200
-    assert response.json()["scoring_version"] == "0.1.0-field-relative"
+    with db.get_connection() as connection:
+        connection.execute("UPDATE races SET scoring_version = '0.6.0-course-standard-smoothed-upper' WHERE race_id = %s", (race_id,))
+        connection.execute(next(m.sql for m in migrations.MIGRATIONS if m.name == "0004_single_scoring_model"))
+    assert client.get(f"/races/{race_id}").json()["scoring_version"] == "0.9.0-course-standard-domain-gated"
+    with DEMO_RESULT_001.open("rb") as handle:
+        scored = client.post(f"/races/{race_id}/results", files={"file": ("r.csv", handle, "text/csv")}, headers=headers)
+    assert scored.status_code == 200 and scored.json()["scores"][0]["scoring_version"] == "0.9.0-course-standard-domain-gated"
 
 
 def test_list_races_returns_demo_races():
@@ -184,23 +184,6 @@ def test_submit_valid_results_returns_computed_scores():
     assert body["scores"][-1]["otri_score"] < body["scores"][0]["otri_score"]
 
 
-def test_submit_results_using_field_relative_model_scores_winner_at_1000():
-    headers = _organizer_auth_headers()
-    _, race_id = _create_event_and_race(headers, scoring_version="0.1.0-field-relative")
-
-    with DEMO_RESULT_001.open("rb") as handle:
-        response = client.post(
-            f"/races/{race_id}/results",
-            files={"file": ("OTRI-DEMO-001.csv", handle, "text/csv")},
-            headers=headers,
-        )
-
-    assert response.status_code == 200
-    body = response.json()
-    assert body["scores"][0]["otri_score"] == 1000
-    assert body["scores"][0]["scoring_version"] == "0.1.0-field-relative"
-
-
 def test_submit_invalid_results_returns_errors_and_no_scores():
     headers = _organizer_auth_headers()
     _, race_id = _create_event_and_race(headers)
@@ -250,31 +233,6 @@ def test_submit_results_for_race_you_do_not_own_returns_403():
             headers=headers,
         )
     assert response.status_code == 403
-
-
-def test_submit_results_for_race_with_out_of_domain_gradient_gpx_still_scores_with_a_notice():
-    """Spec section 9.1's "quality_flag" concept: an out-of-domain segment is clamped and
-    flagged rather than aborting the whole course's scoring. Pinned to build 0.8.0: the fixture
-    is uphill-only, which later builds list without a score (next test)."""
-    headers = _organizer_auth_headers()
-    _, race_id = _create_event_and_race(headers, scoring_version="0.8.0-course-standard-power")
-    with STEEP_GPX.open("rb") as handle:
-        client.post(
-            f"/races/{race_id}/gpx",
-            files={"file": ("steep.gpx", handle, "application/gpx+xml")},
-            headers=headers,
-        )
-
-    with DEMO_RESULT_001.open("rb") as handle:
-        response = client.post(
-            f"/races/{race_id}/results",
-            files={"file": ("OTRI-DEMO-001.csv", handle, "text/csv")},
-            headers=headers,
-        )
-    assert response.status_code == 200
-    scores = response.json()["scores"]
-    assert scores
-    assert any("gradient_out_of_supported_domain" in flag for flag in scores[0]["quality_flags"])
 
 
 def test_vertical_race_lists_finish_times_without_scores():

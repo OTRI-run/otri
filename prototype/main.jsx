@@ -80,11 +80,13 @@ function navigate(hash) {
 
 // ------------------------------------------------------------------------------------- shell
 
-// The header carries what a visitor came to do; Runners, the API page and GitHub are in the footer.
+// The header carries what a visitor came to do; the API page and GitHub are in the footer (GitHub
+// also sits in the home page's opening, next to what OTRI is).
 const NAV = [
   { id: 'score', label: 'Score a race', short: 'Score', href: '#score' },
   { id: 'calculator', label: 'Calculator', href: '#calculator' },
   { id: 'races', label: 'Races', href: '#races' },
+  { id: 'runners', label: 'Runners', href: '#runners' },
   { id: 'faq', label: 'FAQ', href: '#faq' },
 ]
 
@@ -110,7 +112,7 @@ function Header({ tab }) {
             <i className="h-1.5 w-1.5 rounded-full bg-blue-600 shadow-[0_0_0_3px_#dbeafe]" />
             PROTOTYPE <span className="text-slate-400">v0.x</span>
           </div>
-          <nav className="ml-auto hidden shrink-0 items-center gap-7 md:flex">
+          <nav className="ml-auto hidden shrink-0 items-center gap-5 md:flex lg:gap-7">
             {NAV.map((item) => (
               <NavLink key={item.id} item={item} active={tab === item.id} />
             ))}
@@ -154,7 +156,6 @@ function Footer() {
       <div className="mx-auto flex w-[min(1120px,calc(100%-28px))] flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <Logo href="../" />
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <a href="#runners" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Runners</a>
           <a href="#api" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">API and embed</a>
           <a href={GITHUB_URL} className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">GitHub</a>
           <a href="#faq" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">FAQ</a>

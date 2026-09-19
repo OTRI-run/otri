@@ -11,7 +11,6 @@ from course.gpx import read_track_points
 from course.features import extract_features_legacy, features_from_measurement, haversine_m
 from course.measurement import measure_course
 from course.elevation import configured_provider
-from scoring.course_demand import compute_course_demand
 from scoring.measured_demand import compute_measured_demand
 
 
@@ -22,7 +21,6 @@ def diagnose(path):
     return dict(file=path.name, raw_sha256=sha256(path.read_bytes()).hexdigest(),
                 point_count=len(points), median_raw_spacing_m=statistics.median(spacings),
                 legacy_features=extract_features_legacy(points).to_dict(),
-                legacy_demand=compute_course_demand(points).to_dict(),
                 features=features_from_measurement(m).to_dict(),
                 demand=compute_measured_demand(measurement=m).to_dict(), measurement=m.to_dict())
 

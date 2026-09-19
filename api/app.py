@@ -51,7 +51,6 @@ if not os.environ.get("OTRI_DEM_MANIFEST"):
 from ingestion import result_records, validate_result_file
 from ingestion.records import RaceRecord
 from scoring import DEFAULT_SCORING_VERSION, available_scoring_models, estimate_score, get_scoring_model_info, score_race
-from scoring.course_standard import MEASURED_DEMAND_VERSIONS
 from scoring.runner_index import IndexInput, compute_runner_index
 
 from . import db
@@ -1236,7 +1235,7 @@ def _score_results(race: db.Race, results: list) -> list[RunnerScoreOut]:
         _filename, content = stored_gpx
         gpx_points = parse_track_points(content)
     stored_measurement = db.get_measurement(race.race_id)
-    if gpx_points is not None and race.scoring_version in MEASURED_DEMAND_VERSIONS and stored_measurement is None:
+    if gpx_points is not None and stored_measurement is None:
         raise ValueError('reattach the GPX to save a versioned measurement before using measured scoring')
     measurement = Measurement(**stored_measurement["snapshot"]) if stored_measurement else None
     return _scored_rows(race.to_race_record(), results, race.scoring_version, gpx_points, measurement)

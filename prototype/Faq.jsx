@@ -68,7 +68,7 @@ const FAQ = [
       },
       {
         q: 'Can I reproduce a score myself?',
-        a: 'Yes. The code is public, every API response carries the scoring version, the measurement version, the elevation source and a hash of the measured course, and old versions remain selectable. You need only the GPX file and the finish time.',
+        a: 'Yes. The code is public, every API response carries the scoring version, the measurement version, the elevation source and a hash of the measured course, and a published model version never changes its output. You need only the GPX file and the finish time.',
         tags: 'reproduce verify audit open source api',
       },
     ],
