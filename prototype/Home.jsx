@@ -148,23 +148,24 @@ export default function Home() {
               OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> PROTOTYPE
             </div>
             <h1 className="mt-5 max-w-[760px] text-[clamp(44px,7vw,84px)] font-bold leading-[1.08] tracking-[-.065em] text-[#0b1220]">
-              A trail index
+              The open score
               <br />
-              <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">you can try today.</em>
+              <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">for any trail race.</em>
             </h1>
             <p className="mt-6 max-w-[620px] text-[15px] leading-7 text-slate-500 sm:text-[17px]">
-              Score any course before you race it. Browse races scored under the same model. Bring official results if
-              you organize one. Everything here runs on the real scoring code, and every number explains itself.
+              A calculator, not a governing body. Bring a course and a results file and get every finisher scored in a
+              minute: no account, no approval, nothing kept. Runners try a target time before race day. One open,
+              versioned model, and every number explains itself.
             </p>
             <div className="mt-7 flex flex-col gap-2 sm:flex-row">
-              <a className={primaryButton} href="#calculator">
-                Calculate your score <Calculator size={15} />
+              <a className={primaryButton} href="#score">
+                Score my race <ArrowRight size={15} />
               </a>
-              <a className={secondaryButton} href="#races">
-                Browse scored races <ArrowRight size={15} />
+              <a className={secondaryButton} href="#calculator">
+                Calculate a target time <Calculator size={15} />
               </a>
-              <a className={secondaryButton} href="#races?view=calendar">
-                Race calendar <ArrowRight size={15} />
+              <a className={secondaryButton} href="#api">
+                API and embed <ArrowRight size={15} />
               </a>
             </div>
             <div className="mt-7 flex flex-wrap gap-x-4 gap-y-2 font-mono text-[8px] tracking-[.08em] text-slate-500 sm:text-[9px]">

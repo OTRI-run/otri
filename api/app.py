@@ -49,7 +49,8 @@ if not os.environ.get("OTRI_DEM_MANIFEST"):
         "V0.7 score will report Low confidence. See scripts/deploy/06-install-dem.sh."
     )
 from ingestion import result_records, validate_result_file
-from scoring import available_scoring_models, estimate_score, get_scoring_model_info, score_race
+from ingestion.records import RaceRecord
+from scoring import DEFAULT_SCORING_VERSION, available_scoring_models, estimate_score, get_scoring_model_info, score_race
 from scoring.course_standard import MEASURED_DEMAND_VERSIONS
 from scoring.runner_index import IndexInput, compute_runner_index
 
@@ -112,6 +113,9 @@ from .schemas import (
     ScoreRequestOut,
     EventSummary,
     EventUpdate,
+    ScoredCourse,
+    ScoreRaceResult,
+    ScoreSummary,
     GpxAnalysis,
     IllustrativeEstimateOut,
     MessageResponse,
@@ -169,9 +173,10 @@ _STARTED_AT = datetime.now(timezone.utc)
 # local Vite dev server so `npm run dev` + `uvicorn api.app:app` work together
 # out of the box.
 _allowed_origins = os.environ.get("OTRI_API_ALLOWED_ORIGINS", "http://localhost:5173")
+_ALLOWED_ORIGIN_LIST = [origin.strip() for origin in _allowed_origins.split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[origin.strip() for origin in _allowed_origins.split(",") if origin.strip()],
+    allow_origins=_ALLOWED_ORIGIN_LIST,
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["*"],
     allow_credentials=True,  # the organizer app authenticates with an HttpOnly cookie
@@ -206,6 +211,34 @@ async def _guardrails(request: Request, call_next):
         # courses are content-addressed and can be held for an hour.
         ttl = 3600 if request.url.path.startswith("/gpx/shared/") else 30
         response.headers.setdefault("Cache-Control", f"public, max-age={ttl}, stale-while-revalidate=60")
+    return response
+
+
+# The calculator endpoints are a public tool: any website may call them from a browser (an embedded
+# calculator, a timing company's results page). They carry no session and keep nothing, so they
+# answer every origin, without credentials. Everything else stays on the allow-list above.
+_OPEN_CORS_PATHS = {"/score", "/gpx/analyze", "/scoring/models"}
+
+
+@app.middleware("http")
+async def _open_cors(request: Request, call_next):
+    origin = request.headers.get("origin")
+    # OTRI's own pages send the session cookie, which a wildcard answer would make the browser refuse.
+    if origin is None or request.url.path not in _OPEN_CORS_PATHS or origin in _ALLOWED_ORIGIN_LIST:
+        return await call_next(request)
+    if request.method == "OPTIONS" and "access-control-request-method" in request.headers:
+        response = Response(status_code=204)
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST"
+        response.headers["Access-Control-Allow-Headers"] = request.headers.get("access-control-request-headers", "*")
+        response.headers["Access-Control-Max-Age"] = "86400"
+    else:
+        response = await call_next(request)
+    if "access-control-allow-origin" not in response.headers:  # not one of our own origins
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        if "access-control-allow-credentials" in response.headers:
+            del response.headers["access-control-allow-credentials"]  # a wildcard answer never carries credentials
+        response.headers["Access-Control-Expose-Headers"] = "Content-Disposition, Retry-After"
+    response.headers.add_vary_header("Origin")
     return response
 
 
@@ -1491,7 +1524,13 @@ def _score_results(race: db.Race, results: list) -> list[RunnerScoreOut]:
     if gpx_points is not None and race.scoring_version in MEASURED_DEMAND_VERSIONS and stored_measurement is None:
         raise ValueError('reattach the GPX to save a versioned measurement before using measured scoring')
     measurement = Measurement(**stored_measurement["snapshot"]) if stored_measurement else None
-    scores = score_race(race.to_race_record(), results, model_version=race.scoring_version, gpx_points=gpx_points, measurement=measurement)
+    return _scored_rows(race.to_race_record(), results, race.scoring_version, gpx_points, measurement)
+
+
+def _scored_rows(race: RaceRecord, results: list, scoring_version: str, gpx_points, measurement) -> list[RunnerScoreOut]:
+    """Score result rows against a course. Touches no storage: the stored leaderboard and the
+    stateless `POST /score` are the same computation."""
+    scores = score_race(race, results, model_version=scoring_version, gpx_points=gpx_points, measurement=measurement)
     # Finish times ride along for the public leaderboard; scores carry the runner's identity only.
     by_key = {(str(r.rank), r.family_name, r.first_name): r for r in results}
     out = []
@@ -1517,7 +1556,7 @@ def _score_results(race: db.Race, results: list) -> list[RunnerScoreOut]:
                     bib_number=result.bib_number,
                     family_name=result.family_name,
                     first_name=result.first_name,
-                    scoring_version=race.scoring_version,
+                    scoring_version=scoring_version,
                     status=result.rank,
                     runner_id=result.runner_id,
                     gender=result.gender,
@@ -1761,6 +1800,131 @@ async def analyze_gpx(request: Request, file: UploadFile, finish_time_seconds: i
             raise HTTPException(status_code=422, detail=str(error)) from error
 
     return GpxAnalysis(features=features.to_dict(), estimate=estimate, measurement={**measurement.to_dict(), "raw_sha256": sha256(contents).hexdigest()})
+
+
+# ----------------------------------------------------------------------------- score a race
+# The whole product in one call, for a race that wants its scores and nothing else: a course and a
+# results file in, the validated and scored result list out. No account, no race page, no row in
+# any table; both files are deleted before the response is sent. It is the organizer workflow's
+# validation and scoring, unchanged, minus the storing. See docs/product/open-scoring-tool.md.
+
+_SCORE_CSV_COLUMNS = ("rank", "bib_number", "family_name", "first_name", "gender", "nationality", "finish_time", "otri_score", "confidence", "status", "performance_rate", "scoring_version", "quality_flags")
+
+
+def _csv_cell(value) -> str:
+    """A spreadsheet runs a cell that starts with = + - or @ as a formula; names come from a file
+    anyone may have written, so such a cell is made text."""
+    text = "" if value is None else str(value)
+    return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
+
+
+def _scores_csv(scores: list[RunnerScoreOut]) -> str:
+    import csv
+    import io
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, lineterminator="\n")
+    writer.writerow(_SCORE_CSV_COLUMNS)
+    for row in scores:
+        seconds = row.finish_time_seconds
+        finish = f"{seconds // 3600:02d}:{seconds % 3600 // 60:02d}:{seconds % 60:02d}" if seconds is not None else ""
+        values = {**row.model_dump(), "finish_time": finish, "quality_flags": " | ".join(row.quality_flags), "performance_rate": f"{row.performance_rate:.4f}" if row.performance_rate else ""}
+        writer.writerow([_csv_cell(values.get(column)) for column in _SCORE_CSV_COLUMNS])
+    return buffer.getvalue()
+
+
+def _save_upload(contents: bytes, suffix: str) -> Path:
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp_file:
+        temp_file.write(contents)
+        return Path(temp_file.name)
+
+
+@app.post("/score", response_model=ScoreRaceResult)
+async def score_a_race(
+    request: Request,
+    results: UploadFile,
+    gpx: UploadFile | None = None,
+    distance_km: float | None = Form(default=None),
+    elevation_gain_m: float | None = Form(default=None),
+    race_name: str | None = Form(default=None, max_length=200),
+    scoring_version: str | None = Form(default=None, max_length=80),
+    format: str = "json",
+):
+    """Validate a results file and score it against a course, without an account and without
+    keeping anything. The course is a GPX file (`gpx`, measured like any OTRI course) or, without
+    one, the official `distance_km` and `elevation_gain_m`. `?format=csv` returns the scored list as
+    a CSV download. An invalid results file answers 200 with `is_valid: false` and the issues."""
+    enforce_rate_limit(request, max_requests=10)  # public, and a full course measurement plus thousands of rows
+    if format not in ("json", "csv"):
+        raise HTTPException(status_code=422, detail="format must be json or csv")
+    version = scoring_version or DEFAULT_SCORING_VERSION
+    _validate_scoring_version(version)
+    if gpx is None and (distance_km is None or elevation_gain_m is None):
+        raise HTTPException(status_code=422, detail="send the course as a gpx file, or distance_km and elevation_gain_m")
+    if gpx is None and (not 0 < distance_km <= 2000 or not 0 <= elevation_gain_m <= 100_000):
+        raise HTTPException(status_code=422, detail="distance_km must be above 0 and elevation_gain_m 0 or more")
+
+    results_bytes = await results.read(20_000_001)
+    gpx_bytes = await gpx.read(20_000_001) if gpx is not None else None
+    if len(results_bytes) + len(gpx_bytes or b"") > 20_000_000:
+        raise HTTPException(status_code=413, detail="Upload exceeds 20 MB")
+
+    def run() -> ScoreRaceResult:
+        paths = [_save_upload(results_bytes, _safe_suffix(results.filename, ".csv"))]
+        try:
+            points = measurement = None
+            if gpx_bytes is not None:
+                paths.append(_save_upload(gpx_bytes, _safe_suffix(gpx.filename, ".gpx")))
+                try:
+                    points, measurement = _measure_gpx_path(paths[1])
+                except (GpxParseError, ValueError, UnicodeError) as error:
+                    raise HTTPException(status_code=422, detail=f"course file: {error}") from error
+                features = features_from_measurement(measurement)
+                distance, climb = features.distance_km, features.elevation_gain_m
+            else:
+                distance, climb = distance_km, elevation_gain_m
+            course = ScoredCourse(name=(race_name or "").strip() or None, source="gpx" if points is not None else "official", distance_km=round(distance, 3), elevation_gain_m=round(climb, 1))
+
+            try:
+                report = validate_result_file(paths[0])
+            except (ValueError, OSError) as error:  # unreadable, wrong type, too many rows
+                raise HTTPException(status_code=422, detail=f"results file: {error}") from error
+            issues = {
+                "errors": [ValidationIssueOut(**issue.to_dict()) for issue in report.errors],
+                "warnings": [ValidationIssueOut(**issue.to_dict()) for issue in report.warnings],
+            }
+            shared = {"scoring_version": version, "course": course, "measurement": measurement.to_dict() if measurement is not None else None}
+            if not report.is_valid:
+                return ScoreRaceResult(is_valid=False, scores=[], **issues, **shared)
+
+            race = RaceRecord(race_id="unsaved", race_name=course.name or "Unsaved race", event_date=date.today(), course_name=course.name or "Course", distance_km=distance, elevation_gain_m=climb)
+            try:
+                scores = _scored_rows(race, result_records(paths[0]), version, points, measurement)
+            except ValueError as error:
+                raise HTTPException(status_code=422, detail=str(error)) from error
+
+            finishers = [row for row in scores if row.status == "finisher"]
+            if finishers:
+                # Confidence and its reasons are the course's, identical on every row.
+                course.confidence = finishers[0].confidence
+                course.quality_flags = list(finishers[0].quality_flags)
+                course.not_scored_reason = next((flag for flag in course.quality_flags if flag.startswith("course_not_scored")), None)
+            values = sorted(row.otri_score for row in finishers if row.otri_score is not None)
+            summary = ScoreSummary(
+                finishers=len(finishers),
+                non_finishers=len(scores) - len(finishers),
+                best_score=values[-1] if values else None,
+                median_score=values[len(values) // 2] if values else None,
+            )
+            return ScoreRaceResult(is_valid=True, scores=scores, summary=summary, **issues, **shared)
+        finally:
+            for path in paths:
+                _discard_temp(path)
+
+    result = await run_in_threadpool(run)
+    if format == "csv" and result.is_valid:
+        return Response(content=_scores_csv(result.scores), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="otri-scores.csv"'})
+    return result
 
 
 # ----------------------------------------------------------------------------- shared courses

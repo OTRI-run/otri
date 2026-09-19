@@ -36,6 +36,8 @@ export default defineConfig({
         main: resolve(import.meta.dirname, 'index.html'),
         prototype: resolve(import.meta.dirname, 'prototype/index.html'),
         organizer: resolve(import.meta.dirname, 'prototype/organizer/index.html'),
+        // The calculator for other websites to put in an iframe (see the API page).
+        embed: resolve(import.meta.dirname, 'prototype/embed/index.html'),
       },
     },
   },

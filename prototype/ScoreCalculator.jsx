@@ -851,7 +851,9 @@ function TargetTimeControls({ targetSeconds, timeInput, onSlider, onInput, dista
   )
 }
 
-export default function ScoreCalculator() {
+// `embedded`: the calculator inside another website's page (prototype/embed/): no share links and no
+// links into the rest of OTRI, which the host page does not have.
+export default function ScoreCalculator({ embedded = false }) {
   const [query, setQuery] = useState('')
   const [races, setRaces] = useState([])
   const [racesLoading, setRacesLoading] = useState(true)
@@ -1086,7 +1088,7 @@ export default function ScoreCalculator() {
                   analysisError={analysisError}
                   ceilingSeconds={estimate?.breakdown?.world_best_time_seconds}
                 />
-                <ShareBox courseLabel={courseLabel} courseFile={courseFile} targetSeconds={targetSeconds} shareId={shareId} onShared={setShareId} />
+                {!embedded && <ShareBox courseLabel={courseLabel} courseFile={courseFile} targetSeconds={targetSeconds} shareId={shareId} onShared={setShareId} />}
               </>
             ) : (
               <>
@@ -1119,12 +1121,12 @@ export default function ScoreCalculator() {
                   <span>+ VERSION</span>
                   <span>= SCORE</span>
                 </div>
-                <p className="mt-5 text-sm text-slate-500">
+                {!embedded && <p className="mt-5 text-sm text-slate-500">
                   Just want to look around?{' '}
                   <a href="#races" className="font-semibold text-blue-600 no-underline hover:underline">
                     Browse scored races →
                   </a>
-                </p>
+                </p>}
               </>
             )}
           </div>
