@@ -34,6 +34,8 @@ Every event/race mutation (create/edit/delete, GPX attach, result submission) re
 | GET | `/calendar.ics` | Public iCalendar feed of upcoming public events (one all-day entry per event, distances in the description). `?country=THA` narrows it; `?event=<event_id>` is a single event, past or future, for an add-to-calendar button. Cached for an hour. |
 | POST | `/admin/reports/{report_id}/create-listing` | **Admin.** Turn a `suggestion` report (a runner's proposed race, carried as `listing` on `POST /reports`) into a public listing and resolve the report. |
 | POST | `/admin/listings` · `/admin/listings/import` | **Admin.** Add unowned listings from race facts (JSON, or a CSV with one row per distance). Existing events and distances are skipped and reported. |
+| GET | `/events/matches?name=&event_date=` | **Requires a token.** Events that look like the one about to be created (loose name match within three days): unclaimed public listings (`claim_pending`) and the caller's own (`is_yours`). Asked by the create-event form so a listed race is claimed, not duplicated. |
+| POST | `/events/{event_id}/claim` | **Requires a token.** Ask for an unclaimed listing; files one claim report per account and event, which an admin resolves by assigning the event. 409 when the event has an owner. |
 | POST | `/admin/events/{event_id}/assign` | **Admin.** Hand an event to an organizer's account (`organizer_email`), or release it with none: how a claimed listing reaches its organizer. |
 | GET | `/races/{race_id}` | Race distance detail, 404 if unknown. |
 | GET | `/scoring/models` | List every available scoring algorithm (`version`, `name`, `description`, `uses_competitors`) a race distance can be configured to use — see `scoring/README.md`. |

@@ -1,6 +1,6 @@
 # Race listings
 
-**Status:** phase 1 built (listings, requests for scores, admin import, claim by report) and the calendar (view, add to calendar, subscribable feed, suggested races). Notification emails and a self-service claim flow are not built.
+**Status:** phase 1 built (listings, requests for scores, admin import, claim by report) and the calendar (view, add to calendar, subscribable feed, suggested races). A claim can be sent from the public listing or from the organizer app's create-event form; an admin still checks it. Notification emails are not built.
 
 A listing is a race shown on the public races page before anyone has uploaded its results. It exists so runners can find their race, see that it is not scored yet, say they want scores, and nudge the organizer; and so OTRI can see which organizers are worth writing to first.
 
@@ -37,6 +37,8 @@ A runner's own GPX still works in the calculator for their own estimate; it does
 | POST | `/races/{id}/gpx` (`course_permission` form field) | owner or admin | Optional; recorded with a race that has no owner. |
 | POST | `/races/{id}/score-requests` | anyone | "I'd like scores". One per visitor: the key is a salted hash of the address plus the browser's random id, at most 25 per address per race, rate limited. Nothing personal is stored. 409 once the race is scored. |
 | POST | `/reports` with `kind: "claim"` | anyone | "I organize this race". Lands in the admin reports queue and is emailed to admins. |
+| GET | `/events/matches?name=&event_date=` | organizer | Events that look like the one being created: unclaimed public listings and the organizer's own. A loose name match within three days (`api/event_match.py`); a suggestion, never a merge. |
+| POST | `/events/{id}/claim` | organizer | The same claim from a verified account. The report names the event (`payload.event_id`), one open claim per account and event. 409 when the event has an owner. |
 | POST | `/admin/events/{id}/assign` | admin | Hand the event to an organizer account (after checking the claim, e.g. the email's domain against the race website), or release it. |
 
 `GET /races` returns scored races and listings; `request_count`, `is_listed`, `is_claimed` and `official_url` are on every summary.
@@ -62,6 +64,8 @@ Admin → Events & races → Listings → **Choose GPX files** takes many files 
 2. An admin checks the claim, asks them to create an organizer account if they have none, and assigns the event (Admin → Events & races → Assign to organizer).
 3. The race is now theirs: course, results, publish, as for any race. Corrections to the facts are theirs to make.
 
+An organizer who signs up without claiming would otherwise create the event again and put the race on the calendar twice, with the requests for scores left on the old entry. So the create-event form looks the name and date up as they are typed and offers the listing ("This is my race, claim it"), or points to the organizer's own event when they already have it. A claim sent this way shows **Hand over the event** in Admin → Reports: one step, after the same check. The organizer can still create a new event when the match is wrong.
+
 ## Rules of conduct
 
 - OTRI does not email organizers in bulk. The "Ask your organizer" button gives the runner a message to send themselves; admins write personally to the organizers of the most asked-for races (Admin → Events & races → Most asked for).
@@ -71,5 +75,6 @@ Admin → Events & races → Listings → **Choose GPX files** takes many files 
 ## Not built yet
 
 - "Tell me when it is scored": an optional email on a request, with consent text and a purge rule, and the email sent on publish.
-- A self-service claim flow inside the organizer app.
+- Claims that need no admin (for example by proving control of the race's domain).
+- Merging two events that are already duplicated; today an admin deletes one.
 - Listings on runner profiles or the home page.

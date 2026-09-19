@@ -100,6 +100,27 @@ class EventAssign(BaseModel):
     organizer_email: str | None = Field(default=None, max_length=320)
 
 
+class EventMatch(BaseModel):
+    """An event already on OTRI that looks like the one an organizer is about to create."""
+
+    event_id: str
+    event_name: str
+    event_date: date
+    location: str | None = None
+    country: str | None = None
+    website: str | None = None
+    courses: list[str] = []
+    request_count: int = 0
+    # Already in the asking organizer's account, rather than an unclaimed listing.
+    is_yours: bool = False
+    # The asking organizer has an open claim on it.
+    claim_pending: bool = False
+
+
+class EventClaim(BaseModel):
+    message: str | None = Field(default=None, max_length=2000)
+
+
 class ScoreRequestIn(BaseModel):
     client_id: str | None = Field(default=None, max_length=80)
 

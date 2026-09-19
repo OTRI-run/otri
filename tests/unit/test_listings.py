@@ -196,3 +196,57 @@ def test_a_claim_is_a_report_the_admin_sees(monkeypatch):
     )
     assert claim.status_code == 201, claim.text
     assert any(r["kind"] == "claim" and r["subject_id"] == race["race_id"] for r in client.get("/admin/reports", headers=admin).json())
+
+
+def test_event_names_match_loosely_but_not_across_races():
+    from api.event_match import names_match, same_edition
+
+    assert names_match("Doi Trail", "Doi Suthep Trail 2027")
+    assert names_match("doi trail", "The 5th Doi Trail")
+    assert names_match("Ultra-Trail Chiang Maï", "Ultra Trail Chiang Mai")
+    assert names_match("Doi Suthep Trial", "Doi Suthep Trail")  # a typo
+    assert not names_match("Doi Trail", "Khao Yai Trail")
+    assert not names_match("Trail Marathon", "Ultra Trail")  # nothing but generic words in common
+    assert not names_match("2027", "Doi Trail")
+
+    day = date(2027, 12, 11)
+    assert same_edition("Doi Trail", day, "Doi Trail 2027", day + timedelta(days=1))
+    assert not same_edition("Doi Trail", day, "Doi Trail 2028", day + timedelta(days=364))
+
+
+def test_creating_an_event_that_is_already_listed_offers_the_listing_to_claim(monkeypatch):
+    admin = _admin_headers(monkeypatch)
+    organizer = _organizer_auth_headers("rd@doitrail.example")
+    _listing(admin)
+    _listing(admin, name="Khao Yai Trail")
+    event_id = _public_race()["event_id"]
+
+    assert client.get(f"/events/matches?name=Doi+Suthep+Trail+2027&event_date={FUTURE}").status_code == 401
+    matches = client.get(f"/events/matches?name=Doi+Suthep+Trail+2027&event_date={FUTURE}", headers=organizer).json()
+    assert [(m["event_id"], m["courses"], m["is_yours"], m["claim_pending"]) for m in matches] == [(event_id, ["50K"], False, False)]
+    assert client.get(f"/events/matches?name=Doi+Trail&event_date={PAST}", headers=organizer).json() == []
+
+    # Claiming files one report for the admin, however often it is pressed, and changes no owner.
+    assert client.post(f"/events/{event_id}/claim", headers=organizer).status_code == 201
+    assert client.post(f"/events/{event_id}/claim", json={"message": "again"}, headers=organizer).status_code == 201
+    claims = [r for r in client.get("/admin/reports", headers=admin).json() if r["kind"] == "claim"]
+    assert len(claims) == 1 and claims[0]["reporter_email"] == "rd@doitrail.example" and claims[0]["payload"] == {"event_id": event_id}
+    assert _public_race()["is_claimed"] is False
+    assert client.get(f"/events/matches?name=Doi+Trail&event_date={FUTURE}", headers=organizer).json()[0]["claim_pending"] is True
+
+    # Handed over by the admin, it is the organizer's own event, and nobody else can claim it.
+    assert client.post(f"/admin/events/{event_id}/assign", json={"organizer_email": "rd@doitrail.example"}, headers=admin).status_code == 200
+    mine = client.get(f"/events/matches?name=Doi+Trail&event_date={FUTURE}", headers=organizer).json()
+    assert [(m["event_id"], m["is_yours"]) for m in mine] == [(event_id, True)]
+    other = _organizer_auth_headers("other@example.com")
+    assert client.get(f"/events/matches?name=Doi+Trail&event_date={FUTURE}", headers=other).json() == []
+    assert client.post(f"/events/{event_id}/claim", headers=other).status_code == 409
+    assert client.post(f"/events/{event_id}/claim", headers=organizer).status_code == 409
+    assert client.post("/events/evt-missing/claim", headers=organizer).status_code == 404
+
+
+def test_an_unlisted_private_event_is_never_offered_to_another_organizer():
+    owner = _organizer_auth_headers("owner@example.com")
+    client.post("/events", json={"event_name": "Secret Trail", "event_date": FUTURE}, headers=owner)
+    other = _organizer_auth_headers("other@example.com")
+    assert client.get(f"/events/matches?name=Secret+Trail&event_date={FUTURE}", headers=other).json() == []

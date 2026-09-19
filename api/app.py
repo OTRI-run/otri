@@ -70,6 +70,7 @@ from .auth import (
 )
 from . import email as _email
 from .calendar_feed import CalendarEvent, CalendarRace, build_calendar
+from .event_match import same_edition
 from . import server_stats as _server
 from .email import send_password_reset_email, send_verification_email
 from .rate_limit import AccountLocked, check_account_lock, clear_login_failures, enforce_rate_limit, record_login_failure
@@ -99,7 +100,9 @@ from .schemas import (
     SharedCourseOut,
     EmailVerificationRequest,
     EventAssign,
+    EventClaim,
     EventCreate,
+    EventMatch,
     EventDetail,
     ListingCreate,
     ListingImportResult,
@@ -769,6 +772,47 @@ def list_events(mine: bool = False, organizer: Organizer | None = Depends(_optio
     ]
 
 
+def _open_claim(event_id: str, email: str) -> db.Report | None:
+    """This organizer's open claim on an event, if they have filed one from their account."""
+    return next(
+        (r for r in db.list_reports("open") if r.kind == "claim" and r.reporter_email == email and (r.payload or {}).get("event_id") == event_id),
+        None,
+    )
+
+
+@app.get("/events/matches", response_model=list[EventMatch])
+def matching_events(name: str, event_date: date, organizer: Organizer = Depends(require_organizer)) -> list[EventMatch]:
+    """Events already on OTRI that look like the one this organizer is about to create: public
+    listings nobody owns (to claim instead of duplicating) and their own events. Asked by the
+    create-event form; a suggestion only, the organizer may still create a new event."""
+    requests = db.count_score_requests_by_race()
+    matches = []
+    for event in db.list_events():
+        if event.organizer_id not in (None, organizer.id) or not same_edition(name, event_date, event.event_name, event.event_date):
+            continue
+        races = db.list_races_for_event(event.event_id)
+        is_yours = event.organizer_id == organizer.id
+        if not is_yours:
+            races = [race for race in races if race.published_at is not None or race.listed_at is not None]
+            if not races:
+                continue
+        matches.append(
+            EventMatch(
+                event_id=event.event_id,
+                event_name=event.event_name,
+                event_date=event.event_date,
+                location=event.location,
+                country=event.country,
+                website=event.website,
+                courses=[race.course_name for race in races],
+                request_count=sum(requests.get(race.race_id, 0) for race in races),
+                is_yours=is_yours,
+                claim_pending=not is_yours and _open_claim(event.event_id, organizer.email) is not None,
+            )
+        )
+    return matches
+
+
 @app.get("/events/{event_id}", response_model=EventDetail)
 def get_event(event_id: str) -> EventDetail:
     event = db.find_event(event_id)
@@ -1055,6 +1099,37 @@ def admin_assign_event(event_id: str, payload: EventAssign, organizer: Organizer
         published_count=sum(1 for race in races if race.published_at is not None),
         races=[_race_summary(race, counts.get(race.race_id, 0)) for race in races],
     )
+
+
+@app.post("/events/{event_id}/claim", response_model=MessageResponse, status_code=201)
+def claim_event(event_id: str, request: Request, payload: EventClaim | None = None, organizer: Organizer = Depends(require_organizer)) -> MessageResponse:
+    """An organizer asking for an unclaimed listing instead of creating the same event again. It is
+    a claim report like the public form's, but from a verified account, so an admin can hand the
+    event over in one step. Nothing changes hands until they do."""
+    enforce_rate_limit(request, max_requests=5)
+    event = db.find_event(event_id)
+    if event is None:
+        raise HTTPException(status_code=404, detail=f"event {event_id!r} not found")
+    if event.organizer_id == organizer.id:
+        raise HTTPException(status_code=409, detail="this event is already in your account")
+    if event.organizer_id is not None:
+        raise HTTPException(status_code=409, detail="this event already has an organizer; write to us if that is wrong")
+    if _open_claim(event_id, organizer.email) is None:
+        races = db.list_races_for_event(event_id)
+        note = ((payload.message if payload else None) or "").strip()
+        report = db.create_report(
+            kind="claim",
+            subject_id=races[0].race_id if races else event_id,
+            subject_label=event.event_name,
+            reason=None,
+            message=f"{organizer.email} asked from their organizer account to manage this event. {note}".strip(),
+            reporter_email=organizer.email,
+            page_url=None,
+            payload={"event_id": event_id},
+        )
+        for admin_email in sorted(_ADMIN_EMAILS):
+            _email.send_report_email(admin_email, report.kind, report.subject_label or report.subject_id, report.message, report.page_url)
+    return MessageResponse(message="Claim sent. We check it and move the event into your account, usually within a few days.")
 
 
 @app.post("/admin/reports/{report_id}/create-listing", response_model=ListingImportResult)
