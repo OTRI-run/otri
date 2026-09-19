@@ -4,6 +4,7 @@ import { attachRaceGpx, createEvent, createRace, submitRaceResults } from '../..
 import { clearHandoff, loadHandoff } from '../../publishHandoff'
 import { formatDistance, formatElevation, useUnits } from '../../../src/lib/units'
 import CountrySelect from '../../../src/components/CountrySelect'
+import RaceNameList, { RACE_NAME_LIST } from '../../../src/components/RaceNameList'
 import { navigate } from '../router'
 import { Button, Card, Field, Gradient, Notice, Page, inputClass } from '../ui'
 
@@ -136,7 +137,8 @@ export default function PublishScoredRace({ session }) {
           <Waiting race={race} />
           <form onSubmit={create} className="mt-5 grid gap-4" noValidate>
             <Field label="Event name" htmlFor="pb-name" hint="As runners know it, including the year if it is an annual event.">
-              <input id="pb-name" required value={eventName} onChange={(e) => setEventName(e.target.value)} className={inputClass} placeholder="Doi Suthep Trail 2026" disabled={busy} />
+              <input id="pb-name" required value={eventName} onChange={(e) => setEventName(e.target.value)} list={RACE_NAME_LIST} autoComplete="off" className={inputClass} placeholder="Doi Suthep Trail 2026" disabled={busy} />
+              <RaceNameList />
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Race date" htmlFor="pb-date" hint="The day this race was run.">

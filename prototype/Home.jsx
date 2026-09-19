@@ -214,8 +214,8 @@ export default function Home() {
                 <a className={primaryButton} href="#score">
                   Score my race <ArrowRight size={15} />
                 </a>
-                <a className={secondaryButton} href="organizer/">
-                  Organizer accounts
+                <a className={secondaryButton} href="#score?example=1">
+                  See an example result
                 </a>
               </div>
             </div>

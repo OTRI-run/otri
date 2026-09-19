@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowLeft, ArrowUpRight, Mail, Search } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, Mail } from 'lucide-react'
 import { countryName } from '../src/components/CountrySelect'
 import Logo from '../src/components/Logo'
 import UnitsMenu from '../src/components/UnitsMenu'
@@ -18,6 +18,7 @@ import CourseMap from '../src/components/CourseMap'
 import ReportForm from './ReportForm'
 import { ShareResults } from './SharePanel'
 import Flag from '../src/components/Flag'
+import SearchSuggest from '../src/components/SearchSuggest'
 import { initMonitoring } from '../src/lib/monitoring'
 import { useDocumentTitle } from '../src/lib/title'
 
@@ -293,7 +294,7 @@ function Leaderboard({ raceId, onBack }) {
                 </thead>
                 <tbody>
                   {(results ?? []).map((row) => (
-                    <tr key={`${row.rank}-${row.bib_number ?? row.family_name}-${row.first_name}`} className={`border-b border-slate-100 last:border-0 ${row.status !== 'finisher' ? 'bg-slate-50/60 text-slate-500' : ''}`}>
+                    <tr key={`${row.rank}-${row.bib_number ?? row.family_name}-${row.first_name}`} className={`border-b border-slate-100 last:border-0 hover:bg-blue-50/50 ${row.status !== 'finisher' ? 'bg-slate-50/60 text-slate-500' : 'even:bg-slate-50/70'}`}>
                       <td className="px-4 py-3 font-mono text-xs text-slate-500">{row.rank}</td>
                       <td className="px-4 py-3 font-medium text-[#0b1220]">
                         {row.runner_id ? (
@@ -500,17 +501,19 @@ function RacesPage({ raceId }) {
             {races?.length === 0 && <p className="mt-6 text-sm text-slate-500">No races have been published yet.</p>}
             {races?.length > 0 && (
               <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center">
-                <div className="relative min-w-0 flex-1">
-                  <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="search"
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Search by race, place or year…"
-                    aria-label="Search races"
-                    className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-sm text-[#0b1220] outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-                </div>
+                <SearchSuggest
+                  className="min-w-0 flex-1"
+                  value={query}
+                  onChange={setQuery}
+                  placeholder="Search by race, place or year…"
+                  ariaLabel="Search races"
+                  suggestions={shown.slice(0, 6).map((race) => ({
+                    key: race.race_id,
+                    label: `${race.event_name} · ${race.course_name}`,
+                    detail: `${String(race.event_date ?? '').slice(0, 4)}${race.event_country ? ` · ${race.event_country}` : ''}`,
+                    href: `#races/${encodeURIComponent(race.race_id)}`,
+                  }))}
+                />
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="inline-flex max-w-full overflow-x-auto rounded-lg border border-slate-300 bg-white" role="group" aria-label="Distance">
                     {DISTANCE_BUCKETS.map((b) => (

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useDocumentTitle } from '../src/lib/title'
-import { ArrowLeft, ArrowUpRight, Search } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight } from 'lucide-react'
 import NextSteps from './NextSteps'
 import { DemoBadge } from './RaceCard'
 import { getRunner, listRunners } from './apiClient'
+import SearchSuggest from '../src/components/SearchSuggest'
 import ReportForm from './ReportForm'
 import { modelShort } from '../src/lib/model'
 import NotFound from '../src/components/NotFound'
@@ -112,17 +113,19 @@ export function RunnersPage({ initialQuery = '' }) {
         </div>
 
         <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <label className="relative flex-1">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search a runner by name…"
-              aria-label="Search runners"
-              className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-sm text-[#0b1220] outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-            />
-          </label>
+          <SearchSuggest
+            className="flex-1"
+            value={query}
+            onChange={setQuery}
+            placeholder="Search a runner by name…"
+            ariaLabel="Search runners"
+            suggestions={shown.slice(0, 6).map((runner) => ({
+              key: runner.runner_id,
+              label: `${runner.first_name} ${runner.family_name}`,
+              detail: [runner.nationality, runner.index != null ? `index ${runner.index}` : `${runner.result_count} result${runner.result_count === 1 ? '' : 's'}`].filter(Boolean).join(' · '),
+              href: `#runners/${encodeURIComponent(runner.runner_id)}`,
+            }))}
+          />
           <div className="inline-flex overflow-hidden rounded-lg border border-slate-300 bg-white">
             {[
               ['all', 'All'],

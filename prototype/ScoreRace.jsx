@@ -1,8 +1,11 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, ArrowRight, CheckCircle2, Code2, Download, Share2, FileSpreadsheet, Map as MapIcon, ShieldCheck, Timer, Trophy, XCircle } from 'lucide-react'
 import { scoreRace } from './apiClient'
 import { saveHandoff } from './publishHandoff'
 import { ShareResults } from './SharePanel'
+import RaceNameList, { RACE_NAME_LIST } from '../src/components/RaceNameList'
+import CourseMap from '../src/components/CourseMap'
+import Flag from '../src/components/Flag'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import { modelLabel } from '../src/lib/model'
 
@@ -105,7 +108,7 @@ function Tile({ label, value, sub }) {
   )
 }
 
-function Scored({ result, fileStem, children }) {
+function Scored({ result, fileStem, gpxText, children }) {
   const units = useUnits()
   const [visible, setVisible] = useState(ROWS_AT_ONCE)
   const [sharing, setSharing] = useState(false)
@@ -154,6 +157,12 @@ function Scored({ result, fileStem, children }) {
         <Tile label="MODEL" value={modelLabel(result.scoring_version)} sub={result.scoring_version} />
       </div>
 
+      {gpxText && (
+        <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <CourseMap gpxText={gpxText} measurement={result.measurement} className="p-3" />
+        </div>
+      )}
+
       {reasons.length > 0 && (
         <div className="mt-3 flex gap-3 rounded-xl border border-amber-100 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
           <AlertTriangle size={16} className="mt-0.5 shrink-0" />
@@ -184,11 +193,13 @@ function Scored({ result, fileStem, children }) {
       {children}
 
       <div className="mt-8 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-        <table className="w-full min-w-[560px] text-left text-sm">
+        <table className="w-full min-w-[680px] text-left text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
               <th className="px-3 py-2">Rank</th>
               <th className="px-3 py-2">Runner</th>
+              <th className="px-3 py-2">Country</th>
+              <th className="px-3 py-2">Gender</th>
               <th className="px-3 py-2">Bib</th>
               <th className="px-3 py-2">Time</th>
               <th className="px-3 py-2 text-right">OTRI</th>
@@ -196,12 +207,11 @@ function Scored({ result, fileStem, children }) {
           </thead>
           <tbody>
             {scores.slice(0, visible).map((row, index) => (
-              <tr key={`${index}-${row.rank}`} className="border-b border-slate-100 last:border-0">
+              <tr key={`${index}-${row.rank}`} className="border-b border-slate-100 last:border-0 odd:bg-white even:bg-slate-50/70 hover:bg-blue-50/50">
                 <td className="px-3 py-2 font-mono text-xs text-slate-500">{row.rank}</td>
-                <td className="px-3 py-2 font-medium text-[#0b1220]">
-                  {row.first_name} {row.family_name}
-                  {row.gender && <span className="ml-2 font-mono text-[10px] font-normal text-slate-400">{row.gender}</span>}
-                </td>
+                <td className="px-3 py-2 font-medium text-[#0b1220]">{row.first_name} {row.family_name}</td>
+                <td className="px-3 py-2">{row.nationality ? <Flag code={row.nationality} /> : <span className="text-slate-300">—</span>}</td>
+                <td className="px-3 py-2 font-mono text-xs text-slate-500">{row.gender || '—'}</td>
                 <td className="px-3 py-2 font-mono text-xs text-slate-500">{row.bib_number ?? '—'}</td>
                 <td className="px-3 py-2 font-mono text-xs text-slate-600">{formatHms(row.finish_time_seconds) || '—'}</td>
                 <td className="px-3 py-2 text-right font-mono font-bold text-blue-600">{row.otri_score ?? <span className="font-normal text-slate-400">{row.status === 'finisher' ? 'not scored' : row.status}</span>}</td>
@@ -388,14 +398,35 @@ export default function ScoreRace() {
     setRaceName(example.raceName)
   }
 
-  async function submit(event) {
+  // The answer appears below the form: bring it into view instead of leaving the visitor at the top.
+  useEffect(() => {
+    if (result) document.getElementById('score-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [result])
+
+  // #score?example=1 scores the example race straight away: a link that shows the result, not the form.
+  useEffect(() => {
+    if (!/[?&]example=1/.test(window.location.hash)) return
+    Promise.all([fetchExample(EXAMPLE.course), fetchExample(EXAMPLE.results)])
+      .then(([course, list]) => {
+        const example = { gpx: course.file, results: list.file, raceName: EXAMPLE.name }
+        useExample(example)
+        return score(example)
+      })
+      .catch((err) => setError(err.message))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function submit(event) {
     event.preventDefault()
+    return score({ gpx, results, raceName: raceName.trim() })
+  }
+
+  async function score({ gpx, results, raceName }) {
     setBusy(true)
     setError(null)
     setResult(null)
     try {
-      setResult(await scoreRace({ results, gpx, raceName: raceName.trim() }))
-      setScoredFiles({ gpx, results })
+      setResult(await scoreRace({ results, gpx, raceName }))
+      setScoredFiles({ gpx, results, gpxText: await gpx.text() })
     } catch (err) {
       setError(err.status === 429 ? 'That was a lot of scoring in one minute. Wait a minute and try again.' : err.message)
     } finally {
@@ -438,7 +469,8 @@ export default function ScoreRace() {
 
             <label className="mt-5 block font-mono text-[9px] tracking-[.08em] text-slate-500">
               3 · RACE NAME (OPTIONAL)
-              <input value={raceName} onChange={(e) => setRaceName(e.target.value)} maxLength={200} className={`${input} mt-2 font-sans tracking-normal`} placeholder="Doi Suthep Trail 30K" />
+              <input value={raceName} onChange={(e) => setRaceName(e.target.value)} maxLength={200} list={RACE_NAME_LIST} autoComplete="off" className={`${input} mt-2 font-sans tracking-normal`} placeholder="Doi Suthep Trail 30K" />
+              <RaceNameList />
             </label>
 
             {error && (
@@ -465,7 +497,7 @@ export default function ScoreRace() {
         </div>
       </section>
 
-      <div className={`${CONTAINER} pb-20`}>
+      <div id="score-result" className={`${CONTAINER} scroll-mt-20 pb-20`}>
         {result && !result.is_valid && (
           <section className="mt-8 rounded-2xl border border-red-100 bg-white p-5">
             <p className="flex items-center gap-2 text-sm font-semibold text-red-800">
@@ -477,7 +509,7 @@ export default function ScoreRace() {
           </section>
         )}
         {result?.is_valid && (
-          <Scored result={result} fileStem={(result.course.name ?? results?.name ?? '').replace(/\.[a-z]+$/i, '').replace(/[^\w-]+/g, '-').toLowerCase()}>
+          <Scored result={result} gpxText={scoredFiles?.gpxText} fileStem={(result.course.name ?? results?.name ?? '').replace(/\.[a-z]+$/i, '').replace(/[^\w-]+/g, '-').toLowerCase()}>
             {result.summary.finishers > 0 && scoredFiles && <PublishInvite result={result} files={scoredFiles} />}
           </Scored>
         )}
