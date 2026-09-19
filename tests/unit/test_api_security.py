@@ -93,7 +93,12 @@ def test_another_organizer_cannot_touch_your_event_or_race():
         client.post(f"/races/{race_id}/results", files={"file": ("r.csv", b"rank,name,time\n1,x,1:00:00\n", "text/csv")}, headers=b),
     ]
     assert all(r.status_code in (403, 404, 405) for r in checks), [r.status_code for r in checks]
-    assert client.get(f"/events/{event_id}").json()["event_name"] == "Test Event"
+    assert client.get(f"/events/{event_id}", headers=a).json()["event_name"] == "Test Event"
+    # Nor read it: a draft is its owner's, down to its name. To anyone else it does not exist.
+    for path in (f"/events/{event_id}", f"/races/{race_id}"):
+        assert client.get(path, headers=b).status_code == 404 and client.get(path).status_code == 404
+    assert event_id not in {event["event_id"] for event in client.get("/events").json()}
+    assert event_id in {event["event_id"] for event in client.get("/events?mine=true", headers=a).json()}
 
 
 def test_unpublished_results_are_not_public():
@@ -139,7 +144,7 @@ def test_injection_strings_are_stored_verbatim_and_change_nothing_else():
     nasty = "Robert'); DROP TABLE events;-- <script>alert(1)</script> %_\\"
     created = client.post("/events", json={"event_name": nasty, "event_date": "2026-07-01", "location": nasty}, headers=headers)
     assert created.status_code == 201, created.text
-    assert client.get(f"/events/{created.json()['event_id']}").json()["event_name"] == nasty
+    assert client.get(f"/events/{created.json()['event_id']}", headers=headers).json()["event_name"] == nasty
     assert client.get("/events").status_code == 200, "the table is still there"
     report = client.post("/reports", json={"kind": "race", "subject_id": nasty, "message": nasty, "reporter_email": "a@b.c\r\nBcc: x@y.z"})
     assert report.status_code == 201, report.text

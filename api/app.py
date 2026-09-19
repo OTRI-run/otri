@@ -795,6 +795,11 @@ def list_events(mine: bool = False, organizer: Organizer | None = Depends(_optio
         if organizer is None:
             raise HTTPException(status_code=401, detail="missing bearer token")
         events = [event for event in events if event.organizer_id == organizer.id]
+    elif organizer is None or not organizer.is_admin:
+        # Public: only events with something public in them. An organizer's drafts (an event being
+        # prepared, a race not published yet) are theirs until they publish: not their names either.
+        public_events = {race.event_id for race in db.list_races(published_only=True)}
+        events = [event for event in events if event.event_id in public_events]
     race_counts = db.count_races_by_event()
     return [
         EventSummary(
@@ -809,12 +814,23 @@ def list_events(mine: bool = False, organizer: Organizer | None = Depends(_optio
     ]
 
 
+def _is_public_race(race: db.Race) -> bool:
+    return race.published_at is not None or race.listed_at is not None
+
+
 @app.get("/events/{event_id}", response_model=EventDetail)
-def get_event(event_id: str) -> EventDetail:
+def get_event(event_id: str, organizer: Organizer | None = Depends(_optional_organizer)) -> EventDetail:
+    """The event and its races: all of them for its owner and admins, the public ones for anyone
+    else. An event with nothing public answers 404 to the public, like one that does not exist, so
+    its existence is not confirmed either."""
     event = db.find_event(event_id)
     if event is None:
         raise HTTPException(status_code=404, detail=f"event {event_id!r} not found")
     races = db.list_races_for_event(event_id)
+    if organizer is None or not (organizer.is_admin or organizer.id == event.organizer_id):
+        races = [race for race in races if _is_public_race(race)]
+        if not races:
+            raise HTTPException(status_code=404, detail=f"event {event_id!r} not found")
     counts = db.count_results_by_race()
     return EventDetail(
         event_id=event.event_id,
@@ -916,9 +932,11 @@ def list_races(all: bool = False, organizer: Organizer | None = Depends(_optiona
 
 
 @app.get("/races/{race_id}", response_model=RaceSummary)
-def get_race(race_id: str) -> RaceSummary:
+def get_race(race_id: str, organizer: Organizer | None = Depends(_optional_organizer)) -> RaceSummary:
+    """A race's summary: for anyone once it is published or listed, before that for its owner and
+    admins only (404 to everyone else, as for a race that does not exist)."""
     race = db.find_race(race_id)
-    if race is None:
+    if race is None or not (_is_public_race(race) or (organizer is not None and (organizer.is_admin or organizer.id == race.organizer_id))):
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     return _race_summary(race, db.count_results_by_race().get(race_id, 0))
 
@@ -1862,7 +1880,7 @@ async def share_gpx(request: Request, file: UploadFile, name: str | None = Form(
 
 @app.get("/gpx/shared/{share_id}")
 def get_shared_gpx(share_id: str) -> Response:
-    """The GPX behind a share link, exactly as uploaded."""
+    """The GPX behind a share link: the track alone, as it was sanitized when shared."""
     if not _SHARE_ID_RE.match(share_id):
         raise HTTPException(status_code=404, detail="No shared course with that id")
     path = _shared_course_path(share_id)

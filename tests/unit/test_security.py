@@ -1,35 +1,111 @@
-"""Password policy and TOTP (api/security.py)."""
+"""More of the common attacks, beside tests/unit/test_api_security.py: passwords and link tokens at
+rest, the timing of a sign-in answer, forged cross-site requests, a spreadsheet zip bomb, script links."""
 
-import base64
+import importlib
+import zipfile
 
-from api.security import _hotp, hash_code, new_recovery_codes, new_totp_secret, otpauth_uri, password_problems, password_strength, totp_now, verify_totp
+import pytest
+from fastapi.testclient import TestClient
 
+from api import auth, db
 
-def test_hotp_matches_rfc_4226_vectors():
-    secret = base64.b32encode(b"12345678901234567890").decode().rstrip("=")
-    assert [_hotp(secret, i) for i in range(4)] == ["755224", "287082", "359152", "969429"]
+app_module = importlib.import_module("api.app")
+client = TestClient(app_module.app)
+pytestmark = pytest.mark.usefixtures("clean_state")
 
-
-def test_totp_accepts_neighbouring_steps_only():
-    secret = new_totp_secret()
-    at = 1_700_000_000
-    code = totp_now(secret, at)
-    assert verify_totp(secret, code, at) and verify_totp(secret, code, at + 30) and verify_totp(secret, code, at - 30)
-    assert not verify_totp(secret, code, at + 90)
-    assert not verify_totp(secret, "12345", at) and not verify_totp(secret, "abcdef", at)
-    assert otpauth_uri(secret, "a@b.c").startswith("otpauth://totp/OTRI:a%40b.c?secret=")
+PASSWORD = "a-long-test-password-1"
 
 
-def test_password_policy_is_length_led_and_blocks_common_and_email_based_passwords():
-    assert password_problems("correct horse battery staple", "x@example.com") == []
-    assert any("at least 10" in p for p in password_problems("Tr0ub4dor", "x@example.com"))
-    assert any("attacker" in p for p in password_problems("Password123!", "x@example.com"))
-    assert any("email" in p for p in password_problems("halloween8-rocks", "halloween8@googlemail.com"))
-    assert any("repeated" in p for p in password_problems("aaaaaaaaaaaa"))
-    assert password_strength("pass")["score"] == 0 and password_strength("correct horse battery staple")["score"] == 4
+def _register(email, password=PASSWORD):
+    return client.post("/auth/register", json={"email": email, "password": password, "accept_terms": True})
 
 
-def test_recovery_codes_are_random_and_hashed_consistently():
-    codes = new_recovery_codes()
-    assert len(set(codes)) == 10 and all(len(c) == 9 and c[4] == "-" for c in codes)
-    assert hash_code("K7M2-9QWD") == hash_code("k7m2 9qwd") == hash_code(" k7m29qwd ")
+def _headers(email, password=PASSWORD):
+    _register(email, password)
+    with db.get_connection() as connection:
+        connection.execute("UPDATE organizers SET email_verified = TRUE WHERE email = %s", (email,))
+    token = client.post("/auth/login", json={"email": email, "password": password}).json()["access_token"]
+    return {"Authorization": f"Bearer {token}", "X-OTRI-Client": "test"}
+
+
+
+def test_a_long_passphrase_works_and_is_not_cut_short():
+    """bcrypt reads 72 bytes and its current version refuses more: a long passphrase (25 Thai
+    characters are 75 bytes) was a server error at registration and at sign-in."""
+    long_password = "ก" * 30 + " four unrelated words are better"
+    assert _register("long@example.com", long_password).status_code == 201
+    assert client.post("/auth/login", json={"email": "long@example.com", "password": long_password}).status_code == 200
+    # Not truncated: the first 72 bytes alone do not open the account.
+    assert client.post("/auth/login", json={"email": "long@example.com", "password": long_password.encode()[:72].decode(errors="ignore")}).status_code == 401
+    assert client.post("/auth/login", json={"email": "long@example.com", "password": "x" * 1000}).status_code in (401, 422)
+
+
+def test_an_unknown_address_costs_a_password_check_too(monkeypatch):
+    """So that how long the answer takes does not say which addresses have accounts."""
+    checked = []
+    real = auth.password_matches
+    monkeypatch.setattr(auth, "password_matches", lambda password, stored: checked.append(stored) or real(password, stored))
+    answer = client.post("/auth/login", json={"email": "nobody-here@example.com", "password": PASSWORD})
+    assert answer.status_code == 401 and answer.json()["detail"] == "invalid email or password"
+    assert checked == [auth._NO_ACCOUNT_HASH]
+
+
+def test_link_tokens_are_kept_as_digests_and_open_once():
+    _register("reset@example.com")
+    _organizer, token = auth.create_password_reset_token("reset@example.com")
+    with db.get_connection() as connection:
+        stored = [row["token"] for row in connection.execute("SELECT token FROM password_reset_tokens").fetchall()]
+        verification = [row["token"] for row in connection.execute("SELECT token FROM email_verification_tokens").fetchall()]
+    assert stored == [auth._token_digest(token)] and token not in stored, "a copy of the database holds nothing that opens an account"
+    assert verification and all(len(value) == 64 for value in verification)
+    # The digest is not the key: only the token from the email is.
+    assert client.post("/auth/reset-password", json={"token": stored[0], "new_password": "another-long-password-2"}).status_code == 400
+    assert client.post("/auth/reset-password", json={"token": token, "new_password": "another-long-password-2"}).status_code == 200
+    assert client.post("/auth/reset-password", json={"token": token, "new_password": "yet-another-password-3"}).status_code == 400, "single use"
+    # A link sent before tokens were hashed (the token itself in the table) still opens.
+    with db.get_connection() as connection:
+        organizer_id = connection.execute("SELECT id FROM organizers WHERE email = %s", ("reset@example.com",)).fetchone()["id"]
+        connection.execute("INSERT INTO password_reset_tokens (token, organizer_id, expires_at) VALUES ('old-style-token', %s, now() + interval '1 hour')", (organizer_id,))
+    assert client.post("/auth/reset-password", json={"token": "old-style-token", "new_password": "yet-another-password-3"}).status_code == 200
+
+
+
+def test_a_cookie_session_cannot_be_driven_from_another_site():
+    """Cross-site request forgery: a page elsewhere can make the browser send the cookie, but not the
+    X-OTRI-Client header, so a state-changing request without it is refused."""
+    _register("csrf@example.com")
+    login = client.post("/auth/login", json={"email": "csrf@example.com", "password": PASSWORD}, headers={"X-OTRI-Client": "web"})
+    cookies = dict(login.cookies.items())
+    assert cookies and login.json()["access_token"] == "", "the web app signs in with a cookie, and gets no token a script could read"
+    client.cookies.clear()
+    forged = client.post("/events", json={"event_name": "Forged", "event_date": "2027-03-03"}, cookies=cookies)
+    assert forged.status_code == 403
+    genuine = client.post("/events", json={"event_name": "Genuine", "event_date": "2027-03-03"}, cookies=cookies, headers={"X-OTRI-Client": "web"})
+    assert genuine.status_code == 201
+    set_cookie = login.headers["set-cookie"].lower()
+    assert "httponly" in set_cookie and "samesite=lax" in set_cookie
+    client.cookies.clear()
+
+
+
+def test_a_spreadsheet_that_unpacks_to_gigabytes_is_refused_before_it_is_unpacked(tmp_path, monkeypatch):
+    from ingestion import reader
+
+    monkeypatch.setattr(reader, "MAX_XLSX_UNPACKED_BYTES", 1_000_000)
+    bomb = tmp_path / "results.xlsx"
+    with zipfile.ZipFile(bomb, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("xl/sharedStrings.xml", "A" * 5_000_000)  # 5 MB of one letter: a few kB on disk
+    assert bomb.stat().st_size < 50_000
+    with pytest.raises(ValueError, match="far larger inside"):
+        reader.read_table(bomb)
+
+
+
+def test_responses_carry_the_headers_that_stop_sniffing_and_framing():
+    answer = client.get("/races")
+    assert answer.headers["x-content-type-options"] == "nosniff" and answer.headers["x-frame-options"] == "DENY"
+    # A website typed as a script is stored as a harmless https address, never as a javascript: link.
+    headers = _headers("link@example.com")
+    assert client.get("/auth/me", headers=headers).headers.get("cache-control") == "no-store"
+    profile = client.patch("/auth/profile", json={"website": "javascript:alert(document.cookie)"}, headers=headers).json()["profile"]
+    assert profile["website"].startswith("https://")

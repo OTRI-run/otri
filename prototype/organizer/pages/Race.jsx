@@ -1,3 +1,4 @@
+import RankBadge from '../../../src/components/RankBadge'
 import { useEffect, useState } from 'react'
 import CourseMap from '../../../src/components/CourseMap'
 import ColumnsRead from '../../../src/components/ColumnsRead'
@@ -457,7 +458,7 @@ export function ScoresTable({ rows, limit, compact = false }) {
         <tbody>
           {shown.map((row) => (
             <tr key={`${row.rank}-${row.bib_number ?? row.family_name}`} className="border-b border-slate-100 last:border-0">
-              <td className="px-3 py-2 font-mono text-xs text-slate-500">{row.rank}</td>
+              <td className="px-3 py-2 font-mono text-xs text-slate-500"><RankBadge rank={row.rank} /></td>
               <td className="px-3 py-2 font-medium text-[#0b1220]">{row.first_name} {row.family_name}</td>
               {!compact && <td className="px-3 py-2 font-mono text-xs text-slate-500">{row.bib_number ?? '—'}</td>}
               <td className="px-3 py-2 text-right font-mono font-bold text-blue-600">{row.otri_score ?? <span className="font-normal text-slate-400">{row.status === 'finisher' ? 'not scored' : row.status}</span>}</td>

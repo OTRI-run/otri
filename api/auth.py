@@ -8,6 +8,8 @@ not battle-tested here (hand-rolled JWT, no refresh tokens).
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import os
 import secrets
 import time
@@ -44,6 +46,58 @@ class AuthError(Exception):
     """Raised for any authentication failure (bad credentials, invalid token, etc.)."""
 
 
+# --- Passwords --------------------------------------------------------------
+#
+# bcrypt reads at most 72 bytes. Version 4 cut a longer password off silently; version 5 refuses it
+# with an exception, which made registering or signing in with a long passphrase (the site allows
+# 128 characters, and 25 Thai characters are already 75 bytes) a server error. A password over 72
+# bytes is therefore hashed with SHA-256 first and that digest goes to bcrypt; shorter ones go in as
+# they are, so every hash made before this still verifies.
+
+
+def _bcrypt_input(password: str) -> bytes:
+    raw = password.encode("utf-8")
+    return raw if len(raw) <= 72 else base64.b64encode(hashlib.sha256(raw).digest())
+
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(_bcrypt_input(password), bcrypt.gensalt()).decode("utf-8")
+
+
+def password_matches(password: str, password_hash: str) -> bool:
+    stored = password_hash.encode("utf-8")
+    try:
+        if bcrypt.checkpw(_bcrypt_input(password), stored):
+            return True
+        raw = password.encode("utf-8")
+        # An account made while bcrypt 4 truncated long passwords: its hash is of the first 72 bytes.
+        return len(raw) > 72 and bcrypt.checkpw(raw[:72], stored)
+    except ValueError:
+        return False
+
+
+# A real hash of a password nobody has, checked when the email is unknown so that an unknown address
+# and a wrong password take the same time to answer: the answer's timing must not say which
+# addresses have accounts.
+_NO_ACCOUNT_HASH = bcrypt.hashpw(secrets.token_bytes(24), bcrypt.gensalt()).decode("utf-8")
+
+
+def _token_lookup(token: str) -> tuple[str, str]:
+    """The two values a presented link token may be stored under: its digest, and, for a link sent
+    before tokens were hashed, the token itself. A stored digest must never work as a token, or
+    hashing would protect nothing: a digest is 64 characters and a token is 43, so something of a
+    digest's length is only ever looked up hashed."""
+    digest = _token_digest(token)
+    return (digest, digest if len(token) == 64 else token)
+
+
+def _token_digest(token: str) -> str:
+    """How a one-time link token (email confirmation, password reset) is kept: as its SHA-256. The
+    token itself exists only in the email, so a copy of the database (a backup, a leak) holds
+    nothing that opens an account."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
 @dataclass(frozen=True)
 class Organizer:
     id: int
@@ -64,7 +118,7 @@ def register_organizer(email: str, password: str, *, accept_terms: bool = True, 
         raise AuthError("you need to accept the terms of service and privacy policy to create an account")
     require_acceptable_password(password, email)
 
-    password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    password_hash = hash_password(password)
 
     with get_connection() as connection:
         existing = connection.execute("SELECT 1 FROM organizers WHERE email = %s", (email,)).fetchone()
@@ -88,9 +142,10 @@ def authenticate_organizer(email: str, password: str) -> Organizer:
         ).fetchone()
 
     if row is None:
+        password_matches(password, _NO_ACCOUNT_HASH)  # same work as a wrong password: see _NO_ACCOUNT_HASH
         raise AuthError("invalid email or password")
 
-    if not bcrypt.checkpw(password.encode("utf-8"), row["password_hash"].encode("utf-8")):
+    if not password_matches(password, row["password_hash"]):
         raise AuthError("invalid email or password")
 
     return Organizer(id=row["id"], email=row["email"], email_verified=bool(row["email_verified"]))
@@ -157,7 +212,7 @@ def create_email_verification_token(organizer: Organizer) -> str:
     with get_connection() as connection:
         connection.execute(
             "INSERT INTO email_verification_tokens (token, organizer_id, expires_at) VALUES (%s, %s, %s)",
-            (token, organizer.id, expires_at),
+            (_token_digest(token), organizer.id, expires_at),
         )
     return token
 
@@ -165,7 +220,7 @@ def create_email_verification_token(organizer: Organizer) -> str:
 def verify_email(token: str) -> Organizer:
     with get_connection() as connection:
         row = connection.execute(
-            "SELECT organizer_id, expires_at FROM email_verification_tokens WHERE token = %s", (token,)
+            "SELECT token, organizer_id, expires_at FROM email_verification_tokens WHERE token IN (%s, %s)", _token_lookup(token)
         ).fetchone()
         if row is None:
             raise AuthError("invalid verification token")
@@ -176,7 +231,7 @@ def verify_email(token: str) -> Organizer:
             "UPDATE organizers SET email_verified = TRUE WHERE id = %s RETURNING id, email",
             (row["organizer_id"],),
         ).fetchone()
-        connection.execute("DELETE FROM email_verification_tokens WHERE token = %s", (token,))
+        connection.execute("DELETE FROM email_verification_tokens WHERE token = %s", (row["token"],))
         return Organizer(id=organizer_row["id"], email=organizer_row["email"])
 
 
@@ -194,7 +249,7 @@ def create_password_reset_token(email: str) -> tuple[Organizer, str] | None:
         expires_at = datetime.now(timezone.utc) + _PASSWORD_RESET_TTL
         connection.execute(
             "INSERT INTO password_reset_tokens (token, organizer_id, expires_at) VALUES (%s, %s, %s)",
-            (token, row["id"], expires_at),
+            (_token_digest(token), row["id"], expires_at),
         )
         return Organizer(id=row["id"], email=row["email"]), token
 
@@ -204,7 +259,7 @@ def reset_password(token: str, new_password: str) -> Organizer:
 
     with get_connection() as connection:
         row = connection.execute(
-            "SELECT organizer_id, expires_at, used_at FROM password_reset_tokens WHERE token = %s", (token,)
+            "SELECT token, organizer_id, expires_at, used_at FROM password_reset_tokens WHERE token IN (%s, %s)", _token_lookup(token)
         ).fetchone()
         if row is None:
             raise AuthError("invalid reset token")
@@ -213,13 +268,13 @@ def reset_password(token: str, new_password: str) -> Organizer:
         if row["expires_at"] < datetime.now(timezone.utc):
             raise AuthError("reset token has expired")
 
-        password_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        password_hash = hash_password(new_password)
         organizer_row = connection.execute(
             # The reset link went to the account's address: opening it confirms the address too.
             "UPDATE organizers SET password_hash = %s, email_verified = TRUE WHERE id = %s RETURNING id, email",
             (password_hash, row["organizer_id"]),
         ).fetchone()
-        connection.execute("UPDATE password_reset_tokens SET used_at = now() WHERE token = %s", (token,))
+        connection.execute("UPDATE password_reset_tokens SET used_at = now() WHERE token = %s", (row["token"],))
         return Organizer(id=organizer_row["id"], email=organizer_row["email"], email_verified=True)
 
 
@@ -229,12 +284,12 @@ def reset_password(token: str, new_password: str) -> Organizer:
 def change_password(organizer_id: int, current_password: str, new_password: str) -> None:
     with get_connection() as connection:
         row = connection.execute("SELECT email, password_hash FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
-        if row is None or not bcrypt.checkpw(current_password.encode("utf-8"), row["password_hash"].encode("utf-8")):
+        if row is None or not password_matches(current_password, row["password_hash"]):
             raise AuthError("the current password is not right")
         require_acceptable_password(new_password, row["email"])
-        if bcrypt.checkpw(new_password.encode("utf-8"), row["password_hash"].encode("utf-8")):
+        if password_matches(new_password, row["password_hash"]):
             raise AuthError("choose a password you have not used here before")
-        password_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        password_hash = hash_password(new_password)
         connection.execute(
             "UPDATE organizers SET password_hash = %s, password_changed_at = now(), session_version = session_version + 1 WHERE id = %s",
             (password_hash, organizer_id),
@@ -244,7 +299,7 @@ def change_password(organizer_id: int, current_password: str, new_password: str)
 
 def _check_password(connection, organizer_id: int, password: str) -> None:
     row = connection.execute("SELECT password_hash FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
-    if row is None or not bcrypt.checkpw(password.encode("utf-8"), row["password_hash"].encode("utf-8")):
+    if row is None or not password_matches(password, row["password_hash"]):
         raise AuthError("the password is not right")
 
 
