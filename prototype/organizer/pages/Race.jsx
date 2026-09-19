@@ -125,13 +125,13 @@ export function NewRace({ session, eventId }) {
             <Button type="submit" busy={busy} disabled={!form.course_name.trim() || !form.distance_km || form.elevation_gain_m === ''}>
               Save and add the course <ArrowRight size={15} />
             </Button>
-            {!busy && (!form.course_name.trim() || !form.distance_km || form.elevation_gain_m === '') && (
-              <span className="text-xs text-slate-500">Enter the name, official distance and climb to continue.</span>
-            )}
             <Button type="button" variant="secondary" onClick={() => navigate(`/events/${encodeURIComponent(eventId)}`)}>
               Cancel
             </Button>
           </div>
+          {!busy && (!form.course_name.trim() || !form.distance_km || form.elevation_gain_m === '') && (
+            <p className="text-xs text-slate-500">Enter the name, official distance and climb to continue.</p>
+          )}
         </form>
       </Card>
       }

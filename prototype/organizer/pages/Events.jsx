@@ -143,11 +143,11 @@ export function NewEvent({ session }) {
               <Button type="submit" busy={busy} disabled={!name.trim() || !date}>
                 Create event <ArrowRight size={15} />
               </Button>
-              {!busy && (!name.trim() || !date) && <span className="text-xs text-slate-500">{!name.trim() ? 'Enter the event name to continue.' : 'Pick the event date to continue.'}</span>}
               <Button type="button" variant="secondary" onClick={() => navigate('/events')}>
                 Cancel
               </Button>
             </div>
+            {!busy && (!name.trim() || !date) && <p className="text-xs text-slate-500">{!name.trim() ? 'Enter the event name to continue.' : 'Pick the event date to continue.'}</p>}
           </form>
         </Card>
       }
