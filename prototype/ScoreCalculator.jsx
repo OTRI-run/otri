@@ -577,7 +577,7 @@ function ShareBox({ courseLabel, courseFile, targetSeconds, shareId, onShared, i
 function CoursePicker({ races, racesLoading, racesError, query, onQuery, onChooseRace, onUpload, loadingCourse, loadError }) {
   const units = useUnits()
   return (
-    <section className="bg-white py-14 sm:py-20">
+    <section className="border-b border-slate-200 bg-white py-10 sm:py-14">
       <div className={CONTAINER}>
         <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
           <div className="hidden font-mono text-xs text-blue-600 md:block">01</div>
@@ -779,15 +779,36 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
 // One part of a finish time (hours, minutes or seconds) as its own field: typed digits replace what
 // is there, two digits move on to the next part, and the arrow keys step it. Far less fiddly than
 // one text box that only accepts "4:30:00" typed exactly.
+//
+// Two traps, both of which turned a typed "20" into "02":
+// - Moving the focus on after the second digit blurs this field, and the blur handler of that
+//   render still held the half-typed "2" and committed it over the 20. The draft therefore lives
+//   in a ref that is emptied before the focus moves; the state copy only redraws the field.
+// - What was typed is taken from the keystroke (the input event's data), not from the text in the
+//   box: with the caret inside "00", typing "2" makes "020".
 function TimePart({ id, label, value, max, onCommit, nextId, wide = false }) {
-  const [draft, setDraft] = useState(null) // what is being typed, until it is committed
+  const [draft, setDraftState] = useState(null) // what is being typed, until it is committed
+  const draftRef = useRef(null)
+  const setDraft = (text) => {
+    draftRef.current = text
+    setDraftState(text)
+  }
   const shown = draft ?? String(value).padStart(wide ? 1 : 2, '0')
 
+  const limit = wide ? 3 : 2
+
   function commit(text, advance) {
-    const number = Math.min(max, Math.max(0, parseInt(text, 10) || 0))
-    onCommit(number)
+    if (text !== '') onCommit(Math.min(max, Math.max(0, parseInt(text, 10) || 0))) // an emptied field keeps its value
     setDraft(null)
     if (advance && nextId) document.getElementById(nextId)?.focus()
+  }
+
+  function typed(digits) {
+    const current = draftRef.current
+    const base = current === null || current.length >= limit ? '' : current // the first digit starts afresh
+    const next = (base + digits).slice(-limit)
+    if (!wide && next.length >= limit) commit(next, true)
+    else setDraft(next)
   }
 
   return (
@@ -800,12 +821,14 @@ function TimePart({ id, label, value, max, onCommit, nextId, wide = false }) {
         aria-label={label}
         value={shown}
         onFocus={(event) => event.target.select()}
+        onMouseUp={(event) => event.preventDefault() /* keep the selection the focus made */}
         onChange={(event) => {
-          const digits = event.target.value.replace(/\D/g, '').slice(0, wide ? 3 : 2)
-          setDraft(digits)
-          if (digits.length >= 2 && !wide) commit(digits, true)
+          const native = event.nativeEvent
+          if (native.inputType?.startsWith('delete')) return setDraft((draftRef.current ?? '').slice(0, -1))
+          const digits = (native.data ?? event.target.value).replace(/\D/g, '')
+          if (digits) typed(digits)
         }}
-        onBlur={() => draft !== null && commit(draft, false)}
+        onBlur={() => draftRef.current !== null && commit(draftRef.current, false)}
         onKeyDown={(event) => {
           if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
             event.preventDefault()
@@ -1084,8 +1107,31 @@ export default function ScoreCalculator({ embedded = false }) {
   const hasCourse = Boolean(courseFile && features)
   const shareUrl = courseLabel && (courseLabel.raceId || shareId) ? buildShareUrl({ raceId: courseLabel.raceId ?? null, shareId, name: courseLabel.name, seconds: targetSeconds }) : null
 
+  // Before a course is chosen the picker is the first thing on the page, so a visitor starts at
+  // once; with a course, the score comes first and the course's details follow it.
+  const course = (
+    <div id="calculator-course" className="scroll-mt-[68px]">
+      {hasCourse ? (
+        <CourseDetails gpxText={gpxText} measurement={measurement} features={features} courseLabel={courseLabel} onChangeCourse={startOver} shareId={shareId} />
+      ) : (
+        <CoursePicker
+          races={filteredRaces}
+          racesLoading={racesLoading}
+          racesError={racesError}
+          query={query}
+          onQuery={setQuery}
+          onChooseRace={chooseExistingRace}
+          onUpload={handleUpload}
+          loadingCourse={loadingCourse}
+          loadError={loadError}
+        />
+      )}
+    </div>
+  )
+
   return (
     <>
+      {!hasCourse && course}
       <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
         <div className={`${CONTAINER} grid min-w-0 items-center gap-12 py-14 sm:py-16 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-20 lg:py-20`}>
           <div className="min-w-0">
@@ -1171,23 +1217,7 @@ export default function ScoreCalculator({ embedded = false }) {
         </section>
       )}
 
-      <div id="calculator-course" className="scroll-mt-[68px]">
-        {hasCourse ? (
-          <CourseDetails gpxText={gpxText} measurement={measurement} features={features} courseLabel={courseLabel} onChangeCourse={startOver} shareId={shareId} />
-        ) : (
-          <CoursePicker
-            races={filteredRaces}
-            racesLoading={racesLoading}
-            racesError={racesError}
-            query={query}
-            onQuery={setQuery}
-            onChooseRace={chooseExistingRace}
-            onUpload={handleUpload}
-            loadingCourse={loadingCourse}
-            loadError={loadError}
-          />
-        )}
-      </div>
+      {hasCourse && course}
 
       {hasCourse && estimate && (
         <ScoreExplanation
