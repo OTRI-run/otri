@@ -90,6 +90,8 @@ class ListingImportResult(BaseModel):
     created_events: int = 0
     created_races: int = 0
     skipped: list[str] = []
+    # CSV rows left out because their race was before the import's ``since`` day.
+    before_since: int = 0
 
 
 class RaceListingUpdate(BaseModel):
@@ -183,6 +185,37 @@ class SubmissionResult(BaseModel):
     errors: list[ValidationIssueOut]
     warnings: list[ValidationIssueOut]
     scores: list[RunnerScoreOut] = []
+
+
+class ScoredCourse(BaseModel):
+    """The course a results file was scored against, as `POST /score` understood it."""
+
+    name: str | None = None
+    # 'gpx' when the figures were measured from the uploaded course file, 'official' when given.
+    source: str
+    distance_km: float
+    elevation_gain_m: float
+    confidence: str | None = None
+    quality_flags: list[str] = []
+    # Why the course carries finish times only (an uphill-only course today); None when it is scored.
+    not_scored_reason: str | None = None
+
+
+class ScoreSummary(BaseModel):
+    finishers: int = 0
+    non_finishers: int = 0
+    best_score: int | None = None
+    median_score: int | None = None
+
+
+class ScoreRaceResult(SubmissionResult):
+    """`POST /score`: a results file validated and scored against a course, and nothing kept."""
+
+    stored: bool = False
+    scoring_version: str
+    course: ScoredCourse
+    summary: ScoreSummary = ScoreSummary()
+    measurement: dict | None = None
 
 
 class EstimateBreakdownOut(BaseModel):

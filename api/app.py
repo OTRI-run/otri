@@ -30,6 +30,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, Request, Response, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.concurrency import run_in_threadpool
 
@@ -48,7 +49,8 @@ if not os.environ.get("OTRI_DEM_MANIFEST"):
         "V0.7 score will report Low confidence. See scripts/deploy/06-install-dem.sh."
     )
 from ingestion import result_records, validate_result_file
-from scoring import available_scoring_models, estimate_score, get_scoring_model_info, score_race
+from ingestion.records import RaceRecord
+from scoring import DEFAULT_SCORING_VERSION, available_scoring_models, estimate_score, get_scoring_model_info, score_race
 from scoring.course_standard import MEASURED_DEMAND_VERSIONS
 from scoring.runner_index import IndexInput, compute_runner_index
 
@@ -70,7 +72,7 @@ from .auth import (
 )
 from . import email as _email
 from .calendar_feed import CalendarEvent, CalendarRace, build_calendar
-from .event_match import same_edition
+from .event_match import name_key, same_edition
 from . import server_stats as _server
 from .email import send_password_reset_email, send_verification_email
 from .rate_limit import AccountLocked, check_account_lock, clear_login_failures, enforce_rate_limit, record_login_failure
@@ -111,6 +113,9 @@ from .schemas import (
     ScoreRequestOut,
     EventSummary,
     EventUpdate,
+    ScoredCourse,
+    ScoreRaceResult,
+    ScoreSummary,
     GpxAnalysis,
     IllustrativeEstimateOut,
     MessageResponse,
@@ -168,13 +173,17 @@ _STARTED_AT = datetime.now(timezone.utc)
 # local Vite dev server so `npm run dev` + `uvicorn api.app:app` work together
 # out of the box.
 _allowed_origins = os.environ.get("OTRI_API_ALLOWED_ORIGINS", "http://localhost:5173")
+_ALLOWED_ORIGIN_LIST = [origin.strip() for origin in _allowed_origins.split(",") if origin.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[origin.strip() for origin in _allowed_origins.split(",") if origin.strip()],
+    allow_origins=_ALLOWED_ORIGIN_LIST,
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["*"],
     allow_credentials=True,  # the organizer app authenticates with an HttpOnly cookie
 )
+# The race list is one response the browser filters itself; with a few thousand listings it is
+# megabytes of JSON and about a tenth of that compressed. The proxy does not compress for us.
+app.add_middleware(GZipMiddleware, minimum_size=2000)
 
 
 _MAX_BODY_BYTES = 20_000_000
@@ -202,6 +211,34 @@ async def _guardrails(request: Request, call_next):
         # courses are content-addressed and can be held for an hour.
         ttl = 3600 if request.url.path.startswith("/gpx/shared/") else 30
         response.headers.setdefault("Cache-Control", f"public, max-age={ttl}, stale-while-revalidate=60")
+    return response
+
+
+# The calculator endpoints are a public tool: any website may call them from a browser (an embedded
+# calculator, a timing company's results page). They carry no session and keep nothing, so they
+# answer every origin, without credentials. Everything else stays on the allow-list above.
+_OPEN_CORS_PATHS = {"/score", "/gpx/analyze", "/scoring/models"}
+
+
+@app.middleware("http")
+async def _open_cors(request: Request, call_next):
+    origin = request.headers.get("origin")
+    # OTRI's own pages send the session cookie, which a wildcard answer would make the browser refuse.
+    if origin is None or request.url.path not in _OPEN_CORS_PATHS or origin in _ALLOWED_ORIGIN_LIST:
+        return await call_next(request)
+    if request.method == "OPTIONS" and "access-control-request-method" in request.headers:
+        response = Response(status_code=204)
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST"
+        response.headers["Access-Control-Allow-Headers"] = request.headers.get("access-control-request-headers", "*")
+        response.headers["Access-Control-Max-Age"] = "86400"
+    else:
+        response = await call_next(request)
+    if "access-control-allow-origin" not in response.headers:  # not one of our own origins
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        if "access-control-allow-credentials" in response.headers:
+            del response.headers["access-control-allow-credentials"]  # a wildcard answer never carries credentials
+        response.headers["Access-Control-Expose-Headers"] = "Content-Disposition, Retry-After"
+    response.headers.add_vary_header("Origin")
     return response
 
 
@@ -837,9 +874,13 @@ def admin_list_events(organizer: Organizer = Depends(require_admin)) -> list[Adm
     """Every event on the platform with its owner and each race's publish state. Admin only."""
     counts = db.count_results_by_race()
     requests = db.count_score_requests_by_race()
+    # One query for every race, not one per event: the list runs to thousands once listings are imported.
+    races_by_event: dict[str, list[db.Race]] = {}
+    for race in db.list_races():
+        races_by_event.setdefault(race.event_id, []).append(race)
     out = []
     for event in db.list_events():
-        races = db.list_races_for_event(event.event_id)
+        races = races_by_event.get(event.event_id, [])
         out.append(
             AdminEventOut(
                 event_id=event.event_id,
@@ -979,26 +1020,40 @@ def _validate_listing(payload: ListingCreate) -> tuple[str, str | None, str | No
     return name, country, website, source_url
 
 
+def _create_listings(payloads: list[ListingCreate], skipped: list[str]) -> tuple[int, int]:
+    """Create the events (or reuse one with the same name and date) and their missing races, listed.
+    Everything already on OTRI is read once and the new rows go in as one transaction, so a CSV of
+    a few thousand races is a matter of seconds. The same name means the same ``name_key``: the year,
+    accents and punctuation do not make a second event."""
+    events = {}
+    for event in db.list_events():
+        events.setdefault((name_key(event.event_name), event.event_date), event.event_id)
+    have: dict[str, set[str]] = {}
+    for race in db.list_races():
+        have.setdefault(race.event_id, set()).add(race.course_name.strip().lower())
+
+    new_events, new_races = [], []
+    for payload in payloads:
+        name, country, website, source_url = _validate_listing(payload)
+        key = (name_key(name), payload.event_date)
+        event_id = events.get(key)
+        if event_id is None:
+            event_id = events[key] = db.new_listing_id("evt")
+            new_events.append((event_id, name, payload.event_date, (payload.location or "").strip() or None, country, website, source_url))
+        courses = have.setdefault(event_id, set())
+        for race in payload.races:
+            course = race.course_name.strip()
+            if course.lower() in courses:
+                skipped.append(f"{name} · {course}: already on OTRI")
+                continue
+            courses.add(course.lower())
+            new_races.append((db.new_listing_id("race"), event_id, course, race.distance_km, race.elevation_gain_m))
+    db.insert_listings(new_events, new_races)
+    return len(new_events), len(new_races)
+
+
 def _create_listing(payload: ListingCreate, skipped: list[str]) -> tuple[int, int]:
-    """Create the event (or reuse one with the same name and date) and its missing races, listed."""
-    name, country, website, source_url = _validate_listing(payload)
-    existing = next((e for e in db.list_events() if e.event_name.strip().lower() == name.lower() and e.event_date == payload.event_date), None)
-    created_events = 0
-    if existing is None:
-        existing = db.create_event(name, payload.event_date, None, location=(payload.location or "").strip() or None, country=country, website=website, source_url=source_url)
-        created_events = 1
-    have = {race.course_name.strip().lower() for race in db.list_races_for_event(existing.event_id)}
-    created_races = 0
-    for race in payload.races:
-        course = race.course_name.strip()
-        if course.lower() in have:
-            skipped.append(f"{name} · {course}: already on OTRI")
-            continue
-        created = db.create_race(existing.event_id, course, race.distance_km, race.elevation_gain_m)
-        db.set_race_listed(created.race_id, True)
-        have.add(course.lower())
-        created_races += 1
-    return created_events, created_races
+    return _create_listings([payload], skipped)
 
 
 @app.post("/admin/listings", response_model=ListingImportResult, status_code=201)
@@ -1009,18 +1064,26 @@ def admin_create_listing(payload: ListingCreate, organizer: Organizer = Depends(
 
 
 _LISTING_CSV_COLUMNS = ("event_name", "event_date", "location", "country", "website", "source_url", "course_name", "distance_km", "elevation_gain_m")
+# The proxy takes 20 MB; a calendar of 100 000 races is about 15.
+_LISTING_CSV_MAX_BYTES = 19_000_000
+_LISTING_CSV_MAX_ROWS = 250_000
+# Races added by one import. More than this is a catalogue, not a calendar: narrow the dates.
+_LISTING_IMPORT_MAX_RACES = 10_000
+_LISTING_SKIPPED_SHOWN = 100
 
 
 @app.post("/admin/listings/import", response_model=ListingImportResult)
-async def admin_import_listings(file: UploadFile, organizer: Organizer = Depends(require_admin)) -> ListingImportResult:
+async def admin_import_listings(file: UploadFile, since: date | None = None, organizer: Organizer = Depends(require_admin)) -> ListingImportResult:
     """Bulk-add listings from a CSV of race facts: one row per race distance, rows of the same
-    event (name and date) grouped. A bad row is skipped with its reason; the rest are imported."""
+    event (name and date) grouped. ``since`` leaves out every race before that day, so a file with
+    years of history can be imported for this season only. A bad row is skipped with its reason;
+    the rest are imported."""
     import csv
     import io
 
-    contents = await file.read(2_000_001)
-    if len(contents) > 2_000_000:
-        raise HTTPException(status_code=413, detail="Upload exceeds 2 MB")
+    contents = await file.read(_LISTING_CSV_MAX_BYTES + 1)
+    if len(contents) > _LISTING_CSV_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="Upload exceeds 19 MB; split the file")
     try:
         reader = csv.DictReader(io.StringIO(contents.decode("utf-8-sig")))
     except UnicodeError as error:
@@ -1029,33 +1092,51 @@ async def admin_import_listings(file: UploadFile, organizer: Organizer = Depends
     if missing:
         raise HTTPException(status_code=422, detail=f"missing column(s) {missing}; expected {list(_LISTING_CSV_COLUMNS)}")
 
-    grouped: dict[tuple[str, str], dict] = {}
-    skipped: list[str] = []
-    for line, row in enumerate(reader, start=2):
-        if line > 5001:
-            skipped.append("rows after the 5000th were ignored")
-            break
-        row = {key: (value or "").strip() for key, value in row.items() if key}
-        try:
-            event_date = date.fromisoformat(row["event_date"])
-            race = {"course_name": row["course_name"], "distance_km": float(row["distance_km"]), "elevation_gain_m": float(row.get("elevation_gain_m") or 0)}
-        except ValueError:
-            skipped.append(f"line {line}: event_date must be YYYY-MM-DD and distance_km / elevation_gain_m numbers")
-            continue
-        entry = grouped.setdefault((row["event_name"].lower(), row["event_date"]), {**{k: row.get(k) or None for k in ("event_name", "location", "country", "website", "source_url")}, "event_date": event_date, "races": [], "line": line})
-        entry["races"].append(race)
+    def parse(rows) -> tuple[list[ListingCreate], list[str], int]:
+        grouped: dict[tuple[str, date], dict] = {}
+        skipped: list[str] = []
+        before = kept = 0
+        for line, row in enumerate(rows, start=2):
+            if line > _LISTING_CSV_MAX_ROWS + 1:
+                skipped.append(f"rows after the {_LISTING_CSV_MAX_ROWS}th were ignored")
+                break
+            row = {key: (value or "").strip() for key, value in row.items() if key}
+            try:
+                event_date = date.fromisoformat(row["event_date"])
+                race = {"course_name": row["course_name"], "distance_km": float(row["distance_km"]), "elevation_gain_m": float(row.get("elevation_gain_m") or 0)}
+            except ValueError:
+                skipped.append(f"line {line}: event_date must be YYYY-MM-DD and distance_km / elevation_gain_m numbers")
+                continue
+            if since is not None and event_date < since:
+                before += 1
+                continue
+            if kept >= _LISTING_IMPORT_MAX_RACES:
+                skipped.append(f"more than {_LISTING_IMPORT_MAX_RACES} races; the rest were ignored, import a shorter period")
+                break
+            kept += 1
+            entry = grouped.setdefault((name_key(row["event_name"]), event_date), {**{k: row.get(k) or None for k in ("event_name", "location", "country", "website", "source_url")}, "event_date": event_date, "races": [], "line": line})
+            entry["races"].append(race)
 
-    result = ListingImportResult(skipped=skipped)
-    for entry in grouped.values():
-        line = entry.pop("line")
-        try:
-            events, races = _create_listing(ListingCreate(**entry), result.skipped)
-        except (HTTPException, ValueError) as error:
-            result.skipped.append(f"line {line}: {getattr(error, 'detail', error)}")
-            continue
-        result.created_events += events
-        result.created_races += races
-    return result
+        payloads = []
+        for entry in grouped.values():
+            line = entry.pop("line")
+            try:
+                payload = ListingCreate(**entry)
+                _validate_listing(payload)
+            except (HTTPException, ValueError) as error:
+                skipped.append(f"line {line}: {getattr(error, 'detail', error)}")
+                continue
+            payloads.append(payload)
+        return payloads, skipped, before
+
+    def run() -> ListingImportResult:
+        payloads, skipped, before = parse(reader)
+        events, races = _create_listings(payloads, skipped)
+        if len(skipped) > _LISTING_SKIPPED_SHOWN:
+            skipped = skipped[:_LISTING_SKIPPED_SHOWN] + [f"… and {len(skipped) - _LISTING_SKIPPED_SHOWN} more"]
+        return ListingImportResult(created_events=events, created_races=races, skipped=skipped, before_since=before)
+
+    return await run_in_threadpool(run)
 
 
 @app.post("/races/{race_id}/listing", response_model=RaceSummary)
@@ -1443,7 +1524,13 @@ def _score_results(race: db.Race, results: list) -> list[RunnerScoreOut]:
     if gpx_points is not None and race.scoring_version in MEASURED_DEMAND_VERSIONS and stored_measurement is None:
         raise ValueError('reattach the GPX to save a versioned measurement before using measured scoring')
     measurement = Measurement(**stored_measurement["snapshot"]) if stored_measurement else None
-    scores = score_race(race.to_race_record(), results, model_version=race.scoring_version, gpx_points=gpx_points, measurement=measurement)
+    return _scored_rows(race.to_race_record(), results, race.scoring_version, gpx_points, measurement)
+
+
+def _scored_rows(race: RaceRecord, results: list, scoring_version: str, gpx_points, measurement) -> list[RunnerScoreOut]:
+    """Score result rows against a course. Touches no storage: the stored leaderboard and the
+    stateless `POST /score` are the same computation."""
+    scores = score_race(race, results, model_version=scoring_version, gpx_points=gpx_points, measurement=measurement)
     # Finish times ride along for the public leaderboard; scores carry the runner's identity only.
     by_key = {(str(r.rank), r.family_name, r.first_name): r for r in results}
     out = []
@@ -1469,7 +1556,7 @@ def _score_results(race: db.Race, results: list) -> list[RunnerScoreOut]:
                     bib_number=result.bib_number,
                     family_name=result.family_name,
                     first_name=result.first_name,
-                    scoring_version=race.scoring_version,
+                    scoring_version=scoring_version,
                     status=result.rank,
                     runner_id=result.runner_id,
                     gender=result.gender,
@@ -1713,6 +1800,131 @@ async def analyze_gpx(request: Request, file: UploadFile, finish_time_seconds: i
             raise HTTPException(status_code=422, detail=str(error)) from error
 
     return GpxAnalysis(features=features.to_dict(), estimate=estimate, measurement={**measurement.to_dict(), "raw_sha256": sha256(contents).hexdigest()})
+
+
+# ----------------------------------------------------------------------------- score a race
+# The whole product in one call, for a race that wants its scores and nothing else: a course and a
+# results file in, the validated and scored result list out. No account, no race page, no row in
+# any table; both files are deleted before the response is sent. It is the organizer workflow's
+# validation and scoring, unchanged, minus the storing. See docs/product/open-scoring-tool.md.
+
+_SCORE_CSV_COLUMNS = ("rank", "bib_number", "family_name", "first_name", "gender", "nationality", "finish_time", "otri_score", "confidence", "status", "performance_rate", "scoring_version", "quality_flags")
+
+
+def _csv_cell(value) -> str:
+    """A spreadsheet runs a cell that starts with = + - or @ as a formula; names come from a file
+    anyone may have written, so such a cell is made text."""
+    text = "" if value is None else str(value)
+    return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
+
+
+def _scores_csv(scores: list[RunnerScoreOut]) -> str:
+    import csv
+    import io
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, lineterminator="\n")
+    writer.writerow(_SCORE_CSV_COLUMNS)
+    for row in scores:
+        seconds = row.finish_time_seconds
+        finish = f"{seconds // 3600:02d}:{seconds % 3600 // 60:02d}:{seconds % 60:02d}" if seconds is not None else ""
+        values = {**row.model_dump(), "finish_time": finish, "quality_flags": " | ".join(row.quality_flags), "performance_rate": f"{row.performance_rate:.4f}" if row.performance_rate else ""}
+        writer.writerow([_csv_cell(values.get(column)) for column in _SCORE_CSV_COLUMNS])
+    return buffer.getvalue()
+
+
+def _save_upload(contents: bytes, suffix: str) -> Path:
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp_file:
+        temp_file.write(contents)
+        return Path(temp_file.name)
+
+
+@app.post("/score", response_model=ScoreRaceResult)
+async def score_a_race(
+    request: Request,
+    results: UploadFile,
+    gpx: UploadFile | None = None,
+    distance_km: float | None = Form(default=None),
+    elevation_gain_m: float | None = Form(default=None),
+    race_name: str | None = Form(default=None, max_length=200),
+    scoring_version: str | None = Form(default=None, max_length=80),
+    format: str = "json",
+):
+    """Validate a results file and score it against a course, without an account and without
+    keeping anything. The course is a GPX file (`gpx`, measured like any OTRI course) or, without
+    one, the official `distance_km` and `elevation_gain_m`. `?format=csv` returns the scored list as
+    a CSV download. An invalid results file answers 200 with `is_valid: false` and the issues."""
+    enforce_rate_limit(request, max_requests=10)  # public, and a full course measurement plus thousands of rows
+    if format not in ("json", "csv"):
+        raise HTTPException(status_code=422, detail="format must be json or csv")
+    version = scoring_version or DEFAULT_SCORING_VERSION
+    _validate_scoring_version(version)
+    if gpx is None and (distance_km is None or elevation_gain_m is None):
+        raise HTTPException(status_code=422, detail="send the course as a gpx file, or distance_km and elevation_gain_m")
+    if gpx is None and (not 0 < distance_km <= 2000 or not 0 <= elevation_gain_m <= 100_000):
+        raise HTTPException(status_code=422, detail="distance_km must be above 0 and elevation_gain_m 0 or more")
+
+    results_bytes = await results.read(20_000_001)
+    gpx_bytes = await gpx.read(20_000_001) if gpx is not None else None
+    if len(results_bytes) + len(gpx_bytes or b"") > 20_000_000:
+        raise HTTPException(status_code=413, detail="Upload exceeds 20 MB")
+
+    def run() -> ScoreRaceResult:
+        paths = [_save_upload(results_bytes, _safe_suffix(results.filename, ".csv"))]
+        try:
+            points = measurement = None
+            if gpx_bytes is not None:
+                paths.append(_save_upload(gpx_bytes, _safe_suffix(gpx.filename, ".gpx")))
+                try:
+                    points, measurement = _measure_gpx_path(paths[1])
+                except (GpxParseError, ValueError, UnicodeError) as error:
+                    raise HTTPException(status_code=422, detail=f"course file: {error}") from error
+                features = features_from_measurement(measurement)
+                distance, climb = features.distance_km, features.elevation_gain_m
+            else:
+                distance, climb = distance_km, elevation_gain_m
+            course = ScoredCourse(name=(race_name or "").strip() or None, source="gpx" if points is not None else "official", distance_km=round(distance, 3), elevation_gain_m=round(climb, 1))
+
+            try:
+                report = validate_result_file(paths[0])
+            except (ValueError, OSError) as error:  # unreadable, wrong type, too many rows
+                raise HTTPException(status_code=422, detail=f"results file: {error}") from error
+            issues = {
+                "errors": [ValidationIssueOut(**issue.to_dict()) for issue in report.errors],
+                "warnings": [ValidationIssueOut(**issue.to_dict()) for issue in report.warnings],
+            }
+            shared = {"scoring_version": version, "course": course, "measurement": measurement.to_dict() if measurement is not None else None}
+            if not report.is_valid:
+                return ScoreRaceResult(is_valid=False, scores=[], **issues, **shared)
+
+            race = RaceRecord(race_id="unsaved", race_name=course.name or "Unsaved race", event_date=date.today(), course_name=course.name or "Course", distance_km=distance, elevation_gain_m=climb)
+            try:
+                scores = _scored_rows(race, result_records(paths[0]), version, points, measurement)
+            except ValueError as error:
+                raise HTTPException(status_code=422, detail=str(error)) from error
+
+            finishers = [row for row in scores if row.status == "finisher"]
+            if finishers:
+                # Confidence and its reasons are the course's, identical on every row.
+                course.confidence = finishers[0].confidence
+                course.quality_flags = list(finishers[0].quality_flags)
+                course.not_scored_reason = next((flag for flag in course.quality_flags if flag.startswith("course_not_scored")), None)
+            values = sorted(row.otri_score for row in finishers if row.otri_score is not None)
+            summary = ScoreSummary(
+                finishers=len(finishers),
+                non_finishers=len(scores) - len(finishers),
+                best_score=values[-1] if values else None,
+                median_score=values[len(values) // 2] if values else None,
+            )
+            return ScoreRaceResult(is_valid=True, scores=scores, summary=summary, **issues, **shared)
+        finally:
+            for path in paths:
+                _discard_temp(path)
+
+    result = await run_in_threadpool(run)
+    if format == "csv" and result.is_valid:
+        return Response(content=_scores_csv(result.scores), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="otri-scores.csv"'})
+    return result
 
 
 # ----------------------------------------------------------------------------- shared courses

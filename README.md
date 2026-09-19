@@ -2,7 +2,7 @@
 
 **The open-source performance layer for trail running.**
 
-OTRI is an independent, transparent, reproducible trail-running performance index built from legitimately obtained race-result data and a publicly documented methodology.
+OTRI is an open calculator and scoring tool for trail running: a course and a results file in, an explained, reproducible score for every finisher out. It is independent, its methodology is public and versioned, and it is not an approval body: a race can score itself, with no account and nothing stored ([the direction](docs/product/open-scoring-tool.md)).
 
 ## Why OTRI?
 
@@ -28,7 +28,13 @@ Race results + course data
           ↓
       OTRI score
           ↓
- Rankings / profiles / API / analytics
+ Scored result list / race page / API / embedded calculator
+```
+
+Try it: **Score my race** at [otri.run/prototype/#score](https://otri.run/prototype/#score), or as one call:
+
+```bash
+curl -X POST https://api.otri.run/score -F "results=@results.csv" -F "gpx=@course.gpx"
 ```
 
 A major planned capability is the **GPX Target Performance Predictor**: upload a GPX course and estimate the finish time needed to target a chosen OTRI score, with uncertainty rather than false precision.

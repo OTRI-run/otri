@@ -32,7 +32,7 @@ A runner's own GPX still works in the calculator for their own estimate; it does
 | method | path | who | what |
 |---|---|---|---|
 | POST | `/admin/listings` | admin | One event with its race distances, unowned and listed. Re-posting the same event (name and date) adds only the distances that are missing. |
-| POST | `/admin/listings/import` | admin | The same from a CSV: `event_name,event_date,location,country,website,source_url,course_name,distance_km,elevation_gain_m`, one row per distance. Bad rows are skipped and reported; the rest are imported. |
+| POST | `/admin/listings/import` | admin | The same from a CSV: `event_name,event_date,location,country,website,source_url,course_name,distance_km,elevation_gain_m`, one row per distance. Bad rows are skipped and reported; the rest are imported. `?since=YYYY-MM-DD` leaves out earlier races, so a file with years of history can be imported for this season only (the admin page fills in 1 January). Up to 19 MB and 10,000 races per import, written as one transaction; an event whose name differs only by the year, accents or punctuation is the same event. |
 | POST / DELETE | `/races/{id}/listing` | owner or admin | List a race ahead of its results, or take the listing down. Organizers can list their own upcoming race. |
 | POST | `/races/{id}/gpx` (`course_permission` form field) | owner or admin | Optional; recorded with a race that has no owner. |
 | POST | `/races/{id}/score-requests` | anyone | "I'd like scores". One per visitor: the key is a salted hash of the address plus the browser's random id, at most 25 per address per race, rate limited. Nothing personal is stored. 409 once the race is scored. |

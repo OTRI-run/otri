@@ -11,6 +11,8 @@ import RaceCard, { DemoBadge, VerticalBadge } from './RaceCard'
 import RaceListing, { ListingBadge } from './RaceListing'
 import RaceCalendar from './RaceCalendar'
 import ScoreCalculator from './ScoreCalculator'
+import ScoreRace from './ScoreRace'
+import ApiDocs from './ApiDocs'
 import FaqPage from './Faq'
 import { RunnerProfilePage, RunnersPage } from './Runners'
 import CourseMap from '../src/components/CourseMap'
@@ -26,6 +28,8 @@ const PAGE_TITLES = {
   races: 'Scored races · OTRI',
   runners: 'Runners · OTRI',
   calculator: 'Score calculator · OTRI',
+  score: 'Score my race · OTRI',
+  api: 'API and embed · OTRI',
   faq: 'FAQ · OTRI',
   notfound: 'Page not found · OTRI',
 }
@@ -40,13 +44,15 @@ const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 
 // ------------------------------------------------------------------------------------ routing
 // Hash routes so every screen has a URL: #home (default), #races, #races/<race_id>, #runners,
-// #runners/<runner_id>, #calculator. The races page keeps its view and filters in the query
+// #runners/<runner_id>, #calculator, #score (score my race), #api. The races page keeps its view and filters in the query
 // (#races?view=calendar&country=THA), so a filtered calendar is a link that can be shared.
 
 function parseHash(hash) {
   const path = hash.replace(/^#\/?/, '')
   if (path.startsWith('faq')) return { tab: 'faq', raceId: null, faqQuery: new URLSearchParams(path.split('?')[1] || '').get('q') || '' }
   if (path.startsWith('calculator')) return { tab: 'calculator', raceId: null }
+  if (path === 'score' || path.startsWith('score?')) return { tab: 'score', raceId: null }
+  if (path === 'api' || path.startsWith('api?')) return { tab: 'api', raceId: null }
   const raceMatch = path.match(/^races\/(.+)$/)
   if (raceMatch) return { tab: 'races', raceId: decodeURIComponent(raceMatch[1]) }
   if (path.startsWith('races')) return { tab: 'races', raceId: null }
@@ -75,10 +81,12 @@ function navigate(hash) {
 // ------------------------------------------------------------------------------------- shell
 
 const NAV = [
-  { id: 'calculator', label: 'Calculate score', short: 'Calculator', href: '#calculator' },
+  { id: 'score', label: 'Score a race', short: 'Score', href: '#score' },
+  { id: 'calculator', label: 'Calculator', href: '#calculator' },
   { id: 'races', label: 'Races', href: '#races' },
   { id: 'runners', label: 'Runners', href: '#runners' },
   { id: 'faq', label: 'FAQ', href: '#faq' },
+  { id: 'api', label: 'API', href: '#api' },
 ]
 
 function NavLink({ item, active, className = '', short = false }) {
@@ -103,7 +111,7 @@ function Header({ tab }) {
             <i className="h-1.5 w-1.5 rounded-full bg-blue-600 shadow-[0_0_0_3px_#dbeafe]" />
             PROTOTYPE <span className="text-slate-400">v0.x</span>
           </div>
-          <nav className="hidden shrink-0 items-center gap-7 md:flex">
+          <nav className="hidden shrink-0 items-center gap-5 md:flex lg:gap-7">
             {NAV.map((item) => (
               <NavLink key={item.id} item={item} active={tab === item.id} />
             ))}
@@ -125,7 +133,7 @@ function Header({ tab }) {
       </header>
       {/* Small screens: the section links live in their own row under the header. */}
       <div className="border-b border-slate-200 bg-white md:hidden">
-        <div className="mx-auto flex w-[min(1120px,calc(100%-28px))] items-center gap-4">
+        <div className="mx-auto flex w-[min(1120px,calc(100%-28px))] items-center gap-4 overflow-x-auto">
           {NAV.map((item) => (
             <NavLink
               key={item.id}
@@ -620,6 +628,8 @@ function App() {
         {route.tab === 'races' && <RacesPage raceId={route.raceId} />}
         {route.tab === 'runners' && (route.runnerId ? <RunnerProfilePage runnerId={route.runnerId} onBack={() => navigate('#runners')} /> : <RunnersPage />)}
         {route.tab === 'calculator' && <ScoreCalculator />}
+        {route.tab === 'score' && <ScoreRace />}
+        {route.tab === 'api' && <ApiDocs />}
         {route.tab === 'faq' && <FaqPage initialQuery={route.faqQuery} />}
         {route.tab === 'notfound' && <NotFound where={window.location.hash} home="#home" />}
       </main>

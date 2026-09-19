@@ -250,6 +250,20 @@ export function analyzeGpx(file, finishTimeSeconds) {
   return request('/gpx/analyze', { method: 'POST', body: formData })
 }
 
+/** Validate a results file and score it against a course, with no account and nothing stored.
+ * The course is a GPX file, or without one the official distance and climb. */
+export function scoreRace({ results, gpx, distanceKm, elevationGainM, raceName }) {
+  const formData = new FormData()
+  formData.append('results', results)
+  if (gpx) formData.append('gpx', gpx)
+  else {
+    formData.append('distance_km', String(distanceKm))
+    formData.append('elevation_gain_m', String(elevationGainM))
+  }
+  if (raceName) formData.append('race_name', raceName)
+  return request('/score', { method: 'POST', body: formData })
+}
+
 /** Stores an uploaded GPX (with the user's consent, on "Share") so a calculator link can reopen it. */
 export function shareGpx(file, name) {
   const formData = new FormData()
@@ -384,11 +398,11 @@ export function requestScores(raceId, clientId) {
   })
 }
 
-/** Admin: add race listings (facts only) from a CSV file. */
-export function importListings(file, token) {
+/** Admin: add race listings (facts only) from a CSV file; `since` (YYYY-MM-DD) leaves out earlier races. */
+export function importListings(file, token, since) {
   const formData = new FormData()
   formData.append('file', file)
-  return request('/admin/listings/import', { method: 'POST', headers: authHeaders(token), body: formData })
+  return request(`/admin/listings/import${since ? `?since=${encodeURIComponent(since)}` : ''}`, { method: 'POST', headers: authHeaders(token), body: formData })
 }
 
 /** Admin: hand an event to an organizer's account (a claimed listing); no email releases it. */

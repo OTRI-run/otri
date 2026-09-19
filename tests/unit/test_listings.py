@@ -42,7 +42,7 @@ def test_only_admins_create_listings(monkeypatch):
 
 def test_a_listing_is_public_without_results_and_says_what_it_is(monkeypatch):
     admin = _admin_headers(monkeypatch)
-    assert _listing(admin) == {"created_events": 1, "created_races": 1, "skipped": []}
+    assert _listing(admin) == {"created_events": 1, "created_races": 1, "skipped": [], "before_since": 0}
     race = _public_race()
     assert race["listing_status"] == "upcoming"
     assert race["is_listed"] is True and race["is_published"] is False and race["is_claimed"] is False
@@ -250,3 +250,45 @@ def test_an_unlisted_private_event_is_never_offered_to_another_organizer():
     client.post("/events", json={"event_name": "Secret Trail", "event_date": FUTURE}, headers=owner)
     other = _organizer_auth_headers("other@example.com")
     assert client.get(f"/events/matches?name=Secret+Trail&event_date={FUTURE}", headers=other).json() == []
+
+
+def _csv_upload(admin, text, since=None):
+    url = "/admin/listings/import" + (f"?since={since}" if since else "")
+    response = client.post(url, files={"file": ("races.csv", text.encode("utf-8"), "text/csv")}, headers=admin)
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def test_a_big_calendar_file_imports_only_the_races_from_the_chosen_day(monkeypatch):
+    admin = _admin_headers(monkeypatch)
+    header = "event_name,event_date,location,country,website,source_url,course_name,distance_km,elevation_gain_m\n"
+    this_year = date(date.today().year, 1, 1)
+    rows = []
+    for i in range(1500):  # years of history ...
+        rows.append(f"Old Race {i},{this_year - timedelta(days=1 + i)},Town,THA,,,21K,21,900")
+    for i in range(1200):  # ... and this season: 1200 events, two distances each
+        day = this_year + timedelta(days=i % 500)
+        rows.append(f"Trail Number{i},{day},Town,THA,https://race{i}.example,,50K,50,2500")
+        rows.append(f"Trail Number{i},{day},Town,THA,https://race{i}.example,,21K,21,900")
+    result = _csv_upload(admin, header + "\n".join(rows) + "\n", since=this_year.isoformat())
+    assert result == {"created_events": 1200, "created_races": 2400, "skipped": [], "before_since": 1500}
+
+    public = client.get("/races", headers={"Accept-Encoding": "gzip"})
+    assert public.headers.get("content-encoding") == "gzip"
+    assert sum(1 for r in public.json() if r["event_name"].startswith("Trail Number")) == 2400
+    imported = [e for e in client.get("/admin/events", headers=admin).json() if e["event_name"].startswith("Trail Number")]
+    assert len(imported) == 1200 and all(e["race_count"] == 2 and [r["course_name"] for r in e["races"]] == ["21K", "50K"] for e in imported)
+
+    # Importing the file again adds nothing, and the report of what was skipped stays readable.
+    again = _csv_upload(admin, header + "\n".join(rows) + "\n", since=this_year.isoformat())
+    assert again["created_events"] == 0 and again["created_races"] == 0
+    assert len(again["skipped"]) == 101 and again["skipped"][-1] == "… and 2300 more"
+
+
+def test_an_import_treats_the_year_and_punctuation_in_a_name_as_the_same_event(monkeypatch):
+    admin = _admin_headers(monkeypatch)
+    _listing(admin)  # "Doi Trail", 50K
+    header = "event_name,event_date,course_name,distance_km,elevation_gain_m\n"
+    result = _csv_upload(admin, header + f"Doi-Trail {FUTURE[:4]},{FUTURE},50K,50,2600\nDoi Trail,{FUTURE},21K,21,900\nBad Row,not-a-date,10K,10,100\n")
+    assert result["created_events"] == 0 and result["created_races"] == 1
+    assert result["skipped"][0].startswith("line 4:") and any("already on OTRI" in line for line in result["skipped"])

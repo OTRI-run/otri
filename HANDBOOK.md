@@ -14,6 +14,7 @@ A runner should be able to ask **“How strong was this performance?”** withou
 
 ## What OTRI is
 
+- An open calculator and scoring tool: a race can score itself, with no account and no approval ([docs/product/open-scoring-tool.md](docs/product/open-scoring-tool.md)).
 - An independent scoring system.
 - Open-source software.
 - A structured trail-race dataset with provenance.
@@ -26,6 +27,8 @@ A runner should be able to ask **“How strong was this performance?”** withou
 - A race timing system.
 - A guarantee of athletic ability.
 - An official qualification system unless another organization explicitly adopts it.
+- An approval or membership body: OTRI does not approve organizers or races, does not promise a complete list of the world's races, and does not arbitrate who owns a race or a result.
+- A global ranking, until the model has been validated well enough to carry one.
 - A mirror of another organization's proprietary database.
 
 OTRI should clearly state that it is independent and unaffiliated with other commercial ranking organizations.
