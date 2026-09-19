@@ -45,14 +45,24 @@ def test_a_course_file_is_required_and_official_figures_are_not_scored():
 
 def test_an_invalid_results_file_answers_with_its_issues_and_no_scores(tmp_path):
     bad = tmp_path / "bad.csv"
-    bad.write_text("rank,finish_time,family_name,first_name,gender\n1,05:00:00,A,B,M\n1,04:00:00,C,D,F\n", encoding="utf-8")
+    bad.write_text("rank,finish_time,family_name,first_name,gender\n1,05:00:00,A,B,M\n2,,C,D,F\n", encoding="utf-8")
     body = client.post("/score", files=_files(results=bad)).json()
     assert body["is_valid"] is False and body["scores"] == [] and body["errors"]
     assert all({"severity", "row", "field", "message"} <= issue.keys() for issue in body["errors"])
 
+    # Text that is not a results table is answered the same way, saying what was looked for.
     notes = tmp_path / "notes.txt"
     notes.write_text("not a results file", encoding="utf-8")
-    assert client.post("/score", files=_files(results=notes)).status_code == 422
+    body = client.post("/score", files=_files(results=notes)).json()
+    assert body["is_valid"] is False and any("no finish time column found" in issue["message"] for issue in body["errors"])
+    # A file type that cannot hold one is refused outright; the old Excel format says what to do.
+    pdf = tmp_path / "results.pdf"
+    pdf.write_bytes(b"%PDF-1.4")
+    assert client.post("/score", files=_files(results=pdf)).status_code == 422
+    xls = tmp_path / "results.xls"
+    xls.write_bytes(b"\xd0\xcf\x11\xe0")
+    answer = client.post("/score", files=_files(results=xls))
+    assert answer.status_code == 422 and "save it as .xlsx or CSV" in answer.text
     broken = {"results": _files()["results"], "gpx": ("course.gpx", b"<gpx>not a course", "application/gpx+xml")}
     assert client.post("/score", files=broken).status_code == 422
 

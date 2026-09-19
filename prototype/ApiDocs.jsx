@@ -135,7 +135,7 @@ export default function ApiDocs() {
             <ul className="mt-4 list-disc space-y-1.5 pl-5">
               <li>A results file with errors answers <code>200</code> with <code>is_valid: false</code>, the <code>errors</code> by row and field, and no scores. A file that cannot be read at all, or a broken course file, answers <code>422</code>.</li>
               <li><code>course.confidence</code> is <code>High</code> only when the course was measured against verified terrain data; otherwise <code>Low</code>, with the reasons in <code>course.quality_flags</code>. An uphill-only course comes back with finish times and <code>otri_score: null</code>, and <code>course.not_scored_reason</code> says why.</li>
-              <li>Required columns: rank, finish time, last name, first name, gender. Optional: status (DNF, DNS, DSQ), bib, nationality, birth year. Headers are matched in English, French, German, Spanish and Thai.</li>
+              <li>The results file is the export you already have (timing company, ITRA or UTMB sheet): CSV, TSV or XLSX, with a finish time and a name. Position, gender (also from a category such as SEH or M40-44), status, bib, nationality and birth year are read where present; headers are matched in eight languages. The answer's <code>columns</code> and <code>ignored_columns</code> say how the file was read.</li>
             </ul>
           </Endpoint>
 

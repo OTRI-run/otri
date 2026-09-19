@@ -6,9 +6,10 @@ listing what is wrong, so a single organizer file can be checked in one pass.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
+from .normalize import ResultTable, load_result_table
 from .reader import read_rows
 from .schema import RACE_FIELDS, RESULT_FIELDS, FieldSpec, _normalize_header, clean_cell, rank_position, resolve_rank
 from .time_utils import parse_hms_to_seconds
@@ -30,6 +31,10 @@ class ValidationReport:
     source: str
     row_count: int
     issues: tuple[ValidationIssue, ...]
+    # Results files only: which header each field was read from, and the headers nothing was read
+    # from. Shown to the organizer so they can see how their file was understood.
+    columns: dict[str, str] = field(default_factory=dict)
+    ignored_columns: tuple[str, ...] = ()
 
     @property
     def errors(self) -> tuple[ValidationIssue, ...]:
@@ -50,6 +55,8 @@ class ValidationReport:
             "is_valid": self.is_valid,
             "errors": [issue.to_dict() for issue in self.errors],
             "warnings": [issue.to_dict() for issue in self.warnings],
+            "columns": dict(self.columns),
+            "ignored_columns": list(self.ignored_columns),
         }
 
 
@@ -120,27 +127,65 @@ def validate_race_file(path: str | Path) -> ValidationReport:
     return ValidationReport(str(path), len(rows), tuple(issues))
 
 
+# So that one slip repeated on every row does not bury the rest of the report.
+_MAX_SAME_MESSAGE = 15
+
+
 def validate_result_file(path: str | Path) -> ValidationReport:
+    """Check a results file as `ingestion/normalize.py` understood it."""
     path = Path(path)
-    rows = read_rows(path)
-    headers = list(rows[0].keys()) if rows else []
-    mapping, issues = _match_columns(headers, RESULT_FIELDS)
-    issues.extend(_validate_rows(rows, RESULT_FIELDS, mapping))
-    issues.extend(_validate_result_cross_field(rows, mapping))
+    table = load_result_table(path)
+    return validate_result_table(table, str(path))
+
+
+def validate_result_table(table: ResultTable, source: str = "") -> ValidationReport:
+    issues = [ValidationIssue(*note) for note in table.notes]
+    found = ", ".join(f"“{header}”" for header in table.headers if header) or "none"
+    if not table.headers:
+        issues.append(ValidationIssue("error", None, None, "the file is empty"))
+    else:
+        if "finish_time" not in table.columns:
+            issues.append(ValidationIssue("error", None, "finish_time", f"no finish time column found (looked for Time, Finish time, Chip time, Temps, Zeit, …). Columns in the file: {found}"))
+        if not ({"family_name", "full_name"} & set(table.columns)):
+            issues.append(ValidationIssue("error", None, "family_name", f"no name column found (looked for Last name and First name, or one Name / Runner column). Columns in the file: {found}"))
+        if table.headers and not table.rows and not issues:
+            issues.append(ValidationIssue("error", None, None, "the file has a header but no result rows"))
+
+    canonical = {spec.canonical: spec.canonical for spec in RESULT_FIELDS}
+    issues.extend(_validate_rows(table.rows, RESULT_FIELDS, canonical))
+    for row_index, row in enumerate(table.rows, start=1):
+        if not row["family_name"].strip() and not row["first_name"].strip():
+            issues.append(ValidationIssue("error", row_index, "family_name", "the runner has no name"))
+    issues.extend(_validate_result_cross_field(table.rows, canonical))
     issues.sort(key=_sort_key)
-    return ValidationReport(str(path), len(rows), tuple(issues))
+    return ValidationReport(source, len(table.rows), tuple(_capped(issues)), columns=dict(table.columns), ignored_columns=tuple(table.ignored))
+
+
+def _capped(issues: list[ValidationIssue]) -> list[ValidationIssue]:
+    """The first of each repeated row message, then one line saying how many more there are."""
+    counts: dict[tuple[str, str | None, str], int] = {}
+    kept: list[ValidationIssue] = []
+    for issue in issues:
+        key = (issue.severity, issue.field, issue.message)
+        counts[key] = counts.get(key, 0) + 1
+        if issue.row is None or counts[key] <= _MAX_SAME_MESSAGE:
+            kept.append(issue)
+    for (severity, field_name, message), count in counts.items():
+        if count > _MAX_SAME_MESSAGE:
+            kept.append(ValidationIssue(severity, None, field_name, f"{message}: {count - _MAX_SAME_MESSAGE} more rows with the same problem"))
+    return kept
 
 
 def _validate_result_cross_field(rows: list[dict[str, str]], mapping: dict[str, str]) -> list[ValidationIssue]:
+    """Checks across rows. The finish time is what a score is made from, so a missing one is an
+    error; an oddity in the ranking or the bibs is the organizer's to judge, and is a warning."""
     issues: list[ValidationIssue] = []
     rank_header = mapping.get("rank")
     status_header = mapping.get("status")
     time_header = mapping.get("finish_time")
 
     if rank_header:
-        seen_ranks: dict[int, int] = {}
-        previous_rank: int | None = None
-        previous_seconds: int | None = None
+        finishers: list[tuple[int, int, int | None]] = []  # position, row number, seconds
         for row_index, row in enumerate(rows, start=1):
             rank_raw = row.get(rank_header, "")
             status_raw = row.get(status_header, "") if status_header else ""
@@ -151,31 +196,20 @@ def _validate_result_cross_field(rows: list[dict[str, str]], mapping: dict[str, 
                 continue  # a malformed rank was already reported by the field validator
             if isinstance(resolved, str):
                 continue  # DNF/DNS/DSQ rows: no finish time, no place in the ranking order
-            rank = resolved
             if time_header and not clean_cell(row.get(time_header, "")):
                 issues.append(ValidationIssue("error", row_index, "finish_time", "value is required for finishers"))
-            if rank in seen_ranks:
-                issues.append(ValidationIssue("error", row_index, "rank", f"duplicate rank: {rank}"))
-            else:
-                seen_ranks[rank] = row_index
-            if previous_rank is not None and rank <= previous_rank:
-                issues.append(
-                    ValidationIssue("error", row_index, "rank", "rank must increase strictly from the previous row")
-                )
-            previous_rank = rank
-            if time_header:
-                seconds = parse_hms_to_seconds(row.get(time_header, ""))
-                if seconds is not None:
-                    if previous_seconds is not None and seconds < previous_seconds:
-                        issues.append(
-                            ValidationIssue(
-                                "error",
-                                row_index,
-                                "finish_time",
-                                "finish_time must not decrease relative to the previous (ascending rank) row",
-                            )
-                        )
-                    previous_seconds = seconds
+            finishers.append((resolved, row_index, parse_hms_to_seconds(row.get(time_header, "")) if time_header else None))
+
+        # In ranking order, whatever order the file lists its rows in (by bib, by category, …).
+        finishers.sort(key=lambda item: (item[0], item[2] if item[2] is not None else 0))
+        previous: tuple[int, int, int | None] | None = None
+        for position, row_index, seconds in finishers:
+            if previous is not None:
+                if position == previous[0] and seconds != previous[2]:
+                    issues.append(ValidationIssue("warning", row_index, "rank", f"position {position} is given to two runners with different times"))
+                elif seconds is not None and previous[2] is not None and position > previous[0] and seconds < previous[2]:
+                    issues.append(ValidationIssue("warning", row_index, "finish_time", f"faster than position {previous[0]} but ranked behind it; the score uses the time"))
+            previous = (position, row_index, seconds)
 
     if "bib_number" in mapping:
         seen_bibs: dict[str, int] = {}
@@ -184,7 +218,7 @@ def _validate_result_cross_field(rows: list[dict[str, str]], mapping: dict[str, 
             if not bib:
                 continue
             if bib in seen_bibs:
-                issues.append(ValidationIssue("error", row_index, "bib_number", f"duplicate bib_number: {bib}"))
+                issues.append(ValidationIssue("warning", row_index, "bib_number", f"bib {bib} is also on row {seen_bibs[bib]}: the same runner listed twice?"))
             else:
                 seen_bibs[bib] = row_index
 

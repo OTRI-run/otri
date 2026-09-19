@@ -1293,12 +1293,14 @@ async def submit_race_results(
             report = await run_in_threadpool(validate_result_file, temp_path)
         except (ValueError, OSError) as error:  # unreadable, wrong type, too many rows
             raise HTTPException(status_code=422, detail=str(error)) from error
+        understood = {"columns": dict(report.columns), "ignored_columns": list(report.ignored_columns)}
         if not report.is_valid:
             return SubmissionResult(
                 is_valid=False,
                 errors=[ValidationIssueOut(**issue.to_dict()) for issue in report.errors],
                 warnings=[ValidationIssueOut(**issue.to_dict()) for issue in report.warnings],
                 scores=[],
+                **understood,
             )
 
         results = await run_in_threadpool(result_records, temp_path)
@@ -1315,6 +1317,7 @@ async def submit_race_results(
             errors=[],
             warnings=[ValidationIssueOut(**issue.to_dict()) for issue in report.warnings],
             scores=scores,
+            **understood,
         )
     finally:
         _discard_temp(temp_path)
@@ -1568,6 +1571,8 @@ async def score_a_race(
             issues = {
                 "errors": [ValidationIssueOut(**issue.to_dict()) for issue in report.errors],
                 "warnings": [ValidationIssueOut(**issue.to_dict()) for issue in report.warnings],
+                "columns": dict(report.columns),
+                "ignored_columns": list(report.ignored_columns),
             }
             shared = {"scoring_version": version, "course": course, "measurement": measurement.to_dict()}
             if not report.is_valid:

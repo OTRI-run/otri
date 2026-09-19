@@ -115,7 +115,12 @@ export default function CountrySelect({ id, value, onChange, className = '', pla
   return (
     <div ref={rootRef} className="relative" onBlur={(event) => { if (!rootRef.current?.contains(event.relatedTarget)) settle() }}>
       <div className="relative">
-        {selected && text === selected.name && <span className={`fi fi-${selected.alpha2} pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 rounded-[2px]`} aria-hidden="true" />}
+        {/* The flag sits in a wrapper: flag-icons' own `.fi { position: relative }` beats an `absolute` on the same element. */}
+        {selected && text === selected.name && (
+          <span className="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 items-center" aria-hidden="true">
+            <span className={`fi fi-${selected.alpha2} rounded-[2px]`} />
+          </span>
+        )}
         <input
           id={id}
           type="text"

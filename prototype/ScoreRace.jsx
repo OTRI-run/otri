@@ -1,3 +1,4 @@
+import ColumnsRead from '../src/components/ColumnsRead'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, ArrowRight, CheckCircle2, Code2, Download, Share2, FileSpreadsheet, Map as MapIcon, ShieldCheck, Timer, Trophy, XCircle } from 'lucide-react'
 import { scoreRace } from './apiClient'
@@ -190,6 +191,7 @@ function Scored({ result, fileStem, gpxText, children }) {
           <Issues issues={result.warnings} kind="warning" />
         </details>
       )}
+      <ColumnsRead columns={result.columns} ignored={result.ignored_columns} className="mt-3" />
 
       {children}
 
@@ -474,7 +476,7 @@ export default function ScoreRace() {
 
             <p className="mt-5 font-mono text-[9px] tracking-[.08em] text-slate-500">2 · THE RESULTS</p>
             <div className="mt-2">
-              <FilePick icon={FileSpreadsheet} label="Choose the results (CSV or Excel)" hint="Rank, time, last name, first name, gender. Column names in several languages are recognised." accept=".csv,.xlsx,.xlsm,text/csv" file={results} onFile={setResults} disabled={busy} />
+              <FilePick icon={FileSpreadsheet} label="Choose the results (CSV or Excel)" hint="The export you already have: from your timing company, or the sheet you send to ITRA or UTMB. It needs a finish time and a name; the rest is read if it is there." accept=".csv,.tsv,.txt,.xlsx,.xlsm,text/csv" file={results} onFile={setResults} disabled={busy} />
             </div>
 
             <label className="mt-5 block font-mono text-[9px] tracking-[.08em] text-slate-500">
@@ -516,7 +518,12 @@ export default function ScoreRace() {
             </p>
             <Issues issues={result.errors} kind="error" />
             {result.warnings.length > 0 && <Issues issues={result.warnings} kind="warning" />}
-            <p className="mt-3 text-xs text-slate-500">Correct the file and score it again.</p>
+            <ColumnsRead columns={result.columns} ignored={result.ignored_columns} className="mt-4" />
+            <p className="mt-3 text-xs text-slate-500">
+              Correct the file and score it again. If OTRI picked the wrong column of your export, or did not recognise one,{' '}
+              <a href="https://github.com/OTRI-run/otri/issues/new" className="font-semibold text-blue-600 no-underline hover:underline">tell us the column names</a> and
+              we will add them.
+            </p>
           </section>
         )}
         {result?.is_valid && (
