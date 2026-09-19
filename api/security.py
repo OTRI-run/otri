@@ -11,6 +11,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import os
 import re
 import secrets
 import struct
@@ -141,8 +142,22 @@ def new_recovery_codes(count: int = 10) -> list[str]:
     return codes
 
 
+def _normalise_code(code: str) -> str:
+    return re.sub(r"[\s-]+", "", (code or "").strip().lower())
+
+
+# The key lives in the environment, not in the database. A recovery code is 40 bits: with a plain
+# SHA-256, whoever copied the database could try all of them on a graphics card in an afternoon.
+# Keyed, the digests in a leaked table say nothing without the server's secret as well.
+_CODE_KEY = hashlib.sha256(b"otri-code-key:" + os.environ.get("OTRI_API_JWT_SECRET", "").encode("utf-8")).digest()
+
+
 def hash_code(code: str) -> str:
     """Recovery and email codes are short, so they are hashed with a fast keyed hash, not bcrypt;
     brute force is prevented by attempt limits and expiry, not by hashing cost."""
-    normalised = re.sub(r"[\s-]+", "", (code or "").strip().lower())
-    return hashlib.sha256(("otri-code:" + normalised).encode("utf-8")).hexdigest()
+    return hmac.new(_CODE_KEY, ("otri-code:" + _normalise_code(code)).encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def legacy_hash_code(code: str) -> str:
+    """How recovery codes were hashed before the key: codes issued then must keep working."""
+    return hashlib.sha256(("otri-code:" + _normalise_code(code)).encode("utf-8")).hexdigest()

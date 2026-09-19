@@ -112,8 +112,8 @@ def test_ten_wrong_passwords_lock_the_account_for_a_while_even_with_the_right_on
         connection.execute("DELETE FROM rate_limits")
     response = client.post("/auth/login", json={"email": "locked@example.com", "password": PASSWORD})
     assert response.status_code == 429
-    assert "try again in" in response.json()["detail"] and response.headers["retry-after"] == "900"
-    rate_limit.clear_login_failures("locked@example.com")
+    assert "try again in" in response.json()["detail"] and 880 < int(response.headers["retry-after"]) <= 900
+    rate_limit.clear_all_locks("locked@example.com")
     with db.get_connection() as connection:
         connection.execute("DELETE FROM rate_limits")
     assert client.post("/auth/login", json={"email": "locked@example.com", "password": PASSWORD}).status_code == 200

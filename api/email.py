@@ -217,3 +217,21 @@ def send_report_email(to: str, kind: str, subject_label: str, message: str, page
         reason="You received this email because you are an OTRI admin.",
     )
     _send(to, f"New report: {kind} · {subject_label}"[:150], html, text)
+
+
+def send_security_alert_email(to: str) -> None:
+    """Ten wrong second-factor codes in a row: whoever typed them already had the password."""
+    html, text = _render(
+        preheader="Somebody who knows your password is guessing at your sign-in code.",
+        heading="Someone may know your password",
+        paragraphs=[
+            f"Somebody signed in to {to} with the right password and then entered ten wrong sign-in codes. We have paused signing in with a code for this account for an hour.",
+            "If that was you, wait an hour and try again, or use one of your recovery codes then.",
+        ],
+        cta=("Choose a new password", f"{APP_BASE_URL}/prototype/organizer/#/forgot"),
+        after=[
+            "If it was not you, your password is known to someone else. Your second factor kept them out. Choose a new password now, and change it wherever else you used the same one.",
+        ],
+        reason="You received this email because of repeated failed sign-in attempts on your OTRI organizer account.",
+    )
+    _send(to, "Someone may know your OTRI password", html, text)

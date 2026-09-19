@@ -44,11 +44,11 @@ def test_wrong_codes_are_counted_and_the_sixth_guess_is_refused_even_when_right(
     for attempt in range(1, 6):
         assert client.post("/auth/login/2fa", json={"challenge": challenge, "code": "000000"}).status_code == 401
         with db.get_connection() as connection:
-            assert connection.execute("SELECT attempts FROM login_challenges WHERE token = %s", (challenge,)).fetchone()["attempts"] == attempt
+            assert connection.execute("SELECT attempts FROM login_challenges WHERE token = %s", (auth._token_digest(challenge),)).fetchone()["attempts"] == attempt
     answer = client.post("/auth/login/2fa", json={"challenge": challenge, "code": security.totp_now(secret)})
     assert answer.status_code == 401 and "too many attempts" in answer.json()["detail"], "the right code, too late"
     with db.get_connection() as connection:
-        assert connection.execute("SELECT count(*) AS n FROM login_challenges WHERE token = %s", (challenge,)).fetchone()["n"] == 0
+        assert connection.execute("SELECT count(*) AS n FROM login_challenges WHERE token = %s", (auth._token_digest(challenge),)).fetchone()["n"] == 0
     # A fresh sign-in gets a fresh five.
     challenge = client.post("/auth/login", json={"email": "guess@example.com", "password": PASSWORD}).json()["challenge"]
     assert client.post("/auth/login/2fa", json={"challenge": challenge, "code": security.totp_now(secret)}).status_code == 200

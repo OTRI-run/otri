@@ -27,7 +27,7 @@ import re
 import sys
 import tempfile
 import unicodedata
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, Request, Response, UploadFile, Depends
@@ -74,7 +74,8 @@ from .auth import (
 from . import email as _email
 from . import server_stats as _server
 from .email import send_password_reset_email, send_verification_email
-from .rate_limit import AccountLocked, check_account_lock, clear_login_failures, enforce_rate_limit, record_login_failure
+from . import rate_limit as _limits
+from .rate_limit import enforce_rate_limit, over_limit
 from . import rate_limit as _rate_limit
 from .schemas import (
     ChangePassword,
@@ -236,6 +237,10 @@ async def _guardrails(request: Request, call_next):
     length = request.headers.get("content-length")
     if length and length.isdigit() and int(length) > _MAX_BODY_BYTES:
         return Response(content='{"detail":"Upload exceeds 20 MB"}', status_code=413, media_type="application/json")
+    # A chunked body announces no length, and the form parser would spool all of it to disk before
+    # any endpoint looked at its size. Browsers and the proxy always send a length; ask for one.
+    if "chunked" in request.headers.get("transfer-encoding", "").lower():
+        return Response(content='{"detail":"Send a Content-Length: chunked uploads are not accepted"}', status_code=411, media_type="application/json")
     response = await call_next(request)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
@@ -503,6 +508,10 @@ def register(payload: OrganizerRegistration, request: Request, response: Respons
     """Creates the account, emails a confirmation link and signs the organizer in. They can build
     their race straight away; publishing or listing it waits for the confirmed address."""
     enforce_rate_limit(request, max_requests=5)
+    # An account is free and each one sends an email and may hold data: five a minute is a slip of
+    # the finger, three hundred an hour is a script.
+    enforce_rate_limit(request, max_requests=10, scope="register-hour", window_seconds=3600)
+    enforce_rate_limit(request, max_requests=30, scope="register-day", window_seconds=86400)
     try:
         organizer = register_organizer(payload.email, payload.password, accept_terms=payload.accept_terms, marketing_opt_in=payload.marketing_opt_in)
     except AuthError as error:
@@ -511,33 +520,55 @@ def register(payload: OrganizerRegistration, request: Request, response: Respons
     token = create_email_verification_token(organizer)
     send_verification_email(organizer.email, token)
 
-    session = _finish_session(response, request, _issue_session(organizer, False), False)
+    session = _finish_session(response, request, _issue_session(organizer, False, request), False)
     return RegistrationResponse(**session.model_dump(), message="account created: confirm your email address from the link we sent before you publish")
 
 
 @app.post("/auth/login", response_model=TokenResponse)
 def login(payload: OrganizerCredentials, request: Request, response: Response) -> TokenResponse:
     enforce_rate_limit(request, max_requests=10)
+    source = _limits._client_key(request)
     try:
-        check_account_lock(payload.email)
-    except AccountLocked as error:
-        raise HTTPException(status_code=429, detail=str(error), headers={"Retry-After": "900"}) from error
+        _limits.check_account_lock(payload.email, source)
+    except _limits.AccountLocked as error:
+        raise HTTPException(status_code=429, detail=str(error), headers={"Retry-After": error.retry_after}) from error
     try:
         organizer = authenticate_organizer(payload.email, payload.password)
     except AuthError as error:
-        record_login_failure(payload.email)
+        _limits.record_login_failure(payload.email, source)
         raise HTTPException(status_code=401, detail=str(error)) from error
-    clear_login_failures(payload.email)
+    _limits.clear_login_failures(payload.email, source)
     if organizer.email in _ADMIN_EMAILS and organizer.email_verified:  # an unconfirmed address proves nothing
         db.set_organizer_flags(organizer.email, is_admin=True)
     organizer = _with_flags(organizer, check_session=False)  # credentials, not a token: nothing to compare yet
-    return _finish_session(response, request, _issue_session(organizer, payload.remember), payload.remember)
+    return _finish_session(response, request, _issue_session(organizer, payload.remember, request), payload.remember)
 
 
-def _issue_session(organizer: Organizer, remember: bool) -> TokenResponse:
+def _second_factor_key(email: str) -> str:
+    return f"2fa|{email.strip().lower()}"
+
+
+def _refuse_locked_second_factor(email: str) -> None:
+    try:
+        _limits.check_lock(_second_factor_key(email))
+    except _limits.AccountLocked as error:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many wrong codes for this account. Signing in with a code is paused for up to an hour; we have written to the account's address.",
+            headers={"Retry-After": error.retry_after},
+        ) from error
+
+
+def _issue_session(organizer: Organizer, remember: bool, request: Request | None = None) -> TokenResponse:
     """Either a token, or a second-step challenge when the account has two-factor enabled."""
     status = _auth.two_factor_status(organizer.id)
     if status["enabled"]:
+        # Every sign-in hands out a fresh challenge with five attempts of its own, so the attempts
+        # are also counted per account: without that, whoever has the password guesses at the code
+        # five at a time for as long as they like.
+        _refuse_locked_second_factor(organizer.email)
+        if status["method"] == "email" and request is not None:  # each challenge is an email to the owner
+            enforce_rate_limit(request, max_requests=6, scope="login-code", subject=f"account-{organizer.id}", window_seconds=900)
         challenge, method, code = _auth.start_login_challenge(organizer, remember)
         if code:
             _email.send_login_code_email(organizer.email, code)
@@ -556,10 +587,20 @@ def _issue_session(organizer: Organizer, remember: bool) -> TokenResponse:
 def login_second_step(payload: TwoFactorLogin, request: Request, response: Response) -> TokenResponse:
     """The second step: an authenticator code, an emailed code, or a recovery code."""
     enforce_rate_limit(request, max_requests=10)
+    owner = _auth.challenge_email(payload.challenge)
+    if owner:
+        _refuse_locked_second_factor(owner)
     try:
         organizer, remember = _auth.complete_login_challenge(payload.challenge, payload.code)
+    except _auth.WrongSecondFactor as error:
+        # Whoever got this far has the password. Ten wrong codes pause the second step for the
+        # account, from every address, and the owner is told why.
+        if _limits.record_failure(_second_factor_key(error.email), duration=_limits.SECOND_FACTOR_LOCKOUT_DURATION):
+            _email.send_security_alert_email(error.email)
+        raise HTTPException(status_code=401, detail=str(error)) from error
     except AuthError as error:
         raise HTTPException(status_code=401, detail=str(error)) from error
+    _limits.clear_failures(_second_factor_key(organizer.email))
     organizer = _with_flags(organizer, check_session=False)
     return _finish_session(response, request, TokenResponse(
         access_token=create_access_token(organizer, remember),
@@ -612,14 +653,36 @@ def update_profile(payload: ProfileUpdate, organizer: Organizer = Depends(requir
     return _me(organizer)
 
 
+@contextmanager
+def _password_confirmed(request: Request, organizer: Organizer):
+    """Around every action that asks a signed-in organizer for the password again.
+
+    Each check is a bcrypt comparison, a sixth of a second of a core, and each is a guess at the
+    password by whoever holds the session. Sign-in limits both; these endpoints had neither, so a
+    stolen session could guess without end and any free account could keep the server's cores busy.
+    Limited per account and per address, and ten wrong passwords pause them for the account."""
+    enforce_rate_limit(request, max_requests=5, scope="password-check", subject=f"account-{organizer.id}")
+    enforce_rate_limit(request, max_requests=10, scope="password-check-address")
+    key = f"confirm|{organizer.email.strip().lower()}"
+    try:
+        _limits.check_lock(key)
+    except _limits.AccountLocked as error:
+        raise HTTPException(status_code=429, detail="Too many wrong passwords. Try again in a quarter of an hour, or reset your password.", headers={"Retry-After": error.retry_after}) from error
+    try:
+        yield
+    except _auth.WrongPassword as error:
+        _limits.record_failure(key)
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except AuthError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    _limits.clear_failures(key)
+
+
 @app.post("/auth/change-password", response_model=TokenResponse)
 def change_password(payload: ChangePassword, request: Request, response: Response, organizer: Organizer = Depends(require_organizer)) -> TokenResponse:
     """Changes the password and signs out every other device; returns a fresh token for this one."""
-    enforce_rate_limit(request, max_requests=5)
-    try:
+    with _password_confirmed(request, organizer):
         _auth.change_password(organizer.id, payload.current_password, payload.new_password)
-    except AuthError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
     return _finish_session(response, request, _fresh_token(organizer), False)
 
 
@@ -644,10 +707,8 @@ def _fresh_token(organizer: Organizer) -> TokenResponse:
 @app.post("/auth/logout-all", response_model=MessageResponse)
 def logout_everywhere(payload: PasswordConfirm, request: Request, response: Response, organizer: Organizer = Depends(require_organizer)) -> MessageResponse:
     """Invalidates every token for this account, this one included."""
-    try:
+    with _password_confirmed(request, organizer):
         _auth.revoke_all_sessions(organizer.id, payload.password)
-    except AuthError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
     _clear_session_cookie(response, request)
     return MessageResponse(message="signed out everywhere")
 
@@ -665,10 +726,8 @@ def export_account(organizer: Organizer = Depends(require_organizer)) -> Respons
 def delete_own_account(payload: PasswordConfirm, request: Request, response: Response, organizer: Organizer = Depends(require_organizer)) -> MessageResponse:
     """Deletes the account with every event, race and result it owns. Published leaderboards
     disappear and runner profiles lose those results. Cannot be undone."""
-    try:
+    with _password_confirmed(request, organizer):
         _auth.delete_own_account(organizer.id, payload.password)
-    except AuthError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
     _clear_session_cookie(response, request)
     return MessageResponse(message="account deleted")
 
@@ -677,16 +736,14 @@ def delete_own_account(payload: PasswordConfirm, request: Request, response: Res
 def totp_setup(payload: PasswordConfirm, request: Request, organizer: Organizer = Depends(require_organizer)) -> TotpSetupOut:
     """Start authenticator-app setup: a secret to scan; nothing changes until a code confirms it.
     Needs the password: a session alone must not be able to replace the owner's second factor."""
-    enforce_rate_limit(request, max_requests=5)
-    try:
+    with _password_confirmed(request, organizer):
         secret, uri = _auth.begin_totp_setup(organizer.id, organizer.email, payload.password)
-    except AuthError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
     return TotpSetupOut(secret=secret, otpauth_uri=uri)
 
 
 @app.post("/auth/2fa/totp/enable", response_model=RecoveryCodesOut)
-def totp_enable(payload: TwoFactorCode, organizer: Organizer = Depends(require_organizer)) -> RecoveryCodesOut:
+def totp_enable(payload: TwoFactorCode, request: Request, organizer: Organizer = Depends(require_organizer)) -> RecoveryCodesOut:
+    enforce_rate_limit(request, max_requests=10, scope="2fa-enable", subject=f"account-{organizer.id}")
     try:
         codes = _auth.enable_totp(organizer.id, payload.code)
     except AuthError as error:
@@ -696,17 +753,17 @@ def totp_enable(payload: TwoFactorCode, organizer: Organizer = Depends(require_o
 
 @app.post("/auth/2fa/email/start", response_model=MessageResponse)
 def email_two_factor_start(payload: PasswordConfirm, request: Request, organizer: Organizer = Depends(require_organizer)) -> MessageResponse:
-    enforce_rate_limit(request, max_requests=5)
-    try:
+    enforce_rate_limit(request, max_requests=6, scope="login-code", subject=f"account-{organizer.id}", window_seconds=900)  # each one is an email
+    with _password_confirmed(request, organizer):
         code = _auth.begin_email_two_factor(organizer.id, payload.password)
-    except AuthError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
     _email.send_login_code_email(organizer.email, code)
     return MessageResponse(message=f"a code was sent to {organizer.email}")
 
 
 @app.post("/auth/2fa/email/enable", response_model=RecoveryCodesOut)
-def email_two_factor_enable(payload: TwoFactorCode, organizer: Organizer = Depends(require_organizer)) -> RecoveryCodesOut:
+def email_two_factor_enable(payload: TwoFactorCode, request: Request, organizer: Organizer = Depends(require_organizer)) -> RecoveryCodesOut:
+    # Six digits, ten minutes: without a limit the code is a guess away. Five tries a code.
+    enforce_rate_limit(request, max_requests=5, scope="2fa-enable", subject=f"account-{organizer.id}", window_seconds=600)
     try:
         codes = _auth.enable_email_two_factor(organizer.id, payload.code)
     except AuthError as error:
@@ -717,20 +774,16 @@ def email_two_factor_enable(payload: TwoFactorCode, organizer: Organizer = Depen
 @app.post("/auth/2fa/disable", response_model=TokenResponse)
 def two_factor_disable(payload: PasswordConfirm, request: Request, response: Response, organizer: Organizer = Depends(require_organizer)) -> TokenResponse:
     """Turns two-factor off and signs out every other device; returns a fresh token for this one."""
-    try:
+    with _password_confirmed(request, organizer):
         _auth.disable_two_factor(organizer.id, payload.password)
-    except AuthError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
     return _finish_session(response, request, _fresh_token(organizer), False)
 
 
 @app.post("/auth/2fa/recovery-codes", response_model=RecoveryCodesOut)
-def two_factor_recovery_codes(payload: PasswordConfirm, organizer: Organizer = Depends(require_organizer)) -> RecoveryCodesOut:
+def two_factor_recovery_codes(payload: PasswordConfirm, request: Request, organizer: Organizer = Depends(require_organizer)) -> RecoveryCodesOut:
     """Fresh recovery codes; the old ones stop working."""
-    try:
+    with _password_confirmed(request, organizer):
         codes = _auth.regenerate_recovery_codes(organizer.id, payload.password)
-    except AuthError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
     return RecoveryCodesOut(codes=codes, method=_auth.two_factor_status(organizer.id)["method"] or "")
 
 
@@ -743,10 +796,20 @@ def confirm_email(payload: EmailVerificationRequest) -> MessageResponse:
     return MessageResponse(message="email verified — you can sign in now")
 
 
+def _may_email(request: Request, address: str) -> bool:
+    """Whether one more account email may go to `address`. The per-address limits counted the
+    sender only, so a script behind a few addresses could fill anybody's inbox with OTRI mail
+    (and get OTRI's sending domain marked as spam). Three an hour per recipient, whoever asks; over
+    that the endpoint answers as always and sends nothing, so the answer still says nothing about
+    whether the address has an account."""
+    enforce_rate_limit(request, max_requests=20, scope="account-mail-hour", window_seconds=3600)
+    return not over_limit(request, max_requests=3, scope="account-mail-to", subject=_limits.subject_for(address), window_seconds=3600)
+
+
 @app.post("/auth/resend-verification", response_model=MessageResponse)
 def resend_verification(payload: ResendVerificationRequest, request: Request) -> MessageResponse:
     enforce_rate_limit(request, max_requests=5)
-    result = request_email_verification(payload.email)
+    result = request_email_verification(payload.email) if _may_email(request, payload.email) else None
     if result is not None:
         organizer, token = result
         send_verification_email(organizer.email, token)
@@ -757,7 +820,7 @@ def resend_verification(payload: ResendVerificationRequest, request: Request) ->
 @app.post("/auth/request-password-reset", response_model=MessageResponse)
 def request_password_reset(payload: PasswordResetRequest, request: Request) -> MessageResponse:
     enforce_rate_limit(request, max_requests=5)
-    result = create_password_reset_token(payload.email)
+    result = create_password_reset_token(payload.email) if _may_email(request, payload.email) else None
     if result is not None:
         organizer, token = result
         send_password_reset_email(organizer.email, token)
@@ -773,6 +836,9 @@ def confirm_password_reset(payload: PasswordResetConfirm, request: Request, resp
         organizer = reset_password(payload.token, payload.new_password)
     except AuthError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    # The owner is back: the wrong passwords somebody piled up against the account no longer lock
+    # it. The count of wrong second-factor codes stays, a mailbox does not answer for those.
+    _limits.clear_all_locks(organizer.email)
     # A reset link proves the mailbox, which is one factor. An account with a second factor is not
     # signed in by it: the password is changed, and the owner signs in the normal way, code included.
     if _auth.two_factor_status(organizer.id)["enabled"]:
@@ -940,18 +1006,47 @@ def admin_list_events(organizer: Organizer = Depends(require_admin)) -> list[Adm
 # events and keep the course measurement busy with upload after upload. The numbers are far above
 # what an organizer does by hand (a big event has a dozen distances; a timing company a few
 # hundred events) and low enough that abuse stays small. Admins are not limited.
+#
+# An unconfirmed address is one nobody has shown they can read: a script makes them by the
+# thousand. It may try everything once (a few events, a few distances, a real results file) and
+# holds little until the link in the inbox is clicked. Counted in result rows because rows are what
+# fills the disk: three events of forty distances of fifty thousand rows was six million rows an
+# account, before any address was confirmed.
 _MAX_EVENTS_UNCONFIRMED = 3
 _MAX_EVENTS_PER_ACCOUNT = 500
 _MAX_RACES_PER_EVENT = 40
+_MAX_RACES_PER_EVENT_UNCONFIRMED = 6
+_MAX_RESULT_ROWS_UNCONFIRMED = 20_000
+_MAX_RESULT_ROWS_PER_ACCOUNT = 3_000_000
 _UPLOADS_PER_MINUTE = 12
+_UPLOADS_PER_HOUR = 150
+_UPLOADS_PER_HOUR_UNCONFIRMED = 30
 
 
-def _limit_writes(request: Request, organizer: Organizer, *, scope: str, per_minute: int) -> None:
+def _limit_writes(request: Request, organizer: Organizer, *, scope: str, per_minute: int, per_hour: int | None = None) -> None:
     """Per account and per address: whichever a script does not rotate still stops it."""
     if organizer.is_admin:
         return
     enforce_rate_limit(request, max_requests=per_minute, scope=scope, subject=f"account-{organizer.id}")
     enforce_rate_limit(request, max_requests=per_minute * 3, scope=f"{scope}-address")
+    if per_hour:
+        enforce_rate_limit(request, max_requests=per_hour, scope=f"{scope}-hour", subject=f"account-{organizer.id}", window_seconds=3600)
+        enforce_rate_limit(request, max_requests=per_hour * 3, scope=f"{scope}-hour-address", window_seconds=3600)
+
+
+def _limit_uploads(request: Request, organizer: Organizer) -> None:
+    _limit_writes(request, organizer, scope="upload", per_minute=_UPLOADS_PER_MINUTE, per_hour=_UPLOADS_PER_HOUR if organizer.email_verified else _UPLOADS_PER_HOUR_UNCONFIRMED)
+
+
+def _require_room_for_results(organizer: Organizer, race_id: str, incoming: int) -> None:
+    if organizer.is_admin:
+        return
+    limit = _MAX_RESULT_ROWS_PER_ACCOUNT if organizer.email_verified else _MAX_RESULT_ROWS_UNCONFIRMED
+    if db.count_result_rows_for_organizer(organizer.id, except_race_id=race_id) + incoming <= limit:
+        return
+    if not organizer.email_verified:
+        raise HTTPException(status_code=403, detail=f"Confirm your email address to store more than {_MAX_RESULT_ROWS_UNCONFIRMED:,} results: the link is in your inbox, and you can have it sent again. Nothing was stored from this file.")
+    raise HTTPException(status_code=403, detail=f"This account holds {_MAX_RESULT_ROWS_PER_ACCOUNT:,} results, which is the limit. Write to us if you really need more.")
 
 
 @app.post("/events", response_model=EventSummary, status_code=201)
@@ -1091,8 +1186,12 @@ def add_race(event_id: str, payload: RaceCreate, request: Request, organizer: Or
         raise HTTPException(status_code=404, detail=f"event {event_id!r} not found")
     _require_event_owner(event, organizer)
     _limit_writes(request, organizer, scope="create", per_minute=20)
-    if not organizer.is_admin and len(db.list_races_for_event(event_id)) >= _MAX_RACES_PER_EVENT:
-        raise HTTPException(status_code=403, detail=f"An event holds at most {_MAX_RACES_PER_EVENT} race distances.")
+    if not organizer.is_admin:
+        held = len(db.list_races_for_event(event_id))
+        if not organizer.email_verified and held >= _MAX_RACES_PER_EVENT_UNCONFIRMED:
+            raise HTTPException(status_code=403, detail=f"Confirm your email address to add more than {_MAX_RACES_PER_EVENT_UNCONFIRMED} distances to an event: the link is in your inbox, and you can have it sent again.")
+        if held >= _MAX_RACES_PER_EVENT:
+            raise HTTPException(status_code=403, detail=f"An event holds at most {_MAX_RACES_PER_EVENT} race distances.")
 
     if not payload.course_name.strip():
         raise HTTPException(status_code=422, detail="course_name is required")
@@ -1224,11 +1323,41 @@ def _measurement_cache_put(path, provider, measurement, points=()) -> None:
 _MIN_COURSE_M = 100  # no race is this short; test courses of a couple of hundred metres stay usable
 
 
-def _measure_gpx_path(path):
+# New terrain tiles a day: a visitor's course lies in one region or two, an organizer's events in a
+# few. Everyone together: what a busy hour of new regions needs, and few enough that a script
+# walking the globe cell by cell cannot push the tiles real courses use out of the disk budget.
+_TILES_PER_DAY_VISITOR = 6
+_TILES_PER_DAY_ACCOUNT = 40
+_TILES_PER_HOUR_EVERYONE = int(os.environ.get("OTRI_DEM_FETCH_PER_HOUR", "30"))
+
+
+def _tile_allowance(request: Request, organizer: Organizer | None = None):
+    """The `allow` of dem_fetch.ensure_tiles for this caller: asked only when tiles are missing,
+    with how many, and answers whether they may be downloaded now. A no costs the caller nothing
+    but the terrain: the course is measured from its own elevations, as before tiles were fetched."""
+    if organizer is not None and organizer.is_admin:
+        return None
+
+    def allow(tiles: int) -> bool:
+        if organizer is not None:
+            mine = over_limit(request, max_requests=_TILES_PER_DAY_ACCOUNT, scope="dem-tiles", subject=f"account-{organizer.id}", window_seconds=86400, cost=tiles)
+        else:
+            mine = over_limit(request, max_requests=_TILES_PER_DAY_VISITOR, scope="dem-tiles", window_seconds=86400, cost=tiles)
+        return not mine and not over_limit(request, max_requests=_TILES_PER_HOUR_EVERYONE, scope="dem-tiles", subject="everyone", window_seconds=3600, cost=tiles)
+
+    return allow
+
+
+def _no_new_tiles(tiles: int) -> bool:
+    return False
+
+
+def _measure_gpx_path(path, allow_tiles=_no_new_tiles):
     points = read_track_points(path)
     # Terrain tiles for a region nobody has uploaded a course from yet are fetched here, once
     # (course/dem_fetch.py); it never raises, and without them the course measures as before.
-    dem_fetch.ensure_tiles(points)
+    # `allow_tiles` is the caller's allowance (_tile_allowance): None for no limit (an admin).
+    dem_fetch.ensure_tiles(points, allow=allow_tiles)
     provider = configured_provider()
     measurement = _measurement_cache_get(path, provider, points)
     if measurement is None:
@@ -1289,7 +1418,7 @@ async def admin_add_calculator_course(
         raise HTTPException(status_code=413, detail="Upload exceeds 20 MB")
     temp_path = _save_upload(contents, _safe_suffix(file.filename, ".gpx"))
     try:
-        points, measurement = await run_in_threadpool(_measure_gpx_path, temp_path)
+        points, measurement = await run_in_threadpool(_measure_gpx_path, temp_path, None)
         features = features_from_measurement(measurement)
     except (GpxParseError, ValueError, UnicodeError) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
@@ -1340,7 +1469,7 @@ async def admin_edit_calculator_course(
             raise HTTPException(status_code=413, detail="Upload exceeds 20 MB")
         temp_path = _save_upload(contents, _safe_suffix(file.filename, ".gpx"))
         try:
-            points, measurement = await run_in_threadpool(_measure_gpx_path, temp_path)
+            points, measurement = await run_in_threadpool(_measure_gpx_path, temp_path, None)
             features = features_from_measurement(measurement)
         except (GpxParseError, ValueError, UnicodeError) as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
@@ -1383,7 +1512,7 @@ async def attach_race_gpx(
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
-    _limit_writes(request, organizer, scope="upload", per_minute=_UPLOADS_PER_MINUTE)  # measuring a course costs a core for seconds
+    _limit_uploads(request, organizer)  # measuring a course costs a core for seconds
 
     suffix = _safe_suffix(file.filename, ".gpx")
     contents = await file.read(20_000_001)
@@ -1394,7 +1523,7 @@ async def attach_race_gpx(
         temp_path = Path(temp_file.name)
 
     try:
-        points, measurement = await run_in_threadpool(_measure_gpx_path, temp_path)
+        points, measurement = await run_in_threadpool(_measure_gpx_path, temp_path, _tile_allowance(request, organizer))
         features = features_from_measurement(measurement)
     except (GpxParseError, ValueError, UnicodeError) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
@@ -1554,7 +1683,7 @@ async def submit_race_results(
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
-    _limit_writes(request, organizer, scope="upload", per_minute=_UPLOADS_PER_MINUTE)
+    _limit_uploads(request, organizer)
 
     suffix = _safe_suffix(file.filename, ".csv")
     contents = await file.read(20_000_001)
@@ -1580,7 +1709,8 @@ async def submit_race_results(
             )
 
         results = await run_in_threadpool(result_records, temp_path)
-        db.replace_results(race_id, results)
+        _require_room_for_results(organizer, race_id, len(results))
+        await run_in_threadpool(db.replace_results, race_id, results)  # tens of thousands of inserts: not on the event loop
 
         try:
             # Score the stored rows, which now carry runner ids, so the response matches a later replay.
@@ -1740,6 +1870,7 @@ async def analyze_gpx(request: Request, file: UploadFile, finish_time_seconds: i
     ``docs/methodology/0.1.0/HOW-OTRI-SCORES.md``.
     """
     enforce_rate_limit(request, max_requests=60)  # public and CPU-heavy: one call per slider move is fine, a flood is not
+    enforce_rate_limit(request, max_requests=600, scope="analyze-hour", window_seconds=3600)  # a big file is most of a second of a core
     suffix = _safe_suffix(file.filename, ".gpx")
     contents = await file.read(20_000_001)
     if len(contents) > 20_000_000:
@@ -1749,7 +1880,7 @@ async def analyze_gpx(request: Request, file: UploadFile, finish_time_seconds: i
         temp_path = Path(temp_file.name)
 
     try:
-        points, measurement = await run_in_threadpool(_measure_gpx_path, temp_path)
+        points, measurement = await run_in_threadpool(_measure_gpx_path, temp_path, _tile_allowance(request))
         features = features_from_measurement(measurement)
     except (GpxParseError, ValueError, UnicodeError) as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
@@ -1818,6 +1949,7 @@ async def score_a_race(
     scoring from official figures here. `?format=csv` returns the scored list as a CSV download.
     An invalid results file answers 200 with `is_valid: false` and the issues."""
     enforce_rate_limit(request, max_requests=10)  # public, and a full course measurement plus thousands of rows
+    enforce_rate_limit(request, max_requests=90, scope="score-hour", window_seconds=3600)
     if format not in ("json", "csv"):
         raise HTTPException(status_code=422, detail="format must be json or csv")
     version = scoring_version or DEFAULT_SCORING_VERSION
@@ -1833,7 +1965,7 @@ async def score_a_race(
         try:
             paths.append(_save_upload(gpx_bytes, _safe_suffix(gpx.filename, ".gpx")))
             try:
-                points, measurement = _measure_gpx_path(paths[1])
+                points, measurement = _measure_gpx_path(paths[1], _tile_allowance(request))
             except (GpxParseError, ValueError, UnicodeError) as error:
                 raise HTTPException(status_code=422, detail=f"course file: {error}") from error
             features = features_from_measurement(measurement)
@@ -2196,6 +2328,23 @@ _REPORT_KINDS = {"runner", "race", "shared_course", "other"}
 _REPORT_REASONS = {"not_me", "wrong_result", "remove_my_data", "wrong_course", "other"}
 
 
+def _own_page_url(value: str | None) -> str | None:
+    """The page a report was sent from, kept only when it is a page of this site. Anyone may file a
+    report, and the admin dashboard and the admins' email show this address as a link: left as
+    sent, it was a link of the sender's choosing in front of the people with the most access."""
+    from urllib.parse import urlsplit
+
+    value = (value or "").strip()[:500]
+    try:
+        parts = urlsplit(value)
+    except ValueError:
+        return None
+    own = {*_ALLOWED_ORIGIN_LIST, _email.SITE_URL.rstrip("/"), _email.APP_BASE_URL.rstrip("/")}
+    if parts.scheme in ("http", "https") and not parts.username and f"{parts.scheme}://{parts.netloc}".lower() in {origin.lower() for origin in own}:
+        return value
+    return None
+
+
 def _report_out(report: db.Report) -> ReportOut:
     return ReportOut(**vars(report))
 
@@ -2203,6 +2352,7 @@ def _report_out(report: db.Report) -> ReportOut:
 @app.post("/reports", response_model=ReportOut, status_code=201)
 def create_report(payload: ReportCreate, request: Request) -> ReportOut:
     enforce_rate_limit(request, max_requests=5)
+    enforce_rate_limit(request, max_requests=20, scope="reports-day", window_seconds=86400)
     if payload.kind not in _REPORT_KINDS:
         raise HTTPException(status_code=422, detail=f"kind must be one of {sorted(_REPORT_KINDS)}")
     message = payload.message.strip()
@@ -2219,9 +2369,12 @@ def create_report(payload: ReportCreate, request: Request) -> ReportOut:
         reason=reason,
         message=message,
         reporter_email=email,
-        page_url=(payload.page_url or "").strip()[:500] or None,
+        page_url=_own_page_url(payload.page_url),
     )
-    for admin_email in sorted(_ADMIN_EMAILS):
+    # Every report is kept; the emails about them are what is limited, so a script filing reports
+    # from many addresses cannot fill the admins' inboxes. The dashboard shows them all.
+    notify = not over_limit(None, max_requests=12, scope="report-mail", subject="admins", window_seconds=3600)
+    for admin_email in sorted(_ADMIN_EMAILS) if notify else ():
         _email.send_report_email(admin_email, report.kind, report.subject_label or report.subject_id, message, report.page_url)
     return _report_out(report)
 

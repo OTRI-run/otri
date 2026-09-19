@@ -18,6 +18,9 @@ os.environ["DATABASE_URL"] = os.environ.get(
     "OTRI_TEST_DATABASE_URL", "postgresql://postgres:otri_dev_password@localhost:5432/otri_test"
 )
 os.environ.setdefault("OTRI_API_JWT_SECRET", "test-secret-not-for-production-use-only-1234")
+# Never a real email provider: with a key set machine-wide, every account a test registered was a
+# request to Resend. Without one, api/email.py logs the message and sends nothing.
+os.environ["RESEND_API_KEY"] = ""
 
 import bcrypt  # noqa: E402
 import pytest  # noqa: E402

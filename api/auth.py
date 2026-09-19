@@ -46,6 +46,18 @@ class AuthError(Exception):
     """Raised for any authentication failure (bad credentials, invalid token, etc.)."""
 
 
+class WrongPassword(AuthError):
+    """The password asked for to confirm an action was wrong: the caller counts these per account."""
+
+
+class WrongSecondFactor(AuthError):
+    """A wrong code at the second step of sign-in: the caller counts these per account, across challenges."""
+
+    def __init__(self, message: str, email: str):
+        super().__init__(message)
+        self.email = email
+
+
 # --- Passwords --------------------------------------------------------------
 #
 # bcrypt reads at most 72 bytes. Version 4 cut a longer password off silently; version 5 refuses it
@@ -290,7 +302,7 @@ def change_password(organizer_id: int, current_password: str, new_password: str)
     with get_connection() as connection:
         row = connection.execute("SELECT email, password_hash FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
         if row is None or not password_matches(current_password, row["password_hash"]):
-            raise AuthError("the current password is not right")
+            raise WrongPassword("the current password is not right")
         require_acceptable_password(new_password, row["email"])
         if password_matches(new_password, row["password_hash"]):
             raise AuthError("choose a password you have not used here before")
@@ -305,7 +317,7 @@ def change_password(organizer_id: int, current_password: str, new_password: str)
 def _check_password(connection, organizer_id: int, password: str) -> None:
     row = connection.execute("SELECT password_hash FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
     if row is None or not password_matches(password, row["password_hash"]):
-        raise AuthError("the password is not right")
+        raise WrongPassword("the password is not right")
 
 
 # --- Two-factor authentication ---------------------------------------------
@@ -446,9 +458,20 @@ def start_login_challenge(organizer: Organizer, remember: bool) -> tuple[str, st
         connection.execute("DELETE FROM login_challenges WHERE organizer_id = %s OR expires_at < now()", (organizer.id,))
         connection.execute(
             "INSERT INTO login_challenges (token, organizer_id, method, code_hash, remember, expires_at) VALUES (%s, %s, %s, %s, %s, %s)",
-            (token, organizer.id, method, security.hash_code(code) if code else None, remember, datetime.now(timezone.utc) + _CHALLENGE_TTL),
+            # Only a digest is kept: a copy of the table must not hold sign-ins that are half done.
+            (_token_digest(token), organizer.id, method, security.hash_code(code) if code else None, remember, datetime.now(timezone.utc) + _CHALLENGE_TTL),
         )
     return token, method, code
+
+
+def challenge_email(token: str) -> str | None:
+    """Whose sign-in this challenge belongs to, so the caller can refuse a locked account before
+    any code is looked at."""
+    with get_connection() as connection:
+        row = connection.execute(
+            "SELECT o.email FROM login_challenges c JOIN organizers o ON o.id = c.organizer_id WHERE c.token = %s", (_token_digest(token),)
+        ).fetchone()
+    return row["email"] if row else None
 
 
 def complete_login_challenge(token: str, code: str) -> tuple[Organizer, bool]:
@@ -458,6 +481,7 @@ def complete_login_challenge(token: str, code: str) -> tuple[Organizer, bool]:
     used to be counted in the same transaction as the check, and a wrong code raised, which rolled
     the count back: the five-attempt limit never counted anything, and a six-digit code could be
     guessed at for the challenge's whole ten minutes."""
+    token = _token_digest(token)
     with get_connection() as connection:
         counted = connection.execute(
             "UPDATE login_challenges SET attempts = attempts + 1 WHERE token = %s RETURNING attempts, expires_at", (token,)
@@ -485,13 +509,13 @@ def complete_login_challenge(token: str, code: str) -> tuple[Organizer, bool]:
             ok = secrets.compare_digest(row["code_hash"], security.hash_code(code))
         if not ok:
             recovery = connection.execute(
-                "SELECT id FROM recovery_codes WHERE organizer_id = %s AND used_at IS NULL AND code_hash = %s",
-                (row["organizer_id"], security.hash_code(code)),
+                "SELECT id FROM recovery_codes WHERE organizer_id = %s AND used_at IS NULL AND code_hash IN (%s, %s)",
+                (row["organizer_id"], security.hash_code(code), security.legacy_hash_code(code)),
             ).fetchone()
             if recovery:
                 connection.execute("UPDATE recovery_codes SET used_at = now() WHERE id = %s", (recovery["id"],))
                 ok = True
         if not ok:
-            raise AuthError("that code did not match")
+            raise WrongSecondFactor("that code did not match", row["email"])
         connection.execute("DELETE FROM login_challenges WHERE token = %s", (token,))
         return Organizer(id=int(row["organizer_id"]), email=row["email"]), bool(row["remember"])
