@@ -45,9 +45,19 @@ if [[ ! -d "${APP_DIR}/.git" ]]; then
   sudo chown "${SERVICE_USER}:${SERVICE_USER}" "${APP_DIR}"
   git clone --branch "${BRANCH}" "${REPO_URL}" "${APP_DIR}"
 else
+  SELF="scripts/deploy/02-deploy-app.sh"
+  self_before="$(git -C "${APP_DIR}" rev-parse "HEAD:${SELF}" 2>/dev/null || true)"
   git -C "${APP_DIR}" fetch origin "${BRANCH}"
   git -C "${APP_DIR}" checkout "${BRANCH}"
   git -C "${APP_DIR}" pull origin "${BRANCH}"
+  # The pull may have changed this very script, and bash is still running the copy it started
+  # with: a deploy that adds a setting to .env or to the systemd unit would not apply it until
+  # the deploy after. Start over with the new one, once.
+  if [[ -z "${OTRI_DEPLOY_RESTARTED:-}" ]] && [[ "${self_before}" != "$(git -C "${APP_DIR}" rev-parse "HEAD:${SELF}")" ]]; then
+    echo "==> The deploy script changed: starting over with the new one"
+    export OTRI_DEPLOY_RESTARTED=1
+    exec bash "${APP_DIR}/${SELF}" "$@"
+  fi
 fi
 
 echo "==> Setting up virtualenv"
