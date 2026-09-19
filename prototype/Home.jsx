@@ -172,7 +172,7 @@ export default function Home() {
             <div className="mt-7 grid max-w-[680px] gap-3 sm:grid-cols-2">
               {[
                 {
-                  who: 'I RUN',
+                  who: 'I run',
                   Icon: Timer,
                   title: 'What is my time worth?',
                   text: 'Pick a race or upload a GPX, set a finish time and see the score, before or after race day.',
@@ -181,7 +181,7 @@ export default function Home() {
                   more: ['Find my results', '#runners'],
                 },
                 {
-                  who: 'I ORGANISE A RACE',
+                  who: 'I organise a race',
                   Icon: Upload,
                   title: 'Score my whole race',
                   text: 'Upload the course and the results file: every finisher scored in a minute. Publish it with one click.',
@@ -191,10 +191,13 @@ export default function Home() {
                 },
               ].map(({ who, Icon, title, text, href, action, more }) => (
                 <div key={who} className="flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
-                  <small className="flex items-center gap-2 font-mono text-[9px] tracking-[.08em] text-blue-600">
-                    <Icon size={14} /> {who}
-                  </small>
-                  <b className="mt-2 block text-[17px] leading-6 tracking-[-.02em] text-[#0b1220]">{title}</b>
+                  <span className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+                      <Icon size={18} />
+                    </span>
+                    <span className="text-[19px] font-bold uppercase leading-6 tracking-[-.01em] text-blue-700">{who}</span>
+                  </span>
+                  <b className="mt-3 block text-[16px] leading-6 tracking-[-.02em] text-[#0b1220]">{title}</b>
                   <p className="mt-1 flex-1 text-[13px] leading-5 text-slate-500">{text}</p>
                   <a className={`${primaryButton} mt-4`} href={href}>
                     {action} <ArrowRight size={15} />
