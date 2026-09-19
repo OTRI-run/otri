@@ -64,13 +64,13 @@ Scoring without an account is the front door; keeping the race is one click furt
 - "I'd like scores" requests and "Ask your organizer" (`POST /races/{id}/score-requests`).
 - Claims: the public "I organize this race" form, the claim step in the create-event form (`GET /events/matches`, `POST /events/{id}/claim`), and the admin hand-over (`POST /admin/events/{id}/assign`).
 - "Suggest a race" and its admin "Create listing" step: a suggestion's only outcome was an unclaimed listing.
+- The calendar: the Calendar view of the races page, "Add to calendar" and the `GET /calendar.ics` feed. Every race its organizer listed or published is still on the races page, with its search, distance, country, status and sort.
 
 The columns and the `score_requests` table stay, unused, so nothing in production is destroyed. A listed race that nobody owns is never public (`db.list_races`); an admin deletes such leftovers under Admin → Events & races.
 
 **Kept:**
 
 - **An organizer's own listing.** They can show their race before it has results, which is also what the embedded calculator's `?race=` opens.
-- **The calendar view and the `.ics` feed**, now showing only races their organizers listed. It is a view over self-service pages, not a calendar OTRI curates.
 - **The runner index**, labelled provisional and not promoted. It is a view over published races, not a ranking OTRI stands behind as official.
 - **Reports** for corrections and removals, and **organizer verification** as an internal flag against abuse, not a badge of approval.
 
@@ -85,10 +85,6 @@ An organizer can show their own race publicly before it has results.
 `listed_at` makes the race facts, the course and its measurement public. `published_at` still gates results: a listed race with uploaded, unpublished results shows no results. `listing_status` on every race summary is `scored` once results are published, otherwise `upcoming` or `awaiting_results` by the date, or `private`.
 
 A listed race with a course is what the calculator opens from the race page ("Try a target time on this course") and what the embedded calculator's `?race=` takes.
-
-### The calendar
-
-The races page has a Calendar view (`#races?view=calendar`) of upcoming listed races by month, each with "Add to calendar", and `GET /calendar.ics` is the same as a subscribable feed (`?country=`, `?event=`). Both show only races their organizers listed or published: OTRI adds none itself.
 
 ## Next
 

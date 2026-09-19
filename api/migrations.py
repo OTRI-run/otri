@@ -67,6 +67,16 @@ MIGRATIONS: tuple[Migration, ...] = (
         """,
         "Every send with the provider's message id, so 'I never got the email' can be answered.",
     ),
+    Migration(
+        "0004_single_scoring_model",
+        """
+        UPDATE races SET scoring_version = '0.9.0-course-standard-domain-gated', updated_at = now()
+        WHERE scoring_version <> '0.9.0-course-standard-domain-gated';
+        ALTER TABLE races ALTER COLUMN scoring_version SET DEFAULT '0.9.0-course-standard-domain-gated';
+        """,
+        "The development builds before OTRI model 0.1.0 were removed from the code; a race stored under one "
+        "is scored with the model from now on instead of failing as an unknown version.",
+    ),
 )
 
 _TRACKING_SQL = """

@@ -83,3 +83,22 @@ def test_any_website_may_call_the_tool_endpoints_but_not_the_rest():
     # ... and OTRI's own pages keep their credentialed answer.
     own = client.get("/scoring/models", headers={"Origin": "http://localhost:5173"})
     assert own.headers["access-control-allow-origin"] == "http://localhost:5173" and own.headers["access-control-allow-credentials"] == "true"
+
+
+def test_the_example_race_on_the_page_scores_cleanly_and_nobody_reaches_1000():
+    """public/examples/otri-example-*: a synthetic course and 100 placeholder finishers
+    (scripts/generate_example_race.py). It is the first thing a visitor tries."""
+    from pathlib import Path
+
+    examples = Path(__file__).resolve().parents[2] / "public" / "examples"
+    files = {
+        "results": ("otri-example-results.csv", (examples / "otri-example-results.csv").read_bytes(), "text/csv"),
+        "gpx": ("otri-example-course.gpx", (examples / "otri-example-course.gpx").read_bytes(), "application/gpx+xml"),
+    }
+    body = client.post("/score", files=files).json()
+    assert body["is_valid"] is True and body["errors"] == [] and body["warnings"] == []
+    assert body["summary"]["finishers"] == 100 and body["summary"]["non_finishers"] == 4  # DNS rows are not listed
+    assert 700 <= body["summary"]["best_score"] < 850 and body["summary"]["median_score"] > 350
+    assert min(row["otri_score"] for row in body["scores"] if row["status"] == "finisher") > 150
+    # Dense enough to measure: the only reason for Low confidence is that no terrain data covers a made-up place.
+    assert not any(flag.startswith(("route_not_reproducible", "course_not_scored")) for flag in body["course"]["quality_flags"])

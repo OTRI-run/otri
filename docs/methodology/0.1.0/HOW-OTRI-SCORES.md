@@ -78,7 +78,7 @@ Nothing in the model is fitted to a field of results, and nothing is referenced 
 6. **A sparse recording still cannot be fixed.** The gate labels it; only route-snapping could rebuild the missing switchbacks, and that is not built.
 7. **No conditions.** Heat, mud, snow, night — none of it enters. Two editions of the same race in different weather are not comparable, by design.
 8. **Courses beyond 320 flat-km extrapolate** the 24-hour segment of the ceiling, which is conservative for multi-day events with sleep stops. They are flagged.
-9. **Scores changed during development.** Model 0.1.0 is the consolidation of eight development builds. Every build is selectable by its id and every stored measurement replays byte-for-byte; a race's score is only comparable to another under the same model. This is policy ([`OTRI-MODEL-0.1.0.md`](OTRI-MODEL-0.1.0.md) §13), not an accident.
+9. **Scores changed during development.** Model 0.1.0 is the consolidation of eight development builds. Those builds were prototypes and have been removed from the code; every race is scored with model 0.1.0, every stored measurement replays byte-for-byte, and from here on a change to the scoring is a new version beside this one. This is policy ([`OTRI-MODEL-0.1.0.md`](OTRI-MODEL-0.1.0.md) §13), not an accident.
 
 ### 2.4 Hard questions, answered straight
 
@@ -94,6 +94,6 @@ Nothing in the model is fitted to a field of results, and nothing is referenced 
 
 **"Who decided 0.85?"** The maintainers, on the record, with the alternatives stated ([`OTRI-MODEL-0.1.0.md`](OTRI-MODEL-0.1.0.md) §6.1). It will be revisited only when licensed field data exists, and never to track another index.
 
-**"Can I reproduce a score?"** Yes. Every API response carries the scoring version, the measurement version, the elevation source, and a hash of the measured profile; the code is public; old versions remain selectable. Reproducing it needs nothing but the GPX and the finish time.
+**"Can I reproduce a score?"** Yes. Every API response carries the scoring version, the measurement version, the elevation source, and a hash of the measured profile; the code is public, and a published model version never changes its output. Reproducing it needs nothing but the GPX and the finish time.
 
 **"What would change your mind about the model?"** Real, licensed finish data across course sizes and ability levels — enough to fit the steep-terrain coefficient and the exponent instead of choosing them — and a same-route benchmark of terrain elevation against a bare-earth model and calibrated barometric traversals. Both are written down as the next steps.

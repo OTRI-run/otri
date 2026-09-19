@@ -22,10 +22,8 @@ So instead: fictional courses, fictional names ("Fictionville", nationality `FIC
 
 ```powershell
 python scripts/generate_calibration_fixtures.py   # regenerate the GPX files
-python scripts/calibration_report.py              # run the real scoring pipeline, compare V0.1 vs V0.3 scores
 ```
 
-`calibration_report.py` prints each race's winner/mid-pack/last-finisher score under both `OFFICIAL_CURVE` (V0.1) and `DURATION_SCALED_CURVE` (V0.3), so you can see the duration-scaling effect across the full distance range at a glance.
 
 ## Known limitation
 

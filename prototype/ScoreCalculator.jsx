@@ -14,25 +14,9 @@ import { distanceUnit, formatDistance, formatElevation, formatPace as formatPace
 //   - V0.4-V0.5: 692 kept, 1000-anchor is the measured human ceiling 21.533
 //   - V0.6+:     692 dropped
 //   - V0.8:      one power law, no anchor table (docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md section 6)
-const ANCHOR_0 = { score: 0, q: 1.0 }
-const ANCHOR_349 = { score: 349, q: 4.240362424138815 }
-const ANCHOR_544 = { score: 544, q: 8.935158501440922 }
-const ANCHOR_692 = { score: 692, q: 11.769395017793594 }
-const ANCHOR_1000_LEGACY = { score: 1000, q: 17.93986234619293 }
 const ANCHOR_1000 = { score: 1000, q: 21.5331347785071 }
 
 const METHODOLOGY_URL = 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/0.1.0/HOW-OTRI-SCORES.md'
-
-function publishedAnchorsFor(scoringVersion) {
-  if (scoringVersion.includes('-power')) return []
-  if (scoringVersion.includes('smoothed-upper') || scoringVersion.includes('dem-gated')) {
-    return [ANCHOR_0, ANCHOR_349, ANCHOR_544, ANCHOR_1000]
-  }
-  if (scoringVersion.includes('endurance-referenced') || scoringVersion.includes('terrain-adjusted')) {
-    return [ANCHOR_0, ANCHOR_349, ANCHOR_544, ANCHOR_692, ANCHOR_1000]
-  }
-  return [ANCHOR_0, ANCHOR_349, ANCHOR_544, ANCHOR_692, ANCHOR_1000_LEGACY]
-}
 
 // Where the slider starts for a freshly chosen course: the finish time that scores this.
 const DEFAULT_TARGET_SCORE = 500
@@ -260,7 +244,7 @@ function ExplanationStep({ n, title, children }) {
   )
 }
 
-function ScoreExplanation({ estimate, features, targetSeconds, publishedAnchors, scaledVersion }) {
+function ScoreExplanation({ estimate, features, targetSeconds }) {
   const units = useUnits()
   const du = distanceUnit(units)
   const b = estimate.breakdown
@@ -413,33 +397,11 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
               <Stat label="Build id" value={estimate.scoring_version} />
             </dl>
 
-            {publishedAnchors.length > 0 ? (
-              <>
-                <p className="mt-5 font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">
-                  Published anchor table{scaledVersion ? ' (Q_lookup → score, at the reference course size)' : ''}
-                </p>
-                <table className="mt-1 w-full text-left text-xs">
-                  <tbody>
-                    {publishedAnchors.map((anchor) => (
-                      <tr key={anchor.score}>
-                        <td className="py-0.5 pr-4 font-mono">{anchor.score}</td>
-                        <td className="py-0.5 font-mono">{anchor.q.toFixed(3)} demand-km/h</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className="mt-1 text-[11px] text-slate-500">
-                  Piecewise power law between anchors; one exponent from 544 to 1000. "demand-km" is a kilometre of flat
-                  road at Minetti's metabolic cost — the unit called "flat km" above.
-                </p>
-              </>
-            ) : (
-              <p className="mt-5 text-[11px] text-slate-500">
-                One published curve, no anchor table: score = 1000 × (fraction of the human-ceiling rate)^0.85, with Q_1000
-                = {ANCHOR_1000.q.toFixed(3)} demand-km/h at the reference course size. "demand-km" is a kilometre of flat
-                road at Minetti's metabolic cost — the unit called "flat km" above.
-              </p>
-            )}
+            <p className="mt-5 text-[11px] text-slate-500">
+              One published curve, no anchor table: score = 1000 × (fraction of the human-ceiling rate)^0.85, with Q_1000
+              = {ANCHOR_1000.q.toFixed(3)} demand-km/h at the reference course size. "demand-km" is a kilometre of flat
+              road at Minetti's metabolic cost — the unit called "flat km" above.
+            </p>
 
             {estimate.quality_flags?.length > 0 && (
               <>
@@ -1047,17 +1009,6 @@ export default function ScoreCalculator({ embedded = false }) {
     }
   }
 
-  // Which curve produced this estimate: V0.4+ scale by the endurance reference, V0.3 by the
-  // Riegel exponent, and everything older looks the observed rate up directly.
-  const scoringVersion = estimate?.scoring_version ?? ''
-  const scaledVersion =
-    scoringVersion.includes('endurance-referenced') ||
-    scoringVersion.includes('terrain-adjusted') ||
-    scoringVersion.includes('smoothed-upper') ||
-    scoringVersion.includes('dem-gated') ||
-    scoringVersion.includes('-power') ||
-    scoringVersion.includes('duration-scaled')
-  const publishedAnchors = publishedAnchorsFor(scoringVersion)
   const hasCourse = Boolean(courseFile && features)
 
   return (
@@ -1157,8 +1108,6 @@ export default function ScoreCalculator({ embedded = false }) {
           estimate={estimate}
           features={features}
           targetSeconds={targetSeconds}
-          publishedAnchors={publishedAnchors}
-          scaledVersion={scaledVersion}
         />
       )}
     </>

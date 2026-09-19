@@ -51,7 +51,6 @@ if not os.environ.get("OTRI_DEM_MANIFEST"):
 from ingestion import result_records, validate_result_file
 from ingestion.records import RaceRecord
 from scoring import DEFAULT_SCORING_VERSION, available_scoring_models, estimate_score, get_scoring_model_info, score_race
-from scoring.course_standard import MEASURED_DEMAND_VERSIONS
 from scoring.runner_index import IndexInput, compute_runner_index
 
 from . import db
@@ -70,7 +69,6 @@ from .auth import (
     verify_email,
 )
 from . import email as _email
-from .calendar_feed import CalendarEvent, CalendarRace, build_calendar
 from . import server_stats as _server
 from .email import send_password_reset_email, send_verification_email
 from .rate_limit import AccountLocked, check_account_lock, clear_login_failures, enforce_rate_limit, record_login_failure
@@ -969,39 +967,6 @@ def unlist_race(race_id: str, organizer: Organizer = Depends(require_organizer))
     return _race_summary(db.set_race_listed(race_id, False), db.count_results_by_race().get(race_id, 0))
 
 
-# --- Calendar -----------------------------------------------------------------------
-# The public races as an iCalendar feed: one all-day entry per event. With no filter it is the
-# upcoming calendar, meant to be subscribed to (webcal://); ?event=<id> is one event, past or
-# future, for an "add to calendar" button; ?country=THA narrows the feed.
-
-
-@app.get("/calendar.ics")
-def race_calendar(event: str | None = None, country: str | None = None) -> Response:
-    wanted_country = _clean_country(country) if country else None
-    today = date.today()
-    events: dict[str, CalendarEvent] = {}
-    for race in db.list_races(published_only=True):
-        if event is not None:
-            if race.event_id != event:
-                continue
-        elif race.event_date is None or race.event_date < today or (wanted_country and race.event_country != wanted_country):
-            continue
-        entry = events.setdefault(
-            race.event_id,
-            CalendarEvent(event_id=race.event_id, name=race.event_name or race.course_name, day=race.event_date, location=race.event_location, country=race.event_country, website=race.event_website),
-        )
-        entry.races.append(CalendarRace(race.race_id, race.course_name, race.distance_km, race.elevation_gain_m))
-    if event is not None and not events:
-        raise HTTPException(status_code=404, detail="no public event with that id")
-    name = "OTRI trail race calendar" + (f" · {wanted_country}" if wanted_country else "")
-    filename = f"otri-{event}.ics" if event else "otri-races.ics"
-    return Response(
-        content=build_calendar(list(events.values()), _email.SITE_URL, name=name),
-        media_type="text/calendar; charset=utf-8",
-        headers={"Content-Disposition": f'inline; filename="{filename}"', "Cache-Control": "public, max-age=3600"},
-    )
-
-
 @app.post("/events/{event_id}/races", response_model=RaceSummary, status_code=201)
 def add_race(event_id: str, payload: RaceCreate, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
     """Add a race distance (e.g. "50K") to an event. Requires ownership of the event."""
@@ -1236,7 +1201,7 @@ def _score_results(race: db.Race, results: list) -> list[RunnerScoreOut]:
         _filename, content = stored_gpx
         gpx_points = parse_track_points(content)
     stored_measurement = db.get_measurement(race.race_id)
-    if gpx_points is not None and race.scoring_version in MEASURED_DEMAND_VERSIONS and stored_measurement is None:
+    if gpx_points is not None and stored_measurement is None:
         raise ValueError('reattach the GPX to save a versioned measurement before using measured scoring')
     measurement = Measurement(**stored_measurement["snapshot"]) if stored_measurement else None
     return _scored_rows(race.to_race_record(), results, race.scoring_version, gpx_points, measurement)

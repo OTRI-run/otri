@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { AlertTriangle, ArrowRight, CheckCircle2, Code2, Download, FileSpreadsheet, Map as MapIcon, ShieldCheck, Timer, Trophy, XCircle } from 'lucide-react'
 import { scoreRace } from './apiClient'
 import { saveHandoff } from './publishHandoff'
@@ -9,7 +9,20 @@ import { modelLabel } from '../src/lib/model'
 // account and nothing kept (POST /score); the same validation and scoring as a published race.
 
 const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
-const EXAMPLE_RESULTS = '../examples/otri-results-example.csv'
+// The example race: a synthetic course and 100 made-up finishers (scripts/generate_example_race.py).
+const EXAMPLE = {
+  name: 'OTRI Example Trail 24K',
+  course: { url: '../examples/otri-example-course.gpx', file: 'otri-example-course.gpx', type: 'application/gpx+xml' },
+  results: { url: '../examples/otri-example-results.csv', file: 'otri-example-results.csv', type: 'text/csv' },
+}
+const EXAMPLE_ROWS_SHOWN = 8
+
+async function fetchExample({ url, file, type }) {
+  const response = await fetch(url)
+  if (!response.ok) throw new Error(`Could not load ${file} (HTTP ${response.status}).`)
+  const text = await response.text()
+  return { text, file: new File([text], file, { type }) }
+}
 const ROWS_AT_ONCE = 100
 
 function formatHms(totalSeconds) {
@@ -191,6 +204,99 @@ function Scored({ result, fileStem, children }) {
   )
 }
 
+// Nothing to hand? Try the whole thing on a made-up race: one press fills in the course and the
+// results, and the rows can be looked at first, which is also the quickest way to see the format.
+function ExampleRace({ onUse, busy }) {
+  const [open, setOpen] = useState(false)
+  const [rows, setRows] = useState(null)
+  const [state, setState] = useState('idle') // idle | loading | failed
+
+  async function toggleRows() {
+    setOpen((value) => !value)
+    if (rows) return
+    try {
+      const { text } = await fetchExample(EXAMPLE.results)
+      setRows(text.trim().split('\n').map((line) => line.split(',')))
+    } catch {
+      setRows([])
+    }
+  }
+
+  async function use() {
+    setState('loading')
+    try {
+      const [course, results] = await Promise.all([fetchExample(EXAMPLE.course), fetchExample(EXAMPLE.results)])
+      onUse({ gpx: course.file, results: results.file, raceName: EXAMPLE.name })
+      setState('idle')
+    } catch {
+      setState('failed')
+    }
+  }
+
+  const header = rows?.[0] ?? []
+  const body = rows?.slice(1) ?? []
+  const shown = [...body.slice(0, EXAMPLE_ROWS_SHOWN), ...body.slice(-2)]
+  return (
+    <div className="mt-7 min-w-0 max-w-[620px] rounded-xl border border-slate-200 bg-white/80">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div className="min-w-0">
+          <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">NO FILES AT HAND?</p>
+          <p className="mt-0.5 text-xs leading-5 text-slate-600">Try it on a made-up race: a 24 km course and 100 finishers called John Doe and Max Mustermann, plus a few who did not finish.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <button type="button" onClick={use} disabled={busy || state === 'loading'} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-[#0b1220] px-3 text-xs font-semibold text-white disabled:opacity-60">
+            {state === 'loading' ? 'Loading…' : 'Use the example race'}
+          </button>
+          <button type="button" onClick={toggleRows} className="text-xs font-semibold text-blue-600 hover:underline">
+            {open ? 'Hide' : 'Show'} rows
+          </button>
+          <a href={EXAMPLE.results.url} download={EXAMPLE.results.file} className="text-xs font-semibold text-blue-600 no-underline hover:underline">CSV</a>
+          <a href={EXAMPLE.course.url} download={EXAMPLE.course.file} className="text-xs font-semibold text-blue-600 no-underline hover:underline">GPX</a>
+        </div>
+      </div>
+      {state === 'failed' && <p className="border-t border-slate-200 px-4 py-2 text-xs text-red-600">The example files could not be loaded. Try again in a moment.</p>}
+      {open && (
+        <div className="overflow-x-auto border-t border-slate-200">
+          {rows === null ? (
+            <p className="px-4 py-3 text-xs text-slate-500">Loading the rows…</p>
+          ) : (
+            <table className="w-full min-w-[720px] text-left font-mono text-[11px]">
+              <thead>
+                <tr className="bg-white text-[9px] uppercase tracking-[.06em] text-slate-500">
+                  {header.map((cell) => (
+                    <th key={cell} className="whitespace-nowrap px-3 py-2 font-semibold">{cell}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map((row, index) => (
+                  <Fragment key={index}>
+                    {index === EXAMPLE_ROWS_SHOWN && (
+                      <tr className="border-t border-slate-100 text-slate-400">
+                        <td colSpan={header.length} className="px-3 py-1.5">… {body.length - shown.length} more rows …</td>
+                      </tr>
+                    )}
+                    <tr className="border-t border-slate-100 text-[#0b1220]">
+                      {row.map((cell, column) => (
+                        <td key={column} className="whitespace-nowrap px-3 py-1.5">{cell || <span className="text-slate-300">—</span>}</td>
+                      ))}
+                    </tr>
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {rows?.length > 0 && (
+            <p className="border-t border-slate-100 px-4 py-2 text-[11px] text-slate-500">
+              The first {EXAMPLE_ROWS_SHOWN} and the last 2 of {body.length} rows. A finisher needs a rank, a time, a name and a gender; DNF and DNS rows carry their status instead of a time. Any file laid out like this passes.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // The invitation after a race has been scored: keep it. The two files go to the organizer app
 // through this browser (publishHandoff.js), so nothing is uploaded twice and nothing is sent
 // anywhere until the organizer is signed in.
@@ -259,15 +365,12 @@ export default function ScoreRace() {
 
   const missing = !gpx ? 'Choose the course file.' : !results ? 'Choose the results file.' : null
 
-  async function useExample() {
+  function useExample(example) {
     setError(null)
-    try {
-      const response = await fetch(EXAMPLE_RESULTS)
-      if (!response.ok) throw new Error(`Could not load the example file (HTTP ${response.status}).`)
-      setResults(new File([await response.text()], 'otri-results-example.csv', { type: 'text/csv' }))
-    } catch (err) {
-      setError(err.message)
-    }
+    setResult(null)
+    setGpx(example.gpx)
+    setResults(example.results)
+    setRaceName(example.raceName)
   }
 
   async function submit(event) {
@@ -309,6 +412,7 @@ export default function ScoreRace() {
               <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Where the model runs out of evidence it says so, per course, instead of guessing.</li>
               <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Like what you see? One click turns it into a public race page, free, with nothing to upload again.</li>
             </ul>
+            <ExampleRace onUse={useExample} busy={busy} />
             <p className="mt-6 text-xs text-slate-500">
               Timing company or developer? The same call is a public API: <a href="#api" className="font-semibold text-blue-600 no-underline hover:underline">POST /score</a>.
             </p>
@@ -324,11 +428,6 @@ export default function ScoreRace() {
             <p className="mt-5 font-mono text-[9px] tracking-[.08em] text-slate-500">2 · THE RESULTS</p>
             <div className="mt-2">
               <FilePick icon={FileSpreadsheet} label="Choose the results (CSV or Excel)" hint="Rank, time, last name, first name, gender. Column names in several languages are recognised." accept=".csv,.xlsx,.xlsm,text/csv" file={results} onFile={setResults} disabled={busy} />
-              <p className="mt-2 text-xs text-slate-500">
-                <button type="button" onClick={useExample} className="font-semibold text-blue-600 hover:underline">Try the example file</button>
-                {' · '}
-                <a href={EXAMPLE_RESULTS} download className="font-semibold text-blue-600 no-underline hover:underline">download it</a> to see the format
-              </p>
             </div>
 
             <label className="mt-5 block font-mono text-[9px] tracking-[.08em] text-slate-500">

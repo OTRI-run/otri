@@ -155,7 +155,10 @@ export default function Home() {
             <p className="mt-6 max-w-[620px] text-[15px] leading-7 text-slate-500 sm:text-[17px]">
               A calculator, not a governing body. Bring a course and a results file and get every finisher scored in a
               minute: no account, no approval, nothing kept. Runners try a target time before race day. One open,
-              versioned model, and every number explains itself.
+              versioned model, and every number explains itself:{' '}
+              <a href={GITHUB_URL} className="inline-flex items-center gap-1 whitespace-nowrap font-semibold text-[#0b1220] no-underline hover:text-blue-600">
+                <GitBranch size={15} /> the code and the method are on GitHub <ArrowUpRight size={14} />
+              </a>
             </p>
             <div className="mt-7 flex flex-col gap-2 sm:flex-row">
               <a className={primaryButton} href="#score">
@@ -304,7 +307,7 @@ export default function Home() {
           <div className="mt-9 grid border-t border-slate-700/80 sm:grid-cols-2 lg:grid-cols-4">
             {[
               [FileText, 'HOW A SCORE IS MADE', 'Plain-language explainer, then every constant and where it comes from.', DOCS.how],
-              [GitBranch, 'VERSIONED MODEL', 'Every curve change is a new version. Old versions stay selectable.', DOCS.methodology],
+              [GitBranch, 'VERSIONED MODEL', 'Every score names its model version. A change to the scoring is a new version, never a silent edit.', DOCS.methodology],
               [ShieldCheck, 'DATA POLICY', 'Which results OTRI will and will not use, and why.', DOCS.dataPolicy],
               [Database, 'SOURCE CODE', 'Scoring, course measurement and this site, all public.', GITHUB_URL],
             ].map(([Icon, title, desc, href]) => (

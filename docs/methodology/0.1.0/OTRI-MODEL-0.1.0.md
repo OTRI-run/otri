@@ -302,12 +302,12 @@ What would make the model non-provisional: real, licensed finish data on real co
 ## 13. Versioning
 
 - The public model name changes (`0.2.0`, …) only when a score can change for the same course and time. Anything that leaves every score identical (engine speed-ups, caching, a new measurement build with identical output, a build that changes only confidence or withholds a score it cannot defend, §7.4) keeps the name.
-- Every change to a formula or constant above needs an OEP ([`../governance/`](../../governance/)) and a new build id in `scoring/`. Old build ids stay selectable so historical scores replay; a historical score is never rewritten under a new formula. The ceiling anchors are frozen constants of this version: refreshing them when a record falls is a new version.
+- Every change to a formula or constant above needs an OEP ([`../governance/`](../../governance/)) and a new build id in `scoring/`. A published model version never changes its output; a future model is a new version beside it, never an edit in place. The ceiling anchors are frozen constants of this version: refreshing them when a record falls is a new version.
 - The plain-language companion to this page is [`HOW-OTRI-SCORES.md`](HOW-OTRI-SCORES.md); the runner index that combines scores into one number per runner is [`RUNNER-INDEX-v1.md`](../runner-index/RUNNER-INDEX-v1.md).
 
 ## 14. Development history
 
-Model 0.1.0 is the consolidation of eight development builds, plus one build since that changes no score. Each remains selectable by its build id in `scoring/registry.py` so any score ever published can be reproduced. Their individual specifications were removed from this folder in September 2026 because everything 0.1.0 uses is on this page; they are in git history (`git log --all -- docs/methodology/v0.8`).
+Model 0.1.0 is the consolidation of eight development builds, plus one build since that changes no score. They were prototype builds: their code and their individual specifications were removed in September 2026, because everything 0.1.0 uses is on this page and in `scoring/course_standard.py`. They are in git history (`git log --all -- docs/methodology/v0.8 scoring/`). A race stored under one of them was moved to the current build (migration `0004_single_scoring_model`); the builds from 0.8.0 on gave the same scores, earlier ones did not.
 
 | build id | what it contributed to 0.1.0 |
 |---|---|
@@ -320,4 +320,4 @@ Model 0.1.0 is the consolidation of eight development builds, plus one build sin
 | `0.8.0-course-standard-power` | the single power curve (§6); the first build of model 0.1.0 |
 | `0.9.0-course-standard-domain-gated` | the same scores; confidence reports the model's own limits and vertical races are listed without scores (§7.4, OEP-002); the current build of model 0.1.0 |
 
-The retired baseline `0.1.0-field-relative` (`scoring/model.py`, [OEP-001](../../governance/oep/OEP-001-baseline-scoring-model.md)) shares the number but is a different, competitor-relative rule kept only for reproducibility; it is not model 0.1.0.
+The retired baseline `0.1.0-field-relative` ([OEP-001](../../governance/oep/OEP-001-baseline-scoring-model.md)) shares the number but was a different, competitor-relative rule; it is not model 0.1.0, and its code was removed with the development builds.

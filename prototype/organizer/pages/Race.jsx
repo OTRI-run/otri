@@ -174,11 +174,6 @@ function CourseFacts({ measurement, features, entered }) {
           </div>
         ))}
       </dl>
-      {(big(dDist) || big(dGain)) && (
-        <Notice kind="warning" title="Your official figures differ from the measured course by more than 5%.">
-          That is common — organizer totals often come from a different device or a rounded course. OTRI scores from the measured course; check the map matches your route before continuing.
-        </Notice>
-      )}
       {sparse && (
         <Notice kind="warning" title="This GPX is recorded too sparsely to measure the course reliably.">
           It has a point only every {measurement.median_edge_m} m, so switchbacks are cut short and the course measures shorter and easier than it is. Export the route with a point at least every 30 m (most planners and watches can) and upload that instead.

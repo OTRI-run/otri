@@ -90,7 +90,6 @@ def test_a_listed_race_nobody_owns_is_not_public(monkeypatch):
     race = db.create_race(orphan.event_id, "50K", 50.0, 2600.0)
     db.set_race_listed(race.race_id, True)
     assert all(r["race_id"] != race.race_id for r in client.get("/races").json())
-    assert "Imported Trail" not in client.get("/calendar.ics").text
     # An admin still sees it, to delete it.
     admin = _admin_headers(monkeypatch)
     assert any(e["event_id"] == orphan.event_id for e in client.get("/admin/events", headers=admin).json())
@@ -109,6 +108,7 @@ def test_the_retired_listing_routes_are_gone(monkeypatch):
         ("POST", f"/events/{event['event_id']}/claim"),
         ("POST", "/admin/reports/1/create-listing"),
         ("POST", f"/races/{race_id}/score-requests"),
+        ("GET", "/calendar.ics"),
     ]:
         assert client.request(method, path, json={}, headers=admin).status_code in (404, 405), path
     # A claim or a suggestion is no longer a kind of report.

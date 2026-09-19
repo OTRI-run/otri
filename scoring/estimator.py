@@ -10,10 +10,9 @@ from dataclasses import dataclass
 
 from course.gpx import TrackPoint
 
-from .course_demand import compute_course_demand, demand_from_totals
+from .course_demand import demand_from_totals
 from .course_standard import (
-    MEASURED_DEMAND_VERSIONS,
-    DOMAIN_GATED_CURVE,
+    MODEL_CURVE,
     CourseNotScoredError,
     ScoreCurve,
     adjusted_demand,
@@ -106,15 +105,11 @@ def _breakdown(
     finish_time_seconds: float,
     performance_rate: float,
 ) -> EstimateBreakdown:
-    terrain = curve.terrain_adjustment
-    terrain_factor = terrain.factor(steep_distance_fraction, altitude_excess_m) if terrain is not None else 1.0
-
+    terrain_factor = curve.terrain_adjustment.factor(steep_distance_fraction, altitude_excess_m)
     scaling = curve.demand_scaling
-    reference_factor = scaling.factor(adjusted_km) if scaling is not None else None
-    # Only the endurance reference knows the human ceiling; V0.3's constant Riegel scaling does not.
-    has_reference = scaling is not None and hasattr(scaling, "rate")
-    reference_rate = scaling.rate(adjusted_km) if has_reference else None
-    riegel_exponent = scaling.riegel_exponent(adjusted_km) if has_reference else None
+    reference_factor = scaling.factor(adjusted_km)
+    reference_rate = scaling.rate(adjusted_km)
+    riegel_exponent = scaling.riegel_exponent(adjusted_km)
 
     return EstimateBreakdown(
         physical_distance_km=round(physical_distance_km, 3),
@@ -124,11 +119,11 @@ def _breakdown(
         altitude_excess_m=round(altitude_excess_m, 3),
         adjusted_demand_km=round(adjusted_km, 3),
         performance_rate=round(performance_rate, 3),
-        reference_rate=round(reference_rate, 3) if reference_rate is not None else None,
-        fraction_of_ceiling=round(performance_rate / reference_rate, 6) if reference_rate else None,
-        reference_factor=round(reference_factor, 6) if reference_factor is not None else None,
-        lookup_rate=round(performance_rate * reference_factor, 3) if reference_factor is not None else None,
-        riegel_exponent=round(riegel_exponent, 6) if riegel_exponent is not None else None,
+        reference_rate=round(reference_rate, 3),
+        fraction_of_ceiling=round(performance_rate / reference_rate, 6),
+        reference_factor=round(reference_factor, 6),
+        lookup_rate=round(performance_rate * reference_factor, 3),
+        riegel_exponent=round(riegel_exponent, 6),
         world_best_time_seconds=round(target_time_seconds(adjusted_km, 1000.0, curve=curve), 1),
     )
 
@@ -139,7 +134,7 @@ def estimate_score(
     gpx_points: list[TrackPoint] | None = None,
     distance_km: float | None = None,
     elevation_gain_m: float | None = None,
-    curve: ScoreCurve = DOMAIN_GATED_CURVE,
+    curve: ScoreCurve = MODEL_CURVE,
     measurement=None,
 ) -> ScoreEstimate:
     """Predict the Course Standard score for `finish_time_seconds` on this course.
@@ -153,10 +148,7 @@ def estimate_score(
 
     demand = None
     if gpx_points is not None:
-        if curve.version in MEASURED_DEMAND_VERSIONS:
-            demand, measurement = measured_demand_for(gpx_points, measurement, curve)
-        else:
-            demand = compute_course_demand(gpx_points)
+        demand, measurement = measured_demand_for(gpx_points, measurement)
         equivalent_km, quality_flags = adjusted_demand(demand, curve)
         physical_distance_km = demand.physical_distance_km
         course_demand_km = demand.course_demand_km
@@ -169,14 +161,12 @@ def estimate_score(
     else:
         raise ValueError("either gpx_points or both distance_km and elevation_gain_m must be provided")
 
-    not_scored = not_scored_reason(curve, demand, distance_km, elevation_gain_m)
+    not_scored = not_scored_reason(demand, distance_km, elevation_gain_m)
     if not_scored is not None:
         raise CourseNotScoredError(not_scored.split(": ", 1)[1])
 
     computed = score_for_time(equivalent_km, finish_time_seconds, curve=curve)
-    confidence, confidence_flags = confidence_for(
-        measurement if gpx_points is not None else None, curve, gpx_points is not None, demand, equivalent_km
-    )
+    confidence, confidence_flags = confidence_for(measurement if gpx_points is not None else None, demand, equivalent_km)
     quality_flags = tuple(quality_flags) + tuple(computed["quality_flags"]) + confidence_flags
 
     return ScoreEstimate(
