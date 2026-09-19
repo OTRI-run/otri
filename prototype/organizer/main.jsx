@@ -133,7 +133,7 @@ function Header({ session, onSignOut }) {
               Public site <ArrowUpRight size={13} />
             </a>
             <span className="hidden sm:block">
-              <UnitsMenu />
+              <UnitsMenu compact />
             </span>
             {session ? (
               <AccountMenu session={session} onSignOut={onSignOut} />

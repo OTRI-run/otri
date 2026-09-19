@@ -234,7 +234,7 @@ export function analyzeGpx(file, finishTimeSeconds) {
   return request('/gpx/analyze', { method: 'POST', body: formData })
 }
 
-/** Validate a results file and score it against a course file, with no account and nothing stored. */
+/** Validate a results file and score it against a course file, with no account (nothing is created on OTRI until the organizer publishes). */
 export function scoreRace({ results, gpx, raceName }) {
   const formData = new FormData()
   formData.append('results', results)

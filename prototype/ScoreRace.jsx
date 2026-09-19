@@ -1,13 +1,16 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, ArrowRight, CheckCircle2, Code2, Download, Share2, FileSpreadsheet, Map as MapIcon, ShieldCheck, Timer, Trophy, XCircle } from 'lucide-react'
 import { scoreRace } from './apiClient'
 import { saveHandoff } from './publishHandoff'
 import { ShareResults } from './SharePanel'
+import RaceNameList, { RACE_NAME_LIST } from '../src/components/RaceNameList'
+import CourseMap from '../src/components/CourseMap'
+import Flag from '../src/components/Flag'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import { modelLabel } from '../src/lib/model'
 
 // Score my race: a course and a results file in, the validated and scored result list out. No
-// account and nothing kept (POST /score); the same validation and scoring as a published race.
+// account (POST /score); the same validation and scoring as a published race, which is one click further.
 
 const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
 // The example race: a synthetic course and 100 made-up finishers (scripts/generate_example_race.py).
@@ -105,7 +108,7 @@ function Tile({ label, value, sub }) {
   )
 }
 
-function Scored({ result, fileStem, children }) {
+function Scored({ result, fileStem, gpxText, children }) {
   const units = useUnits()
   const [visible, setVisible] = useState(ROWS_AT_ONCE)
   const [sharing, setSharing] = useState(false)
@@ -154,6 +157,12 @@ function Scored({ result, fileStem, children }) {
         <Tile label="MODEL" value={modelLabel(result.scoring_version)} sub={result.scoring_version} />
       </div>
 
+      {gpxText && (
+        <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <CourseMap gpxText={gpxText} measurement={result.measurement} className="p-3" />
+        </div>
+      )}
+
       {reasons.length > 0 && (
         <div className="mt-3 flex gap-3 rounded-xl border border-amber-100 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
           <AlertTriangle size={16} className="mt-0.5 shrink-0" />
@@ -184,11 +193,13 @@ function Scored({ result, fileStem, children }) {
       {children}
 
       <div className="mt-8 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-        <table className="w-full min-w-[560px] text-left text-sm">
+        <table className="w-full min-w-[680px] text-left text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
               <th className="px-3 py-2">Rank</th>
               <th className="px-3 py-2">Runner</th>
+              <th className="px-3 py-2">Country</th>
+              <th className="px-3 py-2">Gender</th>
               <th className="px-3 py-2">Bib</th>
               <th className="px-3 py-2">Time</th>
               <th className="px-3 py-2 text-right">OTRI</th>
@@ -196,12 +207,11 @@ function Scored({ result, fileStem, children }) {
           </thead>
           <tbody>
             {scores.slice(0, visible).map((row, index) => (
-              <tr key={`${index}-${row.rank}`} className="border-b border-slate-100 last:border-0">
+              <tr key={`${index}-${row.rank}`} className="border-b border-slate-100 last:border-0 odd:bg-white even:bg-slate-50/70 hover:bg-blue-50/50">
                 <td className="px-3 py-2 font-mono text-xs text-slate-500">{row.rank}</td>
-                <td className="px-3 py-2 font-medium text-[#0b1220]">
-                  {row.first_name} {row.family_name}
-                  {row.gender && <span className="ml-2 font-mono text-[10px] font-normal text-slate-400">{row.gender}</span>}
-                </td>
+                <td className="px-3 py-2 font-medium text-[#0b1220]">{row.first_name} {row.family_name}</td>
+                <td className="px-3 py-2">{row.nationality ? <Flag code={row.nationality} /> : <span className="text-slate-300">—</span>}</td>
+                <td className="px-3 py-2 font-mono text-xs text-slate-500">{row.gender || '—'}</td>
                 <td className="px-3 py-2 font-mono text-xs text-slate-500">{row.bib_number ?? '—'}</td>
                 <td className="px-3 py-2 font-mono text-xs text-slate-600">{formatHms(row.finish_time_seconds) || '—'}</td>
                 <td className="px-3 py-2 text-right font-mono font-bold text-blue-600">{row.otri_score ?? <span className="font-normal text-slate-400">{row.status === 'finisher' ? 'not scored' : row.status}</span>}</td>
@@ -388,14 +398,35 @@ export default function ScoreRace() {
     setRaceName(example.raceName)
   }
 
-  async function submit(event) {
+  // The answer appears below the form: bring it into view instead of leaving the visitor at the top.
+  useEffect(() => {
+    if (result) document.getElementById('score-result')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [result])
+
+  // #score?example=1 scores the example race straight away: a link that shows the result, not the form.
+  useEffect(() => {
+    if (!/[?&]example=1/.test(window.location.hash)) return
+    Promise.all([fetchExample(EXAMPLE.course), fetchExample(EXAMPLE.results)])
+      .then(([course, list]) => {
+        const example = { gpx: course.file, results: list.file, raceName: EXAMPLE.name }
+        useExample(example)
+        return score(example)
+      })
+      .catch((err) => setError(err.message))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function submit(event) {
     event.preventDefault()
+    return score({ gpx, results, raceName: raceName.trim() })
+  }
+
+  async function score({ gpx, results, raceName }) {
     setBusy(true)
     setError(null)
     setResult(null)
     try {
-      setResult(await scoreRace({ results, gpx, raceName: raceName.trim() }))
-      setScoredFiles({ gpx, results })
+      setResult(await scoreRace({ results, gpx, raceName }))
+      setScoredFiles({ gpx, results, gpxText: await gpx.text() })
     } catch (err) {
       setError(err.status === 429 ? 'That was a lot of scoring in one minute. Wait a minute and try again.' : err.message)
     } finally {
@@ -408,7 +439,7 @@ export default function ScoreRace() {
   return (
     <>
       <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
-        <div className={`${CONTAINER} grid min-w-0 items-start gap-10 py-12 sm:py-14 lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-16 lg:py-16`}>
+        <div className={`${CONTAINER} grid min-w-0 items-start gap-8 py-10 sm:py-14 lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-x-16 lg:gap-y-6 lg:py-16`}>
           <div className="min-w-0">
             <div className="font-mono text-[10px] font-medium tracking-[.1em] text-blue-600">
               OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> SCORE MY RACE
@@ -421,19 +452,10 @@ export default function ScoreRace() {
             <p className="mt-5 max-w-[560px] text-base leading-7 text-slate-600">
               Bring the course and the results file of any trail race. OTRI measures the course, checks the file, and gives every finisher a score you can explain: the same open model as every race here, with no account and no approval.
             </p>
-            <ul className="mt-6 space-y-2 text-sm text-slate-600">
-              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Nothing is stored or published. Both files are deleted as soon as the scores are sent back.</li>
-              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> A score depends on the course and the runner's own time, never on who else raced.</li>
-              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Where the model runs out of evidence it says so, per course, instead of guessing.</li>
-              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Like what you see? One click turns it into a public race page, free, with nothing to upload again.</li>
-            </ul>
             <ExampleRace onUse={useExample} busy={busy} />
-            <p className="mt-6 text-xs text-slate-500">
-              Timing company or developer? The same call is a public API: <a href="#api" className="font-semibold text-blue-600 no-underline hover:underline">POST /score</a>.
-            </p>
           </div>
 
-          <form onSubmit={submit} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_44px_rgba(15,23,42,.07)] sm:p-6">
+          <form onSubmit={submit} className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_44px_rgba(15,23,42,.07)] sm:p-6">
             <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">1 · THE COURSE</p>
             <div className="mt-2">
               <FilePick icon={MapIcon} label="Choose the course (GPX)" hint="The official track of the race, up to 20 MB" accept=".gpx,application/gpx+xml" file={gpx} onFile={setGpx} disabled={busy} />
@@ -447,7 +469,8 @@ export default function ScoreRace() {
 
             <label className="mt-5 block font-mono text-[9px] tracking-[.08em] text-slate-500">
               3 · RACE NAME (OPTIONAL)
-              <input value={raceName} onChange={(e) => setRaceName(e.target.value)} maxLength={200} className={`${input} mt-2 font-sans tracking-normal`} placeholder="Doi Suthep Trail 30K" />
+              <input value={raceName} onChange={(e) => setRaceName(e.target.value)} maxLength={200} list={RACE_NAME_LIST} autoComplete="off" className={`${input} mt-2 font-sans tracking-normal`} placeholder="Doi Suthep Trail 30K" />
+              <RaceNameList />
             </label>
 
             {error && (
@@ -460,10 +483,21 @@ export default function ScoreRace() {
             </button>
             {!busy && missing && <p className="mt-2 text-center text-xs text-slate-500">{missing}</p>}
           </form>
+          <div className="min-w-0 lg:col-start-1">
+            <ul className="space-y-2 text-sm text-slate-600">
+              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Free and instant: no account, no approval, every score in about a minute.</li>
+              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Publish with one click: a leaderboard page for your runners, and podium images with a post for your channels.</li>
+              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> A score depends on the course and the runner's own time, never on who else raced, so it compares across races.</li>
+              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Where the model runs out of evidence it says so, per course, instead of guessing.</li>
+            </ul>
+            <p className="mt-6 text-xs text-slate-500">
+              Timing company or developer? The same call is a public API: <a href="#api" className="font-semibold text-blue-600 no-underline hover:underline">POST /score</a>.
+            </p>
+          </div>
         </div>
       </section>
 
-      <div className={`${CONTAINER} pb-20`}>
+      <div id="score-result" className={`${CONTAINER} scroll-mt-20 pb-20`}>
         {result && !result.is_valid && (
           <section className="mt-8 rounded-2xl border border-red-100 bg-white p-5">
             <p className="flex items-center gap-2 text-sm font-semibold text-red-800">
@@ -471,11 +505,11 @@ export default function ScoreRace() {
             </p>
             <Issues issues={result.errors} kind="error" />
             {result.warnings.length > 0 && <Issues issues={result.warnings} kind="warning" />}
-            <p className="mt-3 text-xs text-slate-500">Correct the file and score it again. Nothing was kept.</p>
+            <p className="mt-3 text-xs text-slate-500">Correct the file and score it again.</p>
           </section>
         )}
         {result?.is_valid && (
-          <Scored result={result} fileStem={(result.course.name ?? results?.name ?? '').replace(/\.[a-z]+$/i, '').replace(/[^\w-]+/g, '-').toLowerCase()}>
+          <Scored result={result} gpxText={scoredFiles?.gpxText} fileStem={(result.course.name ?? results?.name ?? '').replace(/\.[a-z]+$/i, '').replace(/[^\w-]+/g, '-').toLowerCase()}>
             {result.summary.finishers > 0 && scoredFiles && <PublishInvite result={result} files={scoredFiles} />}
           </Scored>
         )}

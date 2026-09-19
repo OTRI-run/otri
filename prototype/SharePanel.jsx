@@ -12,7 +12,7 @@ function formatHms(totalSeconds) {
   return `${Math.floor(totalSeconds / 3600)}:${pad(Math.floor((totalSeconds % 3600) / 60))}:${pad(Math.round(totalSeconds % 60))}`
 }
 
-const hashtag = (text) => `#${String(text).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\b(19|20)\d\d\b/g, '').replace(/[^A-Za-z0-9]+/g, '')}`
+const hashtag = (text) => `#${String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\b(19|20)\d\d\b/g, '').replace(/[^A-Za-z0-9]+/g, '')}`
 const slug = (text) => String(text).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'otri'
 
 function Choice({ label, options, value, onChange }) {
@@ -119,7 +119,7 @@ function Panel({ draw, fileName, suggestedText, url, children }) {
           </p>
         )}
         {error && <p className="mt-2 text-xs text-amber-700">{error}</p>}
-        <p className="mt-3 text-[11px] leading-5 text-slate-500">The image is drawn in your browser; OTRI posts nothing and keeps nothing. Facebook and Instagram take the image as an attachment: download it, then paste the text.</p>
+        <p className="mt-3 text-[11px] leading-5 text-slate-500">Facebook and Instagram take the image as an attachment: download it, then paste the text. On a phone, Share… hands both to the app.</p>
       </div>
     </div>
   )

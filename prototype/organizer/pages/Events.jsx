@@ -6,6 +6,7 @@ import { hasHandoff } from '../../publishHandoff'
 import { formatDistance, formatElevation, useUnits } from '../../../src/lib/units'
 import { Button, Card, EmptyState, Eyebrow, Field, Gradient, Notice, Page, StatusChip, formatDate, inputClass, raceStatus } from '../ui'
 import CountrySelect from '../../../src/components/CountrySelect'
+import RaceNameList, { RACE_NAME_LIST } from '../../../src/components/RaceNameList'
 
 export function Dashboard({ session }) {
   const [events, setEvents] = useState(null)
@@ -134,7 +135,8 @@ export function NewEvent({ session }) {
         <Card>
           <form onSubmit={submit} className="grid gap-4" noValidate>
             <Field label="Event name" htmlFor="ev-name" hint="As runners know it, including the year if it is an annual event.">
-              <input id="ev-name" required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="Doi Suthep Trail 2027" />
+              <input id="ev-name" required value={name} onChange={(e) => setName(e.target.value)} list={RACE_NAME_LIST} autoComplete="off" className={inputClass} placeholder="Doi Suthep Trail 2027" />
+              <RaceNameList />
             </Field>
             <Field label="Event date" htmlFor="ev-date" hint="The first day of the event.">
               <input id="ev-date" required type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />

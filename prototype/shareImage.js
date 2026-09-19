@@ -1,6 +1,6 @@
 // Share images, drawn in the browser on a <canvas>: a race's top finishers for the organizer, a
 // target time for the runner. Nothing is uploaded to make them; the PNG exists only where it is
-// drawn, which keeps "Score my race" true to "nothing is kept".
+// drawn.
 
 export const FORMATS = {
   post: { label: 'Post 4:5', width: 1080, height: 1350, hint: 'Facebook and Instagram feed' },
@@ -68,7 +68,7 @@ function wrap(ctx, text, maxWidth, maxLines) {
 function eyebrow(ctx, text, x, y) {
   ctx.font = `600 26px ${MONO}`
   ctx.fillStyle = ACCENT
-  ctx.fillText(text.toUpperCase().split('').join(' '), x, y)
+  ctx.fillText(text.toUpperCase().split('').join('\u200a'), x, y)
 }
 
 function footer(ctx, { width, height, pad }, text) {
@@ -125,11 +125,14 @@ export function drawLeaderboard(canvas, { format = 'post', raceName, facts, head
   y += 40
 
   const bottom = height - pad - 110
-  const rowHeight = Math.min(150, (bottom - y) / rows.length)
+  // A podium of three fills the frame as ten rows do: rows grow up to a limit, and what is left
+  // over is shared above and below them rather than pooling at the bottom.
+  const rowHeight = Math.min(250, (bottom - y) / rows.length)
+  y += Math.max(0, (bottom - y - rowHeight * rows.length) / 2)
   // Ten rows on a square leave no room for two lines each: name and time then share one line.
   const compact = rowHeight < 88
-  const nameSize = compact ? Math.max(24, Math.min(34, rowHeight * 0.5)) : Math.max(30, Math.min(46, rowHeight * 0.34))
-  const scoreSize = compact ? Math.max(28, Math.min(44, rowHeight * 0.62)) : Math.max(40, Math.min(68, rowHeight * 0.5))
+  const nameSize = compact ? Math.max(24, Math.min(34, rowHeight * 0.5)) : Math.max(30, Math.min(64, rowHeight * 0.3))
+  const scoreSize = compact ? Math.max(28, Math.min(44, rowHeight * 0.62)) : Math.max(40, Math.min(112, rowHeight * 0.46))
   rows.forEach((row, index) => {
     const top = y + index * rowHeight
     const middle = top + rowHeight / 2
@@ -141,7 +144,7 @@ export function drawLeaderboard(canvas, { format = 'post', raceName, facts, head
     ctx.stroke()
 
     // place, as a medal for the podium
-    const radius = Math.min(34, rowHeight * (compact ? 0.4 : 0.3))
+    const radius = Math.min(52, rowHeight * (compact ? 0.4 : 0.24))
     ctx.beginPath()
     ctx.arc(pad + radius, middle, radius, 0, Math.PI * 2)
     ctx.fillStyle = index < 3 ? MEDALS[index] : 'rgba(255,255,255,.12)'

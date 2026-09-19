@@ -58,28 +58,28 @@ function ScoreTicker({ entries }) {
 
 function EngineCard({ raceCount, resultCount, scoringVersion, ticker }) {
   const rows = [
+    [Upload, 'SCORE A RACE', 'course + results · no account', '#score'],
     [Calculator, 'CALCULATE', 'any course · any time', '#calculator'],
     [Database, 'RACES', `${raceCount} scored · ${resultCount} results`, '#races'],
     [Users, 'RUNNERS', 'search · profiles · index', '#runners'],
-    [Upload, 'ORGANIZERS', 'upload official results', 'organizer/'],
   ]
   return (
     <div className="min-w-0 overflow-hidden rounded-2xl bg-[linear-gradient(145deg,#08111f_0%,#0b1730_58%,#123b85_100%)] p-4 text-white shadow-[0_24px_70px_rgba(11,18,32,.2)] sm:p-5">
       <div className="flex items-center justify-between font-mono text-[8px] tracking-[.08em] text-slate-400">
-        <span>OTRI / PROTOTYPE</span>
+        <span>OTRI / OPEN SCORING</span>
         <span className="flex items-center gap-1.5">
           <i className="h-1.5 w-1.5 rounded-full bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,.9)]" />
           LIVE API
         </span>
       </div>
-      <a href="#calculator" className="group block border-b border-slate-700/70 py-7 text-white no-underline">
+      <a href="#score" className="group block border-b border-slate-700/70 py-7 text-white no-underline">
         <small className="font-mono text-[8px] tracking-[.08em] text-blue-300">WHAT CAN I DO HERE?</small>
         <strong className="mt-2 block bg-gradient-to-r from-white to-blue-200 bg-clip-text pb-1 text-4xl font-bold leading-[1.25] tracking-[-.05em] text-transparent">
-          Try the index.
+          Course in. Scores out.
         </strong>
-        <span className="mt-1 block text-xs text-slate-400">Real scoring code. Real course measurement. Demo data.</span>
+        <span className="mt-1 block text-xs text-slate-400">The real scoring code and course measurement, open to anyone.</span>
         <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-blue-300 transition group-hover:gap-2 group-hover:text-white">
-          Calculate your score <ArrowRight size={13} />
+          Score my race <ArrowRight size={13} />
         </span>
       </a>
       <ScoreTicker entries={ticker} />
@@ -166,13 +166,9 @@ export default function Home() {
               <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">for any trail race.</em>
             </h1>
             <p className="mt-6 max-w-[620px] text-[15px] leading-7 text-slate-500 sm:text-[17px]">
-              A calculator, not a governing body. Bring a course and a results file and get every finisher scored in a
-              minute: no account, no approval, nothing kept. Runners try a target time before race day. One open,
-              versioned model, and every number explains itself:{' '}
-              <a href={GITHUB_URL} className="inline-flex items-center gap-1 whitespace-nowrap font-semibold text-[#0b1220] no-underline hover:text-blue-600">
-                <GitBranch size={15} /> the code and the method are on GitHub <ArrowUpRight size={14} />
-              </a>
-              , and <a href="#contribute" className="font-semibold text-blue-600 no-underline hover:underline">you can help improve both</a>.
+              A calculator, not a governing body. Bring a course and a results file and every finisher is scored in
+              a minute: free, no account, no approval. Publish the results as a race page with one click, and share
+              the podium. Runners try a target time before race day.
             </p>
             <div className="mt-7 flex flex-col gap-2 sm:flex-row">
               <a className={primaryButton} href="#score">
@@ -185,24 +181,70 @@ export default function Home() {
                 API and embed <ArrowRight size={15} />
               </a>
             </div>
-            <div className="mt-7 flex flex-wrap gap-x-4 gap-y-2 font-mono text-[8px] tracking-[.08em] text-slate-500 sm:text-[9px]">
-              <span className="text-blue-600">OPEN</span>
-              <span>TRANSPARENT</span>
-              <span>REPRODUCIBLE</span>
-              <span>INDEPENDENT</span>
-            </div>
+            <p className="mt-6 max-w-[620px] text-sm leading-6 text-slate-500">
+              One open, versioned model, and every number explains itself.{' '}
+              <a href={GITHUB_URL} className="inline-flex items-center gap-1 whitespace-nowrap font-semibold text-[#0b1220] no-underline hover:text-blue-600">
+                <GitBranch size={14} /> The code and the method are on GitHub <ArrowUpRight size={13} />
+              </a>{' '}
+              and <a href="#contribute" className="font-semibold text-blue-600 no-underline hover:underline">you can help improve both</a>.
+            </p>
           </div>
           <EngineCard raceCount={races.length} resultCount={resultCount} scoringVersion={scoringVersion} ticker={ticker} />
         </div>
       </section>
 
-      {/* 01 / Calculate */}
+      {/* 01 / Score a race */}
       <section className="bg-white py-14 sm:py-20">
         <div className={CONTAINER}>
           <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
-            <div className="font-mono text-xs text-blue-600">01</div>
+            <div className="hidden font-mono text-xs text-blue-600 md:block">01</div>
             <div className="min-w-0">
-              <Eyebrow className="mb-3">CALCULATE</Eyebrow>
+              <Eyebrow className="mb-3">FOR RACES</Eyebrow>
+              <Heading>
+                Score your race.
+                <br />
+                <Gradient>Then show it off.</Gradient>
+              </Heading>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm leading-7 text-slate-500">
+                No sign-up to see your scores. Keep them as a file, share the podium, or turn the race into a public page with one
+                click: free, and nobody has to approve you.
+              </p>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <a className={primaryButton} href="#score">
+                  Score my race <ArrowRight size={15} />
+                </a>
+                <a className={secondaryButton} href="#score?example=1">
+                  See an example result
+                </a>
+              </div>
+            </div>
+          </div>
+          <div className="mt-10 grid grid-cols-1 border-y border-slate-200 sm:grid-cols-3">
+            {[
+              [Upload, 'BRING TWO FILES', 'The course as a GPX and the results as CSV or Excel. There is an example race to try first.', '#score'],
+              [ShieldCheck, 'GET EVERY SCORE', 'The file is checked row by row, the course is measured, and the model says how far each number can be trusted.', '#score'],
+              [Users, 'PUBLISH AND SHARE', 'A leaderboard page for your runners, podium images and a post for your channels, the calculator on your site.', '#score'],
+            ].map(([Icon, title, desc, href], index) => (
+              <a key={title} href={href} className={`group block min-w-0 px-0 py-5 text-inherit no-underline sm:px-5 ${index < 2 ? 'border-b border-slate-200 sm:border-b-0 sm:border-r' : ''}`}>
+                <small className="flex items-center gap-2 font-mono text-[9px] tracking-[.06em] text-blue-600">
+                  <Icon size={14} /> {title}
+                </small>
+                <p className="mt-2 text-sm font-semibold leading-6 text-[#0b1220]">{desc}</p>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 02 / Calculate */}
+      <section className="border-t border-slate-200 bg-white py-14 sm:py-20">
+        <div className={CONTAINER}>
+          <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
+            <div className="hidden font-mono text-xs text-blue-600 md:block">02</div>
+            <div className="min-w-0">
+              <Eyebrow className="mb-3">FOR RUNNERS</Eyebrow>
               <Heading>
                 Know your score.
                 <br />
@@ -243,12 +285,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 02 / Races: only when there is a scored race to show */}
+      {/* 03 / Races: only when there is a scored race to show */}
       {races.length > 0 && (
       <section id="races-preview" className="bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] py-14 sm:py-20">
         <div className={CONTAINER}>
           <div className="flex items-center justify-between gap-4">
-            <Eyebrow>02 / RACES</Eyebrow>
+            <Eyebrow>03 / RACES</Eyebrow>
             <a href="#races" className="flex shrink-0 items-center gap-1 text-xs font-semibold text-blue-600 no-underline">
               All races <ArrowRight size={14} />
             </a>
@@ -261,7 +303,7 @@ export default function Home() {
                 <Gradient>Every number explained.</Gradient>
               </Heading>
               <p className="mt-5 max-w-[440px] text-sm leading-7 text-slate-500">
-                {races.every((race) => race.is_demo) ? 'Demonstration races' : 'Races'} scored under the Course Standard model. A score depends only on the course and the
+                {races.every((race) => race.is_demo) ? 'Demonstration races' : 'Races'} their organizers published, all scored with the same open model. A score depends only on the course and the
                 runner's own finish time — never on who else raced. Open one to see its leaderboard.
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-2 font-mono text-[8px] text-slate-500">
@@ -278,37 +320,6 @@ export default function Home() {
         </div>
       </section>
       )}
-
-      {/* 03 / Organizers */}
-      <section className="bg-white py-14 sm:py-20">
-        <div className={`${CONTAINER} grid gap-8 lg:grid-cols-[1fr_.8fr] lg:gap-20`}>
-          <div>
-            <Eyebrow>03 / ORGANIZERS</Eyebrow>
-            <Heading className="mt-3">
-              Start with
-              <br />
-              <Gradient>official results.</Gradient>
-            </Heading>
-          </div>
-          <div>
-            <p className="text-sm leading-7 text-slate-500">
-              Race organizers provide official results and the course file. OTRI measures the course, validates the
-              inputs and scores every finisher — free, and with the whole method on the record.
-            </p>
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-              <a className={primaryButton} href="organizer/#/register">
-                Create an organizer account <ArrowRight size={15} />
-              </a>
-              <a className={secondaryButton} href="organizer/#/login">
-                Sign in
-              </a>
-            </div>
-            <a className={`${textLink} mt-4`} href={DOCS.organizer}>
-              Organizer documentation <ArrowUpRight size={14} />
-            </a>
-          </div>
-        </div>
-      </section>
 
       {/* 04 / Method */}
       <section className="bg-[#0b1220] py-14 text-white sm:py-20">
@@ -387,15 +398,15 @@ export default function Home() {
           <div className="mt-7 flex flex-col gap-2 sm:flex-row">
             <a
               className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-white px-4 text-[13px] font-semibold text-blue-600 no-underline shadow-[0_10px_30px_rgba(0,0,0,.12)]"
-              href="#calculator"
+              href="#score"
             >
-              Calculate your score <Calculator size={15} />
+              Score my race <ArrowRight size={15} />
             </a>
             <a
               className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/40 px-4 text-[13px] font-semibold text-white no-underline hover:bg-white/10"
-              href="../"
+              href="#calculator"
             >
-              About the project <ArrowUpRight size={15} />
+              Calculate a target time <Calculator size={15} />
             </a>
           </div>
         </div>
