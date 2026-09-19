@@ -692,7 +692,7 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
               <Search size={16} className="text-blue-600" />
               <h3 className="text-base font-bold tracking-[-.02em] text-[#0b1220]">Pick a race</h3>
             </div>
-            <p className="mt-1 text-xs text-slate-500">Choose one and set your time.</p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">A hand-picked selection of courses, plus the races organizers have published here: not every race. Yours is missing? Upload its GPX on the right.</p>
             <input
               type="text"
               value={query}
