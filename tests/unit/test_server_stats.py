@@ -43,3 +43,35 @@ def test_access_log_lines_are_aggregated_per_hour_status_path_and_ip():
     assert normalize_path("/gpx/shared/f6f37d88e5448b17") == "/gpx/shared/{id}"
     assert normalize_path("/admin/organizers/7/verify") == "/admin/organizers/{id}/verify"
     assert normalize_path("/races/OTRI-DEMO-001?x=1") == "/races/{id}"
+
+
+def test_a_backup_that_stopped_coming_is_said_so(tmp_path):
+    """The nightly dump once failed for want of an executable bit and nothing anywhere said so."""
+    import os
+    from datetime import datetime, timedelta, timezone
+
+    from api.server_stats import backup_status
+
+    assert backup_status(tmp_path)["ok"] is False and backup_status(tmp_path)["newest"] is None
+    now = datetime(2026, 9, 20, 8, 0, tzinfo=timezone.utc)
+    for name, hours_ago, size in (("otri-old.sql.gz", 60, 5000), ("otri-new.sql.gz", 6, 5000)):
+        (tmp_path / name).write_bytes(b"x" * size)
+        stamp = (now - timedelta(hours=hours_ago)).timestamp()
+        os.utime(tmp_path / name, (stamp, stamp))
+    fresh = backup_status(tmp_path, now)
+    assert fresh["ok"] is True and fresh["count"] == 2 and fresh["age_hours"] == 6.0 and fresh["bytes"] == 5000
+    assert backup_status(tmp_path, now + timedelta(hours=30))["ok"] is False, "a night was missed"
+    (tmp_path / "otri-new.sql.gz").write_bytes(b"")
+    os.utime(tmp_path / "otri-new.sql.gz", (now.timestamp(), now.timestamp()))
+    assert backup_status(tmp_path, now)["ok"] is False, "an empty dump is no backup"
+
+
+def test_the_watchdog_is_reported_and_absent_where_there_is_no_systemd(monkeypatch):
+    from api import server_stats
+
+    monkeypatch.setattr(server_stats.shutil, "which", lambda name: None)
+    assert server_stats.watchdog_status() == {"available": False}
+    monkeypatch.setattr(server_stats.shutil, "which", lambda name: "/usr/bin/" + name)
+    answers = {"is-active": "active\n", "--property=LastTriggerUSec": "Sat 2026-09-19 14:50:01 UTC\n", "--property=Result": "success\n"}
+    monkeypatch.setattr(server_stats, "_run", lambda command, timeout=5.0: next(text for key, text in answers.items() if key in command))
+    assert server_stats.watchdog_status() == {"available": True, "active": True, "last_check": "Sat 2026-09-19 14:50:01 UTC", "last_result": "success"}

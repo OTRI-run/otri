@@ -839,7 +839,7 @@ function ServerTab({ session }) {
   }, [session.token])
   if (error) return <Notice kind="error">{error}</Notice>
   if (!data) return <p className="text-sm text-slate-500">Reading the server…</p>
-  const { host, storage, services, firewall, fail2ban, api_usage: usage, tls } = data
+  const { host, storage, services, watchdog, backups, firewall, fail2ban, api_usage: usage, tls } = data
   const memUsed = host.memory_total != null && host.memory_available != null ? host.memory_total - host.memory_available : null
   const maxHour = usage?.per_hour ? Math.max(1, ...usage.per_hour) : 1
   const panel = 'rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)]'
@@ -1006,6 +1006,31 @@ function ServerTab({ session }) {
                 <Unavailable what="Service status" />
               </div>
             )}
+            {/* Both report by email or not at all: a missing email looks the same as one that never ran. */}
+            <ul className="mt-3 space-y-1 border-t border-slate-100 pt-3 font-mono text-xs">
+              <li className="flex items-center gap-2">
+                <i className={`h-2 w-2 shrink-0 rounded-full ${watchdog?.active && watchdog.last_result === 'success' ? 'bg-emerald-500' : watchdog?.available ? 'bg-red-500' : 'bg-slate-300'}`} />
+                watchdog{' '}
+                <span className="text-slate-400">
+                  {!watchdog?.available
+                    ? 'unknown here'
+                    : !watchdog.active
+                      ? 'not running: install it with scripts/deploy/08-install-watchdog.sh'
+                      : `last check ${watchdog.last_check ?? 'not yet'}${watchdog.last_result && watchdog.last_result !== 'success' ? ` (${watchdog.last_result})` : ''}`}
+                </span>
+              </li>
+              <li className="flex items-center gap-2">
+                <i className={`h-2 w-2 shrink-0 rounded-full ${backups?.ok ? 'bg-emerald-500' : backups?.available ? 'bg-red-500' : 'bg-slate-300'}`} />
+                database backup{' '}
+                <span className="text-slate-400">
+                  {!backups?.available
+                    ? 'unknown here'
+                    : !backups.newest
+                      ? 'none yet: see scripts/deploy/04-backup-db.sh'
+                      : `${backups.age_hours < 1 ? 'under an hour' : `${Math.round(backups.age_hours)} h`} old, ${fmtBytes(backups.bytes)}, ${backups.count} kept${backups.ok ? '' : ': the nightly run is failing, look at ~/otri-backup.log'}`}
+                </span>
+              </li>
+            </ul>
           </section>
 
           <section className={panel}>
