@@ -80,7 +80,7 @@ def test_turning_two_factor_off_revokes_earlier_tokens():
     from api.security import totp_now
 
     headers = _organizer_auth_headers("twofa-off@example.com")
-    setup = client.post("/auth/2fa/totp/setup", headers=headers).json()
+    setup = client.post("/auth/2fa/totp/setup", json={"password": PASSWORD}, headers=headers).json()
     assert client.post("/auth/2fa/totp/enable", json={"code": totp_now(setup["secret"])}, headers=headers).status_code == 200
     disabled = client.post("/auth/2fa/disable", json={"password": PASSWORD}, headers=headers)
     assert disabled.status_code == 200 and disabled.json()["access_token"]
@@ -297,7 +297,7 @@ def test_login_challenge_survives_a_process_restart():
     from api.security import totp_now
 
     headers = _organizer_auth_headers("restart@example.com")
-    setup = client.post("/auth/2fa/totp/setup", headers=headers).json()
+    setup = client.post("/auth/2fa/totp/setup", json={"password": PASSWORD}, headers=headers).json()
     assert client.post("/auth/2fa/totp/enable", json={"code": totp_now(setup["secret"])}, headers=headers).status_code == 200
     first = client.post("/auth/login", json={"email": "restart@example.com", "password": PASSWORD}).json()
     assert first["requires_2fa"]

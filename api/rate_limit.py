@@ -57,9 +57,13 @@ def _count_in_memory(key: str) -> int:
     return len(hits)
 
 
-def enforce_rate_limit(request: Request, *, max_requests: int = _MAX_REQUESTS_PER_WINDOW) -> None:
-    """Raise 429 if this client has made too many requests to this endpoint in the current minute."""
-    key = f"{request.url.path}:{_client_key(request)}"
+def enforce_rate_limit(request: Request, *, max_requests: int = _MAX_REQUESTS_PER_WINDOW, scope: str | None = None, subject: str | int | None = None) -> None:
+    """Raise 429 if this client has made too many requests to this endpoint in the current minute.
+
+    `scope` names the limit when the path will not do: `/races/{id}/gpx` is a different path for
+    every race, so a script would get a fresh allowance per race. `subject` counts per account
+    instead of per address, for a signed-in caller who changes addresses."""
+    key = f"{scope or request.url.path}:{subject if subject is not None else _client_key(request)}"
     try:
         count = _count_in_db(key, datetime.now(timezone.utc))
     except Exception:  # noqa: BLE001 - database down: keep limiting in-process rather than failing open

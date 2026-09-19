@@ -674,9 +674,14 @@ def delete_own_account(payload: PasswordConfirm, request: Request, response: Res
 
 
 @app.post("/auth/2fa/totp/setup", response_model=TotpSetupOut)
-def totp_setup(organizer: Organizer = Depends(require_organizer)) -> TotpSetupOut:
-    """Start authenticator-app setup: a secret to scan; nothing changes until a code confirms it."""
-    secret, uri = _auth.begin_totp_setup(organizer.id, organizer.email)
+def totp_setup(payload: PasswordConfirm, request: Request, organizer: Organizer = Depends(require_organizer)) -> TotpSetupOut:
+    """Start authenticator-app setup: a secret to scan; nothing changes until a code confirms it.
+    Needs the password: a session alone must not be able to replace the owner's second factor."""
+    enforce_rate_limit(request, max_requests=5)
+    try:
+        secret, uri = _auth.begin_totp_setup(organizer.id, organizer.email, payload.password)
+    except AuthError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
     return TotpSetupOut(secret=secret, otpauth_uri=uri)
 
 
@@ -690,9 +695,12 @@ def totp_enable(payload: TwoFactorCode, organizer: Organizer = Depends(require_o
 
 
 @app.post("/auth/2fa/email/start", response_model=MessageResponse)
-def email_two_factor_start(request: Request, organizer: Organizer = Depends(require_organizer)) -> MessageResponse:
+def email_two_factor_start(payload: PasswordConfirm, request: Request, organizer: Organizer = Depends(require_organizer)) -> MessageResponse:
     enforce_rate_limit(request, max_requests=5)
-    code = _auth.begin_email_two_factor(organizer.id)
+    try:
+        code = _auth.begin_email_two_factor(organizer.id, payload.password)
+    except AuthError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
     _email.send_login_code_email(organizer.email, code)
     return MessageResponse(message=f"a code was sent to {organizer.email}")
 
@@ -765,7 +773,12 @@ def confirm_password_reset(payload: PasswordResetConfirm, request: Request, resp
         organizer = reset_password(payload.token, payload.new_password)
     except AuthError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    return _finish_session(response, request, TokenResponse(access_token=create_access_token(organizer), email=organizer.email, expires_in=_auth.token_ttl_seconds(False)), False)
+    # A reset link proves the mailbox, which is one factor. An account with a second factor is not
+    # signed in by it: the password is changed, and the owner signs in the normal way, code included.
+    if _auth.two_factor_status(organizer.id)["enabled"]:
+        return TokenResponse(access_token="", email=organizer.email, requires_2fa=True)
+    organizer = _with_flags(organizer, check_session=False)
+    return _finish_session(response, request, TokenResponse(access_token=create_access_token(organizer), email=organizer.email, is_admin=organizer.is_admin, is_demo=organizer.is_demo, email_verified=organizer.email_verified, expires_in=_auth.token_ttl_seconds(False)), False)
 
 
 # --- Events ------------------------------------------------------------------
@@ -922,9 +935,36 @@ def admin_list_events(organizer: Organizer = Depends(require_admin)) -> list[Adm
     return out
 
 
+# What one account may hold and how fast it may add to it. An account costs nothing to make and
+# needs no confirmed address to start building a race, so without these a script could pile up
+# events and keep the course measurement busy with upload after upload. The numbers are far above
+# what an organizer does by hand (a big event has a dozen distances; a timing company a few
+# hundred events) and low enough that abuse stays small. Admins are not limited.
+_MAX_EVENTS_UNCONFIRMED = 3
+_MAX_EVENTS_PER_ACCOUNT = 500
+_MAX_RACES_PER_EVENT = 40
+_UPLOADS_PER_MINUTE = 12
+
+
+def _limit_writes(request: Request, organizer: Organizer, *, scope: str, per_minute: int) -> None:
+    """Per account and per address: whichever a script does not rotate still stops it."""
+    if organizer.is_admin:
+        return
+    enforce_rate_limit(request, max_requests=per_minute, scope=scope, subject=f"account-{organizer.id}")
+    enforce_rate_limit(request, max_requests=per_minute * 3, scope=f"{scope}-address")
+
+
 @app.post("/events", response_model=EventSummary, status_code=201)
-def create_event(payload: EventCreate, organizer: Organizer = Depends(require_organizer)) -> EventSummary:
-    """Requires a valid, verified organizer bearer token."""
+def create_event(payload: EventCreate, request: Request, organizer: Organizer = Depends(require_organizer)) -> EventSummary:
+    """Requires a signed-in organizer. An unconfirmed address may build a few events; more needs the
+    address confirmed."""
+    _limit_writes(request, organizer, scope="create", per_minute=20)
+    if not organizer.is_admin:
+        held = db.count_events_for_organizer(organizer.id)
+        if not organizer.email_verified and held >= _MAX_EVENTS_UNCONFIRMED:
+            raise HTTPException(status_code=403, detail=f"Confirm your email address to create more than {_MAX_EVENTS_UNCONFIRMED} events: the link is in your inbox, and you can have it sent again.")
+        if held >= _MAX_EVENTS_PER_ACCOUNT:
+            raise HTTPException(status_code=403, detail=f"This account holds {_MAX_EVENTS_PER_ACCOUNT} events, which is the limit. Write to us if you really need more.")
     if not payload.event_name.strip():
         raise HTTPException(status_code=422, detail="event_name is required")
     country = _clean_country(payload.country)
@@ -1044,12 +1084,15 @@ def unlist_race(race_id: str, organizer: Organizer = Depends(require_organizer))
 
 
 @app.post("/events/{event_id}/races", response_model=RaceSummary, status_code=201)
-def add_race(event_id: str, payload: RaceCreate, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
+def add_race(event_id: str, payload: RaceCreate, request: Request, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
     """Add a race distance (e.g. "50K") to an event. Requires ownership of the event."""
     event = db.find_event(event_id)
     if event is None:
         raise HTTPException(status_code=404, detail=f"event {event_id!r} not found")
     _require_event_owner(event, organizer)
+    _limit_writes(request, organizer, scope="create", per_minute=20)
+    if not organizer.is_admin and len(db.list_races_for_event(event_id)) >= _MAX_RACES_PER_EVENT:
+        raise HTTPException(status_code=403, detail=f"An event holds at most {_MAX_RACES_PER_EVENT} race distances.")
 
     if not payload.course_name.strip():
         raise HTTPException(status_code=422, detail="course_name is required")
@@ -1332,7 +1375,7 @@ def admin_delete_calculator_course(race_id: str, organizer: Organizer = Depends(
 
 @app.post("/races/{race_id}/gpx", response_model=RaceSummary)
 async def attach_race_gpx(
-    race_id: str, file: UploadFile, organizer: Organizer = Depends(require_organizer)
+    race_id: str, file: UploadFile, request: Request, organizer: Organizer = Depends(require_organizer)
 ) -> RaceSummary:
     """Attach (or replace) a GPX file for a race distance. Recomputes distance_km/elevation_gain_m
     from the real parsed course data — the GPX becomes the authoritative source once attached."""
@@ -1340,6 +1383,7 @@ async def attach_race_gpx(
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
+    _limit_writes(request, organizer, scope="upload", per_minute=_UPLOADS_PER_MINUTE)  # measuring a course costs a core for seconds
 
     suffix = _safe_suffix(file.filename, ".gpx")
     contents = await file.read(20_000_001)
@@ -1497,7 +1541,7 @@ def get_race_results(race_id: str, organizer: Organizer | None = Depends(_option
 
 @app.post("/races/{race_id}/results", response_model=SubmissionResult)
 async def submit_race_results(
-    race_id: str, file: UploadFile, organizer: Organizer = Depends(require_organizer)
+    race_id: str, file: UploadFile, request: Request, organizer: Organizer = Depends(require_organizer)
 ) -> SubmissionResult:
     """Organizer submission workflow. Requires ownership of the race's event.
 
@@ -1510,6 +1554,7 @@ async def submit_race_results(
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
+    _limit_writes(request, organizer, scope="upload", per_minute=_UPLOADS_PER_MINUTE)
 
     suffix = _safe_suffix(file.filename, ".csv")
     contents = await file.read(20_000_001)

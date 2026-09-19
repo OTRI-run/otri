@@ -81,7 +81,7 @@ def test_password_change_and_two_factor_flow_keep_the_web_session_in_the_cookie(
     assert changed.status_code == 200 and changed.json()["access_token"] == "" and "otri_session=" in changed.headers["set-cookie"]
     assert client.get("/auth/me").status_code == 200, "this device keeps working on the fresh cookie"
 
-    setup = client.post("/auth/2fa/totp/setup", headers=WEB).json()
+    setup = client.post("/auth/2fa/totp/setup", json={"password": "a brand new passphrase 9"}, headers=WEB).json()
     assert client.post("/auth/2fa/totp/enable", json={"code": totp_now(setup["secret"])}, headers=WEB).status_code == 200
     fresh = _web_client()
     first = fresh.post("/auth/login", json={"email": "cookie-2fa@example.com", "password": "a brand new passphrase 9"}, headers=WEB).json()

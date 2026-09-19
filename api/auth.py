@@ -271,10 +271,15 @@ def reset_password(token: str, new_password: str) -> Organizer:
         password_hash = hash_password(new_password)
         organizer_row = connection.execute(
             # The reset link went to the account's address: opening it confirms the address too.
-            "UPDATE organizers SET password_hash = %s, email_verified = TRUE WHERE id = %s RETURNING id, email",
+            # session_version + 1: whoever is signed in anywhere, with the old password or a stolen
+            # session, is signed out. A reset is what an owner does when they fear exactly that.
+            "UPDATE organizers SET password_hash = %s, email_verified = TRUE, session_version = session_version + 1, "
+            "password_changed_at = now() WHERE id = %s RETURNING id, email",
             (password_hash, row["organizer_id"]),
         ).fetchone()
-        connection.execute("UPDATE password_reset_tokens SET used_at = now() WHERE token = %s", (row["token"],))
+        connection.execute("DELETE FROM login_challenges WHERE organizer_id = %s", (row["organizer_id"],))
+        # This link is used; any other still-open reset link for the account dies with it.
+        connection.execute("UPDATE password_reset_tokens SET used_at = now() WHERE organizer_id = %s AND used_at IS NULL", (row["organizer_id"],))
         return Organizer(id=organizer_row["id"], email=organizer_row["email"], email_verified=True)
 
 
@@ -332,10 +337,15 @@ def _issue_recovery_codes(connection, organizer_id: int) -> list[str]:
     return codes
 
 
-def begin_totp_setup(organizer_id: int, email: str) -> tuple[str, str]:
-    """A fresh secret, kept pending until a code from the app proves the phone has it."""
+def begin_totp_setup(organizer_id: int, email: str, password: str) -> tuple[str, str]:
+    """A fresh secret, kept pending until a code from the app proves the phone has it.
+
+    Needs the password, like every change to how an account is protected: a session alone (a
+    stolen cookie, an unlocked laptop) must not be enough to swap the owner's authenticator for the
+    intruder's and lock the owner out."""
     secret = security.new_totp_secret()
     with get_connection() as connection:
+        _check_password(connection, organizer_id, password)
         connection.execute("UPDATE organizers SET totp_secret_pending = %s WHERE id = %s", (secret, organizer_id))
     return secret, security.otpauth_uri(secret, email)
 
@@ -355,10 +365,11 @@ def enable_totp(organizer_id: int, code: str) -> list[str]:
         return _issue_recovery_codes(connection, organizer_id)
 
 
-def begin_email_two_factor(organizer_id: int) -> str:
+def begin_email_two_factor(organizer_id: int, password: str) -> str:
     """Returns the code the caller must email; only its hash is stored."""
     code = security.new_email_code()
     with get_connection() as connection:
+        _check_password(connection, organizer_id, password)  # as for the authenticator: see begin_totp_setup
         connection.execute(
             "UPDATE organizers SET email_code_hash = %s, email_code_expires_at = %s WHERE id = %s",
             (security.hash_code(code), datetime.now(timezone.utc) + _CHALLENGE_TTL, organizer_id),
@@ -441,7 +452,23 @@ def start_login_challenge(organizer: Organizer, remember: bool) -> tuple[str, st
 
 
 def complete_login_challenge(token: str, code: str) -> tuple[Organizer, bool]:
-    """Verify an app code, an emailed code or a recovery code; returns (organizer, remember)."""
+    """Verify an app code, an emailed code or a recovery code; returns (organizer, remember).
+
+    The attempt is counted in a transaction of its own, committed before the code is looked at. It
+    used to be counted in the same transaction as the check, and a wrong code raised, which rolled
+    the count back: the five-attempt limit never counted anything, and a six-digit code could be
+    guessed at for the challenge's whole ten minutes."""
+    with get_connection() as connection:
+        counted = connection.execute(
+            "UPDATE login_challenges SET attempts = attempts + 1 WHERE token = %s RETURNING attempts, expires_at", (token,)
+        ).fetchone()
+    if counted is None:
+        raise AuthError("sign in again to get a new code")
+    if counted["expires_at"] < datetime.now(timezone.utc) or counted["attempts"] > _CHALLENGE_MAX_ATTEMPTS:
+        with get_connection() as connection:
+            connection.execute("DELETE FROM login_challenges WHERE token = %s", (token,))
+        raise AuthError("too many attempts or the code expired; sign in again")
+
     with get_connection() as connection:
         row = connection.execute(
             "SELECT c.organizer_id, c.method, c.code_hash, c.remember, c.attempts, c.expires_at, o.email, o.totp_secret "
@@ -450,10 +477,6 @@ def complete_login_challenge(token: str, code: str) -> tuple[Organizer, bool]:
         ).fetchone()
         if row is None:
             raise AuthError("sign in again to get a new code")
-        if row["expires_at"] < datetime.now(timezone.utc) or row["attempts"] >= _CHALLENGE_MAX_ATTEMPTS:
-            connection.execute("DELETE FROM login_challenges WHERE token = %s", (token,))
-            raise AuthError("too many attempts or the code expired; sign in again")
-        connection.execute("UPDATE login_challenges SET attempts = attempts + 1 WHERE token = %s", (token,))
 
         ok = False
         if row["method"] == "totp" and row["totp_secret"]:

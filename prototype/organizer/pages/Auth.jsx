@@ -414,7 +414,7 @@ export function Verify({ token }) {
   )
 }
 
-export function Login({ onSignedIn }) {
+export function Login({ onSignedIn, afterReset = false }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
@@ -520,6 +520,7 @@ export function Login({ onSignedIn }) {
       }
     >
       <form onSubmit={submit} className="grid gap-4" noValidate>
+        {afterReset && <Notice kind="success" title="Your password is changed.">Sign in with it; you will be asked for your code as usual. Every other session of this account was signed out.</Notice>}
         <Field label="Email" htmlFor="login-email">
           <input id="login-email" autoFocus={autoFocusOnDesktop} type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
         </Field>
@@ -621,6 +622,11 @@ export function Reset({ token, onSignedIn }) {
     setBusy(true)
     try {
       const result = await resetPassword(token, password)
+      if (result.requires_2fa) {
+        // A reset link is not a second factor: the password is changed, the sign-in asks for the code.
+        navigate('/login?reset=1', { replace: true })
+        return
+      }
       onSignedIn(result.access_token, result.email, result.is_admin)
       navigate(hasHandoff() ? '/publish' : '/events', { replace: true })
     } catch (err) {

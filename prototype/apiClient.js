@@ -143,14 +143,15 @@ export function deleteOwnAccount(password) {
 export function fetchAccountExport() {
   return fetch(`${API_BASE_URL}/auth/export`, withCredentials({ headers: authHeaders(sessionToken()) })).then((r) => (r.ok ? r.blob() : Promise.reject(new Error(r.statusText))))
 }
-export function totpSetup() {
-  return request('/auth/2fa/totp/setup', { method: 'POST', headers: authHeaders(sessionToken()) })
+// Changing how an account is protected asks for the password again: a session alone is not enough.
+export function totpSetup(password) {
+  return request('/auth/2fa/totp/setup', { method: 'POST', ...json(sessionToken(), { password }) })
 }
 export function totpEnable(code) {
   return request('/auth/2fa/totp/enable', { method: 'POST', ...json(sessionToken(), { code }) })
 }
-export function emailTwoFactorStart() {
-  return request('/auth/2fa/email/start', { method: 'POST', headers: authHeaders(sessionToken()) })
+export function emailTwoFactorStart(password) {
+  return request('/auth/2fa/email/start', { method: 'POST', ...json(sessionToken(), { password }) })
 }
 export function emailTwoFactorEnable(code) {
   return request('/auth/2fa/email/enable', { method: 'POST', ...json(sessionToken(), { code }) })

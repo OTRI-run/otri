@@ -1175,7 +1175,7 @@ def test_authenticator_two_factor_setup_login_and_recovery_codes():
 
     headers = _organizer_auth_headers("totp@example.com")
     assert client.get("/auth/me", headers=headers).json()["two_factor"] == {"enabled": False, "method": None, "recovery_codes_left": 0}
-    setup = client.post("/auth/2fa/totp/setup", headers=headers).json()
+    setup = client.post("/auth/2fa/totp/setup", json={"password": "correct horse battery"}, headers=headers).json()
     assert setup["otpauth_uri"].startswith("otpauth://totp/OTRI:totp%40example.com?secret=" + setup["secret"])
     assert client.post("/auth/2fa/totp/enable", json={"code": "000000"}, headers=headers).status_code == 400
     enabled = client.post("/auth/2fa/totp/enable", json={"code": totp_now(setup["secret"])}, headers=headers).json()
@@ -1212,7 +1212,7 @@ def test_email_two_factor_uses_a_mailed_code(monkeypatch):
     sent = []
     monkeypatch.setattr(api_module._email, "send_login_code_email", lambda to, code: sent.append((to, code)))
     headers = _organizer_auth_headers("mailcode@example.com")
-    assert client.post("/auth/2fa/email/start", headers=headers).status_code == 200
+    assert client.post("/auth/2fa/email/start", json={"password": "correct horse battery"}, headers=headers).status_code == 200
     assert sent[-1][0] == "mailcode@example.com" and len(sent[-1][1]) == 6
     assert client.post("/auth/2fa/email/enable", json={"code": "999999"}, headers=headers).status_code == 400
     enabled = client.post("/auth/2fa/email/enable", json={"code": sent[-1][1]}, headers=headers).json()
