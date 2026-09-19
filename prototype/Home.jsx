@@ -58,10 +58,10 @@ function ScoreTicker({ entries }) {
 
 function EngineCard({ raceCount, resultCount, scoringVersion, ticker }) {
   const rows = [
-    [Upload, 'SCORE A RACE', 'course + results · no account', '#score'],
-    [Calculator, 'CALCULATE', 'any course · any time', '#calculator'],
-    [Database, 'RACES', `${raceCount} scored · ${resultCount} results`, '#races'],
-    [Users, 'RUNNERS', 'search · profiles · index', '#runners'],
+    [Calculator, 'What is my time worth?', 'RUNNERS · CALCULATOR', '#calculator'],
+    [Upload, 'Score my whole race', 'ORGANIZERS · NO ACCOUNT', '#score'],
+    [Database, 'Browse scored races', `${raceCount} RACES · ${resultCount} RESULTS`, '#races'],
+    [Users, 'Find a runner', 'SEARCH · PROFILES', '#runners'],
   ]
   return (
     <div className="min-w-0 overflow-hidden rounded-2xl bg-[linear-gradient(145deg,#08111f_0%,#0b1730_58%,#123b85_100%)] p-4 text-white shadow-[0_24px_70px_rgba(11,18,32,.2)] sm:p-5">
@@ -72,16 +72,16 @@ function EngineCard({ raceCount, resultCount, scoringVersion, ticker }) {
           LIVE API
         </span>
       </div>
-      <a href="#score" className="group block border-b border-slate-700/70 py-7 text-white no-underline">
-        <small className="font-mono text-[8px] tracking-[.08em] text-blue-300">WHAT CAN I DO HERE?</small>
+      <div className="border-b border-slate-700/70 py-7">
+        <small className="font-mono text-[8px] tracking-[.08em] text-blue-300">WHAT IS AN OTRI SCORE?</small>
         <strong className="mt-2 block bg-gradient-to-r from-white to-blue-200 bg-clip-text pb-1 text-4xl font-bold leading-[1.25] tracking-[-.05em] text-transparent">
-          Course in. Scores out.
+          Course + time = score.
         </strong>
-        <span className="mt-1 block text-xs text-slate-400">The real scoring code and course measurement, open to anyone.</span>
-        <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-blue-300 transition group-hover:gap-2 group-hover:text-white">
-          Score my race <ArrowRight size={13} />
+        <span className="mt-1 block text-xs leading-5 text-slate-400">
+          One number for a finish time on any trail course, so a hilly 25 km and a flat 50 km can be compared. 1000 is
+          world-record level, and your score never depends on who else raced.
         </span>
-      </a>
+      </div>
       <ScoreTicker entries={ticker} />
       <div>
         {rows.map(([Icon, title, desc, href]) => (
@@ -166,21 +166,51 @@ export default function Home() {
               <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">for any trail race.</em>
             </h1>
             <p className="mt-6 max-w-[620px] text-[15px] leading-7 text-slate-500 sm:text-[17px]">
-              A calculator, not a governing body. Bring a course and a results file and every finisher is scored in
-              a minute: free, no account, no approval. Publish the results as a race page with one click, and share
-              the podium. Runners try a target time before race day.
+              OTRI turns a finish time on any trail course into one comparable score. A calculator, not a governing
+              body: free, no account, no approval.
             </p>
-            <div className="mt-7 flex flex-col gap-2 sm:flex-row">
-              <a className={primaryButton} href="#score">
-                Score my race <ArrowRight size={15} />
-              </a>
-              <a className={secondaryButton} href="#calculator">
-                Calculate a target time <Calculator size={15} />
-              </a>
-              <a className={secondaryButton} href="#api">
-                API and embed <ArrowRight size={15} />
-              </a>
+            <div className="mt-7 grid max-w-[680px] gap-3 sm:grid-cols-2">
+              {[
+                {
+                  who: 'I RUN',
+                  Icon: Timer,
+                  title: 'What is my time worth?',
+                  text: 'Pick a race or upload a GPX, set a finish time and see the score, before or after race day.',
+                  href: '#calculator',
+                  action: 'Open the calculator',
+                  more: ['Find my results', '#runners'],
+                },
+                {
+                  who: 'I ORGANISE A RACE',
+                  Icon: Upload,
+                  title: 'Score my whole race',
+                  text: 'Upload the course and the results file: every finisher scored in a minute. Publish it with one click.',
+                  href: '#score',
+                  action: 'Score my race',
+                  more: ['See an example', '#score?example=1'],
+                },
+              ].map(({ who, Icon, title, text, href, action, more }) => (
+                <div key={who} className="flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+                  <small className="flex items-center gap-2 font-mono text-[9px] tracking-[.08em] text-blue-600">
+                    <Icon size={14} /> {who}
+                  </small>
+                  <b className="mt-2 block text-[17px] leading-6 tracking-[-.02em] text-[#0b1220]">{title}</b>
+                  <p className="mt-1 flex-1 text-[13px] leading-5 text-slate-500">{text}</p>
+                  <a className={`${primaryButton} mt-4`} href={href}>
+                    {action} <ArrowRight size={15} />
+                  </a>
+                  <a className={`${textLink} mt-3 justify-center`} href={more[1]}>
+                    {more[0]}
+                  </a>
+                </div>
+              ))}
             </div>
+            <p className="mt-4 text-sm text-slate-500">
+              Building something?{' '}
+              <a href="#api" className="font-semibold text-blue-600 no-underline hover:underline">
+                API and embeddable calculator →
+              </a>
+            </p>
             <p className="mt-6 max-w-[620px] text-sm leading-6 text-slate-500">
               One open, versioned model, and every number explains itself.{' '}
               <a href={GITHUB_URL} className="inline-flex items-center gap-1 whitespace-nowrap font-semibold text-[#0b1220] no-underline hover:text-blue-600">
