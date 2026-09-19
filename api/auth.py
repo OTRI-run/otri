@@ -168,7 +168,7 @@ def authenticate_organizer(email: str, password: str) -> Organizer:
     email = email.strip().lower()
     with get_connection() as connection:
         row = connection.execute(
-            "SELECT id, email, password_hash, email_verified FROM organizers WHERE email = %s", (email,)
+            "SELECT id, email, password_hash, email_verified, session_version FROM organizers WHERE email = %s", (email,)
         ).fetchone()
 
     if row is None:
@@ -178,7 +178,12 @@ def authenticate_organizer(email: str, password: str) -> Organizer:
     if not password_matches(password, row["password_hash"]):
         raise AuthError("invalid email or password")
 
-    return Organizer(id=row["id"], email=row["email"], email_verified=bool(row["email_verified"]))
+    # The session version comes from the same read as the hash the password was checked against,
+    # and the token is signed with it (create_access_token). bcrypt takes a sixth of a second: a
+    # password reset that lands in that time bumps the version, and a sign-in with the old password
+    # that was already past its check used to read the *new* version for its token, and so
+    # survived the reset meant to end it.
+    return Organizer(id=row["id"], email=row["email"], email_verified=bool(row["email_verified"]), session_version=int(row["session_version"]))
 
 
 def require_acceptable_password(password: str, email: str | None = None) -> None:
@@ -197,13 +202,17 @@ def current_session_version(organizer_id: int) -> int:
     return int(row["session_version"]) if row else 1
 
 
-def create_access_token(organizer: Organizer, remember: bool = False) -> str:
+def create_access_token(organizer: Organizer, remember: bool = False, *, session_version: int | None = None) -> str:
     """The token carries the account's session version; a bump (password change, 2FA off,
-    sign out everywhere) makes every earlier token fail verification."""
+    sign out everywhere) makes every earlier token fail verification.
+
+    `session_version` is the version the credentials were checked under (a sign-in passes it, see
+    authenticate_organizer). Without it the current one is read: right for a session re-issued to
+    the caller who just made the bump (password change, two-factor on or off)."""
     payload = {
         "sub": str(organizer.id),
         "email": organizer.email,
-        "sv": current_session_version(organizer.id),
+        "sv": session_version if session_version is not None else current_session_version(organizer.id),
         "exp": int(time.time()) + token_ttl_seconds(remember),
         # Unique per token: two sign-ins in the same second were the same string, so signing out
         # of one (which revokes that string) would have signed out the other.
@@ -311,6 +320,17 @@ def reset_password(token: str, new_password: str) -> Organizer:
         if row["expires_at"] < datetime.now(timezone.utc):
             raise AuthError("reset token has expired")
 
+        # An account whose address nobody had confirmed until this link was opened: whatever second
+        # factor it has was set by someone who never showed they own the address (accounts made
+        # before two-factor required a confirmed address). The owner of the mailbox gets it without.
+        was_confirmed = connection.execute("SELECT email_verified FROM organizers WHERE id = %s FOR UPDATE", (row["organizer_id"],)).fetchone()
+        if was_confirmed is not None and not was_confirmed["email_verified"]:
+            connection.execute(
+                "UPDATE organizers SET two_factor_method = NULL, totp_secret = NULL, totp_secret_pending = NULL, email_code_hash = NULL, email_code_expires_at = NULL WHERE id = %s",
+                (row["organizer_id"],),
+            )
+            connection.execute("DELETE FROM recovery_codes WHERE organizer_id = %s", (row["organizer_id"],))
+
         password_hash = hash_password(new_password)
         organizer_row = connection.execute(
             # The reset link went to the account's address: opening it confirms the address too.
@@ -360,6 +380,16 @@ def _check_password(connection, organizer_id: int, password: str) -> None:
         raise WrongPassword("the password is not right")
 
 
+def _require_confirmed_address(connection, organizer_id: int) -> None:
+    """Anyone can register anybody's address and is signed in at once. With two-factor on top, the
+    real owner of the address could never get the account back: a reset link changes the password
+    and rightly leaves the second factor alone, and the second factor was the stranger's. So a
+    second factor is for an address somebody has shown they can read."""
+    row = connection.execute("SELECT email_verified FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
+    if row is None or not row["email_verified"]:
+        raise AuthError("confirm your email address before turning on two-factor sign-in: the link is in your inbox, and you can have it sent again")
+
+
 # --- Two-factor authentication ---------------------------------------------
 #
 # Two methods: an authenticator app (TOTP) or a six-digit code sent to the account email.
@@ -398,6 +428,7 @@ def begin_totp_setup(organizer_id: int, email: str, password: str) -> tuple[str,
     secret = security.new_totp_secret()
     with get_connection() as connection:
         _check_password(connection, organizer_id, password)
+        _require_confirmed_address(connection, organizer_id)
         connection.execute("UPDATE organizers SET totp_secret_pending = %s WHERE id = %s", (secret, organizer_id))
     return secret, security.otpauth_uri(secret, email)
 
@@ -426,6 +457,7 @@ def begin_email_two_factor(organizer_id: int, password: str) -> str:
     code = security.new_email_code()
     with get_connection() as connection:
         _check_password(connection, organizer_id, password)  # as for the authenticator: see begin_totp_setup
+        _require_confirmed_address(connection, organizer_id)
         connection.execute(
             "UPDATE organizers SET email_code_hash = %s, email_code_expires_at = %s WHERE id = %s",
             (security.hash_code(code), datetime.now(timezone.utc) + _CHALLENGE_TTL, organizer_id),
@@ -490,11 +522,17 @@ def regenerate_recovery_codes(organizer_id: int, password: str) -> list[str]:
 # --- Login challenge (second step of sign-in) -------------------------------
 
 
-def start_login_challenge(organizer: Organizer, remember: bool) -> tuple[str, str, str | None]:
+def start_login_challenge(organizer: Organizer, remember: bool, *, session_version: int | None = None) -> tuple[str, str, str | None]:
     """(challenge token, method, email code or None). The code is only returned for the email
-    method, so the caller can send it; the database keeps its hash."""
+    method, so the caller can send it; the database keeps its hash.
+
+    `session_version` is the one the password was checked under. The account row is locked while
+    the challenge is written, so a reset either finished before (the version differs: no
+    challenge) or comes after and deletes the challenge with everything else that was pending."""
     with get_connection() as connection:
-        row = connection.execute("SELECT two_factor_method FROM organizers WHERE id = %s", (organizer.id,)).fetchone()
+        row = connection.execute("SELECT two_factor_method, session_version FROM organizers WHERE id = %s FOR UPDATE", (organizer.id,)).fetchone()
+        if row is not None and session_version is not None and int(row["session_version"]) != session_version:
+            raise AuthError("sign in again")
         method = row["two_factor_method"] if row else None
         if method is None:
             raise AuthError("two-factor authentication is not enabled")
@@ -540,8 +578,8 @@ def complete_login_challenge(token: str, code: str) -> tuple[Organizer, bool]:
 
     with get_connection() as connection:
         row = connection.execute(
-            "SELECT c.organizer_id, c.method, c.code_hash, c.remember, c.attempts, c.expires_at, o.email, o.totp_secret, o.two_factor_method "
-            "FROM login_challenges c JOIN organizers o ON o.id = c.organizer_id WHERE c.token = %s",
+            "SELECT c.organizer_id, c.method, c.code_hash, c.remember, c.attempts, c.expires_at, o.email, o.totp_secret, o.two_factor_method, o.session_version "
+            "FROM login_challenges c JOIN organizers o ON o.id = c.organizer_id WHERE c.token = %s FOR UPDATE OF c",
             (token,),
         ).fetchone()
         if row is None:
@@ -571,4 +609,5 @@ def complete_login_challenge(token: str, code: str) -> tuple[Organizer, bool]:
         if not ok:
             raise WrongSecondFactor("that code did not match", row["email"])
         connection.execute("DELETE FROM login_challenges WHERE token = %s", (token,))
-        return Organizer(id=int(row["organizer_id"]), email=row["email"]), bool(row["remember"])
+        # As for the password: the version read with the challenge is the one the token gets.
+        return Organizer(id=int(row["organizer_id"]), email=row["email"], session_version=int(row["session_version"])), bool(row["remember"])

@@ -672,24 +672,17 @@ def count_results_by_race() -> dict[str, int]:
     return {row["race_id"]: int(row["n"]) for row in rows}
 
 
-def count_result_rows_for_organizer(organizer_id: int, *, except_race_id: str | None = None) -> int:
-    """How many result rows an account holds, leaving out the race about to be replaced."""
-    with get_connection() as connection:
-        row = connection.execute(
-            "SELECT COUNT(*) AS n FROM results res JOIN races ra ON ra.race_id = res.race_id JOIN events e ON e.event_id = ra.event_id "
-            "WHERE e.organizer_id = %s AND res.race_id IS DISTINCT FROM %s",
-            (organizer_id, except_race_id),
-        ).fetchone()
-    return int(row["n"])
-
-
 def has_results(race_id: str) -> bool:
     with get_connection() as connection:
         row = connection.execute("SELECT 1 FROM results WHERE race_id = %s LIMIT 1", (race_id,)).fetchone()
     return row is not None
 
 
-def replace_results(race_id: str, results: list[ResultRecord]) -> None:
+class QuotaExceeded(Exception):
+    """The upload would take the account over the number of result rows it may hold."""
+
+
+def replace_results(race_id: str, results: list[ResultRecord], *, max_rows_for_organizer: int | None = None) -> None:
     """Overwrite all results for a race in one transaction (re-submission replaces prior data).
 
     Each result is attached to a runner (matched or created) as it is inserted, so runner
@@ -699,6 +692,17 @@ def replace_results(race_id: str, results: list[ResultRecord]) -> None:
             "SELECT ra.published_at, e.organizer_id FROM races ra JOIN events e ON e.event_id = ra.event_id WHERE ra.race_id = %s FOR UPDATE OF ra", (race_id,)
         ).fetchone()
         published = race is not None and race["published_at"] is not None
+        if max_rows_for_organizer is not None and race is not None and race["organizer_id"] is not None:
+            # One upload of an account at a time gets past this line; the other waits for the first
+            # to commit and then counts its rows too.
+            connection.execute("SELECT 1 FROM organizers WHERE id = %s FOR UPDATE", (race["organizer_id"],))
+            held = connection.execute(
+                "SELECT COUNT(*) AS n FROM results res JOIN races ra ON ra.race_id = res.race_id JOIN events e ON e.event_id = ra.event_id "
+                "WHERE e.organizer_id = %s AND res.race_id <> %s",
+                (race["organizer_id"], race_id),
+            ).fetchone()["n"]
+            if int(held) + len(results) > max_rows_for_organizer:
+                raise QuotaExceeded()
         before = _runner_ids(connection, "res.race_id = %s", (race_id,))
         scope = MatchScope(organizer_id=race["organizer_id"] if race else None, keep=tuple(before))
         connection.execute("DELETE FROM results WHERE race_id = %s", (race_id,))

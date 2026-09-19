@@ -435,3 +435,114 @@ def test_a_gpx_is_read_in_time_that_grows_with_its_size_not_with_its_square():
     answer = client.post("/gpx/analyze", files={"file": ("nested.gpx", _gpx("<trk>" + "<trkseg>" * depth + points + "</trkseg>" * depth + "</trk>").encode(), "application/gpx+xml")})
     assert answer.status_code == 422 and "segments in the wrong place" in answer.json()["detail"]
     assert time.perf_counter() - start < 2
+
+
+# --- a fifth review ----------------------------------------------------------------------------
+
+
+def test_a_course_with_every_other_elevation_missing_is_measured_in_linear_time():
+    """The list of known elevations was rebuilt for every point without one: 32,000 points, every
+    other one bare, took 4.5 s on the public calculator, and twice the points took four times as long."""
+    from course.gpx import parse_track_points
+    from course.measurement import measure_course
+
+    def course(n):
+        points = "".join(f'<trkpt lat="0" lon="{i * 0.00001:.5f}">{"<ele>10</ele>" if i % 2 == 0 or i == n - 1 else ""}</trkpt>' for i in range(n))
+        return parse_track_points(_gpx(f"<trk><trkseg>{points}</trkseg></trk>"))
+
+    start = time.perf_counter()
+    measurement = measure_course(course(32_000), None)
+    assert time.perf_counter() - start < 1.5
+    assert "short_elevation_gap_interpolated" in measurement.quality_flags and round(measurement.distance_m) == 35621
+
+
+def test_a_sign_in_with_the_old_password_that_was_in_flight_does_not_survive_the_reset(monkeypatch):
+    """The password was checked against one read of the account and the token stamped with a later
+    read of the session version: a reset landing in between was carried along by the very sign-in
+    it was meant to end. Reproduced as the review did, by holding the sign-in right after its
+    password check while the owner's reset goes through."""
+    _account("in-flight@example.com")
+    real = app_module.authenticate_organizer
+
+    def checked_then_the_owner_resets(email, password):
+        organizer = real(email, password)  # the old password, genuinely checked
+        _organizer, link = auth.create_password_reset_token(email)
+        assert elsewhere.post("/auth/reset-password", json={"token": link, "new_password": "the-owners-new-password-5"}).status_code == 200
+        return organizer
+
+    monkeypatch.setattr(app_module, "authenticate_organizer", checked_then_the_owner_resets)
+    late = client.post("/auth/login", json={"email": "in-flight@example.com", "password": PASSWORD})
+    monkeypatch.undo()
+    token = late.json().get("access_token")
+    assert late.status_code != 200 or client.get("/auth/me", headers={"Authorization": f"Bearer {token}"}).status_code == 401
+    assert client.post("/auth/login", json={"email": "in-flight@example.com", "password": PASSWORD}).status_code == 401
+    fresh = client.post("/auth/login", json={"email": "in-flight@example.com", "password": "the-owners-new-password-5"}).json()["access_token"]
+    assert client.get("/auth/me", headers={"Authorization": f"Bearer {fresh}"}).status_code == 200
+
+    # With two-factor on, the same sign-in gets no challenge to finish.
+    headers = _sign_in("in-flight@example.com", "the-owners-new-password-5")
+    secret = client.post("/auth/2fa/totp/setup", json={"password": "the-owners-new-password-5"}, headers=headers).json()["secret"]
+    assert client.post("/auth/2fa/totp/enable", json={"code": security.totp_now(secret)}, headers=headers).status_code == 200
+
+    def checked_then_signed_out_everywhere(email, password):
+        organizer = real(email, password)
+        with db.get_connection() as connection:
+            connection.execute("UPDATE organizers SET session_version = session_version + 1 WHERE email = %s", (email,))
+        return organizer
+
+    monkeypatch.setattr(app_module, "authenticate_organizer", checked_then_signed_out_everywhere)
+    assert client.post("/auth/login", json={"email": "in-flight@example.com", "password": "the-owners-new-password-5"}).status_code == 401
+    with db.get_connection() as connection:
+        assert connection.execute("SELECT COUNT(*) AS n FROM login_challenges").fetchone()["n"] == 0
+
+
+def test_a_stranger_who_registers_your_address_cannot_put_their_second_factor_on_it():
+    """Registration signs in at once, the address unconfirmed. With two-factor on top the real owner
+    never got the account back: a reset leaves the second factor alone, and it was the stranger's."""
+    stranger = _account("owner-to-be@example.com", verified=False)
+    for path in ("/auth/2fa/totp/setup", "/auth/2fa/email/start"):
+        refused = client.post(path, json={"password": PASSWORD}, headers=stranger)
+        assert refused.status_code == 400 and "confirm your email address" in refused.json()["detail"].lower()
+
+    # An account made before this rule, with the stranger's authenticator already on it:
+    with db.get_connection() as connection:
+        connection.execute("UPDATE organizers SET two_factor_method = 'totp', totp_secret = %s WHERE email = 'owner-to-be@example.com'", (security.new_totp_secret(),))
+    _organizer, link = auth.create_password_reset_token("owner-to-be@example.com")  # the owner finds the mail and resets
+    reset = client.post("/auth/reset-password", json={"token": link, "new_password": "the-owners-new-password-5"})
+    assert reset.status_code == 200 and reset.json()["access_token"], "the first person to prove the mailbox gets the account, without the stranger's factor"
+    assert client.get("/auth/me", headers=stranger).status_code == 401
+    me = client.get("/auth/me", headers={"Authorization": f"Bearer {reset.json()['access_token']}"}).json()
+    assert me["two_factor"]["enabled"] is False and me["email_verified"] is True
+
+    # A confirmed account keeps its second factor through a reset, as before.
+    headers = _account("kept@example.com")
+    secret = client.post("/auth/2fa/totp/setup", json={"password": PASSWORD}, headers=headers).json()["secret"]
+    client.post("/auth/2fa/totp/enable", json={"code": security.totp_now(secret)}, headers=headers)
+    _organizer, link = auth.create_password_reset_token("kept@example.com")
+    assert client.post("/auth/reset-password", json={"token": link, "new_password": "the-owners-new-password-5"}).json()["requires_2fa"] is True
+
+
+def test_two_uploads_at_once_cannot_both_squeeze_under_the_accounts_limit():
+    import threading
+
+    from ingestion import ResultRecord
+
+    headers = _account("both-at-once@example.com")
+    races = [_race(headers, "10K"), _race(headers, "21K")]
+    rows = lambda prefix: [ResultRecord(rank=i, finish_time_seconds=3600 + i, family_name=f"{prefix}{i}", first_name="A", gender="M", bib_number=None, birth_year=None, nationality=None) for i in range(1, 41)]  # noqa: E731
+    barrier, outcomes = threading.Barrier(2), []
+
+    def upload(race_id, prefix):
+        barrier.wait()
+        try:
+            db.replace_results(race_id, rows(prefix), max_rows_for_organizer=60)
+            outcomes.append("stored")
+        except db.QuotaExceeded:
+            outcomes.append("refused")
+
+    threads = [threading.Thread(target=upload, args=(race_id, prefix)) for race_id, prefix in zip(races, ("Left", "Right"))]
+    [thread.start() for thread in threads]
+    [thread.join() for thread in threads]
+    with db.get_connection() as connection:
+        held = connection.execute("SELECT COUNT(*) AS n FROM results WHERE race_id = ANY(%s)", (races,)).fetchone()["n"]
+    assert sorted(outcomes) == ["refused", "stored"] and held == 40
