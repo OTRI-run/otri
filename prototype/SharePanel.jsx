@@ -12,7 +12,12 @@ function formatHms(totalSeconds) {
   return `${Math.floor(totalSeconds / 3600)}:${pad(Math.floor((totalSeconds % 3600) / 60))}:${pad(Math.round(totalSeconds % 60))}`
 }
 
-const hashtag = (text) => `#${String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\b(19|20)\d\d\b/g, '').replace(/[^A-Za-z0-9]+/g, '')}`
+// A race name as a hashtag, when it makes a usable one: long names and names that are mostly
+// digits read as noise, and a post is better without them.
+function hashtag(text) {
+  const tag = `#${String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\b(19|20)\d\d\b/g, '').replace(/[^A-Za-z0-9]+/g, '')}`
+  return tag.length > 2 && tag.length <= 28 && (tag.match(/[0-9]/g) ?? []).length <= 6 ? tag : ''
+}
 const slug = (text) => String(text).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'otri'
 
 function Choice({ label, options, value, onChange }) {
@@ -169,7 +174,7 @@ export function ShareResults({ raceName, distanceKm, elevationGainM, scores, url
         : `Congratulations to all ${finishers.length} finishers!`,
       ...(url ? ['', `Full results and every score explained: ${url}`] : []),
       '',
-      `${hashtag(name)} #trailrunning #trailrace #OTRI`,
+      [hashtag(name), '#trailrunning', '#trailrace', '#OTRI'].filter(Boolean).join(' '),
     ].join('\n')
   }, [rows, name, heading, scored, finishers.length, url])
 
@@ -198,7 +203,7 @@ export function ShareTarget({ courseName, distanceKm, elevationGainM, seconds, s
     '',
     url ? `What would your time be worth? Try it: ${url}` : 'What would your time be worth? Try any course at otri.run',
     '',
-    `${hashtag(courseName)} #trailrunning #OTRI`,
+    [hashtag(courseName), '#trailrunning', '#OTRI'].filter(Boolean).join(' '),
   ].join('\n')
   return <Panel draw={draw} fileName={`${slug(courseName)}-target`} suggestedText={suggestedText} url={url} />
 }
