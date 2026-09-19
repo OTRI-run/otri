@@ -1,6 +1,6 @@
 // Share images, drawn in the browser on a <canvas>: a race's top finishers for the organizer, a
 // target time for the runner. Nothing is uploaded to make them; the PNG exists only where it is
-// drawn, which keeps "Score my race" true to "nothing is kept".
+// drawn.
 
 export const FORMATS = {
   post: { label: 'Post 4:5', width: 1080, height: 1350, hint: 'Facebook and Instagram feed' },
@@ -68,7 +68,7 @@ function wrap(ctx, text, maxWidth, maxLines) {
 function eyebrow(ctx, text, x, y) {
   ctx.font = `600 26px ${MONO}`
   ctx.fillStyle = ACCENT
-  ctx.fillText(text.toUpperCase().split('').join(' '), x, y)
+  ctx.fillText(text.toUpperCase().split('').join('\u200a'), x, y)
 }
 
 function footer(ctx, { width, height, pad }, text) {

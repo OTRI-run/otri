@@ -5,7 +5,7 @@ import 'flag-icons/css/flag-icons.min.css'
 
 countries.registerLocale(en)
 
-const fold = (text) => String(text).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+const fold = (text) => String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 
 // Every country by its English name, valued as the ISO 3166-1 alpha-3 code the API and the result
 // files use. Nobody has to know that Thailand is "THA": typing "thai", "TH", "THA", "UK", "Holland"

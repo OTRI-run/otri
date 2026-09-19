@@ -12,7 +12,7 @@ function formatHms(totalSeconds) {
   return `${Math.floor(totalSeconds / 3600)}:${pad(Math.floor((totalSeconds % 3600) / 60))}:${pad(Math.round(totalSeconds % 60))}`
 }
 
-const hashtag = (text) => `#${String(text).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\b(19|20)\d\d\b/g, '').replace(/[^A-Za-z0-9]+/g, '')}`
+const hashtag = (text) => `#${String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\b(19|20)\d\d\b/g, '').replace(/[^A-Za-z0-9]+/g, '')}`
 const slug = (text) => String(text).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'otri'
 
 function Choice({ label, options, value, onChange }) {
