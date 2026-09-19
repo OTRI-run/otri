@@ -85,8 +85,8 @@ function navigate(hash) {
 // The header carries what a visitor came to do; the API page and GitHub are in the footer (GitHub
 // also sits in the home page's opening, next to what OTRI is).
 const NAV = [
-  { id: 'score', label: 'Score a race', short: 'Score', href: '#score' },
   { id: 'calculator', label: 'Calculator', href: '#calculator' },
+  { id: 'score', label: 'Score a race', short: 'Score', href: '#score' },
   { id: 'races', label: 'Races', href: '#races' },
   { id: 'runners', label: 'Runners', href: '#runners' },
   { id: 'faq', label: 'FAQ', href: '#faq' },
