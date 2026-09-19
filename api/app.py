@@ -752,6 +752,8 @@ def _race_summary(race: db.Race, finisher_count: int | None = None) -> RaceSumma
         is_vertical=is_vertical(race.distance_km, race.elevation_gain_m, race.elevation_loss_m),
         listing_status=_listing_status(race),
         is_listed=race.listed_at is not None,
+        calculator_only=race.calculator_only,
+        source_url=race.event_source_url if race.calculator_only else None,
     )
 
 
@@ -784,7 +786,10 @@ def _clean_country(value: str | None) -> str | None:
 def list_events(mine: bool = False, organizer: Organizer | None = Depends(_optional_organizer)) -> list[EventSummary]:
     """By default lists every event (public). Pass ?mine=true with a bearer token to list only
     events owned by the requesting organizer."""
-    events = db.list_events()
+    # A calculator course (Admin, Calculator courses) is kept as an event of the admin's, but it is not
+    # one of their events: it has its own screen, and no place in a list of events.
+    calculator_events = {race.event_id for race in db.list_calculator_courses()}
+    events = [event for event in db.list_events() if event.event_id not in calculator_events]
     if mine:
         if organizer is None:
             raise HTTPException(status_code=401, detail="missing bearer token")
@@ -1120,6 +1125,90 @@ def _measure_gpx_path(path):
     if measurement.distance_m < _MIN_COURSE_M:
         raise GpxParseError(f"This GPX is only {measurement.distance_m:.0f} m long: it does not hold the course. Export the whole track of the race and upload that.")
     return points, measurement
+
+
+# ---------------------------------------------------------------------------- calculator courses
+#
+# Courses an admin hand-picks for the calculator's "Pick a race": a name and a GPX, so a visitor can
+# try a target time on a well-known course without hunting for its file. They are not race pages:
+# no results are expected, they never appear on the races page, and OTRI claims nothing about the
+# race beyond "this is its course, from here" (the source link). Stored as an event and a race of the
+# admin's, listed and marked `calculator_only`, so the calculator, the share links and the embed
+# open them like any other course.
+
+
+def _stored_gpx_fields(points, measurement, contents: bytes, name: str) -> dict:
+    stored = sanitized_gpx(points, name=name)
+    return {
+        "content": stored,
+        "measurement": {
+            **measurement.to_dict(),
+            "raw_sha256": sha256(contents).hexdigest(),
+            "stored_sha256": sha256(stored.encode("utf-8")).hexdigest(),
+            "source_metadata": source_metadata(contents.decode("utf-8", errors="replace")),
+            "processed_at": datetime.now(timezone.utc).isoformat(),
+            "snapshot": asdict(measurement),
+        },
+    }
+
+
+@app.get("/admin/calculator-courses", response_model=list[RaceSummary])
+def admin_list_calculator_courses(organizer: Organizer = Depends(require_admin)) -> list[RaceSummary]:
+    return [_race_summary(race) for race in db.list_calculator_courses()]
+
+
+@app.post("/admin/calculator-courses", response_model=RaceSummary, status_code=201)
+async def admin_add_calculator_course(
+    file: UploadFile,
+    event_name: str = Form(..., min_length=2, max_length=200),
+    course_name: str = Form(..., min_length=1, max_length=120),
+    event_date: date | None = Form(default=None),
+    location: str | None = Form(default=None, max_length=200),
+    country: str | None = Form(default=None, max_length=3),
+    source_url: str | None = Form(default=None, max_length=500),
+    organizer: Organizer = Depends(require_admin),
+) -> RaceSummary:
+    """Measure a GPX and put it up for the calculator under a race name. Admin only."""
+    if source_url and not re.match(r"^https?://", source_url.strip()):
+        raise HTTPException(status_code=422, detail="The source link must start with http:// or https://")
+    contents = await file.read(20_000_001)
+    if len(contents) > 20_000_000:
+        raise HTTPException(status_code=413, detail="Upload exceeds 20 MB")
+    temp_path = _save_upload(contents, _safe_suffix(file.filename, ".gpx"))
+    try:
+        points, measurement = await run_in_threadpool(_measure_gpx_path, temp_path)
+        features = features_from_measurement(measurement)
+    except (GpxParseError, ValueError, UnicodeError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    finally:
+        _discard_temp(temp_path)
+
+    event = db.create_event(
+        event_name.strip(),
+        event_date or date.today(),
+        organizer.id,
+        location=(location or "").strip() or None,
+        country=(country or "").strip().upper() or None,
+        source_url=(source_url or "").strip() or None,
+    )
+    race = db.create_race(event.event_id, course_name.strip(), features.distance_km, features.elevation_gain_m)
+    db.attach_gpx(
+        race.race_id,
+        filename=file.filename or "course.gpx",
+        distance_km=features.distance_km,
+        elevation_gain_m=features.elevation_gain_m,
+        **_stored_gpx_fields(points, measurement, contents, f"{event_name.strip()} {course_name.strip()}"),
+    )
+    return _race_summary(db.set_race_calculator_only(race.race_id, True))
+
+
+@app.delete("/admin/calculator-courses/{race_id}", status_code=204)
+def admin_delete_calculator_course(race_id: str, organizer: Organizer = Depends(require_admin)) -> Response:
+    race = db.find_race(race_id)
+    if race is None or not race.calculator_only:
+        raise HTTPException(status_code=404, detail="no calculator course with that id")
+    db.delete_event(race.event_id)  # the event holds only this course
+    return Response(status_code=204)
 
 
 @app.post("/races/{race_id}/gpx", response_model=RaceSummary)

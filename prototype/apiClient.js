@@ -383,6 +383,26 @@ export function deleteAdminOrganizer(organizerId, token) {
   return request(`/admin/organizers/${organizerId}`, { method: 'DELETE', headers: authHeaders(token) })
 }
 
+/** Admin: the courses hand-picked for the calculator's "Pick a race". */
+export function listCalculatorCourses(token) {
+  return request('/admin/calculator-courses', { headers: authHeaders(token) })
+}
+
+export function addCalculatorCourse({ file, event_name, course_name, location, country, source_url }, token) {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('event_name', event_name.trim())
+  formData.append('course_name', course_name.trim())
+  if (location?.trim()) formData.append('location', location.trim())
+  if (country?.trim()) formData.append('country', country.trim())
+  if (source_url?.trim()) formData.append('source_url', source_url.trim())
+  return request('/admin/calculator-courses', { method: 'POST', headers: authHeaders(token), body: formData })
+}
+
+export function deleteCalculatorCourse(raceId, token) {
+  return request(`/admin/calculator-courses/${encodeURIComponent(raceId)}`, { method: 'DELETE', headers: authHeaders(token) })
+}
+
 export function listSharedCourses(token) {
   return request('/admin/shared-courses', { headers: authHeaders(token) })
 }

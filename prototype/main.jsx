@@ -472,7 +472,7 @@ function RacesPage({ raceId }) {
     if (raceId) return undefined
     let cancelled = false
     listRaces()
-      .then((rows) => !cancelled && setRaces(rows))
+      .then((rows) => !cancelled && setRaces(rows.filter((race) => !race.calculator_only)))
       .catch((err) => !cancelled && setError(err.message))
     return () => {
       cancelled = true
