@@ -5,6 +5,8 @@ import NextSteps from './NextSteps'
 import { DemoBadge } from './RaceCard'
 import { getRunner, listRunners } from './apiClient'
 import SearchSuggest from '../src/components/SearchSuggest'
+import { RUNNER_NAMES } from '../src/lib/runnerNames'
+import { knownButNotHere } from '../src/lib/suggest'
 import ReportForm from './ReportForm'
 import { modelShort } from '../src/lib/model'
 import NotFound from '../src/components/NotFound'
@@ -119,12 +121,16 @@ export function RunnersPage({ initialQuery = '' }) {
             onChange={setQuery}
             placeholder="Search a runner by name…"
             ariaLabel="Search runners"
-            suggestions={shown.slice(0, 6).map((runner) => ({
-              key: runner.runner_id,
-              label: `${runner.first_name} ${runner.family_name}`,
-              detail: [runner.nationality, runner.index != null ? `index ${runner.index}` : `${runner.result_count} result${runner.result_count === 1 ? '' : 's'}`].filter(Boolean).join(' · '),
-              href: `#runners/${encodeURIComponent(runner.runner_id)}`,
-            }))}
+            suggestions={[
+              ...shown.slice(0, 6).map((runner) => ({
+                key: runner.runner_id,
+                label: `${runner.first_name} ${runner.family_name}`,
+                detail: [runner.nationality, runner.index != null ? `index ${runner.index}` : `${runner.result_count} result${runner.result_count === 1 ? '' : 's'}`].filter(Boolean).join(' · '),
+                href: `#runners/${encodeURIComponent(runner.runner_id)}`,
+              })),
+              // Well-known runners with no published result here: said in the list, not by an empty page.
+              ...knownButNotHere(RUNNER_NAMES, query, shown.map((runner) => `${runner.first_name} ${runner.family_name}`), 3).map((name) => ({ key: `known-${name}`, label: name, detail: 'no results on OTRI yet' })),
+            ]}
           />
           <div className="inline-flex overflow-hidden rounded-lg border border-slate-300 bg-white">
             {[
@@ -151,7 +157,15 @@ export function RunnersPage({ initialQuery = '' }) {
 
         {error && <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</p>}
         {runners === null && !error && <p className="mt-6 text-sm text-slate-500">Loading…</p>}
-        {runners && shown.length === 0 && <p className="mt-6 text-sm text-slate-500">No runner matches that yet.</p>}
+        {runners && shown.length === 0 && (
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 text-sm leading-6 text-slate-600">
+            <p className="font-semibold text-[#0b1220]">{query.trim() ? `No published results for “${query.trim()}” on OTRI yet.` : 'No runners yet.'}</p>
+            <p className="mt-1">
+              A runner appears here when an organizer publishes a race they finished; OTRI keeps no list of every runner. Looking for your own
+              score? <a href="#calculator" className="font-semibold text-blue-600 no-underline hover:underline">Work out what your time was worth</a> with the course as a GPX.
+            </p>
+          </div>
+        )}
         <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
           <div className="hidden grid-cols-[32px_minmax(0,1fr)_88px_96px_80px] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500 sm:grid">
             <span>#</span>

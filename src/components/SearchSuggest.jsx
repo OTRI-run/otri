@@ -6,7 +6,9 @@ import { Search } from 'lucide-react'
  * Enter, and the runner's page opens without scanning the list. The list below the box keeps
  * filtering as before; suggestions are a shortcut, not a replacement.
  *
- * `suggestions`: [{ key, label, detail, href }], already ranked and cut by the caller.
+ * `suggestions`: [{ key, label, detail, href }], already ranked and cut by the caller. One without
+ * `href` is a well-known name OTRI has nothing for yet: it is drawn muted, and choosing it puts the
+ * name in the box, so the page below can say what to do about it.
  */
 export default function SearchSuggest({ value, onChange, suggestions, placeholder, ariaLabel, className = '' }) {
   const listId = useId()
@@ -17,6 +19,7 @@ export default function SearchSuggest({ value, onChange, suggestions, placeholde
 
   function go(suggestion) {
     setOpen(false)
+    if (!suggestion.href) return onChange(suggestion.label)
     window.location.hash = suggestion.href
     window.scrollTo({ top: 0 })
   }
@@ -69,7 +72,7 @@ export default function SearchSuggest({ value, onChange, suggestions, placeholde
               onMouseEnter={() => setActive(index)}
               className={`flex cursor-pointer items-baseline justify-between gap-3 px-3 py-2 text-sm ${index === active ? 'bg-blue-50' : ''}`}
             >
-              <span className="min-w-0 truncate font-medium text-[#0b1220]">{suggestion.label}</span>
+              <span className={`min-w-0 truncate font-medium ${suggestion.href ? 'text-[#0b1220]' : 'text-slate-500'}`}>{suggestion.label}</span>
               <span className="shrink-0 font-mono text-[10px] text-slate-500">{suggestion.detail}</span>
             </li>
           ))}

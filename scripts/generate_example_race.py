@@ -3,17 +3,25 @@
     python scripts/generate_example_race.py
 
 Writes `public/examples/otri-example-course.gpx` and `public/examples/otri-example-results.csv`.
-Everything is invented and deterministic (fixed seed): the course is a drawn loop with drawn hills,
-placed where no terrain data is installed so it always measures from its own elevations, and the
-runners carry placeholder names (John Doe, Max Mustermann and their counterparts elsewhere). Finish
-times are derived from the scoring model itself, from a spread of scores with the winner well short
-of 1000, so the example shows a believable field rather than a record.
+The race is invented and deterministic (fixed seed). The course is a drawn loop, not a marked trail,
+laid over real ground: the forested hills west of Hang Dong, south-west of Chiang Mai, a place
+people do run trails. Its elevations are read from the Copernicus GLO-30 terrain tile for that
+ground (fetched into `data/cache/example-dem/` on first run, which needs the network and
+`course/requirements-terrain.txt`). That matters: OTRI fetches terrain tiles on demand, so a
+server measures this course from the real terrain, and a course with invented hills on flat
+ground would measure flat there. With the file's elevations taken from the same terrain, it measures
+the same with and without terrain data, to within a percent.
+
+The runners carry placeholder names (John Doe, Max Mustermann and their counterparts elsewhere).
+Finish times are derived from the scoring model itself, from a spread of scores with the winner
+well short of 1000, so the example shows a believable field rather than a record.
 """
 
 from __future__ import annotations
 
 import csv
 import math
+import os
 import random
 import sys
 from pathlib import Path
@@ -21,14 +29,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from course import parse_track_points  # noqa: E402
+from course import dem_fetch, parse_track_points  # noqa: E402
+from course.elevation import RasterProvider  # noqa: E402
 from course.measurement import measure_course  # noqa: E402
 from scoring.course_standard import MODEL_CURVE, adjusted_demand, target_time_seconds  # noqa: E402
 from scoring.measured_demand import compute_measured_demand  # noqa: E402
 
 OUT = ROOT / "public" / "examples"
 SEED = 20260919
-CENTRE_LAT, CENTRE_LON = 13.62, 100.48  # no terrain tiles here: the file's own elevations are used
+# Hills west of Hang Dong, Chiang Mai: of the loops tried across this tile, one of the few with a
+# trail-like climb (about +930 m, 14 % of it steep). A drawn loop straight over Doi Suthep itself
+# comes out at +2,800 m with half its distance steeper than 20 %: real trails follow the contours.
+CENTRE_LAT, CENTRE_LON = 18.72, 98.89
+DEM_CACHE = ROOT / "data" / "cache" / "example-dem" / "manifest.json"
 POINTS = 1500
 WINNER_SCORE, LAST_SCORE = 792, 236
 
@@ -53,24 +66,32 @@ EXTRA_FIRST = {"M": ["Alex", "Sam", "Chris", "Robin", "Kim", "Pat", "Lee", "Toni
 CLUBS = ["Trail Club", "Mountain Crew", "Hill Harriers", "Ridge Runners", "", "", ""]
 
 
-def course_gpx() -> str:
-    """A closed loop of about 24 km with three hills, a point every 16 m or so."""
-    points = []
+def terrain() -> RasterProvider:
+    """The terrain tile under the course, fetched once into the cache."""
+    os.environ["OTRI_DEM_AUTOFETCH"] = "1"
+    os.environ["OTRI_DEM_MANIFEST"] = str(DEM_CACHE)
+    from course.gpx import TrackPoint
+
+    outcome = dem_fetch.ensure_tiles([TrackPoint(CENTRE_LAT, CENTRE_LON, None, None)])
+    if outcome["skipped"] or not DEM_CACHE.exists():
+        raise SystemExit(f"could not get the terrain tile: {outcome}")
+    return RasterProvider(DEM_CACHE)
+
+
+def course_gpx(provider: RasterProvider) -> str:
+    """A closed loop of about 24 km, a point every 16 m or so, with the ground's real elevations."""
+    track = []
     for i in range(POINTS + 1):
-        t = i / POINTS
-        angle = 2 * math.pi * t
-        # a wobbly loop, about 3.3 km across
+        angle = 2 * math.pi * i / POINTS
+        # a wobbly loop, about 6.5 km across
         radius = 0.0300 * (1 + 0.22 * math.sin(3 * angle) + 0.10 * math.cos(5 * angle))
-        lat = CENTRE_LAT + radius * math.sin(angle)
-        lon = CENTRE_LON + radius * 1.05 * math.cos(angle)
-        # three climbs of different size; starts and ends at the same height
-        elevation = 120 + 210 * math.sin(math.pi * t) ** 2 + 150 * math.sin(3 * math.pi * t) ** 2 + 60 * math.sin(7 * math.pi * t) ** 2
-        points.append((lat, lon, elevation))
+        track.append((CENTRE_LAT + radius * math.sin(angle), CENTRE_LON + radius * 1.05 * math.cos(angle)))
+    points = [(lat, lon, elevation) for (lat, lon), elevation in zip(track, provider.sample(track))]
     body = "\n".join(f'      <trkpt lat="{lat:.6f}" lon="{lon:.6f}"><ele>{ele:.1f}</ele></trkpt>' for lat, lon, ele in points)
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<gpx version="1.1" creator="OTRI example generator" xmlns="http://www.topografix.com/GPX/1/1">\n'
-        "  <metadata><name>OTRI Example Trail 24K (synthetic)</name></metadata>\n"
+        "  <metadata><name>OTRI Example Trail 24K (synthetic)</name><desc>An invented loop over real ground in the hills west of Hang Dong, Chiang Mai. Not a marked trail or a real race. Elevations: Copernicus DEM GLO-30.</desc></metadata>\n"
         "  <trk>\n    <name>OTRI Example Trail 24K (synthetic)</name>\n    <trkseg>\n"
         f"{body}\n    </trkseg>\n  </trk>\n</gpx>\n"
     )
@@ -84,10 +105,14 @@ def hms(seconds: float) -> str:
 def main() -> None:
     rng = random.Random(SEED)
     OUT.mkdir(parents=True, exist_ok=True)
-    gpx = course_gpx()
+    provider = terrain()
+    gpx = course_gpx(provider)
     (OUT / "otri-example-course.gpx").write_text(gpx, encoding="utf-8", newline="\n")
 
-    demand = compute_measured_demand(measurement=measure_course(parse_track_points(gpx), None))
+    # Times come from the course as a server with terrain data measures it; without terrain data
+    # (the tests, a fresh checkout) the file's own elevations give almost the same course.
+    demand = compute_measured_demand(measurement=measure_course(parse_track_points(gpx), provider))
+    from_file = compute_measured_demand(measurement=measure_course(parse_track_points(gpx), None))
     scored_km, _flags = adjusted_demand(demand, MODEL_CURVE)
 
     people = list(PLACEHOLDERS)
@@ -119,6 +144,7 @@ def main() -> None:
         writer.writerows(rows)
 
     print(f"course: {demand.physical_distance_km} km, +{demand.elevation_gain_m} m, scored on {scored_km:.2f} demand-km, steep share {demand.steep_distance_fraction:.2%}")
+    print(f"from the file alone: {from_file.physical_distance_km} km, +{from_file.elevation_gain_m} m, scored on {adjusted_demand(from_file, MODEL_CURVE)[0]:.2f} demand-km")
     print(f"results: {len(times)} finishers, {hms(times[0])} to {hms(times[-1])}, plus 4 DNF and 2 DNS")
 
 

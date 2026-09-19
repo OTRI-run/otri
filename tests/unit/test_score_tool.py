@@ -100,5 +100,6 @@ def test_the_example_race_on_the_page_scores_cleanly_and_nobody_reaches_1000():
     assert body["summary"]["finishers"] == 100 and body["summary"]["non_finishers"] == 4  # DNS rows are not listed
     assert 700 <= body["summary"]["best_score"] < 850 and body["summary"]["median_score"] > 350
     assert min(row["otri_score"] for row in body["scores"] if row["status"] == "finisher") > 150
-    # Dense enough to measure: the only reason for Low confidence is that no terrain data covers a made-up place.
+    # Dense enough to measure. Its elevations are the real terrain's (hills west of Hang Dong, Chiang Mai), so a
+    # server with terrain data measures the same course; here, without it, the only Low-confidence reason is that.
     assert not any(flag.startswith(("route_not_reproducible", "course_not_scored")) for flag in body["course"]["quality_flags"])
