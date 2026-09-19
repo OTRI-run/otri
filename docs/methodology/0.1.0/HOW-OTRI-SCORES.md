@@ -32,7 +32,7 @@ Three things follow from the definition, and each is tested in the code:
 4. **The ceiling** for that course size is read from a curve through three public world-best performances (5000 m, marathon, 24 hours) — the fastest rate ever sustained over that much demand.
 5. **Score** = 1000 × (your rate ÷ ceiling)^0.85.
 6. **A confidence label** (`High`/`Low`) says whether another device recording the same route would have produced the same number. `High` needs terrain-model elevation, a dense enough track, and a course inside what the model was checked on (not mostly steeper than 45 %, not shorter than 1.5 flat-km).
-7. **Vertical races get no score yet.** On an uphill-only course (more than half of it at 20 % or steeper) the steep-ground factor, tuned on mountain courses with descents, over-scores by about 60 %. Those races are listed with finish times only and do not count toward a runner index.
+7. **Vertical races are scored provisionally.** On an uphill-only course (more than half of it at 20 % or steeper) the steep-ground factor tuned on mountain courses, which mostly prices descending and broken ground, would over-score everyone by about 40 %. Such courses get a much smaller factor of their own, set from a single winning vertical-kilometre performance, so their scores are marked Low confidence and say why. Without a course file a vertical race is listed with finish times only.
 
 ---
 

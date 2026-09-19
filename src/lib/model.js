@@ -1,9 +1,9 @@
 /**
  * The public name of the scoring model. The API names the build on every score
- * (scoring_version, '0.9.0-course-standard-domain-gated'); publicly it is "OTRI model 0.1.0". A
+ * (scoring_version, '0.10.0-course-standard-vertical'); publicly it is "OTRI model 0.1.0". A
  * future model gets its own label here.
  */
-export const CURRENT_MODEL = { version: '0.9.0-course-standard-domain-gated', label: 'OTRI model 0.1.0', short: '0.1.0' }
+export const CURRENT_MODEL = { version: '0.10.0-course-standard-vertical', label: 'OTRI model 0.1.0', short: '0.1.0' }
 
 export function modelLabel(version) {
   if (!version || version === CURRENT_MODEL.version) return CURRENT_MODEL.label
@@ -11,8 +11,8 @@ export function modelLabel(version) {
 }
 
 /**
- * Why a race's finishers carry no score (the API's course_not_scored flag: an uphill-only course
- * the model does not score yet), as a sentence to show; null when the race is scored.
+ * Why a race's finishers carry no score (the API's course_not_scored flag: a vertical race entered
+ * without its course file), as a sentence to show; null when the race is scored.
  */
 export function notScoredReason(rows) {
   const flag = (rows ?? []).find((row) => row.status === 'finisher' && row.otri_score == null)?.quality_flags?.find((f) => f.startsWith('course_not_scored: '))

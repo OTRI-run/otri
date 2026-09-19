@@ -51,6 +51,22 @@ ALTITUDE_COEFFICIENT = 0.07
 # treating this as measured rather than chosen.
 STEEP_COEFFICIENT = 0.5951
 
+# Uphill-only courses (vertical kilometres, summit finishes). `STEEP_COEFFICIENT` stands for what
+# steep *mountain* ground costs beyond the treadmill figure, and most of that is descending and
+# broken rhythm: hands, poles, braking on loose rock. A vertical race has none of it. It is one
+# sustained climb, which the gradient-cost integral already prices, so the same coefficient would
+# add about 40% to a course that needs a few percent (and a mid-pack runner would score 1000).
+# Above `VERTICAL_STEEP_FRACTION` of the distance at or beyond the steep threshold, this smaller
+# coefficient applies instead. No real course that goes up and down reaches that share (mountain
+# courses measure 0-0.25), so every course scored before this constant existed is untouched.
+#
+# Like STEEP_COEFFICIENT it is calibrated, on one performance: a winning 36:59 on a 3.76 km,
+# +1,016 m vertical kilometre (steep share 0.678) scores 970. One point, one coefficient, and a
+# product decision about where the best vertical running sits on the scale: provisional until
+# there is vertical-race data to fit it on (OEP-003), and every such score says so.
+VERTICAL_STEEP_FRACTION = 0.50
+VERTICAL_STEEP_COEFFICIENT = 0.1169
+
 
 @dataclass(frozen=True)
 class TerrainModel:
@@ -60,6 +76,13 @@ class TerrainModel:
     altitude_threshold_m: float
     steep_coefficient: float
     altitude_coefficient: float
+    # Uphill-only courses: above this steep share, `vertical_steep_coefficient` replaces
+    # `steep_coefficient`. The defaults switch the rule off (no course exceeds a share of 1).
+    vertical_steep_fraction: float = 1.0
+    vertical_steep_coefficient: float = 0.0
+
+    def is_vertical(self, steep_distance_fraction: float) -> bool:
+        return steep_distance_fraction > self.vertical_steep_fraction
 
     def factor(self, steep_distance_fraction: float, altitude_excess_m: float) -> float:
         """Terrain multiplier for a course with these two measured properties.
@@ -73,11 +96,8 @@ class TerrainModel:
             raise ValueError("steep_distance_fraction must be between 0 and 1")
         if not math.isfinite(altitude_excess_m) or altitude_excess_m < 0.0:
             raise ValueError("altitude_excess_m must be non-negative and finite")
-        return (
-            1.0
-            + self.steep_coefficient * steep_distance_fraction
-            + self.altitude_coefficient * altitude_excess_m / 1000.0
-        )
+        steep = self.vertical_steep_coefficient if self.is_vertical(steep_distance_fraction) else self.steep_coefficient
+        return 1.0 + steep * steep_distance_fraction + self.altitude_coefficient * altitude_excess_m / 1000.0
 
     def flags(self, steep_distance_fraction: float, altitude_excess_m: float) -> tuple[str, ...]:
         """Surface the adjustment whenever it is doing real work, so it is never invisible."""
@@ -88,7 +108,8 @@ class TerrainModel:
             f"terrain_adjustment_applied: course demand scaled by {factor:.3f} "
             f"({100 * steep_distance_fraction:.1f}% of distance at or above "
             f"{100 * self.steep_grade_threshold:.0f}% grade, "
-            f"{altitude_excess_m:.0f} m mean altitude above {self.altitude_threshold_m:.0f} m)",
+            f"{altitude_excess_m:.0f} m mean altitude above {self.altitude_threshold_m:.0f} m"
+            f"{'; uphill-only course, vertical coefficient' if self.is_vertical(steep_distance_fraction) else ''})",
         )
 
 
@@ -97,4 +118,6 @@ TERRAIN_MODEL = TerrainModel(
     altitude_threshold_m=ALTITUDE_THRESHOLD_M,
     steep_coefficient=STEEP_COEFFICIENT,
     altitude_coefficient=ALTITUDE_COEFFICIENT,
+    vertical_steep_fraction=VERTICAL_STEEP_FRACTION,
+    vertical_steep_coefficient=VERTICAL_STEEP_COEFFICIENT,
 )

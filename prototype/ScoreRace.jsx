@@ -41,7 +41,8 @@ const FLAG_TEXT = {
   route_not_reproducible: 'The course file is too sparse or broken in places to measure the same way twice.',
   gradient_domain_exceeded: 'Much of this course is steeper than the ground the model was calibrated on.',
   course_below_validated_range: 'This course is shorter than the range the model has been validated on.',
-  course_not_scored: 'Uphill-only courses are not scored yet: the list carries finish times only.',
+  course_not_scored: 'A vertical race needs its course file to be scored: the list carries finish times only.',
+  vertical_calibration_provisional: 'This is an uphill-only course. It is scored with a steep-ground factor of its own that rests on a single calibration race so far, so treat the scores as provisional.',
 }
 
 const flagKey = (flag) => flag.split(':')[0].trim()

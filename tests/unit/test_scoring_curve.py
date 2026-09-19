@@ -46,7 +46,7 @@ def _finisher(bib, seconds, rank=1):
 
 
 def test_the_model_is_one_power_law_anchored_on_the_ceiling():
-    assert MODEL_CURVE.version == "0.9.0-course-standard-domain-gated"
+    assert MODEL_CURVE.version == "0.10.0-course-standard-vertical"
     assert MODEL_CURVE.power_exponent == POWER_EXPONENT == 0.85
     assert MODEL_CURVE.q_1000 == ENDURANCE_REFERENCE.rate(REFERENCE_DEMAND_KM)
 
