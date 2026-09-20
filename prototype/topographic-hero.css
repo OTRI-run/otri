@@ -1,11 +1,13 @@
-/* A single centered terrain field behind the index actions. */
-.otri-terrain{position:absolute;inset:0;overflow:hidden;pointer-events:none;background:linear-gradient(180deg,#fff 0%,#f7faff 65%,#f1f6ff 100%)}
-.otri-terrain-layer{position:absolute;top:60%;left:50%;width:max(1100px,100%);height:auto;overflow:visible}
+/* A course fingerprint, centered behind both index actions. */
+.otri-terrain{position:absolute;inset:0;overflow:hidden;pointer-events:none;background:radial-gradient(ellipse at 50% 68%,#eef4ff,white 73%)}
+.otri-terrain-layer{position:absolute;top:66%;left:50%;width:1120px;height:auto;overflow:visible}
 .otri-terrain-near{transform:translate3d(calc(-50% + var(--terrain-x,0px)),calc(-50% + var(--terrain-near,0px)),0) rotate(var(--terrain-tilt,0deg));transform-origin:center}
-.otri-terrain-trail{stroke-dasharray:100;stroke-dashoffset:var(--trail-hidden,8);opacity:.75}
-.otri-terrain-veil{position:absolute;inset:0;background:linear-gradient(to bottom,#fff 0%,rgba(255,255,255,.93) 16%,rgba(255,255,255,.45) 35%,transparent 53%,transparent 86%,#f8fbff 100%)}
+.otri-terrain-trail{stroke-dasharray:100;stroke-dashoffset:var(--trail-hidden,8);opacity:.5}
+.otri-index-pulse{animation:otri-index-signal 22s linear infinite;animation-play-state:var(--signal-state,running);opacity:.7}
+@keyframes otri-index-signal{to{stroke-dashoffset:-100}}
+.otri-terrain-veil{position:absolute;inset:0;background:linear-gradient(to bottom,white 0%,rgba(255,255,255,.98) 12%,rgba(255,255,255,.9) 29%,transparent 48%,transparent 85%,#f8fbff 100%)}
 @media(max-width:639px){
- .otri-terrain-layer{width:950px;top:65%}
- .otri-terrain-veil{background:linear-gradient(to bottom,#fff 0%,rgba(255,255,255,.9) 20%,rgba(255,255,255,.2) 39%,transparent 55%,transparent 86%,#f8fbff 100%)}
+ .otri-terrain-layer{width:650px;top:65%;height:780px}
+ .otri-terrain-veil{background:linear-gradient(to bottom,white 0%,rgba(255,255,255,.96) 21%,rgba(255,255,255,.35) 39%,transparent 52%,transparent 84%,#f8fbff 100%)}
 }
-@media(prefers-reduced-motion:reduce){.otri-terrain-near{transform:translate(-50%,-50%)}.otri-terrain-trail{stroke-dashoffset:0}}
+@media(prefers-reduced-motion:reduce){.otri-terrain-near{transform:translate(-50%,-50%)}.otri-terrain-trail{stroke-dashoffset:0}.otri-index-pulse{animation:none;opacity:0}}

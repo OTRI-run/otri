@@ -1,60 +1,45 @@
 import { useEffect, useRef } from 'react'
 import './topographic-hero.css'
 
-// Decorative course geometry, not race data. Isolines are sampled from one
-// continuous ridge field, with a small elevation projection for depth.
-const grid = 72
-function height(x,y) {
-  const ridge = .22*Math.sin(x*3.2) - .12*x
-  const spine = Math.exp(-((y-ridge)**2)/.14 - x*x/.95)
-  const detail = .045*Math.sin(x*17+y*9) + .025*Math.cos(y*23-x*7)
-  return Math.max(0, spine + detail*spine)
-}
-function project(x,y,z) { return [600+x*370,390+y*220-z*65] }
-const pair = ([x,y])=>`${x.toFixed(2)},${y.toFixed(2)}`
-const levels = Array.from({length:23},(_,i)=>.055+i*.041)
-// Marching squares yields actual equal-height contours instead of a decorative mesh.
-const contours = levels.map((level)=>{
-  const segments=[]
-  for(let row=0;row<grid;row++) for(let col=0;col<grid;col++) {
-    const x=-1.55+col*3.1/grid, y=-1.1+row*2.2/grid
-    const corners=[[x,y],[x+3.1/grid,y],[x+3.1/grid,y+2.2/grid],[x,y+2.2/grid]]
-    const values=corners.map(([u,v])=>height(u,v))
-    const cuts=[]
-    for(let edge=0;edge<4;edge++) {
-      const next=(edge+1)%4, a=values[edge], b=values[next]
-      if((a<level)===(b<level)) continue
-      const t=(level-a)/(b-a)
-      cuts.push(project(corners[edge][0]+t*(corners[next][0]-corners[edge][0]),corners[edge][1]+t*(corners[next][1]-corners[edge][1]),level))
-    }
-    for(let j=0;j+1<cuts.length;j+=2) segments.push(`M${pair(cuts[j])}L${pair(cuts[j+1])}`)
-  }
-  return segments.join(' ')
+// An abstract course fingerprint: elevation becomes radial samples around an
+// index dial. Decorative geometry only; no invented scores or race measurements.
+const count = 156
+const polar = (angle, radius) => [600 + Math.cos(angle)*radius*1.48, 390 + Math.sin(angle)*radius]
+const pair = ([x,y]) => `${x.toFixed(2)},${y.toFixed(2)}`
+const samples = Array.from({length:count},(_,i)=>{
+  const angle=i/count*Math.PI*2
+  const peak = (center,width,amplitude) => amplitude*Math.exp(-Math.pow((i/count-center)/width,2))
+  const relief=12+peak(.14,.065,52)+peak(.39,.1,37)+peak(.67,.055,63)+peak(.86,.08,44)+5*Math.sin(i*.73)
+  return {angle, radius:250+relief}
 })
-const routePoints=Array.from({length:200},(_,i)=>{
-  const t=i/199, x=-1.25+2.5*t
-  const y=.46*Math.cos(t*Math.PI*2)+.17*Math.sin(t*Math.PI*9)
-  return project(x,y,height(x,y))
-})
-const trail=routePoints.map((p,i)=>`${i?'L':'M'}${pair(p)}`).join(' ')
-function TerrainMap() {
-  return <svg className="otri-terrain-layer otri-terrain-near" viewBox="0 0 1200 700" fill="none" aria-hidden="true" focusable="false">
-    <defs><pattern id="otri-index-grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M20 17V23M17 20H23" stroke="#8ca9cd" strokeWidth=".7" opacity=".3" /></pattern></defs>
-    <rect x="70" y="140" width="1060" height="460" fill="url(#otri-index-grid)" />
-    <g stroke="#2563eb" strokeLinejoin="round">
-      {contours.map((d,i)=><path key={i} d={d} strokeOpacity={i%5===0?.46:.23} strokeWidth={i%5===0?1.5:.8} />)}
+const fingerprint = samples.map(({angle,radius},i)=>`${i?'L':'M'}${pair(polar(angle,radius))}`).join(' ')+' Z'
+const route = samples.map(({angle,radius},i)=>`${i?'L':'M'}${pair(polar(angle,radius-23))}`).join(' ')+' Z'
+function CourseFingerprint() {
+  return <svg className="otri-terrain-layer otri-terrain-near" viewBox="0 0 1200 780" preserveAspectRatio="none" fill="none" aria-hidden="true" focusable="false">
+    <defs>
+      <radialGradient id="otri-index-aura"><stop offset=".5" stopColor="#fff" stopOpacity="0"/><stop offset=".8" stopColor="#dce9ff" stopOpacity=".8"/><stop offset="1" stopColor="#eaf1ff" stopOpacity="0"/></radialGradient>
+      <linearGradient id="otri-index-ink" x1="190" y1="150" x2="1000" y2="630" gradientUnits="userSpaceOnUse"><stop stopColor="#96b9f4"/><stop offset=".46" stopColor="#2563eb"/><stop offset="1" stopColor="#1e3a6b"/></linearGradient>
+    </defs>
+    <ellipse cx="600" cy="390" rx="530" ry="345" fill="url(#otri-index-aura)"/>
+    <g stroke="#7e9bc3" strokeOpacity=".25">
+      <ellipse cx="600" cy="390" rx="355" ry="240" strokeDasharray="2 7"/>
+      <ellipse cx="600" cy="390" rx="493" ry="333"/>
     </g>
-    <path d={trail} stroke="white" strokeWidth="6" strokeLinecap="round" />
-    <path d={trail} stroke="#2563eb" strokeWidth="2" strokeOpacity=".2" />
-    <path className="otri-terrain-trail" d={trail} pathLength="100" stroke="#2563eb" strokeWidth="2.3" strokeLinecap="round" />
-    {[0,45,100,155,199].map((n,i)=>{
-      const [cx,cy]=routePoints[n]
-      return <g key={i}><circle cx={cx} cy={cy} r="8" fill="white" fillOpacity=".7" /><circle cx={cx} cy={cy} r="3.5" fill="white" stroke="#2563eb" strokeWidth="1.5" /></g>
+    <g stroke="url(#otri-index-ink)" strokeLinecap="round">
+      {samples.map(({angle,radius},i)=><path key={i} d={`M${pair(polar(angle,251))}L${pair(polar(angle,radius))}`} strokeWidth={i%4===0?2.2:1.1} strokeOpacity={i%4===0?.7:.32}/>) }
+    </g>
+    <path d={fingerprint} stroke="#5482c7" strokeOpacity=".3" strokeWidth=".8"/>
+    <path d={route} stroke="white" strokeWidth="6"/>
+    <path className="otri-terrain-trail" d={route} pathLength="100" stroke="#2563eb" strokeWidth="1.8" strokeLinecap="round"/>
+    <path className="otri-index-pulse" d={route} pathLength="100" stroke="#1e3a6b" strokeWidth="3" strokeLinecap="round" strokeDasharray="3 97"/>
+    {Array.from({length:48},(_,i)=>{
+      const angle=i/48*Math.PI*2
+      return <path key={i} d={`M${pair(polar(angle,333))}L${pair(polar(angle,i%4===0?344:337))}`} stroke="#6485b1" strokeOpacity={i%4===0?.5:.25} strokeWidth="1"/>
     })}
-    <g stroke="#7295bd" strokeOpacity=".4" strokeWidth=".8">
-      <path d="M95 265v-35h35M1105 265v-35h-35M95 505v35h35M1105 505v35h-35" />
-      <path d="M555 565H645M600 558v14" />
-    </g>
+    {[17,64,105,145].map(n=>{
+      const p=polar(samples[n].angle,samples[n].radius-23)
+      return <g key={n}><circle cx={p[0]} cy={p[1]} r="7" fill="white"/><circle cx={p[0]} cy={p[1]} r="3" fill="#2563eb"/></g>
+    })}
   </svg>
 }
 
@@ -114,6 +99,7 @@ export default function TopographicHero() {
     }
     const observer = new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting
+      element.style.setProperty('--signal-state', visible ? 'running' : 'paused')
       if (visible) schedule()
     })
     observer.observe(hero)
@@ -132,7 +118,7 @@ export default function TopographicHero() {
 
   return (
     <div ref={ref} className="otri-terrain" aria-hidden="true">
-      <TerrainMap />
+      <CourseFingerprint />
       <div className="otri-terrain-veil" />
     </div>
   )
