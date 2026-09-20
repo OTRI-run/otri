@@ -82,7 +82,7 @@
   line-height: var(--otri-leading, var(--text-sm--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-runners-runner-row-span-10 {
   display: flex;
@@ -160,7 +160,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.06em;
   letter-spacing: -.06em;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-runners-runners-page-span-19 {
   --otri-gradient-position: to right in oklab;
@@ -223,14 +223,14 @@
   font-weight: var(--font-weight-semibold);
 }
 .prototype-runners-runners-page-button-26 {
-  background-color: #21152f;
+  background-color: var(--field-ink);
   color: var(--color-white);
 }
 .prototype-runners-runners-page-button-27 {
   color: var(--color-slate-500);
   &:hover {
     @media (hover: hover) {
-      color: #21152f;
+      color: var(--field-ink);
     }
   }
 }
@@ -278,7 +278,7 @@
 .prototype-runners-runners-page-p-32 {
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-runners-runners-page-p-33 {
   margin-top: var(--spacing);
@@ -344,7 +344,7 @@
   line-height: var(--otri-leading, var(--text-sm--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #21152f;
+  color: var(--field-ink);
   &:hover {
     @media (hover: hover) {
       border-color: var(--color-blue-300);
@@ -519,7 +519,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.045em;
   letter-spacing: -.045em;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-runners-runner-profile-page-p-62 {
   margin-top: calc(var(--spacing) * 3);
@@ -578,7 +578,7 @@
   font-size: 13px;
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #21152f;
+  color: var(--field-ink);
   &:hover {
     @media (hover: hover) {
       border-color: var(--color-blue-300);
@@ -688,7 +688,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.03em;
   letter-spacing: -.03em;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-runners-runner-profile-page-p-77 {
   margin-top: var(--spacing);
@@ -756,7 +756,7 @@
   color: var(--color-slate-500);
 }
 .otri-state-6 {
-  color: #21152f;
+  color: var(--field-ink);
 }
 .otri-state-7 {
   color: var(--color-slate-400);

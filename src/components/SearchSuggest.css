@@ -24,7 +24,7 @@
   padding-left: calc(var(--spacing) * 9);
   font-size: var(--text-sm);
   line-height: var(--otri-leading, var(--text-sm--line-height));
-  color: #21152f;
+  color: var(--field-ink);
   --otri-outline-style: none;
   outline-style: none;
   &::placeholder {
@@ -81,7 +81,7 @@
   font-weight: var(--font-weight-medium);
 }
 .src-components-search-suggest-search-suggest-span-8 {
-  color: #21152f;
+  color: var(--field-ink);
 }
 .src-components-search-suggest-search-suggest-span-9 {
   color: var(--color-slate-500);

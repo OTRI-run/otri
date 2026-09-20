@@ -4,7 +4,7 @@
   max-width: 100%;
   overflow-x: clip;
   background-color: #faf9fd;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-embed-main-embed-footer-2 {
   border-top-style: var(--otri-border-style);

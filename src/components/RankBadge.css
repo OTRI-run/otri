@@ -8,7 +8,7 @@
   font-weight: var(--font-weight-semibold);
 }
 .src-components-rank-badge-rank-badge-span-2 {
-  color: #21152f;
+  color: var(--field-ink);
 }
 .src-components-rank-badge-rank-badge-span-3 {
   position: absolute;

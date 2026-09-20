@@ -50,7 +50,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.065em;
   letter-spacing: -.065em;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-organizer-pages-auth-welcome-em-7 {
   --otri-gradient-position: to right in oklab;
@@ -282,7 +282,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.06em;
   letter-spacing: -.06em;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-organizer-pages-auth-welcome-p-32 {
   margin-top: calc(var(--spacing) * 5);
@@ -325,7 +325,7 @@
 }
 .prototype-organizer-pages-auth-welcome-strong-37 {
   font-size: 13px;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-organizer-pages-auth-welcome-p-38 {
   margin-top: calc(var(--spacing) * 0.5);
@@ -368,7 +368,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.06em;
   letter-spacing: -.06em;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-organizer-pages-auth-welcome-p-44 {
   min-width: 0px;
@@ -429,7 +429,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.03em;
   letter-spacing: -.03em;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-organizer-pages-auth-welcome-span-52 {
   margin-top: var(--spacing);
@@ -464,7 +464,7 @@
   }
 }
 .prototype-organizer-pages-auth-welcome-section-55 {
-  background-image: linear-gradient(115deg,#532b9a 0%,#6336b6 48%,#0891b2 100%);
+  background-image: linear-gradient(115deg,var(--color-blue-700) 0%,var(--field-signal) 48%,var(--field-muted) 100%);
   padding-block: calc(var(--spacing) * 14);
   color: var(--color-white);
   @media (width >= 40rem) {

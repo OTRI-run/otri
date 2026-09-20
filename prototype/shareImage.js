@@ -14,7 +14,7 @@ const MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", 
 const INK = '#ffffff'
 const SOFT = 'rgba(255,255,255,.72)'
 const FAINT = 'rgba(255,255,255,.16)'
-const ACCENT = '#cfb3f1'
+const ACCENT = '#ee9a76'
 const MEDALS = ['#fbbf24', '#cbd5e1', '#d6a06c']
 
 function setup(canvas, format) {
@@ -23,15 +23,15 @@ function setup(canvas, format) {
   canvas.height = height
   const ctx = canvas.getContext('2d')
   const background = ctx.createLinearGradient(0, 0, width, height)
-  background.addColorStop(0, '#21152f')
-  background.addColorStop(0.55, '#36204e')
-  background.addColorStop(1, '#6336b6')
+  background.addColorStop(0, '#23231f')
+  background.addColorStop(0.55, '#34332d')
+  background.addColorStop(1, '#bd3924')
   ctx.fillStyle = background
   ctx.fillRect(0, 0, width, height)
   // a soft light in the corner, as on the site's hero
   const glow = ctx.createRadialGradient(width * 0.85, height * 0.12, 0, width * 0.85, height * 0.12, width * 0.7)
-  glow.addColorStop(0, 'rgba(190,154,230,.28)')
-  glow.addColorStop(1, 'rgba(190,154,230,0)')
+  glow.addColorStop(0, 'rgba(180,160,120,.28)')
+  glow.addColorStop(1, 'rgba(180,160,120,0)')
   ctx.fillStyle = glow
   ctx.fillRect(0, 0, width, height)
   ctx.textBaseline = 'alphabetic'
@@ -139,7 +139,7 @@ export function drawLeaderboard(canvas, { format = 'post', raceName, facts, head
     ctx.fillStyle = index < 3 ? MEDALS[index] : 'rgba(255,255,255,.12)'
     ctx.fill()
     ctx.font = `800 ${Math.round(radius * 0.95)}px ${SANS}`
-    ctx.fillStyle = index < 3 ? '#21152f' : INK
+    ctx.fillStyle = index < 3 ? '#23231f' : INK
     ctx.textAlign = 'center'
     ctx.fillText(String(row.place), pad + radius, middle + radius * 0.33)
     ctx.textAlign = 'left'

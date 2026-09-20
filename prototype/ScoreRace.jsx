@@ -1,3 +1,4 @@
+import { FieldHeading } from '../src/field'
 import tool from './ToolPage.module.css'
 import './ScoreRace.css'
 import RankBadge from '../src/components/RankBadge'
@@ -478,12 +479,9 @@ export default function ScoreRace() {
       <section className={tool.workbench} data-tool-page="score">
         <div className={CONTAINER}>
           <div className={tool.container}>
-          <div className={tool.heading}>
-            <p className={tool.eyebrow}>FOR ORGANIZERS / EVERY FINISHER</p>
-            <h1 className="prototype-score-race-score-race-h1-95">Score all finishers</h1>
-            <p className="prototype-score-race-score-race-p-96">Add your course and results. Get a score for every finisher.</p>
-            <p className="prototype-score-race-score-race-p-97">Free · No account needed</p>
-          </div>
+          <FieldHeading number="02" label="FOR ORGANIZERS / EVERY FINISHER" title="Score all finishers" description="Add your course and results. Get a score for every finisher.">
+<p className={tool.note}>Free · No account needed</p>
+</FieldHeading>
 
           <form onSubmit={submit} {...dropProps} className={`${tool.form} ${dragging ? "prototype-score-race-score-race-form-99" : "prototype-score-race-score-race-form-100"}`}>
             {dragging && <p className="prototype-score-race-score-race-p-101">Drop the course (.gpx) and the results (.csv, .xlsx) here, together or one at a time</p>}

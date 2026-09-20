@@ -45,7 +45,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.06em;
   letter-spacing: -.06em;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-faq-faq-page-span-8 {
   --otri-gradient-position: to right in oklab;
@@ -92,7 +92,7 @@
   padding-left: calc(var(--spacing) * 9);
   font-size: var(--text-sm);
   line-height: var(--otri-leading, var(--text-sm--line-height));
-  color: #21152f;
+  color: var(--field-ink);
   --otri-outline-style: none;
   outline-style: none;
   &::placeholder {
@@ -184,7 +184,7 @@
   font-size: 15px;
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #21152f;
+  color: var(--field-ink);
   & *::marker {
     --otri-content: none;
     content: none;

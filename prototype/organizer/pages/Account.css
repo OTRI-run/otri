@@ -21,7 +21,7 @@
   background-color: var(--color-white);
   padding-inline: calc(var(--spacing) * 2);
   padding-block: var(--spacing);
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-organizer-pages-account-recovery-codes-button-4 {
   margin-top: calc(var(--spacing) * 2);
@@ -70,7 +70,7 @@
 .prototype-organizer-pages-account-profile-form-span-10 {
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-organizer-pages-account-profile-form-span-11 {
   display: block;

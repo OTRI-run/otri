@@ -1,3 +1,4 @@
+import { FieldHeading } from '../src/field'
 import tool from './ToolPage.module.css'
 import './ScoreCalculator.css'
 import ScoreScale from '../src/components/ScoreScale'
@@ -649,15 +650,13 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
     <section className={tool.workbench} data-tool-page="calculator">
       <div className={CONTAINER}>
         <div className={tool.container}>
-          <div className={tool.heading}>
-            <p className={tool.eyebrow}>FOR RUNNERS / INDIVIDUAL PERFORMANCE</p>
-            <h1 className="prototype-score-calculator-course-picker-h1-85">Calculate my score</h1>
-            <p className="prototype-score-calculator-course-picker-p-86">Choose your course, then enter your finish time.</p>
-            <ol aria-label="Calculation steps" className="prototype-score-calculator-course-picker-ol-87">
+          <FieldHeading number="01" label="FOR RUNNERS / INDIVIDUAL PERFORMANCE" title="Calculate my score" description="Choose your course, then enter your finish time.">
+<ol aria-label="Calculation steps" className="prototype-score-calculator-course-picker-ol-87">
               <li aria-current="step" className="prototype-score-calculator-course-picker-li-88">1. Choose course</li>
               <li className="prototype-score-calculator-course-picker-li-89">2. Enter time</li>
             </ol>
-          </div>
+
+</FieldHeading>
           <div role="group" aria-label="Course source" className={tool.switcher}>
             {[['race', 'Find a race'], ['upload', 'Upload my course']].map(([value, label]) => (
               <button key={value} type="button" aria-pressed={source === value} aria-controls={`course-source-${value}`} onClick={() => setSource(value)} className={`prototype-score-calculator-course-picker-button-91 ${source === value ? "prototype-score-calculator-course-picker-button-92" : "prototype-score-calculator-course-picker-button-93"}`}>{label}</button>

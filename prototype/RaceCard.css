@@ -103,7 +103,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.03em;
   letter-spacing: -.03em;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-race-card-race-card-p-9 {
   margin-top: var(--spacing);

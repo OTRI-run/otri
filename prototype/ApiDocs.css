@@ -13,7 +13,7 @@
   border-style: var(--otri-border-style);
   border-width: 1px;
   border-color: var(--color-slate-800);
-  background-color: #21152f;
+  background-color: var(--field-ink);
 }
 .prototype-api-docs-code-div-3 {
   display: flex;
@@ -71,7 +71,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.02em;
   letter-spacing: -.02em;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-api-docs-endpoint-span-9 {
   border-radius: var(--radius-md);
@@ -131,7 +131,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.06em;
   letter-spacing: -.06em;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-api-docs-api-docs-em-17 {
   --otri-gradient-position: to right in oklab;
@@ -220,7 +220,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.02em;
   letter-spacing: -.02em;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-api-docs-api-docs-p-27 {
   margin-top: calc(var(--spacing) * 3);
@@ -279,7 +279,7 @@
   font-size: var(--text-xs);
   line-height: var(--otri-leading, var(--text-xs--line-height));
   word-break: break-all;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-api-docs-api-docs-p-33 {
   margin-top: calc(var(--spacing) * 4);

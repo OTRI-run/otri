@@ -22,7 +22,7 @@
   color: var(--color-slate-600);
 }
 .prototype-organizer-pages-calculator-courses-calculator-courses-b-4 {
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-organizer-pages-calculator-courses-calculator-courses-form-5 {
   margin-top: calc(var(--spacing) * 4);
@@ -111,7 +111,7 @@
   line-height: var(--otri-leading, var(--text-sm--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-organizer-pages-calculator-courses-calculator-courses-p-17 {
   margin-top: calc(var(--spacing) * 0.5);
@@ -156,7 +156,7 @@
   line-height: var(--otri-leading, var(--text-xs--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #21152f;
+  color: var(--field-ink);
   text-decoration-line: none;
   &:hover {
     @media (hover: hover) {

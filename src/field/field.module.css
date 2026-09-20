@@ -1,0 +1,21 @@
+.frame{width:min(1240px,calc(100% - 80px));margin-inline:auto;min-width:0}
+.label{margin:0;font:500 10px/1.5 var(--font-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--field-muted)}
+.rule{display:flex;justify-content:space-between;gap:20px;padding:14px 0;border-top:1px solid var(--field-line);font:10px/1.4 var(--font-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--field-muted)}
+.action{display:grid;grid-template-columns:44px 1fr 48px;align-items:center;gap:20px;position:relative;min-height:108px;padding:24px;background:var(--field-ink);color:var(--field-paper)!important;text-decoration:none;border:1px solid var(--field-ink);isolation:isolate;transition:background .18s,transform .18s;box-shadow:4px 4px 0 var(--field-paper),5px 5px 0 var(--field-ink)}
+.action[data-tone=signal]{background:var(--field-signal);border-color:var(--field-signal)}
+.actionNumber{align-self:stretch;border-right:1px solid #ffffff50;padding-top:5px;font:14px/1.5 var(--font-mono)}
+.audience{display:block;font:10px/1.5 var(--font-mono);letter-spacing:.04em;color:#ffffffc9}
+.actionCopy strong{display:block;font-size:clamp(21px,2.2vw,29px);font-weight:550;line-height:1.15;letter-spacing:-.035em;margin-top:7px}
+.actionArrow{display:grid;place-items:center;width:46px;height:46px;border:1px solid #ffffff70;border-radius:50%;transition:transform .18s,background .18s}
+.actionArrow svg{width:25px;height:25px;stroke-width:1.5}
+.action:hover{background:#343431;transform:translateY(-3px)}
+.action[data-tone=signal]:hover{background:#a92c1b}
+.action:hover .actionArrow{transform:rotate(45deg);background:#ffffff15}
+.action:focus-visible{outline:3px solid var(--field-signal);outline-offset:8px}
+.heading{padding-bottom:30px;margin-bottom:25px;border-bottom:1px solid var(--field-ink)}
+.headingMeta{display:flex;align-items:center;gap:14px;margin-bottom:24px}
+.number{display:grid;place-items:center;width:35px;height:35px;background:var(--field-signal);color:#fff;font:12px var(--font-mono)}
+.heading h1{font-size:clamp(38px,5.5vw,68px);font-weight:650;line-height:1.04;letter-spacing:-.055em;color:var(--field-ink);margin:0}
+.description{font-size:17px;line-height:1.6;color:var(--field-muted);margin:17px 0 0}
+@media(max-width:700px){.frame{width:calc(100% - 40px)}.action{grid-template-columns:28px 1fr 34px;gap:13px;min-height:87px;padding:17px}.actionNumber{font-size:11px}.actionCopy strong{font-size:22px;margin-top:5px}.audience{font-size:8px}.actionArrow{width:34px;height:34px}.actionArrow svg{width:22px;height:22px}.headingMeta{margin-bottom:20px}.rule{font-size:8px}}
+@media(prefers-reduced-motion:reduce){.action,.actionArrow{transition:none}.action:hover,.action:hover .actionArrow{transform:none}}

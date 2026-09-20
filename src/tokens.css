@@ -1,35 +1,40 @@
 :root {
+  --field-ink: #23231f;
+  --field-paper: #f4f1e8;
+  --field-signal: #bd3924;
+  --field-muted: #70695d;
+  --field-line: #d8d1c3;
   --font-sans: "Outfit Variable", "Segoe UI", sans-serif;
-  --brand-ink: #21152f;
-  --brand-accent: #6336b6;
-  --brand-signal: #c6afea;
-  --brand-surface: #faf9fd;
-  --brand-line: #e3dcea;
-  --color-blue-50: #faf6ff;
-  --color-blue-100: #ede3fa;
-  --color-blue-200: #ddc9f5;
-  --color-blue-300: #c6aae8;
-  --color-blue-400: #a883d8;
-  --color-blue-500: #8050c9;
-  --color-blue-600: #6336b6;
-  --color-blue-700: #532b9a;
-  --color-blue-800: #432579;
-  --color-blue-900: #36205e;
-  --color-blue-950: #24153d;
-  --color-cyan-300: #dbc7f4;
-  --color-cyan-400: #a883d8;
-  --color-cyan-500: #8050c9;
-  --color-slate-50: #faf9fd;
-  --color-slate-100: #f0eaf6;
-  --color-slate-200: #e3dcea;
-  --color-slate-300: #cfc3db;
-  --color-slate-400: #92839e;
-  --color-slate-500: #776582;
-  --color-slate-600: #62536e;
-  --color-slate-700: #473651;
-  --color-slate-800: #342140;
-  --color-slate-900: #21152f;
-  --color-slate-950: #190e23;
+  --brand-ink: #23231f;
+  --brand-accent: #bd3924;
+  --brand-signal: #dbba89;
+  --brand-surface: #f4f1e8;
+  --brand-line: #d8d1c3;
+  --color-blue-50: #fbf3ed;
+  --color-blue-100: #f7e5d9;
+  --color-blue-200: #ecc4ae;
+  --color-blue-300: #dfa188;
+  --color-blue-400: #d67e62;
+  --color-blue-500: #cf5035;
+  --color-blue-600: #bd3924;
+  --color-blue-700: #a42e1c;
+  --color-blue-800: #82291d;
+  --color-blue-900: #65231a;
+  --color-blue-950: #3b1d17;
+  --color-cyan-300: #ead0b2;
+  --color-cyan-400: #d67e62;
+  --color-cyan-500: #cf5035;
+  --color-slate-50: #f4f1e8;
+  --color-slate-100: #ebe6da;
+  --color-slate-200: #d8d1c3;
+  --color-slate-300: #bdb4a4;
+  --color-slate-400: #918878;
+  --color-slate-500: #70695d;
+  --color-slate-600: #59544b;
+  --color-slate-700: #45413a;
+  --color-slate-800: #34332d;
+  --color-slate-900: #23231f;
+  --color-slate-950: #181915;
   --color-emerald-50: #f0f1f2;
   --color-emerald-100: #e0e3e6;
   --color-emerald-200: #c5cbd2;
@@ -37,14 +42,14 @@
   --color-emerald-600: #445164;
   --color-emerald-700: #344255;
   --color-emerald-900: #1b2533;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
-  --radius-2xl: 16px;
-  --radius-3xl: 20px;
+  --radius-lg: 2px;
+  --radius-xl: 3px;
+  --radius-2xl: 4px;
+  --radius-3xl: 4px;
 }
-body { background: #faf9fd; color: #21152f; font-family: var(--font-sans); }
+body { background: #f4f1e8; color: #23231f; font-family: var(--font-sans); }
 button, input, select, textarea { font: inherit; }
 button:not(:disabled), summary { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
-:focus-visible { outline: 2px solid #6336b6; outline-offset: 4px; }
+:focus-visible { outline: 2px solid #bd3924; outline-offset: 4px; }
 @media (prefers-reduced-motion: reduce) { html {scroll-behavior:auto} }

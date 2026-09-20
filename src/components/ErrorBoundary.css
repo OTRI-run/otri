@@ -9,7 +9,7 @@
   background-color: #faf9fd;
   padding-inline: calc(var(--spacing) * 6);
   text-align: center;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .src-components-error-boundary-view-svg-2 {
   height: calc(var(--spacing) * 14);
@@ -77,7 +77,7 @@
   line-height: var(--otri-leading, var(--text-sm--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #21152f;
+  color: var(--field-ink);
   text-decoration-line: none;
 }
 .src-components-error-boundary-view-details-10 {
@@ -103,4 +103,4 @@
   font-size: 11px;
   color: var(--color-slate-600);
 }
-.otri-error-wordmark{width:144px;height:40px;color:#21152f}
+.otri-error-wordmark{width:144px;height:40px;color:var(--field-ink)}

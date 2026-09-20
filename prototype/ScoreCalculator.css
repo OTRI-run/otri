@@ -253,7 +253,7 @@
 .prototype-score-calculator-stat-dd-33 {
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-score-calculator-stat-dd-34 {
   font-family: var(--font-mono);
@@ -292,7 +292,7 @@
 }
 .prototype-score-calculator-explanation-step-strong-39 {
   font-size: 13px;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-score-calculator-explanation-step-div-40 {
   margin-top: calc(var(--spacing) * 1.5);
@@ -347,7 +347,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.06em;
   letter-spacing: -.06em;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-score-calculator-score-explanation-span-46 {
   --otri-gradient-position: to right in oklab;
@@ -456,7 +456,7 @@
 .prototype-score-calculator-score-explanation-pre-58 {
   overflow-x: auto;
   border-radius: var(--radius-xl);
-  background-color: #21152f;
+  background-color: var(--field-ink);
   padding: calc(var(--spacing) * 4);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -579,7 +579,7 @@
   font-size: 13px;
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #21152f;
+  color: var(--field-ink);
   &:hover {
     @media (hover: hover) {
       border-color: var(--color-blue-300);
@@ -699,7 +699,7 @@
   cursor: pointer;
   border-color: var(--color-slate-300);
   background-color: var(--color-white);
-  color: #21152f;
+  color: var(--field-ink);
   &:hover {
     @media (hover: hover) {
       border-color: var(--color-blue-300);
@@ -761,7 +761,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.04em;
   letter-spacing: -.04em;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-score-calculator-course-picker-p-86 {
   margin-top: calc(var(--spacing) * 2);
@@ -856,7 +856,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.02em;
   letter-spacing: -.02em;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-score-calculator-course-picker-p-98 {
   margin-top: var(--spacing);
@@ -878,7 +878,7 @@
   padding-block: calc(var(--spacing) * 2.5);
   font-size: var(--text-sm);
   line-height: var(--otri-leading, var(--text-sm--line-height));
-  color: #21152f;
+  color: var(--field-ink);
   --otri-outline-style: none;
   outline-style: none;
   &::placeholder {
@@ -969,7 +969,7 @@
   line-height: var(--otri-leading, var(--text-sm--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-score-calculator-course-picker-span-106 {
   margin-top: calc(var(--spacing) * 0.5);
@@ -1216,7 +1216,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.04em;
   letter-spacing: -.04em;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-score-calculator-course-details-p-131 {
   margin-top: calc(var(--spacing) * 2);
@@ -1248,7 +1248,7 @@
   font-size: 13px;
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #21152f;
+  color: var(--field-ink);
   text-decoration-line: none;
   &:hover {
     @media (hover: hover) {
@@ -1270,7 +1270,7 @@
   font-size: 13px;
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #21152f;
+  color: var(--field-ink);
   &:hover {
     @media (hover: hover) {
       border-color: var(--color-blue-300);
@@ -1321,7 +1321,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.05em;
   letter-spacing: -.05em;
-  color: #21152f;
+  color: var(--field-ink);
   @media (width >= 40rem) {
     font-size: var(--text-3xl);
     line-height: var(--otri-leading, var(--text-3xl--line-height));
@@ -1375,7 +1375,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.04em;
   letter-spacing: -.04em;
-  color: #21152f;
+  color: var(--field-ink);
   --otri-outline-style: none;
   outline-style: none;
   &:hover {
@@ -1483,7 +1483,7 @@
 .prototype-score-calculator-target-time-controls-button-157 {
   border-color: var(--color-slate-300);
   background-color: var(--color-white);
-  color: #21152f;
+  color: var(--field-ink);
   &:hover {
     @media (hover: hover) {
       border-color: var(--color-blue-300);
@@ -1576,7 +1576,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.05em;
   letter-spacing: -.05em;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-score-calculator-score-calculator-em-170 {
   --otri-gradient-position: to right in oklab;
@@ -1646,7 +1646,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.03em;
   letter-spacing: -.03em;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-score-calculator-score-calculator-p-178 {
   margin-top: var(--spacing);

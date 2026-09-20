@@ -2,7 +2,8 @@ import { useEffect, useState } from 'preact/compat'
 import { ArrowRight, ArrowUpRight, Mountain, Timer, Activity, GitBranch } from 'lucide-react'
 import { scrollBehavior } from '../src/lib/comfort'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
-import TrailSculpture from './TrailSculpture'
+import { FieldAction, FieldFrame, FieldLabel, FieldRule } from '../src/field'
+import ContourField from '../src/field/ContourField'
 import { listRaces } from './apiClient'
 import s from './Home.module.css'
 
@@ -24,26 +25,25 @@ export default function Home({ routeBase='' }) {
   },[])
   return <div className={s.home} data-entry={routeBase ? 'main' : 'prototype'}>
     <section className={s.hero} data-home-hero>
-      <div className={s.heroGrid}>
-        <div className={s.heroCopy}>
-          <p className={s.eyebrow}><span/> OPEN BY NATURE.</p>
-          <h1 aria-label="Open Trail Running Index">Open Trail<br/>Running <em>Index.</em></h1>
-          <p className={s.intro}>Your trail run, scored.<br/>From your course and finish time.</p>
-          <p className={s.caption}>Your course. Your finish time. Your score.</p>
+      <FieldFrame className={s.heroFrame}>
+        <FieldRule left="Independent trail performance" right="Open source / Open scoring"/>
+        <div className={s.heroStage}>
+          <ContourField/>
+          <div className={s.heroCopy}>
+            <FieldLabel className={s.eyebrow}>The ground changes. The measure is open.</FieldLabel>
+            <h1 aria-label="Open Trail Running Index"><span>OPEN TRAIL</span><span>RUNNING <em>INDEX</em><sup>↗</sup></span></h1>
+            <p className={s.intro}>Every trail is different.<br/>Give your performance a common measure.</p>
+          </div>
+          <div className={s.stageCaption}><span>COURSE + FINISH TIME</span><span>ONE EXPLAINED SCORE</span></div>
         </div>
-        <TrailSculpture />
-      </div>
-      <div className={s.heroBottom}>
-        <div className={s.actions}>
-          <a href={to('#calculator')} className={`${s.action} ${s.primary}`} data-home-action data-audience="runner">
-            <span><small>FOR RUNNERS</small><strong>Calculate my score</strong></span><ArrowUpRight aria-hidden="true"/>
-          </a>
-          <a href={to('#score')} className={s.action} data-home-action data-audience="organizer">
-            <span><small>FOR RACE ORGANIZERS</small><strong>Score all finishers</strong></span><ArrowUpRight aria-hidden="true"/>
-          </a>
+        <div className={s.heroBottom}>
+          <div className={s.actions}>
+            <FieldAction href={to('#calculator')} number="01" audience="FOR RUNNERS" data-home-action data-audience="runner">Calculate my score</FieldAction>
+            <FieldAction href={to('#score')} number="02" audience="FOR RACE ORGANIZERS" tone="signal" data-home-action data-audience="organizer">Score all finishers</FieldAction>
+          </div>
+          <p className={s.trust}>Free to use <i/> No account needed to score <i/> Open methodology</p>
         </div>
-        <p className={s.trust}>Free to use <i/> No account needed to score <i/> Open methodology</p>
-      </div>
+      </FieldFrame>
     </section>
 
     <section className={s.methodIntro}>

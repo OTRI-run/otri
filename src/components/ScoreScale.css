@@ -63,7 +63,7 @@
   line-height: 1;
   --otri-font-weight: var(--font-weight-bold);
   font-weight: var(--font-weight-bold);
-  color: #21152f;
+  color: var(--field-ink);
   --otri-shadow: 0 1px 0 rgb(25 25 29 / .04);
   box-shadow: var(--otri-inset-shadow), var(--otri-inset-ring-shadow), var(--otri-ring-offset-shadow), var(--otri-ring-shadow), var(--otri-shadow);
 }

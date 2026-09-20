@@ -7,7 +7,7 @@
   padding-block: calc(var(--spacing) * 2);
   font-size: var(--text-sm);
   line-height: var(--otri-leading, var(--text-sm--line-height));
-  color: #21152f;
+  color: var(--field-ink);
   text-decoration-line: none;
   &:hover {
     @media (hover: hover) {
@@ -92,7 +92,7 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   line-height: var(--otri-leading, var(--text-xs--line-height));
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-organizer-main-account-menu-p-12 {
   margin-top: var(--spacing);
@@ -198,7 +198,7 @@
   font-size: 13px;
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #21152f;
+  color: var(--field-ink);
   text-decoration-line: none;
   @media (width >= 48rem) {
     display: inline;
@@ -287,7 +287,7 @@
   font-size: 13px;
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #21152f;
+  color: var(--field-ink);
   text-decoration-line: none;
 }
 .prototype-organizer-main-header-link-29 {
@@ -363,7 +363,7 @@
   flex-direction: column;
   overflow-x: clip;
   background-color: #faf9fd;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .prototype-organizer-main-app-main-37 {
   flex: 1;

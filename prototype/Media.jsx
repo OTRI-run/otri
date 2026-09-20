@@ -32,13 +32,13 @@ const LOGOS = [
   { title: 'Profile picture', note: 'A square that survives being cut to a circle.', png: 'otri-avatar-1024.png', alt: 'otri-avatar-light-1024.png', ground: 'dark', width: 96, round: true },
 ]
 
-const GROUNDS = { light: { background: '#fff' }, dark: { background: '#21152f' }, blue: { background: '#6336b6' }, checker: CHECKER }
+const GROUNDS = { light: { background: '#fff' }, dark: { background: '#23231f' }, blue: { background: '#bd3924' }, checker: CHECKER }
 
 const COLOURS = [
-  { name: 'Violet', hex: '#6336b6', use: 'Actions, links and the standalone symbol', text: '#fff' },
-  { name: 'Lavender', hex: '#c6afea', use: 'Supporting surfaces and illustrations', text: '#21152f' },
-  { name: 'Ink', hex: '#21152f', use: 'Wordmark and primary text', text: '#fff' },
-  { name: 'Light', hex: '#faf9ff', use: 'Page backgrounds', text: '#21152f', border: true },
+  { name: 'Signal red', hex: '#bd3924', use: 'Actions, links and the standalone symbol', text: '#fff' },
+  { name: 'Sand', hex: '#dbba89', use: 'Supporting surfaces and illustrations', text: '#23231f' },
+  { name: 'Ink', hex: '#23231f', use: 'Wordmark and primary text', text: '#fff' },
+  { name: 'Light', hex: '#f4f1e8', use: 'Page backgrounds', text: '#23231f', border: true },
 ]
 
 const BOILERPLATE =
@@ -92,7 +92,7 @@ const DONT = [
   { label: 'Do not stretch or squeeze it', style: { transform: 'scaleX(1.5)' } },
   { label: 'Do not recolour it', style: { filter: 'hue-rotate(140deg) saturate(1.6)' } },
   { label: 'Do not tilt it or add effects', style: { transform: 'rotate(-9deg)', filter: 'drop-shadow(3px 4px 2px rgba(0,0,0,.45))' } },
-  { label: 'Do not put it on a busy or low-contrast ground', ground: 'repeating-linear-gradient(45deg,#6336b6 0 9px,#c6afea 9px 18px)' },
+  { label: 'Do not put it on a busy or low-contrast ground', ground: 'repeating-linear-gradient(45deg,#bd3924 0 9px,#dbba89 9px 18px)' },
 ]
 
 export default function Media() {

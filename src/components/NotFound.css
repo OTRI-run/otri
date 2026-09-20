@@ -22,7 +22,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.05em;
   letter-spacing: -.05em;
-  color: #21152f;
+  color: var(--field-ink);
 }
 .src-components-not-found-not-found-p-4 {
   margin-top: calc(var(--spacing) * 3);
@@ -71,6 +71,6 @@
   line-height: var(--otri-leading, var(--text-sm--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #21152f;
+  color: var(--field-ink);
   text-decoration-line: none;
 }

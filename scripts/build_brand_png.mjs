@@ -9,14 +9,14 @@ import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const brand = join(root, 'public', 'brand')
-const INK = '#21152f'
+const INK = '#23231f'
 
 // [output, source svg, width, height, background or null for transparent, share of the box the artwork fills]
 const JOBS = [
   ['../media/brand/otri-github-avatar-256.png', 'otri-mark-on-dark.svg', 256, 256, INK, .66],
   ['../media/brand/otri-github-avatar.png', 'otri-mark-on-dark.svg', 512, 512, INK, .66],
   ['../media/brand/otri-github-avatar-final.png', 'otri-mark-on-dark.svg', 512, 512, INK, .66],
-  ['og-image.png', 'otri-share-card.svg', 1200, 630, '#faf9ff', 1],
+  ['og-image.png', 'otri-share-card.svg', 1200, 630, '#f4f1e8', 1],
   ['brand/otri-mark-512.png', 'otri-mark.svg', 512, 512, null, 1],
   ['brand/otri-mark-1024.png', 'otri-mark.svg', 1024, 1024, null, 1],
   ['brand/otri-mark-white-1024.png', 'otri-mark-white.svg', 1024, 1024, null, 1],
