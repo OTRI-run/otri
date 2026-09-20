@@ -5,7 +5,7 @@ import { Medal, Trophy } from 'lucide-react'
 // bronze medal, beside the number. Any other rank, and DNF / DNS / DSQ, is the plain text it was.
 const PODIUM = {
   1: { Icon: Trophy, color: '#d4a017', label: 'Winner' },
-  2: { Icon: Medal, color: '#8a94a6', label: 'Second place' },
+  2: { Icon: Medal, color: '#918878', label: 'Second place' },
   3: { Icon: Medal, color: '#b0713b', label: 'Third place' },
 }
 

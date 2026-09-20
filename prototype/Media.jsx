@@ -16,7 +16,7 @@ const H2 = "prototype-media-h2-style-3"
 // The chequered ground says "transparent" without a word, as every design tool does.
 const CHECKER = {
   backgroundColor: '#fff',
-  backgroundImage: 'linear-gradient(45deg,#eef2f7 25%,transparent 25%,transparent 75%,#eef2f7 75%),linear-gradient(45deg,#eef2f7 25%,transparent 25%,transparent 75%,#eef2f7 75%)',
+  backgroundImage: 'linear-gradient(45deg,#ebe6da 25%,transparent 25%,transparent 75%,#ebe6da 75%),linear-gradient(45deg,#ebe6da 25%,transparent 25%,transparent 75%,#ebe6da 75%)',
   backgroundSize: '16px 16px',
   backgroundPosition: '0 0,8px 8px',
 }

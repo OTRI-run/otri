@@ -101,7 +101,7 @@
   border-bottom-style: var(--otri-border-style);
   border-bottom-width: 1px;
   border-color: var(--color-slate-200);
-  background-image: radial-gradient(circle at 78% 28%,rgba(99,54,182,.12),transparent 30%),linear-gradient(180deg,#fff 0%,#faf8fd 100%);
+  background-image: radial-gradient(circle at 78% 28%,rgba(189,57,36,.08),transparent 30%),linear-gradient(180deg,#fff 0%,#f4f1e8 100%);
 }
 .prototype-api-docs-api-docs-div-13 {
   padding-block: calc(var(--spacing) * 12);

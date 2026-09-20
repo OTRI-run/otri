@@ -66,16 +66,16 @@ function contours() {
   return contourSource
 }
 
-const INK = '#0b1220'
+const INK = '#23231f'
 const TRAIL_BROWN = '#7c2d12'
 const CONTOUR_BROWN = '#92400e'
 // Which way the course is run: a small white chevron lying on the route every so often. Drawn pointing
 // east, because a symbol placed along a line is turned to the line's direction from there.
-const DIRECTION_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M8 5l8 7-8 7" fill="none" stroke="#0b1220" stroke-opacity=".55" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 5l8 7-8 7" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+const DIRECTION_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M8 5l8 7-8 7" fill="none" stroke="#23231f" stroke-opacity=".55" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 5l8 7-8 7" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`
 const PEAK_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><path d="M14 5 25 23H3z" fill="#57534e" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/></svg>`
-const ROUTE_BLUE = '#2563eb'
+const ROUTE_ACCENT = '#bd3924'
 const START_GREEN = '#16a34a'
-const HOVER_CYAN = '#06b6d4'
+const HOVER_ACCENT = '#bd3924'
 const LABEL_FONT = ['Noto Sans Bold']
 const KM_PER_MI = 1.609344
 
@@ -278,9 +278,9 @@ function addCourseLayers(map, { line, markers, gradient }, { includeHillshade })
         source: 'terrain-dem',
         paint: {
           'hillshade-exaggeration': 0.5,
-          'hillshade-shadow-color': '#334155',
+          'hillshade-shadow-color': '#45413a',
           'hillshade-highlight-color': '#ffffff',
-          'hillshade-accent-color': '#64748b',
+          'hillshade-accent-color': '#70695d',
         },
       },
       firstLineLayerId(map),
@@ -310,7 +310,7 @@ function addCourseLayers(map, { line, markers, gradient }, { includeHillshade })
         type: 'line',
         source: 'route',
         layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: gradient ? { 'line-gradient': gradient, 'line-width': 4.5 } : { 'line-color': ROUTE_BLUE, 'line-width': 4 },
+        paint: gradient ? { 'line-gradient': gradient, 'line-width': 4.5 } : { 'line-color': ROUTE_ACCENT, 'line-width': 4 },
       },
       beforeLabels,
     )
@@ -341,7 +341,7 @@ function addCourseLayers(map, { line, markers, gradient }, { includeHillshade })
       id: 'route-hover',
       type: 'circle',
       source: 'route-hover',
-      paint: { 'circle-radius': 7, 'circle-color': HOVER_CYAN, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2.5 },
+      paint: { 'circle-radius': 7, 'circle-color': HOVER_ACCENT, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2.5 },
     })
   }
 
@@ -449,7 +449,7 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
     [points, cumulativeKm, stepKm, kmPerUnit, totalKm],
   )
   // Read at load time by the map effects, so a units change never rebuilds the map.
-  const gradient = useMemo(() => (showSteepness && stretches.length ? lineGradientExpression(stretches, ROUTE_BLUE) : null), [showSteepness, stretches])
+  const gradient = useMemo(() => (showSteepness && stretches.length ? lineGradientExpression(stretches, ROUTE_ACCENT) : null), [showSteepness, stretches])
   const courseDataRef = useRef({ line, markers, gradient })
   courseDataRef.current = { line, markers, gradient }
 
@@ -462,7 +462,7 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
       map.setPaintProperty('route-line', 'line-width', 4.5)
     } else {
       map.setPaintProperty('route-line', 'line-gradient', undefined)
-      map.setPaintProperty('route-line', 'line-color', ROUTE_BLUE)
+      map.setPaintProperty('route-line', 'line-color', ROUTE_ACCENT)
       map.setPaintProperty('route-line', 'line-width', 4)
     }
   }, [gradient])
@@ -859,9 +859,9 @@ function ElevationProfile({ profile, stretches = [], stepUnit, units, onHover })
           >
             <defs>
               <linearGradient id="elevation-fill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.55" />
-                <stop offset="60%" stopColor="#60a5fa" stopOpacity="0.22" />
-                <stop offset="100%" stopColor="#93c5fd" stopOpacity="0.04" />
+                <stop offset="0%" stopColor="#cf5035" stopOpacity="0.55" />
+                <stop offset="60%" stopColor="#dfa188" stopOpacity="0.22" />
+                <stop offset="100%" stopColor="#ecc4ae" stopOpacity="0.04" />
               </linearGradient>
               <linearGradient id="elevation-fade" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
@@ -878,11 +878,11 @@ function ElevationProfile({ profile, stretches = [], stepUnit, units, onHover })
               </clipPath>
             </defs>
 
-            <line x1={PAD.left} x2={width - PAD.right} y1={geometry.baselineY} y2={geometry.baselineY} stroke="#cbd5e1" strokeWidth="1" />
+            <line x1={PAD.left} x2={width - PAD.right} y1={geometry.baselineY} y2={geometry.baselineY} stroke="#bdb4a4" strokeWidth="1" />
             {geometry.yTicks.map((tick) => (
               <g key={tick.label}>
-                <line x1={PAD.left} x2={width - PAD.right} y1={tick.y} y2={tick.y} stroke="#e2e8f0" strokeWidth="1" strokeDasharray={tick.y === geometry.baselineY ? undefined : '2 3'} />
-                <text x={PAD.left - 8} y={tick.y + 3} textAnchor="end" fontSize="10" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#64748b">
+                <line x1={PAD.left} x2={width - PAD.right} y1={tick.y} y2={tick.y} stroke="#d8d1c3" strokeWidth="1" strokeDasharray={tick.y === geometry.baselineY ? undefined : '2 3'} />
+                <text x={PAD.left - 8} y={tick.y + 3} textAnchor="end" fontSize="10" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#70695d">
                   {tick.label}
                 </text>
               </g>
@@ -890,14 +890,14 @@ function ElevationProfile({ profile, stretches = [], stepUnit, units, onHover })
 
             {geometry.xTicks.map((tick, index) => (
               <g key={index}>
-                <line x1={tick.x} x2={tick.x} y1={geometry.baselineY} y2={geometry.baselineY + 5} stroke="#cbd5e1" strokeWidth="1" />
+                <line x1={tick.x} x2={tick.x} y1={geometry.baselineY} y2={geometry.baselineY + 5} stroke="#bdb4a4" strokeWidth="1" />
                 <text
                   x={tick.x}
                   y={PROFILE_HEIGHT - 9}
                   textAnchor={index === 0 ? 'start' : index === geometry.xTicks.length - 1 && tick.x > width - PAD.right - 12 ? 'end' : 'middle'}
                   fontSize="10"
                   fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
-                  fill="#64748b"
+                  fill="#70695d"
                 >
                   {tick.label}
                 </text>
@@ -919,13 +919,13 @@ function ElevationProfile({ profile, stretches = [], stepUnit, units, onHover })
                 geometry.paths.map((path, index) => <polygon key={index} points={path.area} fill="url(#elevation-fill)" />)
               )}
               {geometry.paths.map((path, index) => (
-                <polyline key={index} points={path.line} fill="none" stroke={stretches.length > 0 ? INK : '#1d4ed8'} strokeWidth={stretches.length > 0 ? 1.6 : 2} strokeLinejoin="round" strokeLinecap="round" />
+                <polyline key={index} points={path.line} fill="none" stroke={stretches.length > 0 ? INK : '#a42e1c'} strokeWidth={stretches.length > 0 ? 1.6 : 2} strokeLinejoin="round" strokeLinecap="round" />
               ))}
             </g>
 
             {/* Highest point */}
             <g>
-              <circle cx={geometry.toX(geometry.peak.distance)} cy={geometry.toY(geometry.peak.elevation)} r="3.5" fill="#ffffff" stroke="#1d4ed8" strokeWidth="2" />
+              <circle cx={geometry.toX(geometry.peak.distance)} cy={geometry.toY(geometry.peak.elevation)} r="3.5" fill="#ffffff" stroke="#a42e1c" strokeWidth="2" />
               <text
                 x={geometry.toX(geometry.peak.distance)}
                 y={geometry.toY(geometry.peak.elevation) - 9}
@@ -942,7 +942,7 @@ function ElevationProfile({ profile, stretches = [], stepUnit, units, onHover })
             {hover && (
               <g pointerEvents="none">
                 <line x1={hover.x} x2={hover.x} y1={PAD.top} y2={geometry.baselineY} stroke={INK} strokeWidth="1" strokeOpacity="0.35" />
-                <circle cx={hover.x} cy={hover.y} r="5" fill={HOVER_CYAN} stroke="#ffffff" strokeWidth="2" />
+                <circle cx={hover.x} cy={hover.y} r="5" fill={HOVER_ACCENT} stroke="#ffffff" strokeWidth="2" />
               </g>
             )}
           </svg>

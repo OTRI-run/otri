@@ -5,7 +5,7 @@ import useFileDrop from '../../src/lib/useFileDrop'
 import { AlertTriangle, ArrowLeft, Check, CheckCircle2, Info, Upload, XCircle } from 'lucide-react'
 import { Link } from './router'
 
-export const INK = '#0b1220'
+export const INK = '#23231f'
 export const CONTAINER = "prototype-organizer-ui-container-style-1"
 
 export function Eyebrow({ children, className = '' }) {

@@ -123,7 +123,7 @@
   }
 }
 .prototype-runners-runners-page-section-14 {
-  background-image: linear-gradient(135deg,#faf9fd 0%,#f4eff9 55%,#fafafa 100%);
+  background-image: linear-gradient(135deg,#f4f1e8 0%,#ebe6da 55%,#fafafa 100%);
   padding-block: calc(var(--spacing) * 14);
   @media (width >= 40rem) {
     padding-block: calc(var(--spacing) * 20);
@@ -592,7 +592,7 @@
   min-width: 0px;
   overflow: hidden;
   border-radius: var(--radius-2xl);
-  background-image: linear-gradient(145deg,#241431 0%,#352143 58%,#4b2e62 100%);
+  background-image: linear-gradient(145deg,#23231f 0%,#34332d 58%,#45413a 100%);
   padding: calc(var(--spacing) * 5);
   color: var(--color-white);
   --otri-shadow: 0 1px 0 rgb(25 25 29 / .04);

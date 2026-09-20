@@ -5,7 +5,7 @@
   width: min(1120px, calc(100% - 28px));
 }
 .prototype-faq-faq-page-section-2 {
-  background-image: linear-gradient(135deg,#faf9fd 0%,#f4eff9 55%,#fafafa 100%);
+  background-image: linear-gradient(135deg,#f4f1e8 0%,#ebe6da 55%,#fafafa 100%);
   padding-block: calc(var(--spacing) * 14);
   @media (width >= 40rem) {
     padding-block: calc(var(--spacing) * 20);

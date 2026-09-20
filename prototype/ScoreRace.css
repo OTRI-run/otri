@@ -685,7 +685,7 @@
   --otri-gradient-position: to bottom right in oklab;
   background-image: linear-gradient(var(--otri-gradient-stops));
   --otri-gradient-from: var(--field-ink);
-  --otri-gradient-via: #382245;
+  --otri-gradient-via: #34332d;
   --otri-gradient-via-stops: var(--otri-gradient-position), var(--otri-gradient-from) var(--otri-gradient-from-position), var(--otri-gradient-via) var(--otri-gradient-via-position), var(--otri-gradient-to) var(--otri-gradient-to-position);
   --otri-gradient-stops: var(--otri-gradient-via-stops);
   --otri-gradient-to: var(--color-blue-700);
@@ -844,7 +844,7 @@
   border-bottom-style: var(--otri-border-style);
   border-bottom-width: 1px;
   border-color: var(--color-slate-200);
-  background-image: radial-gradient(circle at 78% 28%,rgba(99,54,182,.12),transparent 30%),linear-gradient(180deg,#fff 0%,#faf8fd 100%);
+  background-image: radial-gradient(circle at 78% 28%,rgba(189,57,36,.08),transparent 30%),linear-gradient(180deg,#fff 0%,#f4f1e8 100%);
 }
 .prototype-score-race-score-race-div-92 {
   padding-block: calc(var(--spacing) * 8);

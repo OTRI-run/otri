@@ -9,8 +9,8 @@ const AXIS_FROM = 200 // everything below is one band anyway; starting here give
 const AXIS_TO = 1100 // room to show a score above 1000 as what it is
 const position = (score) => `${((Math.min(AXIS_TO, Math.max(AXIS_FROM, score)) - AXIS_FROM) / (AXIS_TO - AXIS_FROM)) * 100}%`
 
-// Light to deep along the scale; the band above the record is the cyan the panel uses for "above 1000".
-const FILL = { beginner: '#334e7a', recreational: '#2f5c9e', intermediate: '#2a69c4', trained: '#2f74ee', advanced: '#4b8df8', expert: '#6ea8fb', elite: '#9cc4fd', world: '#dbeafe', beyond: '#67e8f9' }
+// Dark clay to pale sand; the band above the record is white against the charcoal score panel.
+const FILL = { beginner: '#753021', recreational: '#93422c', intermediate: '#ad5838', trained: '#c3714a', advanced: '#d78c61', expert: '#e5a77d', elite: '#efc39e', world: '#f8e4cc', beyond: '#ffffff' }
 
 function hms(totalSeconds) {
   const s = Math.max(0, Math.round(totalSeconds))

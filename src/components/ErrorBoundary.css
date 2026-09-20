@@ -6,7 +6,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background-color: #faf9fd;
+  background-color: #f4f1e8;
   padding-inline: calc(var(--spacing) * 6);
   text-align: center;
   color: var(--field-ink);

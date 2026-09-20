@@ -15,7 +15,7 @@ const INK = '#ffffff'
 const SOFT = 'rgba(255,255,255,.72)'
 const FAINT = 'rgba(255,255,255,.16)'
 const ACCENT = '#ee9a76'
-const MEDALS = ['#fbbf24', '#cbd5e1', '#d6a06c']
+const MEDALS = ['#fbbf24', '#bdb4a4', '#d6a06c']
 
 function setup(canvas, format) {
   const { width, height } = FORMATS[format] ?? FORMATS.post
