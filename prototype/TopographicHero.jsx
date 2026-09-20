@@ -1,44 +1,42 @@
 import { useEffect, useRef } from 'react'
 import './topographic-hero.css'
 
-// An abstract course fingerprint: elevation becomes radial samples around an
-// index dial. Decorative geometry only; no invented scores or race measurements.
-const count = 156
-const polar = (angle, radius) => [600 + Math.cos(angle)*radius*1.48, 390 + Math.sin(angle)*radius]
-const pair = ([x,y]) => `${x.toFixed(2)},${y.toFixed(2)}`
-const samples = Array.from({length:count},(_,i)=>{
-  const angle=i/count*Math.PI*2
-  const peak = (center,width,amplitude) => amplitude*Math.exp(-Math.pow((i/count-center)/width,2))
-  const relief=12+peak(.14,.065,52)+peak(.39,.1,37)+peak(.67,.055,63)+peak(.86,.08,44)+5*Math.sin(i*.73)
-  return {angle, radius:250+relief}
+// A synthetic elevation surface, drawn as ordered survey profiles. Decorative
+// artwork only: neither the geometry nor the moving trace represents race data.
+const pair=([x,y])=>`${x.toFixed(2)},${y.toFixed(2)}`
+function height(x,z) {
+  const peak=(cx,cz,wx,wz,h)=>h*Math.exp(-((x-cx)**2/wx+(z-cz)**2/wz))
+  const massif=peak(.5,.4,.075,.14,1.05)+peak(.2,.58,.025,.1,.62)+peak(.81,.54,.028,.1,.78)
+  const rock=.82+.10*Math.sin(x*51+z*6)+.05*Math.sin(x*113-z*13)+.035*Math.cos(x*187+z*31)
+  return massif*rock
+}
+function surface(x,z) {return [720+(x-.5)*(1050+z*1150),255+z*420-height(x,z)*240]}
+const profiles=Array.from({length:42},(_,i)=>{
+  const z=i/41
+  const points=Array.from({length:221},(_,j)=>surface(j/220,z))
+  const d=points.map((p,j)=>`${j?'L':'M'}${pair(p)}`).join(' ')
+  return {d,fill:d+`L${pair([points.at(-1)[0],850])}L${pair([points[0][0],850])}Z`,z}
 })
-const fingerprint = samples.map(({angle,radius},i)=>`${i?'L':'M'}${pair(polar(angle,radius))}`).join(' ')+' Z'
-const route = samples.map(({angle,radius},i)=>`${i?'L':'M'}${pair(polar(angle,radius-23))}`).join(' ')+' Z'
-function CourseFingerprint() {
-  return <svg className="otri-terrain-layer otri-terrain-near" viewBox="0 0 1200 780" preserveAspectRatio="none" fill="none" aria-hidden="true" focusable="false">
+const routePoints=Array.from({length:241},(_,i)=>{
+  const t=i/240, x=.17+.68*t
+  const z=.88-.34*Math.sin(t*Math.PI)+.07*Math.sin(t*19)
+  return surface(x,z)
+})
+const route=routePoints.map((p,i)=>`${i?'L':'M'}${pair(p)}`).join(' ')
+function TerrainLab() {
+  return <svg className="otri-terrain-layer otri-terrain-near" viewBox="0 0 1440 800" fill="none" aria-hidden="true" focusable="false">
     <defs>
-      <radialGradient id="otri-index-aura"><stop offset=".5" stopColor="#fff" stopOpacity="0"/><stop offset=".8" stopColor="#dce9ff" stopOpacity=".8"/><stop offset="1" stopColor="#eaf1ff" stopOpacity="0"/></radialGradient>
-      <linearGradient id="otri-index-ink" x1="190" y1="150" x2="1000" y2="630" gradientUnits="userSpaceOnUse"><stop stopColor="#96b9f4"/><stop offset=".46" stopColor="#2563eb"/><stop offset="1" stopColor="#1e3a6b"/></linearGradient>
+      <linearGradient id="otri-survey-line" x1="120" y1="300" x2="1320" y2="500" gradientUnits="userSpaceOnUse"><stop stopColor="#325788"/><stop offset=".5" stopColor="#638fc9"/><stop offset="1" stopColor="#325788"/></linearGradient>
+      <linearGradient id="otri-survey-fill" x1="720" y1="160" x2="720" y2="780" gradientUnits="userSpaceOnUse"><stop stopColor="#142c4b"/><stop offset="1" stopColor="#071326"/></linearGradient>
     </defs>
-    <ellipse cx="600" cy="390" rx="530" ry="345" fill="url(#otri-index-aura)"/>
-    <g stroke="#7e9bc3" strokeOpacity=".25">
-      <ellipse cx="600" cy="390" rx="355" ry="240" strokeDasharray="2 7"/>
-      <ellipse cx="600" cy="390" rx="493" ry="333"/>
-    </g>
-    <g stroke="url(#otri-index-ink)" strokeLinecap="round">
-      {samples.map(({angle,radius},i)=><path key={i} d={`M${pair(polar(angle,251))}L${pair(polar(angle,radius))}`} strokeWidth={i%4===0?2.2:1.1} strokeOpacity={i%4===0?.7:.32}/>) }
-    </g>
-    <path d={fingerprint} stroke="#5482c7" strokeOpacity=".3" strokeWidth=".8"/>
-    <path d={route} stroke="white" strokeWidth="6"/>
-    <path className="otri-terrain-trail" d={route} pathLength="100" stroke="#2563eb" strokeWidth="1.8" strokeLinecap="round"/>
-    <path className="otri-index-pulse" d={route} pathLength="100" stroke="#1e3a6b" strokeWidth="3" strokeLinecap="round" strokeDasharray="3 97"/>
-    {Array.from({length:48},(_,i)=>{
-      const angle=i/48*Math.PI*2
-      return <path key={i} d={`M${pair(polar(angle,333))}L${pair(polar(angle,i%4===0?344:337))}`} stroke="#6485b1" strokeOpacity={i%4===0?.5:.25} strokeWidth="1"/>
-    })}
-    {[17,64,105,145].map(n=>{
-      const p=polar(samples[n].angle,samples[n].radius-23)
-      return <g key={n}><circle cx={p[0]} cy={p[1]} r="7" fill="white"/><circle cx={p[0]} cy={p[1]} r="3" fill="#2563eb"/></g>
+    {profiles.map(({d,fill},i)=><g key={i}><path d={fill} fill="url(#otri-survey-fill)"/><path d={d} stroke="url(#otri-survey-line)" strokeWidth={i%5===0?1.4:.65} strokeOpacity={i%5===0?.85:.5}/></g>)}
+    <path d={route} stroke="#2563eb" strokeWidth="16" strokeOpacity=".08"/>
+    <path d={route} stroke="#3b82f6" strokeWidth="7" strokeOpacity=".18"/>
+    <path className="otri-terrain-trail" d={route} pathLength="100" stroke="#70acff" strokeWidth="2.2" strokeLinecap="round"/>
+    <path className="otri-index-pulse" d={route} pathLength="100" stroke="#e3f0ff" strokeWidth="3" strokeLinecap="round" strokeDasharray="2 98"/>
+    {[0,50,125,190,240].map(n=>{
+      const [cx,cy]=routePoints[n]
+      return <g key={n}><circle cx={cx} cy={cy} r="9" fill="#60a5fa" fillOpacity=".1"/><circle cx={cx} cy={cy} r="3" fill="#c6e1ff" stroke="#3b82f6" strokeWidth="1.5"/></g>
     })}
   </svg>
 }
@@ -118,7 +116,7 @@ export default function TopographicHero() {
 
   return (
     <div ref={ref} className="otri-terrain" aria-hidden="true">
-      <CourseFingerprint />
+      <TerrainLab />
       <div className="otri-terrain-veil" />
     </div>
   )

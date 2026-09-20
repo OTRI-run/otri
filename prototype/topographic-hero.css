@@ -1,13 +1,16 @@
-/* A course fingerprint, centered behind both index actions. */
-.otri-terrain{position:absolute;inset:0;overflow:hidden;pointer-events:none;background:radial-gradient(ellipse at 50% 68%,#eef4ff,white 73%)}
-.otri-terrain-layer{position:absolute;top:66%;left:50%;width:1120px;height:auto;overflow:visible}
+/* A night-blue survey landscape: a measured course leading into the index. */
+.otri-index-hero{background:#071326}
+.otri-terrain{position:absolute;inset:0;overflow:hidden;pointer-events:none;background:radial-gradient(ellipse at 50% 26%,#16375e 0%,#0b1a31 45%,#071326 78%)}
+.otri-terrain-layer{position:absolute;top:61%;left:50%;width:max(1440px,110%);height:auto;overflow:visible}
 .otri-terrain-near{transform:translate3d(calc(-50% + var(--terrain-x,0px)),calc(-50% + var(--terrain-near,0px)),0) rotate(var(--terrain-tilt,0deg));transform-origin:center}
-.otri-terrain-trail{stroke-dasharray:100;stroke-dashoffset:var(--trail-hidden,8);opacity:.5}
-.otri-index-pulse{animation:otri-index-signal 22s linear infinite;animation-play-state:var(--signal-state,running);opacity:.7}
+.otri-terrain-trail{stroke-dasharray:100;stroke-dashoffset:var(--trail-hidden,8)}
+.otri-index-pulse{animation:otri-index-signal 16s linear infinite;animation-play-state:var(--signal-state,running)}
 @keyframes otri-index-signal{to{stroke-dashoffset:-100}}
-.otri-terrain-veil{position:absolute;inset:0;background:linear-gradient(to bottom,white 0%,rgba(255,255,255,.98) 12%,rgba(255,255,255,.9) 29%,transparent 48%,transparent 85%,#f8fbff 100%)}
+.otri-terrain-veil{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 22%,rgba(7,19,38,.93) 0%,rgba(7,19,38,.75) 23%,transparent 60%),linear-gradient(to bottom,rgba(7,19,38,.35),transparent 55%,#071326 100%)}
+.otri-index-action{box-shadow:0 16px 50px #02081540!important;border-color:#b7d1f1!important;background:linear-gradient(145deg,#fff,#edf4ff)!important}
+.otri-index-action:hover{box-shadow:0 16px 56px #2563eb30!important;border-color:#60a5fa!important}
 @media(max-width:639px){
- .otri-terrain-layer{width:650px;top:65%;height:780px}
- .otri-terrain-veil{background:linear-gradient(to bottom,white 0%,rgba(255,255,255,.96) 21%,rgba(255,255,255,.35) 39%,transparent 52%,transparent 84%,#f8fbff 100%)}
+ .otri-terrain-layer{width:1000px;top:64%}
+ .otri-terrain-veil{background:linear-gradient(to bottom,#071326 0%,rgba(7,19,38,.9) 22%,rgba(7,19,38,.2) 48%,rgba(7,19,38,.2) 76%,#071326 100%)}
 }
 @media(prefers-reduced-motion:reduce){.otri-terrain-near{transform:translate(-50%,-50%)}.otri-terrain-trail{stroke-dashoffset:0}.otri-index-pulse{animation:none;opacity:0}}

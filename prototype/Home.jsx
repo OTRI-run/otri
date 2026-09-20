@@ -66,14 +66,14 @@ export default function Home() {
   return (
     <>
       {/* Hero */}
-      <section className="relative isolate overflow-hidden border-b border-slate-200 bg-[radial-gradient(circle_at_50%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
+      <section className="otri-index-hero relative isolate overflow-hidden border-b border-slate-800">
         <TopographicHero />
         <div className={`${CONTAINER} relative z-10 py-9 sm:py-14 lg:py-16`}>
           <div className="mx-auto max-w-[800px] text-center">
-            <h1 className="text-[clamp(38px,6vw,68px)] font-bold leading-[1.08] tracking-[-.05em] text-[#0b1220]">
-              Open Trail<br /> <Gradient>Running Index</Gradient>
+            <h1 className="text-[clamp(38px,6vw,68px)] font-bold leading-[1.08] tracking-[-.05em] text-white">
+              Open Trail<br /> <span className="bg-gradient-to-r from-blue-200 via-blue-400 to-blue-200 bg-clip-text text-transparent">Running Index</span>
             </h1>
-            <p className="mx-auto mt-5 max-w-[620px] text-[19px] leading-7 text-slate-600 sm:text-[22px] sm:leading-8">
+            <p className="mx-auto mt-5 max-w-[620px] text-[19px] leading-7 text-slate-300 sm:text-[22px] sm:leading-8">
               Compare trail running performances with a score based on the course and finish time.
             </p>
             <div className="mx-auto mt-6 grid max-w-[720px] gap-3 sm:mt-8 sm:grid-cols-2">
@@ -96,7 +96,7 @@ export default function Home() {
                 <a
                   key={href}
                   href={href}
-                  className="group relative flex min-w-0 items-center gap-4 rounded-2xl border border-blue-200 bg-white p-5 text-inherit no-underline shadow-[0_10px_28px_rgba(15,23,42,.04)] transition hover:border-blue-500 hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 sm:flex-col sm:p-6"
+                  className="otri-index-action group relative flex min-w-0 items-center gap-4 rounded-2xl border border-blue-200 bg-white p-5 text-inherit no-underline shadow-[0_10px_28px_rgba(15,23,42,.04)] transition hover:border-blue-500 hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 sm:flex-col sm:p-6"
                 >
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
                     <Icon size={22} aria-hidden="true" />
@@ -110,7 +110,7 @@ export default function Home() {
                 </a>
               ))}
             </div>
-            <p className="mt-5 text-[15px] text-slate-500">Free to use · No account needed · Open scoring</p>
+            <p className="mt-5 text-[15px] text-slate-300">Free to use · No account needed · Open scoring</p>
           </div>
         </div>
       </section>
