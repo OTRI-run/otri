@@ -1,44 +1,55 @@
 import { useEffect, useRef } from 'react'
 import './topographic-hero.css'
 
-// An illustrative height field projected into an isometric landscape, not race data.
-const size = 26
-function elevation(x, y) {
-  const peak = (cx, cy, spread, height) => height * Math.exp(-((x-cx)**2 + (y-cy)**2) / spread)
-  return peak(.32,.36,.035,1.05) + peak(.7,.55,.055,.72) + peak(.33,.82,.045,.4)
+// Illustrative relief: nested elevation contours projected into a landscape.
+// This is brand artwork, never presented as a measured race course.
+const pair = ([x,y]) => `${x.toFixed(2)},${y.toFixed(2)}`
+function surface(level, angle) {
+  const radius = 440 * Math.pow(1-level, .82)
+  const ridge = 1 + .12*Math.cos(3*angle+.4) + .07*Math.sin(5*angle) + .035*Math.cos(9*angle)
+  return [710 + Math.cos(angle)*radius*ridge - level*75,
+    358 + Math.sin(angle)*radius*ridge*.34 - level*252]
 }
-function point(x, y) {
-  return [300 + (x-y)*420, 225 + (x+y)*210 - elevation(x,y)*245]
-}
-const pair = p => p.map(n => n.toFixed(2)).join(',')
-const tiles = []
-for (let y=0; y<size; y++) for (let x=0; x<size; x++) {
-  const u=x/size, v=y/size, step=1/size
-  const slope=(elevation(u+.01,v)-elevation(u,v))/.01
-  const light=Math.max(78,Math.min(97,91-slope*3))
-  tiles.push({ depth:x+y, points:[[u,v],[u+step,v],[u+step,v+step],[u,v+step]].map(([a,b])=>pair(point(a,b))).join(' '), fill:`hsl(215 72% ${light}%)` })
-}
-tiles.sort((a,b)=>a.depth-b.depth)
-const lines = Array.from({length:size+1},(_,i)=>Array.from({length:81},(_,j)=>`${j?'L':'M'}${pair(point(j/80,i/size))}`).join(' '))
-const crossLines = Array.from({length:14},(_,i)=>Array.from({length:81},(_,j)=>`${j?'L':'M'}${pair(point(i/13,j/80))}`).join(' '))
-// The route is sampled on the same surface so its switchbacks hug the slopes.
-const trailPoints = Array.from({length:161},(_,i)=>{
-  const t=i/160
-  return point(.76-.44*t+.1*Math.sin(t*Math.PI*6)*Math.sin(t*Math.PI), .94-.58*t)
+const contours = Array.from({length:27},(_,i)=>{
+  const level = i/28
+  const points = Array.from({length:181},(_,j)=>surface(level,j/180*Math.PI*2))
+  return {d:points.map((p,j)=>`${j?'L':'M'}${pair(p)}`).join(' ')+' Z', level}
 })
-const trail = trailPoints.map((p,i)=>`${i?'L':'M'}${pair(p)}`).join(' ')
+const routePoints = Array.from({length:181},(_,i)=>{
+  const h=.035+i/180*.925
+  return surface(h,Math.PI*.56 + Math.sin(h*19)*.48*(1-h*.55))
+})
+const trail = routePoints.map((p,i)=>`${i?'L':'M'}${pair(p)}`).join(' ')
 function Mountain() {
-  return <svg className="otri-terrain-layer otri-terrain-near" viewBox="0 0 600 750" fill="none" aria-hidden="true" focusable="false">
-    <ellipse cx="300" cy="590" rx="260" ry="58" fill="#bed5f2" opacity=".2" />
+  return <svg className="otri-terrain-layer otri-terrain-near" viewBox="0 0 1200 520" fill="none" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="otri-relief-light" x1="350" y1="100" x2="1050" y2="480" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#f8fbff" /><stop offset=".55" stopColor="#e6effc" /><stop offset="1" stopColor="#bacfea" />
+      </linearGradient>
+      <pattern id="otri-survey-grid" width="32" height="32" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".8" fill="#96b1d4" opacity=".5" /></pattern>
+    </defs>
+    <path d="M150 340 685 165 1180 350 660 510Z" fill="url(#otri-survey-grid)" />
+    <path d="M260 370 710 210 1150 380 700 510Z" fill="#d8e5f6" opacity=".35" />
     <g strokeLinejoin="round">
-      {tiles.map((tile,i)=><polygon key={i} points={tile.points} fill={tile.fill} stroke={tile.fill} strokeWidth=".5" />)}
-      {lines.map((d,i)=><path key={i} d={d} stroke="#5689c9" strokeOpacity={i%4===0?'.65':'.32'} strokeWidth={i%4===0?'1.3':'.7'} />)}
-      {crossLines.map((d,i)=><path key={i} d={d} stroke="#5689c9" strokeOpacity=".18" strokeWidth=".65" />)}
+      {contours.map(({d},i)=><path key={i} d={d} fill="url(#otri-relief-light)" stroke={i%5===0?'#7298c5':'#a2bcdd'} strokeWidth={i%5===0?1.4:.75} />)}
     </g>
-    <path d={trail} stroke="white" strokeWidth="7" strokeLinecap="round" opacity=".9" />
-    <path d={trail} stroke="#2563eb" strokeOpacity=".25" strokeWidth="3" />
+    <path d={trail} stroke="white" strokeWidth="8" strokeLinecap="round" />
+    <path d={trail} stroke="#2563eb" strokeOpacity=".35" strokeWidth="3" />
     <path className="otri-terrain-trail" d={trail} pathLength="100" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" />
-    {[trailPoints[0],trailPoints[160]].map(([cx,cy],i)=><g key={i}><circle cx={cx} cy={cy} r="6" fill="white" stroke="#2563eb" strokeWidth="2" /><circle cx={cx} cy={cy} r="2" fill="#2563eb" /></g>)}
+    {[0,70,130,180].map((index,i)=>{
+      const [cx,cy]=routePoints[index]
+      return <g key={i}><circle cx={cx} cy={cy} r={i===0||i===3?5:4} fill="white" stroke="#2563eb" strokeWidth="2" /></g>
+    })}
+    <g stroke="#7595bc" strokeWidth=".8">
+      <path d="M640 108 690 58H805M620 427 530 469H405" />
+      <path d="M110 390V460H300" />
+    </g>
+    <g fill="#547296" fontFamily="ui-monospace,monospace" fontSize="10" letterSpacing="1.5">
+      <text x="705" y="49">SUMMIT</text><text x="408" y="490">TRAIL / ASCENT</text>
+      <text x="110" y="365">ELEVATION PROFILE</text>
+    </g>
+    <path d="M115 452 135 446 151 450 173 432 189 436 208 418 221 423 243 399 258 409 281 383 299 390" stroke="#2563eb" strokeWidth="2" />
+    <path d="M115 452 135 446 151 450 173 432 189 436 208 418 221 423 243 399 258 409 281 383 299 390V460H115Z" fill="#2563eb" opacity=".06" />
   </svg>
 }
 
@@ -61,9 +72,9 @@ export default function TopographicHero() {
       const rect = hero.getBoundingClientRect()
       const progress = Math.min(1, Math.max(0, (68 - rect.top) / Math.max(1, rect.height * .75)))
       element.style.setProperty('--terrain-x', `${pointerX * 14}px`)
-      element.style.setProperty('--terrain-tilt', `${pointerY * 2}deg`)
-      element.style.setProperty('--terrain-near', `${progress * -85}px`)
-      element.style.setProperty('--trail-hidden', `${18 * (1 - progress)}`)
+      element.style.setProperty('--terrain-tilt', `${pointerY * .7}deg`)
+      element.style.setProperty('--terrain-near', `${progress * -36}px`)
+      element.style.setProperty('--trail-hidden', `${8 * (1 - progress)}`)
     }
     const schedule = () => {
       if (!frame && visible && !motion.matches) frame = requestAnimationFrame(paint)
@@ -118,7 +129,7 @@ export default function TopographicHero() {
     <div ref={ref} className="otri-terrain" aria-hidden="true">
       <Mountain />
       <div className="otri-terrain-veil" />
-      <div className="otri-terrain-survey"><span>+ TERRAIN / PERFORMANCE</span><span>+ OPEN TRAIL RUNNING INDEX</span></div>
+      <div className="otri-terrain-survey"><span>TOPOGRAPHY / ROUTE / PERFORMANCE</span><span>ILLUSTRATIVE TERRAIN</span></div>
     </div>
   )
 }
