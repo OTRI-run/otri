@@ -1,0 +1,564 @@
+/* Shared reset and animation primitives. Static CSS migrated from the former utility styles; see THIRD_PARTY_NOTICES.md. */
+
+@layer properties;
+@layer theme, base;
+@layer theme {
+  :root, :host {
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+      "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+      "Segoe UI Symbol", "Noto Color Emoji";
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+      "Courier New", monospace;
+    --color-red-50: oklch(97.1% 0.013 17.38);
+    --color-red-100: oklch(93.6% 0.032 17.717);
+    --color-red-200: oklch(88.5% 0.062 18.334);
+    --color-red-500: oklch(63.7% 0.237 25.331);
+    --color-red-600: oklch(57.7% 0.245 27.325);
+    --color-red-700: oklch(50.5% 0.213 27.518);
+    --color-red-800: oklch(44.4% 0.177 26.899);
+    --color-red-900: oklch(39.6% 0.141 25.723);
+    --color-amber-50: oklch(98.7% 0.022 95.277);
+    --color-amber-100: oklch(96.2% 0.059 95.617);
+    --color-amber-200: oklch(92.4% 0.12 95.746);
+    --color-amber-500: oklch(76.9% 0.188 70.08);
+    --color-amber-600: oklch(66.6% 0.179 58.318);
+    --color-amber-700: oklch(55.5% 0.163 48.998);
+    --color-amber-800: oklch(47.3% 0.137 46.201);
+    --color-amber-900: oklch(41.4% 0.112 45.904);
+    --color-emerald-50: oklch(97.9% 0.021 166.113);
+    --color-emerald-100: oklch(95% 0.052 163.051);
+    --color-emerald-200: oklch(90.5% 0.093 164.15);
+    --color-emerald-500: oklch(69.6% 0.17 162.48);
+    --color-emerald-600: oklch(59.6% 0.145 163.225);
+    --color-emerald-700: oklch(50.8% 0.118 165.612);
+    --color-emerald-900: oklch(37.8% 0.077 168.94);
+    --color-cyan-300: oklch(86.5% 0.127 207.078);
+    --color-cyan-400: oklch(78.9% 0.154 211.53);
+    --color-cyan-500: oklch(71.5% 0.143 215.221);
+    --color-blue-50: oklch(97% 0.014 254.604);
+    --color-blue-100: oklch(93.2% 0.032 255.585);
+    --color-blue-200: oklch(88.2% 0.059 254.128);
+    --color-blue-300: oklch(80.9% 0.105 251.813);
+    --color-blue-400: oklch(70.7% 0.165 254.624);
+    --color-blue-500: oklch(62.3% 0.214 259.815);
+    --color-blue-600: oklch(54.6% 0.245 262.881);
+    --color-blue-700: oklch(48.8% 0.243 264.376);
+    --color-blue-800: oklch(42.4% 0.199 265.638);
+    --color-blue-900: oklch(37.9% 0.146 265.522);
+    --color-slate-50: oklch(98.4% 0.003 247.858);
+    --color-slate-100: oklch(96.8% 0.007 247.896);
+    --color-slate-200: oklch(92.9% 0.013 255.508);
+    --color-slate-300: oklch(86.9% 0.022 252.894);
+    --color-slate-400: oklch(70.4% 0.04 256.788);
+    --color-slate-500: oklch(55.4% 0.046 257.417);
+    --color-slate-600: oklch(44.6% 0.043 257.281);
+    --color-slate-700: oklch(37.2% 0.044 257.287);
+    --color-slate-800: oklch(27.9% 0.041 260.031);
+    --color-slate-950: oklch(12.9% 0.042 264.695);
+    --color-white: #fff;
+    --spacing: 0.25rem;
+    --container-sm: 24rem;
+    --container-md: 28rem;
+    --container-lg: 32rem;
+    --container-2xl: 42rem;
+    --text-xs: 0.75rem;
+    --text-xs--line-height: calc(1 / 0.75);
+    --text-sm: 0.875rem;
+    --text-sm--line-height: calc(1.25 / 0.875);
+    --text-base: 1rem;
+    --text-base--line-height: calc(1.5 / 1);
+    --text-lg: 1.125rem;
+    --text-lg--line-height: calc(1.75 / 1.125);
+    --text-xl: 1.25rem;
+    --text-xl--line-height: calc(1.75 / 1.25);
+    --text-2xl: 1.5rem;
+    --text-2xl--line-height: calc(2 / 1.5);
+    --text-3xl: 1.875rem;
+    --text-3xl--line-height: calc(2.25 / 1.875);
+    --text-4xl: 2.25rem;
+    --text-4xl--line-height: calc(2.5 / 2.25);
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+    --tracking-normal: 0em;
+    --leading-tight: 1.25;
+    --leading-relaxed: 1.625;
+    --radius-sm: 0.25rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.75rem;
+    --radius-2xl: 1rem;
+    --animate-spin: spin 1s linear infinite;
+    --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    --default-transition-duration: 150ms;
+    --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    --default-font-family: var(--font-sans);
+    --default-mono-font-family: var(--font-mono);
+  }
+}
+@layer base {
+  *, ::after, ::before, ::backdrop, ::file-selector-button {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0 solid;
+  }
+  html, :host {
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+    tab-size: 4;
+    font-family: var(--default-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji");
+    font-feature-settings: var(--default-font-feature-settings, normal);
+    font-variation-settings: var(--default-font-variation-settings, normal);
+    -webkit-tap-highlight-color: transparent;
+  }
+  hr {
+    height: 0;
+    color: inherit;
+    border-top-width: 1px;
+  }
+  abbr:where([title]) {
+    -webkit-text-decoration: underline dotted;
+    text-decoration: underline dotted;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-size: inherit;
+    font-weight: inherit;
+  }
+  a {
+    color: inherit;
+    -webkit-text-decoration: inherit;
+    text-decoration: inherit;
+  }
+  b, strong {
+    font-weight: bolder;
+  }
+  code, kbd, samp, pre {
+    font-family: var(--default-mono-font-family, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+    font-feature-settings: var(--default-mono-font-feature-settings, normal);
+    font-variation-settings: var(--default-mono-font-variation-settings, normal);
+    font-size: 1em;
+  }
+  small {
+    font-size: 80%;
+  }
+  sub, sup {
+    font-size: 75%;
+    line-height: 0;
+    position: relative;
+    vertical-align: baseline;
+  }
+  sub {
+    bottom: -0.25em;
+  }
+  sup {
+    top: -0.5em;
+  }
+  table {
+    text-indent: 0;
+    border-color: inherit;
+    border-collapse: collapse;
+  }
+  :-moz-focusring:where(:not(iframe)) {
+    outline: auto;
+  }
+  progress {
+    vertical-align: baseline;
+  }
+  summary {
+    display: list-item;
+  }
+  ol, ul, menu {
+    list-style: none;
+  }
+  img, svg, video, canvas, audio, iframe, embed, object {
+    display: block;
+    vertical-align: middle;
+  }
+  img, video {
+    max-width: 100%;
+    height: auto;
+  }
+  button, input, select, optgroup, textarea, ::file-selector-button {
+    font: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    border-radius: 0;
+    background-color: transparent;
+    opacity: 1;
+  }
+  :where(select:is([multiple], [size])) optgroup {
+    font-weight: bolder;
+  }
+  :where(select:is([multiple], [size])) optgroup option {
+    padding-inline-start: 20px;
+  }
+  ::file-selector-button {
+    margin-inline-end: 4px;
+  }
+  ::placeholder {
+    opacity: 1;
+  }
+  @supports (not (-webkit-appearance: -apple-pay-button))  or (contain-intrinsic-size: 1px) {
+    ::placeholder {
+      color: currentcolor;
+      @supports (color: color-mix(in lab, red, red)) {
+        color: color-mix(in oklab, currentcolor 50%, transparent);
+      }
+    }
+  }
+  textarea {
+    resize: vertical;
+  }
+  ::-webkit-search-decoration {
+    -webkit-appearance: none;
+  }
+  ::-webkit-date-and-time-value {
+    min-height: 1lh;
+    text-align: inherit;
+  }
+  ::-webkit-datetime-edit {
+    display: inline-flex;
+  }
+  ::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+  }
+  ::-webkit-datetime-edit, ::-webkit-datetime-edit-year-field, ::-webkit-datetime-edit-month-field, ::-webkit-datetime-edit-day-field, ::-webkit-datetime-edit-hour-field, ::-webkit-datetime-edit-minute-field, ::-webkit-datetime-edit-second-field, ::-webkit-datetime-edit-millisecond-field, ::-webkit-datetime-edit-meridiem-field {
+    padding-block: 0;
+  }
+  ::-webkit-calendar-picker-indicator {
+    line-height: 1;
+  }
+  :-moz-ui-invalid {
+    box-shadow: none;
+  }
+  button, input:where([type="button"], [type="reset"], [type="submit"]), ::file-selector-button {
+    appearance: button;
+  }
+  ::-webkit-inner-spin-button, ::-webkit-outer-spin-button {
+    height: auto;
+  }
+  [hidden]:where(:not([hidden="until-found"])) {
+    display: none !important;
+  }
+}
+
+.src-components-score-scale-score-scale-span-20:is(:where(.otri-group):is([open], :popover-open, :open) *) {
+  display: none;
+}
+:where(.src-components-what-we-score-what-we-score-table-ul-4 > :not(:last-child)) {
+  --otri-divide-y-reverse: 0;
+  border-bottom-style: var(--otri-border-style);
+  border-top-style: var(--otri-border-style);
+  border-top-width: calc(1px * var(--otri-divide-y-reverse));
+  border-bottom-width: calc(1px * calc(1 - var(--otri-divide-y-reverse)));
+  border-color: var(--color-slate-100);
+}
+:where(.prototype-runners-runners-page-div-37 > :not(:last-child)) {
+  --otri-divide-y-reverse: 0;
+  border-bottom-style: var(--otri-border-style);
+  border-top-style: var(--otri-border-style);
+  border-top-width: calc(1px * var(--otri-divide-y-reverse));
+  border-bottom-width: calc(1px * calc(1 - var(--otri-divide-y-reverse)));
+  border-color: var(--color-slate-100);
+}
+@media (width >= 40rem) {
+  .prototype-score-calculator-course-details-div-138 {
+    border-left-style: var(--otri-border-style);
+    border-left-width: 1px;
+    border-color: var(--color-slate-200);
+  }
+}
+.prototype-main-leaderboard-tr-25:nth-child(even) {
+  background-color: color-mix(in srgb, oklch(98.4% 0.003 247.858) 70%, transparent);
+  @supports (color: color-mix(in lab, red, red)) {
+    background-color: color-mix(in oklab, var(--color-slate-50) 70%, transparent);
+  }
+}
+@media (width >= 64rem) {
+  .prototype-organizer-pages-auth-welcome-div-49 {
+    border-left-style: var(--otri-border-style);
+    border-left-width: 1px;
+  }
+}
+@property --otri-border-style {
+  syntax: "*";
+  inherits: false;
+  initial-value: solid;
+}
+@property --otri-shadow {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0 0 #0000;
+}
+@property --otri-shadow-color {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-shadow-alpha {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+@property --otri-inset-shadow {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0 0 #0000;
+}
+@property --otri-inset-shadow-color {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-inset-shadow-alpha {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+@property --otri-ring-color {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-ring-shadow {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0 0 #0000;
+}
+@property --otri-inset-ring-color {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-inset-ring-shadow {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0 0 #0000;
+}
+@property --otri-ring-inset {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-ring-offset-width {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --otri-ring-offset-color {
+  syntax: "*";
+  inherits: false;
+  initial-value: #fff;
+}
+@property --otri-ring-offset-shadow {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0 0 #0000;
+}
+@property --otri-backdrop-blur {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-backdrop-brightness {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-backdrop-contrast {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-backdrop-grayscale {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-backdrop-hue-rotate {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-backdrop-invert {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-backdrop-opacity {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-backdrop-saturate {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-backdrop-sepia {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-duration {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-outline-style {
+  syntax: "*";
+  inherits: false;
+  initial-value: solid;
+}
+@property --otri-translate-x {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0;
+}
+@property --otri-translate-y {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0;
+}
+@property --otri-translate-z {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0;
+}
+@property --otri-leading {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-font-weight {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-tracking {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-space-y-reverse {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0;
+}
+@property --otri-divide-y-reverse {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0;
+}
+@property --otri-gradient-position {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-gradient-from {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #0000;
+}
+@property --otri-gradient-via {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #0000;
+}
+@property --otri-gradient-to {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #0000;
+}
+@property --otri-gradient-stops {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-gradient-via-stops {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-gradient-from-position {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+@property --otri-gradient-via-position {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 50%;
+}
+@property --otri-gradient-to-position {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+@property --otri-ordinal {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-slashed-zero {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-numeric-figure {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-numeric-spacing {
+  syntax: "*";
+  inherits: false;
+}
+@property --otri-numeric-fraction {
+  syntax: "*";
+  inherits: false;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+@layer properties {
+  @supports ((-webkit-hyphens: none) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color:rgb(from red r g b)))) {
+    *, ::before, ::after, ::backdrop {
+      --otri-border-style: solid;
+      --otri-shadow: 0 0 #0000;
+      --otri-shadow-color: initial;
+      --otri-shadow-alpha: 100%;
+      --otri-inset-shadow: 0 0 #0000;
+      --otri-inset-shadow-color: initial;
+      --otri-inset-shadow-alpha: 100%;
+      --otri-ring-color: initial;
+      --otri-ring-shadow: 0 0 #0000;
+      --otri-inset-ring-color: initial;
+      --otri-inset-ring-shadow: 0 0 #0000;
+      --otri-ring-inset: initial;
+      --otri-ring-offset-width: 0px;
+      --otri-ring-offset-color: #fff;
+      --otri-ring-offset-shadow: 0 0 #0000;
+      --otri-backdrop-blur: initial;
+      --otri-backdrop-brightness: initial;
+      --otri-backdrop-contrast: initial;
+      --otri-backdrop-grayscale: initial;
+      --otri-backdrop-hue-rotate: initial;
+      --otri-backdrop-invert: initial;
+      --otri-backdrop-opacity: initial;
+      --otri-backdrop-saturate: initial;
+      --otri-backdrop-sepia: initial;
+      --otri-duration: initial;
+      --otri-outline-style: solid;
+      --otri-translate-x: 0;
+      --otri-translate-y: 0;
+      --otri-translate-z: 0;
+      --otri-leading: initial;
+      --otri-font-weight: initial;
+      --otri-tracking: initial;
+      --otri-space-y-reverse: 0;
+      --otri-divide-y-reverse: 0;
+      --otri-gradient-position: initial;
+      --otri-gradient-from: #0000;
+      --otri-gradient-via: #0000;
+      --otri-gradient-to: #0000;
+      --otri-gradient-stops: initial;
+      --otri-gradient-via-stops: initial;
+      --otri-gradient-from-position: 0%;
+      --otri-gradient-via-position: 50%;
+      --otri-gradient-to-position: 100%;
+      --otri-ordinal: initial;
+      --otri-slashed-zero: initial;
+      --otri-numeric-figure: initial;
+      --otri-numeric-spacing: initial;
+      --otri-numeric-fraction: initial;
+    }
+  }
+}

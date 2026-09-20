@@ -1,3 +1,4 @@
+import './main.css'
 import BackToTop from '../../src/components/BackToTop'
 import { installDropGuard, installScrollMemory, installSearchShortcut } from '../../src/lib/comfort'
 import { useEffect, useRef, useState } from 'react'
@@ -49,34 +50,34 @@ function AccountMenu({ session, onSignOut }) {
       document.removeEventListener('keydown', onKey)
     }
   }, [open])
-  const item = 'block rounded-lg px-3 py-2 text-sm text-[#0b1220] no-underline hover:bg-slate-50'
+  const item = "prototype-organizer-main-account-menu-style-1"
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="prototype-organizer-main-account-menu-div-2">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Account menu"
-        className="flex items-center gap-1.5 rounded-full border border-slate-300 bg-white py-1 pl-1 pr-2 hover:border-blue-300"
+        className="prototype-organizer-main-account-menu-button-3"
       >
-        <span className={`flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs font-bold text-white ${session.isAdmin ? 'bg-amber-500' : 'bg-blue-600'}`}>
+        <span className={`prototype-organizer-main-account-menu-span-4 ${session.isAdmin ? "prototype-organizer-main-account-menu-span-5" : "prototype-organizer-main-account-menu-span-6"}`}>
           {initialOf(session.email)}
         </span>
-        <ChevronDown size={13} className={`text-slate-500 transition ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={13} className={`prototype-organizer-main-account-menu-chevron-down-7 ${open ? "prototype-organizer-main-account-menu-chevron-down-8" : ''}`} />
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_18px_44px_rgba(15,23,42,.14)]">
-          <div className="px-3 py-2">
-            <p className="truncate font-mono text-xs text-[#0b1220]" title={session.email}>
+        <div role="menu" className="prototype-organizer-main-account-menu-div-9">
+          <div className="prototype-organizer-main-account-menu-div-10">
+            <p className="prototype-organizer-main-account-menu-p-11" title={session.email}>
               {session.email}
             </p>
-            <p className="mt-1 flex items-center gap-2 font-mono text-[9px] tracking-[.08em] text-slate-500">
+            <p className="prototype-organizer-main-account-menu-p-12">
               ORGANIZER
-              {session.isAdmin && <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[8px] font-bold text-white">ADMIN</span>}
+              {session.isAdmin && <span className="prototype-organizer-main-account-menu-span-13">ADMIN</span>}
             </p>
           </div>
-          <div className="my-1 border-t border-slate-100" />
+          <div className="prototype-organizer-main-account-menu-div-14" />
           <Link to="/events" className={item} onClick={() => setOpen(false)}>
             Your events
           </Link>
@@ -94,8 +95,8 @@ function AccountMenu({ session, onSignOut }) {
           <a href={GITHUB_URL} className={item}>
             GitHub ↗
           </a>
-          <div className="my-1 border-t border-slate-100" />
-          <button type="button" onClick={onSignOut} className={`${item} w-full text-left`}>
+          <div className="prototype-organizer-main-account-menu-div-14" />
+          <button type="button" onClick={onSignOut} className={`${item} prototype-organizer-main-account-menu-button-15`}>
             Sign out
           </button>
         </div>
@@ -107,40 +108,40 @@ function AccountMenu({ session, onSignOut }) {
 function Header({ session, onSignOut }) {
   return (
     <>
-      <header className="sticky top-0 z-50 h-[68px] border-b border-slate-200/90 bg-white/95 backdrop-blur">
-        <div className={`${CONTAINER} flex h-full min-w-0 items-center gap-4`}>
+      <header className="prototype-organizer-main-header-header-16">
+        <div className={`${CONTAINER} prototype-organizer-main-header-div-17`}>
           <Logo href="../#home" />
           <Link
             to="/"
-            className="hidden shrink-0 items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 font-mono text-[9px] font-medium tracking-[.08em] text-blue-600 no-underline sm:flex"
+            className="prototype-organizer-main-header-link-18"
           >
-            <i className="h-1.5 w-1.5 rounded-full bg-blue-600 shadow-[0_0_0_3px_#dbeafe]" />
+            <i className="prototype-organizer-main-header-i-19" />
             FOR ORGANIZERS
           </Link>
-          <nav className="ml-auto flex shrink-0 items-center gap-3 sm:gap-5">
+          <nav className="prototype-organizer-main-header-nav-20">
             {session && (
-              <Link to="/events" className="hidden text-[13px] font-semibold text-[#0b1220] no-underline md:inline">
+              <Link to="/events" className="prototype-organizer-main-header-link-21">
                 Your events
               </Link>
             )}
             {session?.isAdmin && (
               <Link
                 to="/admin"
-                className="hidden items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-mono text-[9px] tracking-[.08em] text-amber-700 no-underline md:inline-flex"
+                className="prototype-organizer-main-header-link-22"
               >
                 ADMIN
               </Link>
             )}
-            <a href="../#home" className="hidden items-center gap-1 text-[13px] font-medium text-slate-500 no-underline hover:text-slate-950 lg:inline-flex">
+            <a href="../#home" className="prototype-organizer-main-header-a-23">
               Public site <ArrowUpRight size={13} />
             </a>
-            <span className="hidden sm:block">
+            <span className="prototype-organizer-main-header-span-24">
               <UnitsMenu compact />
             </span>
             {session ? (
               <AccountMenu session={session} onSignOut={onSignOut} />
             ) : (
-              <Link to="/login" className="inline-flex min-h-9 items-center rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white no-underline hover:bg-blue-700">
+              <Link to="/login" className="prototype-organizer-main-header-link-25">
                 Sign in
               </Link>
             )}
@@ -148,26 +149,26 @@ function Header({ session, onSignOut }) {
         </div>
       </header>
       {/* Small screens: the app's pages in their own row. */}
-      <div className="border-b border-slate-200 bg-white md:hidden">
-        <div className={`${CONTAINER} flex items-center gap-5`}>
+      <div className="prototype-organizer-main-header-div-26">
+        <div className={`${CONTAINER} prototype-organizer-main-header-div-27`}>
           {session ? (
-            <Link to="/events" className="py-3 text-[13px] font-semibold text-[#0b1220] no-underline">
+            <Link to="/events" className="prototype-organizer-main-header-link-28">
               Your events
             </Link>
           ) : (
-            <Link to="/" className="py-3 text-[13px] font-semibold text-[#0b1220] no-underline">
+            <Link to="/" className="prototype-organizer-main-header-link-28">
               For organizers
             </Link>
           )}
           {session?.isAdmin && (
-            <Link to="/admin" className="py-3 font-mono text-[9px] tracking-[.08em] text-amber-700 no-underline">
+            <Link to="/admin" className="prototype-organizer-main-header-link-29">
               ADMIN
             </Link>
           )}
-          <a href="../#home" className="py-3 text-[13px] font-medium text-slate-500 no-underline">
+          <a href="../#home" className="prototype-organizer-main-header-a-30">
             Public site
           </a>
-          <div className="ml-auto py-1.5 sm:hidden">
+          <div className="prototype-organizer-main-header-div-31">
             <UnitsMenu />
           </div>
         </div>
@@ -178,14 +179,14 @@ function Header({ session, onSignOut }) {
 
 function Footer() {
   return (
-    <footer className="border-t border-slate-200 bg-white py-6">
-      <div className={`${CONTAINER} flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center`}>
+    <footer className="prototype-organizer-main-footer-footer-32">
+      <div className={`${CONTAINER} prototype-organizer-main-footer-div-33`}>
         <Logo href="../#home" />
-        <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">
+        <a href="mailto:hello@otri.run" className="prototype-organizer-main-footer-a-34">
           <Mail size={14} />
           hello@otri.run
         </a>
-        <span className="font-mono text-[8px] tracking-[.08em] text-slate-500">OPEN · TRANSPARENT · REPRODUCIBLE · INDEPENDENT</span>
+        <span className="prototype-organizer-main-footer-span-35">OPEN · TRANSPARENT · REPRODUCIBLE · INDEPENDENT</span>
       </div>
     </footer>
   )
@@ -288,10 +289,10 @@ function App() {
   else if (!needsAuth) page = <NotFound />
 
   return (
-    <div id="top" className="flex min-h-screen max-w-full flex-col overflow-x-clip bg-[#f7f9fc] text-[#0b1220]">
+    <div id="top" className="prototype-organizer-main-app-div-36">
       <Header session={session} onSignOut={signOut} />
       {unconfirmed && <ConfirmEmailBar email={session.email} />}
-      <main className="flex-1">{page}</main>
+      <main className="prototype-organizer-main-app-main-37">{page}</main>
       <Footer />
       <BackToTop />
       <BuildBanner />
@@ -303,17 +304,17 @@ function App() {
 function ConfirmEmailBar({ email }) {
   const [sent, setSent] = useState(false)
   return (
-    <div className="border-b border-amber-200 bg-amber-50">
-      <div className={`${CONTAINER} flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-[13px] text-amber-900`}>
-        <Mail size={14} className="shrink-0" />
-        <span className="min-w-0">
-          Confirm your email to publish: we sent a link to <strong className="font-semibold">{email}</strong>. You can build your race in the meantime.
+    <div className="prototype-organizer-main-confirm-email-bar-div-38">
+      <div className={`${CONTAINER} prototype-organizer-main-confirm-email-bar-div-39`}>
+        <Mail size={14} className="prototype-organizer-main-confirm-email-bar-mail-40" />
+        <span className="prototype-organizer-main-confirm-email-bar-span-41">
+          Confirm your email to publish: we sent a link to <strong className="prototype-organizer-main-confirm-email-bar-strong-42">{email}</strong>. You can build your race in the meantime.
         </span>
         <button
           type="button"
           disabled={sent}
           onClick={() => resendVerification(email).then(() => setSent(true)).catch(() => setSent(true))}
-          className="font-semibold text-amber-900 underline disabled:no-underline"
+          className="prototype-organizer-main-confirm-email-bar-button-43"
         >
           {sent ? 'Sent again' : 'Send it again'}
         </button>
@@ -324,7 +325,7 @@ function ConfirmEmailBar({ email }) {
 
 function NotFound() {
   return (
-    <section className="py-4">
+    <section className="prototype-organizer-main-not-found-section-44">
       <div className={CONTAINER}>
         <SharedNotFound where={window.location.hash} home="#/" homeLabel="Back to the start" secondaryHref="../#calculator" note="Organizer pages need you to be signed in; admin pages need an admin account." />
       </div>

@@ -1,0 +1,30 @@
+/* Component styles. Edit directly; no utility compiler is used. */
+
+.src-components-build-banner-build-banner-div-1 {
+  background-color: #19191d;
+  padding-inline: calc(var(--spacing) * 4);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  --otri-leading: calc(var(--spacing) * 7);
+  line-height: calc(var(--spacing) * 7);
+  color: var(--color-slate-300);
+}
+.src-components-build-banner-build-banner-a-2 {
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-white);
+  text-decoration-line: underline;
+  text-underline-offset: 2px;
+}
+.src-components-build-banner-build-banner-span-3 {
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-white);
+}
+.src-components-build-banner-build-banner-span-4 {
+  display: none;
+  @media (width >= 40rem) {
+    display: inline;
+  }
+}

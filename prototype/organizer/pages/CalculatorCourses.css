@@ -1,0 +1,172 @@
+/* Component styles. Edit directly; no utility compiler is used. */
+
+.prototype-organizer-pages-calculator-courses-calculator-courses-div-1 {
+  display: grid;
+  min-width: 0px;
+  gap: calc(var(--spacing) * 6);
+  @media (width >= 64rem) {
+    grid-template-columns: minmax(0,420px) minmax(0,1fr);
+  }
+}
+.prototype-organizer-pages-calculator-courses-calculator-courses-div-2 {
+  scroll-margin-top: calc(var(--spacing) * 24);
+  --otri-outline-style: none;
+  outline-style: none;
+}
+.prototype-organizer-pages-calculator-courses-calculator-courses-p-3 {
+  margin-top: var(--spacing);
+  font-size: var(--text-sm);
+  line-height: var(--otri-leading, var(--text-sm--line-height));
+  --otri-leading: calc(var(--spacing) * 6);
+  line-height: calc(var(--spacing) * 6);
+  color: var(--color-slate-600);
+}
+.prototype-organizer-pages-calculator-courses-calculator-courses-b-4 {
+  color: #19191d;
+}
+.prototype-organizer-pages-calculator-courses-calculator-courses-form-5 {
+  margin-top: calc(var(--spacing) * 4);
+  display: grid;
+  gap: calc(var(--spacing) * 4);
+}
+.prototype-organizer-pages-calculator-courses-calculator-courses-div-6 {
+  display: grid;
+  gap: calc(var(--spacing) * 4);
+  @media (width >= 40rem) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.prototype-organizer-pages-calculator-courses-calculator-courses-a-7 {
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-blue-600);
+}
+.prototype-organizer-pages-calculator-courses-calculator-courses-div-8 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--spacing) * 3);
+}
+.prototype-organizer-pages-calculator-courses-calculator-courses-p-9 {
+  margin-top: calc(var(--spacing) * 2);
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+  color: var(--color-slate-500);
+}
+.prototype-organizer-pages-calculator-courses-calculator-courses-div-10 {
+  min-width: 0px;
+}
+.prototype-organizer-pages-calculator-courses-calculator-courses-p-11 {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  --otri-tracking: .08em;
+  letter-spacing: .08em;
+  color: var(--color-slate-500);
+}
+.prototype-organizer-pages-calculator-courses-calculator-courses-p-12 {
+  margin-top: calc(var(--spacing) * 3);
+  font-size: var(--text-sm);
+  line-height: var(--otri-leading, var(--text-sm--line-height));
+  color: var(--color-slate-500);
+}
+.prototype-organizer-pages-calculator-courses-calculator-courses-ul-13 {
+  margin-top: calc(var(--spacing) * 3);
+  :where(& > :not(:last-child)) {
+    --otri-divide-y-reverse: 0;
+    border-bottom-style: var(--otri-border-style);
+    border-top-style: var(--otri-border-style);
+    border-top-width: calc(1px * var(--otri-divide-y-reverse));
+    border-bottom-width: calc(1px * calc(1 - var(--otri-divide-y-reverse)));
+  }
+  :where(& > :not(:last-child)) {
+    border-color: var(--color-slate-200);
+  }
+  overflow: hidden;
+  border-radius: var(--radius-2xl);
+  border-style: var(--otri-border-style);
+  border-width: 1px;
+  border-color: var(--color-slate-200);
+  background-color: var(--color-white);
+}
+.prototype-organizer-pages-calculator-courses-calculator-courses-li-14 {
+  display: flex;
+  min-width: 0px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 3);
+  padding-inline: calc(var(--spacing) * 4);
+  padding-block: calc(var(--spacing) * 3);
+}
+.prototype-organizer-pages-calculator-courses-calculator-courses-li-15 {
+  background-color: color-mix(in srgb, oklch(97% 0.014 254.604) 60%, transparent);
+  @supports (color: color-mix(in lab, red, red)) {
+    background-color: color-mix(in oklab, var(--color-blue-50) 60%, transparent);
+  }
+}
+.prototype-organizer-pages-calculator-courses-calculator-courses-p-16 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  line-height: var(--otri-leading, var(--text-sm--line-height));
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  color: #19191d;
+}
+.prototype-organizer-pages-calculator-courses-calculator-courses-p-17 {
+  margin-top: calc(var(--spacing) * 0.5);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-slate-500);
+}
+.prototype-organizer-pages-calculator-courses-calculator-courses-a-18 {
+  margin-top: calc(var(--spacing) * 0.5);
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: var(--spacing);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--color-blue-600);
+  text-decoration-line: none;
+  &:hover {
+    @media (hover: hover) {
+      text-decoration-line: underline;
+    }
+  }
+}
+.prototype-organizer-pages-calculator-courses-calculator-courses-div-19 {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+}
+.prototype-organizer-pages-calculator-courses-calculator-courses-a-20 {
+  display: inline-flex;
+  min-height: calc(var(--spacing) * 9);
+  align-items: center;
+  border-radius: var(--radius-lg);
+  border-style: var(--otri-border-style);
+  border-width: 1px;
+  border-color: var(--color-slate-300);
+  padding-inline: calc(var(--spacing) * 3);
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  color: #19191d;
+  text-decoration-line: none;
+  &:hover {
+    @media (hover: hover) {
+      border-color: var(--color-blue-300);
+    }
+  }
+}
+.prototype-organizer-pages-calculator-courses-calculator-courses-button-21 {
+  min-height: calc(var(--spacing) * 9);
+  padding-inline: calc(var(--spacing) * 3);
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+}

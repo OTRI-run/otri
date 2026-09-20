@@ -1,0 +1,49 @@
+:root {
+  --brand-ink: #19191d;
+  --brand-accent: #c63c23;
+  --brand-signal: #ff7656;
+  --brand-surface: #f6f6f6;
+  --brand-line: #dddde0;
+  --color-blue-50: #fff3ef;
+  --color-blue-100: #ffe4da;
+  --color-blue-200: #ffc8b5;
+  --color-blue-300: #ffa78b;
+  --color-blue-400: #ff805e;
+  --color-blue-500: #e34a2b;
+  --color-blue-600: #c63c23;
+  --color-blue-700: #a82d19;
+  --color-blue-800: #822818;
+  --color-blue-900: #60271e;
+  --color-blue-950: #331611;
+  --color-cyan-300: #ffbea8;
+  --color-cyan-400: #ff805e;
+  --color-cyan-500: #e34a2b;
+  --color-slate-50: #f6f6f6;
+  --color-slate-100: #ededee;
+  --color-slate-200: #dddde0;
+  --color-slate-300: #c4c4c9;
+  --color-slate-400: #88888f;
+  --color-slate-500: #68686f;
+  --color-slate-600: #515158;
+  --color-slate-700: #3a3a40;
+  --color-slate-800: #27272c;
+  --color-slate-900: #19191d;
+  --color-slate-950: #101013;
+  --color-emerald-50: #f0f1f2;
+  --color-emerald-100: #e0e3e6;
+  --color-emerald-200: #c5cbd2;
+  --color-emerald-500: #596677;
+  --color-emerald-600: #445164;
+  --color-emerald-700: #344255;
+  --color-emerald-900: #1b2533;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+  --radius-2xl: 8px;
+  --radius-3xl: 10px;
+}
+body { background: #f6f6f6; color: #19191d; font-family: var(--font-sans); }
+button, input, select, textarea { font: inherit; }
+button:not(:disabled), summary { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+:focus-visible { outline: 2px solid #c63c23; outline-offset: 4px; }
+@media (prefers-reduced-motion: reduce) { html {scroll-behavior:auto} }

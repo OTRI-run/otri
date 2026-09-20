@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@sentry/browser": "^10.75.0",
-    "@tailwindcss/vite": "latest",
     "@vitejs/plugin-react": "latest",
     "flag-icons": "^7.5.0",
     "i18n-iso-countries": "^7.14.0",
@@ -22,7 +21,6 @@
     "qrcode": "^1.5.4",
     "react": "latest",
     "react-dom": "latest",
-    "tailwindcss": "latest",
     "vite": "latest"
   }
 }

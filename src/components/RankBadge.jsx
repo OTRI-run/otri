@@ -1,3 +1,4 @@
+import './RankBadge.css'
 import { Medal, Trophy } from 'lucide-react'
 
 // First, second and third as a results list shows them everywhere: a gold trophy, a silver and a
@@ -13,10 +14,10 @@ export default function RankBadge({ rank }) {
   if (!place || !/^\d+$/.test(String(rank))) return <>{rank}</>
   const { Icon, color, label } = place
   return (
-    <span className="inline-flex items-center gap-1.5 font-semibold" style={{ color }} title={label}>
+    <span className="src-components-rank-badge-rank-badge-span-1" style={{ color }} title={label}>
       <Icon size={15} strokeWidth={2.4} aria-hidden="true" />
-      <span className="text-[#0b1220]">{rank}</span>
-      <span className="sr-only">{label}</span>
+      <span className="src-components-rank-badge-rank-badge-span-2">{rank}</span>
+      <span className="src-components-rank-badge-rank-badge-span-3">{label}</span>
     </span>
   )
 }

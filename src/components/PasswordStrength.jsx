@@ -1,3 +1,4 @@
+import './PasswordStrength.css'
 // A password meter that mirrors the server's policy (api/security.py): length first, a short
 // common-password check, and "not built from your email". The server has the final word.
 const COMMON = new Set(['password', 'password1', 'password123', 'passw0rd', 'p@ssw0rd', '123456', '12345678', '123456789', '1234567890', 'qwerty', 'qwertyuiop', 'qwerty123', 'abc123', 'letmein', 'welcome', 'welcome1', 'admin', 'iloveyou', 'monkey', 'dragon', 'football', 'sunshine', 'princess', 'trustno1', 'changeme', 'test1234', 'trailrunning', 'trailrun', 'running', 'marathon', 'otri', 'otrirun'])
@@ -31,20 +32,20 @@ export function assessPassword(password, email) {
 export default function PasswordStrength({ password, email }) {
   const { score, label, problems } = assessPassword(password, email)
   if (!password) {
-    return <p className="mt-1 text-xs text-slate-500">At least {PASSWORD_MIN} characters. A few unrelated words beat a short jumble; length is what counts.</p>
+    return <p className="src-components-password-strength-password-strength-p-1">At least {PASSWORD_MIN} characters. A few unrelated words beat a short jumble; length is what counts.</p>
   }
-  const colors = ['bg-slate-300', 'bg-red-500', 'bg-amber-500', 'bg-blue-500', 'bg-emerald-500']
+  const colors = ["otri-state-1", "otri-state-2", "otri-state-3", "otri-state-4", "otri-state-5"]
   return (
-    <div className="mt-2" aria-live="polite">
-      <div className="flex gap-1" aria-hidden="true">
+    <div className="src-components-password-strength-password-strength-div-2" aria-live="polite">
+      <div className="src-components-password-strength-password-strength-div-3" aria-hidden="true">
         {[1, 2, 3, 4].map((step) => (
-          <span key={step} className={`h-1.5 flex-1 rounded-full ${step <= score ? colors[score] : 'bg-slate-200'}`} />
+          <span key={step} className={`src-components-password-strength-password-strength-span-4 ${step <= score ? colors[score] : "src-components-password-strength-password-strength-span-5"}`} />
         ))}
       </div>
-      <p className="mt-1 text-xs text-slate-600">
-        <span className="font-semibold capitalize">{label}</span>
-        {problems.length > 0 && <span className="text-slate-500"> · {problems[0]}</span>}
-        {problems.length === 0 && score < 3 && <span className="text-slate-500"> · longer is stronger</span>}
+      <p className="src-components-password-strength-password-strength-p-6">
+        <span className="src-components-password-strength-password-strength-span-7">{label}</span>
+        {problems.length > 0 && <span className="src-components-password-strength-password-strength-span-8"> · {problems[0]}</span>}
+        {problems.length === 0 && score < 3 && <span className="src-components-password-strength-password-strength-span-8"> · longer is stronger</span>}
       </p>
     </div>
   )

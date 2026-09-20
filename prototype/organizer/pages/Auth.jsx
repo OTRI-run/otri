@@ -1,3 +1,4 @@
+import './Auth.css'
 import { autoFocusOnDesktop } from '../../../src/lib/comfort'
 import { useEffect, useState } from 'react'
 import { ArrowRight, ArrowUpRight, CalendarDays, FileSpreadsheet, Mountain, ShieldCheck } from 'lucide-react'
@@ -20,22 +21,22 @@ const STEPS = [
 export function Welcome() {
   return (
     <>
-      <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
-        <div className={`${CONTAINER} grid min-w-0 items-center gap-12 py-14 sm:py-20 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-20 lg:py-24`}>
-          <div className="min-w-0">
-            <div className="font-mono text-[10px] font-medium tracking-[.1em] text-blue-600">
-              OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> FOR ORGANIZERS
+      <section className="prototype-organizer-pages-auth-welcome-section-1">
+        <div className={`${CONTAINER} prototype-organizer-pages-auth-welcome-div-2`}>
+          <div className="prototype-organizer-pages-auth-welcome-div-3">
+            <div className="prototype-organizer-pages-auth-welcome-div-4">
+              OPEN TRAIL RUNNING INDEX <span className="prototype-organizer-pages-auth-welcome-span-5">·</span> FOR ORGANIZERS
             </div>
-            <h1 className="mt-5 max-w-[760px] text-[clamp(40px,6.5vw,76px)] font-bold leading-[1.06] tracking-[-.065em] text-[#0b1220]">
+            <h1 className="prototype-organizer-pages-auth-welcome-h1-6">
               Start with
               <br />
-              <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">official results.</em>
+              <em className="prototype-organizer-pages-auth-welcome-em-7">official results.</em>
             </h1>
-            <p className="mt-6 max-w-[620px] text-[15px] leading-7 text-slate-500 sm:text-[17px]">
+            <p className="prototype-organizer-pages-auth-welcome-p-8">
               Bring your course file and your results. OTRI measures the course, validates the file and gives every finisher a
               score that depends only on the course and their own time. Free, open, and the whole method is on the record.
             </p>
-            <div className="mt-7 flex flex-col gap-2 sm:flex-row">
+            <div className="prototype-organizer-pages-auth-welcome-div-9">
               <Button onClick={() => navigate('/register')}>
                 Create organizer account <ArrowRight size={15} />
               </Button>
@@ -43,74 +44,74 @@ export function Welcome() {
                 Sign in
               </Button>
             </div>
-            <p className="mt-4 max-w-[620px] text-sm leading-6 text-slate-600">
+            <p className="prototype-organizer-pages-auth-welcome-p-10">
               Rather see your scores first?{' '}
-              <a href="../#score" className="font-semibold text-blue-600 no-underline hover:underline">Score your race without an account</a>, then publish it with one click: the course and the results come along.
+              <a href="../#score" className="prototype-organizer-pages-auth-welcome-a-11">Score your race without an account</a>, then publish it with one click: the course and the results come along.
             </p>
-            <div className="mt-7 flex flex-wrap gap-x-4 gap-y-2 font-mono text-[8px] tracking-[.08em] text-slate-500 sm:text-[9px]">
-              <span className="text-blue-600">FREE</span>
+            <div className="prototype-organizer-pages-auth-welcome-div-12">
+              <span className="prototype-organizer-pages-auth-welcome-span-13">FREE</span>
               <span>OPEN SOURCE</span>
               <span>ABOUT 10 MINUTES</span>
             </div>
           </div>
 
-          <div className="min-w-0 overflow-hidden rounded-2xl bg-[linear-gradient(145deg,#08111f_0%,#0b1730_58%,#123b85_100%)] p-4 text-white shadow-[0_24px_70px_rgba(11,18,32,.2)] sm:p-5">
-            <div className="flex items-center justify-between font-mono text-[8px] tracking-[.08em] text-slate-400">
+          <div className="prototype-organizer-pages-auth-welcome-div-14">
+            <div className="prototype-organizer-pages-auth-welcome-div-15">
               <span>OTRI / ORGANIZERS</span>
-              <span className="flex items-center gap-1.5">
-                <i className="h-1.5 w-1.5 rounded-full bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,.9)]" />
+              <span className="prototype-organizer-pages-auth-welcome-span-16">
+                <i className="prototype-organizer-pages-auth-welcome-i-17" />
                 FOUR STEPS
               </span>
             </div>
-            <div className="border-b border-slate-700/70 py-8">
-              <small className="font-mono text-[8px] tracking-[.08em] text-blue-300">YOUR RACE, SCORED</small>
-              <strong className="mt-2 block bg-gradient-to-r from-white to-blue-200 bg-clip-text pb-1 text-4xl font-bold leading-[1.25] tracking-[-.05em] text-transparent">
+            <div className="prototype-organizer-pages-auth-welcome-div-18">
+              <small className="prototype-organizer-pages-auth-welcome-small-19">YOUR RACE, SCORED</small>
+              <strong className="prototype-organizer-pages-auth-welcome-strong-20">
                 Course in. Scores out.
               </strong>
-              <span className="mt-1 block text-xs text-slate-400">Stop at any step and come back. Everything is saved as you go.</span>
+              <span className="prototype-organizer-pages-auth-welcome-span-21">Stop at any step and come back. Everything is saved as you go.</span>
             </div>
             <div>
               {STEPS.map(([Icon, title, desc], index) => (
-                <div key={title} className="grid min-w-0 grid-cols-[18px_22px_minmax(0,1fr)] items-center gap-2 border-b border-slate-700/70 py-3.5">
-                  <b className="font-mono text-[9px] text-slate-500">0{index + 1}</b>
-                  <Icon size={15} className="text-blue-400" />
-                  <span className="truncate text-xs font-semibold">
-                    {title} <small className="ml-1 font-mono text-[8px] font-normal text-slate-500">{desc.split('.')[0].toLowerCase()}</small>
+                <div key={title} className="prototype-organizer-pages-auth-welcome-div-22">
+                  <b className="prototype-organizer-pages-auth-welcome-b-23">0{index + 1}</b>
+                  <Icon size={15} className="prototype-organizer-pages-auth-welcome-icon-24" />
+                  <span className="prototype-organizer-pages-auth-welcome-span-25">
+                    {title} <small className="prototype-organizer-pages-auth-welcome-small-26">{desc.split('.')[0].toLowerCase()}</small>
                   </span>
                 </div>
               ))}
             </div>
-            <div className="flex justify-between gap-3 pt-4 font-mono text-[8px] tracking-[.08em]">
+            <div className="prototype-organizer-pages-auth-welcome-div-27">
               <b>OTRI INDEX</b>
-              <span className="text-right text-blue-300">COURSE + TIME + VERSION = SCORE</span>
+              <span className="prototype-organizer-pages-auth-welcome-span-28">COURSE + TIME + VERSION = SCORE</span>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="bg-white py-14 sm:py-20">
+      <section className="prototype-organizer-pages-auth-welcome-section-29">
         <div className={CONTAINER}>
-          <div className="grid min-w-0 gap-10 lg:grid-cols-[.82fr_1.18fr] lg:gap-20">
-            <div className="min-w-0">
+          <div className="prototype-organizer-pages-auth-welcome-div-30">
+            <div className="prototype-organizer-pages-auth-welcome-div-3">
               <Eyebrow>01 / HOW IT WORKS</Eyebrow>
-              <h2 className="mt-3 text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
+              <h2 className="prototype-organizer-pages-auth-welcome-h2-31">
                 Four steps.
                 <br />
                 <Gradient>Nothing hidden.</Gradient>
               </h2>
-              <p className="mt-5 max-w-[440px] text-sm leading-7 text-slate-500">
+              <p className="prototype-organizer-pages-auth-welcome-p-32">
                 Every number you see along the way is the same number the score uses: the measured course, the validation
                 report, the model version. Nothing happens behind the scenes.
               </p>
             </div>
-            <div className="min-w-0 border-t border-slate-400/70">
+            <div className="prototype-organizer-pages-auth-welcome-div-33">
               {STEPS.map(([Icon, title, desc], index) => (
-                <div key={title} className="grid min-w-0 grid-cols-[30px_22px_minmax(0,1fr)] items-start gap-3 border-b border-slate-300 py-4">
-                  <b className="pt-0.5 font-mono text-[9px] text-slate-400">0{index + 1}</b>
-                  <Icon size={16} className="mt-0.5 text-blue-600" />
-                  <div className="min-w-0">
-                    <strong className="text-[13px] text-[#0b1220]">{title}</strong>
-                    <p className="mt-0.5 text-sm leading-6 text-slate-500">{desc}</p>
+                <div key={title} className="prototype-organizer-pages-auth-welcome-div-34">
+                  <b className="prototype-organizer-pages-auth-welcome-b-35">0{index + 1}</b>
+                  <Icon size={16} className="prototype-organizer-pages-auth-welcome-icon-36" />
+                  <div className="prototype-organizer-pages-auth-welcome-div-3">
+                    <strong className="prototype-organizer-pages-auth-welcome-strong-37">{title}</strong>
+                    <p className="prototype-organizer-pages-auth-welcome-p-38">{desc}</p>
                   </div>
                 </div>
               ))}
@@ -119,67 +120,67 @@ export function Welcome() {
         </div>
       </section>
 
-      <section className="bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] py-14 sm:py-20">
+      <section className="prototype-organizer-pages-auth-welcome-section-39">
         <div className={CONTAINER}>
-          <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
-            <div className="font-mono text-xs text-blue-600">02</div>
-            <div className="min-w-0">
-              <Eyebrow className="mb-3">WHAT YOU NEED</Eyebrow>
-              <h2 className="text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
+          <div className="prototype-organizer-pages-auth-welcome-div-40">
+            <div className="prototype-organizer-pages-auth-welcome-div-41">02</div>
+            <div className="prototype-organizer-pages-auth-welcome-div-3">
+              <Eyebrow className="prototype-organizer-pages-auth-welcome-eyebrow-42">WHAT YOU NEED</Eyebrow>
+              <h2 className="prototype-organizer-pages-auth-welcome-h2-43">
                 Four things.
                 <br />
                 <Gradient>Ten minutes.</Gradient>
               </h2>
             </div>
-            <p className="min-w-0 text-sm leading-7 text-slate-500">
+            <p className="prototype-organizer-pages-auth-welcome-p-44">
               Have these to hand and the whole flow takes about ten minutes. You can also stop after any step and finish later.
             </p>
           </div>
-          <div className="mt-10 grid grid-cols-2 border-y border-slate-300 lg:grid-cols-4">
+          <div className="prototype-organizer-pages-auth-welcome-div-45">
             {[
               ['COURSE', 'The route as a GPX file', 'From your planner or a clean watch recording, a point at least every 30 m.'],
               ['FIGURES', 'Official distance and climb', 'OTRI shows how they compare with the measured course.'],
               ['RESULTS', 'CSV or XLSX', 'Rank, time, names, gender, bib. Dates of birth only if you may share them.'],
               ['RIGHTS', 'Permission to share', 'Your registration terms cover it; see the data policy.'],
             ].map(([label, title, desc], index) => (
-              <div key={label} className={`min-w-0 px-2 py-5 sm:px-5 ${index % 2 === 1 ? 'border-l border-slate-300' : ''} ${index >= 2 ? 'border-t border-slate-300 lg:border-t-0' : ''} ${index === 2 ? 'lg:border-l' : ''}`}>
-                <small className="font-mono text-[9px] tracking-[.08em] text-blue-600">{label}</small>
-                <b className="mt-2 block text-lg font-bold leading-tight tracking-[-.03em] text-[#0b1220]">{title}</b>
-                <span className="mt-1 block text-xs leading-5 text-slate-500">{desc}</span>
+              <div key={label} className={`prototype-organizer-pages-auth-welcome-div-46 ${index % 2 === 1 ? "prototype-organizer-pages-auth-welcome-div-47" : ''} ${index >= 2 ? "prototype-organizer-pages-auth-welcome-div-48" : ''} ${index === 2 ? "prototype-organizer-pages-auth-welcome-div-49" : ''}`}>
+                <small className="prototype-organizer-pages-auth-welcome-small-50">{label}</small>
+                <b className="prototype-organizer-pages-auth-welcome-b-51">{title}</b>
+                <span className="prototype-organizer-pages-auth-welcome-span-52">{desc}</span>
               </div>
             ))}
           </div>
-          <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-blue-600">
-            <a className="inline-flex items-center gap-1 no-underline hover:underline" href={`${DOCS}/docs/methodology/0.1.0/HOW-OTRI-SCORES.md`} target="_blank" rel="noreferrer">
+          <div className="prototype-organizer-pages-auth-welcome-div-53">
+            <a className="prototype-organizer-pages-auth-welcome-a-54" href={`${DOCS}/docs/methodology/0.1.0/HOW-OTRI-SCORES.md`} target="_blank" rel="noreferrer">
               How scores are calculated <ArrowUpRight size={12} />
             </a>
-            <a className="inline-flex items-center gap-1 no-underline hover:underline" href={`${DOCS}/DATA_POLICY.md`} target="_blank" rel="noreferrer">
+            <a className="prototype-organizer-pages-auth-welcome-a-54" href={`${DOCS}/DATA_POLICY.md`} target="_blank" rel="noreferrer">
               Data policy <ArrowUpRight size={12} />
             </a>
-            <a className="inline-flex items-center gap-1 no-underline hover:underline" href={`${DOCS}/PRIVACY.md`} target="_blank" rel="noreferrer">
+            <a className="prototype-organizer-pages-auth-welcome-a-54" href={`${DOCS}/PRIVACY.md`} target="_blank" rel="noreferrer">
               Privacy <ArrowUpRight size={12} />
             </a>
           </div>
         </div>
       </section>
 
-      <section className="bg-[linear-gradient(115deg,#1d4ed8_0%,#2563eb_48%,#0891b2_100%)] py-14 text-white sm:py-16">
-        <div className={`${CONTAINER} flex flex-col items-start`}>
-          <p className="font-mono text-[10px] tracking-[.08em] text-blue-100">OPEN TRAIL RUNNING INDEX</p>
-          <h2 className="mt-2 text-[clamp(40px,5.8vw,70px)] font-bold leading-[.94] tracking-[-.065em]">
+      <section className="prototype-organizer-pages-auth-welcome-section-55">
+        <div className={`${CONTAINER} prototype-organizer-pages-auth-welcome-div-56`}>
+          <p className="prototype-organizer-pages-auth-welcome-p-57">OPEN TRAIL RUNNING INDEX</p>
+          <h2 className="prototype-organizer-pages-auth-welcome-h2-58">
             Give your finishers
             <br />
             <span>a number that travels.</span>
           </h2>
-          <div className="mt-7 flex flex-col gap-2 sm:flex-row">
+          <div className="prototype-organizer-pages-auth-welcome-div-9">
             <button
               onClick={() => navigate('/register')}
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-white px-4 text-[13px] font-semibold text-blue-600 shadow-[0_10px_30px_rgba(0,0,0,.12)]"
+              className="prototype-organizer-pages-auth-welcome-button-59"
             >
               Create organizer account <ArrowRight size={15} />
             </button>
             <a
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/40 px-4 text-[13px] font-semibold text-white no-underline hover:bg-white/10"
+              className="prototype-organizer-pages-auth-welcome-a-60"
               href="../#score"
             >
               Score your race first, no account <ArrowUpRight size={15} />
@@ -200,14 +201,14 @@ function AuthCard({ title, intro, children, footer, eyebrow = 'FOR ORGANIZERS' }
       aside={
         <>
           {hasHandoff() && (
-            <div className="mb-4">
+            <div className="prototype-organizer-pages-auth-auth-card-div-61">
               <Notice kind="success" title="Your scored race is waiting.">
                 Sign in from this browser and it becomes a race page in one step, with nothing to upload again.
               </Notice>
             </div>
           )}
           <Card>{children}</Card>
-          {footer && <p className="mt-4 text-sm text-slate-500">{footer}</p>}
+          {footer && <p className="prototype-organizer-pages-auth-auth-card-p-62">{footer}</p>}
         </>
       }
     />
@@ -258,13 +259,13 @@ export function Register({ onSignedIn }) {
       footer={
         <>
           Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-blue-600">
+          <Link to="/login" className="prototype-organizer-pages-auth-register-link-63">
             Sign in
           </Link>
         </>
       }
     >
-      <form onSubmit={submit} className="grid gap-4" noValidate>
+      <form onSubmit={submit} className="prototype-organizer-pages-auth-register-form-64" noValidate>
         <Field label="Work email" htmlFor="reg-email" hint="We send the verification link and race notifications here.">
           <input id="reg-email" autoFocus={autoFocusOnDesktop} type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
         </Field>
@@ -275,30 +276,30 @@ export function Register({ onSignedIn }) {
         <Field label="Confirm password" htmlFor="reg-pw2" error={mismatch ? 'Passwords do not match.' : null}>
           <PasswordInput id="reg-pw2" required autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inputClass} />
         </Field>
-        <div className="grid gap-2 rounded-xl bg-slate-50 px-4 py-3">
-          <label className="flex items-start gap-2 text-sm text-slate-700">
-            <input id="reg-terms" type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600" />
+        <div className="prototype-organizer-pages-auth-register-div-65">
+          <label className="prototype-organizer-pages-auth-register-label-66">
+            <input id="reg-terms" type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} className="prototype-organizer-pages-auth-register-input-67" />
             <span>
               I agree to the{' '}
-              <a className="font-semibold text-blue-600 underline" href={`${DOCS}/TERMS.md`} target="_blank" rel="noreferrer">
+              <a className="prototype-organizer-pages-auth-register-a-68" href={`${DOCS}/TERMS.md`} target="_blank" rel="noreferrer">
                 terms of service
               </a>{' '}
               and the{' '}
-              <a className="font-semibold text-blue-600 underline" href={`${DOCS}/PRIVACY.md`} target="_blank" rel="noreferrer">
+              <a className="prototype-organizer-pages-auth-register-a-68" href={`${DOCS}/PRIVACY.md`} target="_blank" rel="noreferrer">
                 privacy policy
               </a>
               , and I confirm I may share the race data I upload (
-              <a className="underline" href={`${DOCS}/DATA_POLICY.md`} target="_blank" rel="noreferrer">
+              <a className="prototype-organizer-pages-auth-register-a-69" href={`${DOCS}/DATA_POLICY.md`} target="_blank" rel="noreferrer">
                 data policy
               </a>
-              ). <span className="text-slate-500">Required.</span>
+              ). <span className="prototype-organizer-pages-auth-register-span-70">Required.</span>
             </span>
           </label>
-          <label className="flex items-start gap-2 text-sm text-slate-700">
-            <input id="reg-news" type="checkbox" checked={news} onChange={(e) => setNews(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600" />
+          <label className="prototype-organizer-pages-auth-register-label-66">
+            <input id="reg-news" type="checkbox" checked={news} onChange={(e) => setNews(e.target.checked)} className="prototype-organizer-pages-auth-register-input-67" />
             <span>
               Email me OTRI news: new features, scoring-model updates, organizer tips. A few times a year, unsubscribe any time in your account settings.{' '}
-              <span className="text-slate-500">Optional.</span>
+              <span className="prototype-organizer-pages-auth-register-span-70">Optional.</span>
             </span>
           </label>
         </div>
@@ -307,7 +308,7 @@ export function Register({ onSignedIn }) {
           Create account <ArrowRight size={15} />
         </Button>
         {!busy && (!email || !password || tooShort || mismatch || !acceptTerms) && (
-          <p className="text-xs text-slate-500">
+          <p className="prototype-organizer-pages-auth-register-p-71">
             {!email
               ? 'Enter your work email to continue.'
               : !password || tooShort
@@ -349,11 +350,11 @@ export function CheckEmail({ email }) {
       <Notice kind="info" title="Nothing arriving?">
         Check spam, then resend. The link is valid for a limited time.
       </Notice>
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      <div className="prototype-organizer-pages-auth-check-email-div-72">
         <Button variant="secondary" busy={busy} onClick={resend} disabled={!email || sent}>
           {sent ? 'Sent again' : 'Resend link'}
         </Button>
-        <Link to="/login" className="text-sm font-semibold text-blue-600">
+        <Link to="/login" className="prototype-organizer-pages-auth-check-email-link-73">
           Back to sign in
         </Link>
       </div>
@@ -384,13 +385,13 @@ export function Verify({ token }) {
         </>
       }
     >
-      {state === 'checking' && <p className="text-sm text-slate-600">One moment…</p>}
+      {state === 'checking' && <p className="prototype-organizer-pages-auth-verify-p-74">One moment…</p>}
       {state === 'ok' && (
         <>
           <Notice kind="success" title="Your email is confirmed.">
             You can publish your races now.
           </Notice>
-          <Button className="mt-4" onClick={() => navigate('/')}>
+          <Button className="prototype-organizer-pages-auth-verify-button-75" onClick={() => navigate('/')}>
             Continue <ArrowRight size={15} />
           </Button>
         </>
@@ -401,9 +402,9 @@ export function Verify({ token }) {
           <Notice kind="error" title="This link did not work.">
             {message}
           </Notice>
-          <p className="mt-3 text-sm text-slate-600">
+          <p className="prototype-organizer-pages-auth-verify-p-76">
             Links expire.{' '}
-            <Link to="/login" className="font-semibold text-blue-600">
+            <Link to="/login" className="prototype-organizer-pages-auth-register-link-63">
               Sign in
             </Link>{' '}
             and request a new one.
@@ -481,15 +482,15 @@ export function Login({ onSignedIn, afterReset = false }) {
         footer={
           <>
             Lost your device? Enter one of your recovery codes instead.{' '}
-            <button type="button" onClick={() => { setChallenge(null); setCode('') }} className="font-semibold text-blue-600">
+            <button type="button" onClick={() => { setChallenge(null); setCode('') }} className="prototype-organizer-pages-auth-register-link-63">
               Start over
             </button>
           </>
         }
       >
-        <form onSubmit={submitCode} className="grid gap-4" noValidate>
+        <form onSubmit={submitCode} className="prototype-organizer-pages-auth-register-form-64" noValidate>
           <Field label="Code" htmlFor="login-code">
-            <input id="login-code" autoFocus inputMode="text" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} className={`${inputClass} font-mono tracking-[.3em]`} />
+            <input id="login-code" autoFocus inputMode="text" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} className={`${inputClass} prototype-organizer-pages-auth-login-input-77`} />
           </Field>
           {error && <Notice kind="error">{error}</Notice>}
           <Button type="submit" busy={busy} disabled={code.trim().length < 6}>
@@ -513,13 +514,13 @@ export function Login({ onSignedIn, afterReset = false }) {
       footer={
         <>
           New to OTRI?{' '}
-          <Link to="/register" className="font-semibold text-blue-600">
+          <Link to="/register" className="prototype-organizer-pages-auth-register-link-63">
             Create an organizer account
           </Link>
         </>
       }
     >
-      <form onSubmit={submit} className="grid gap-4" noValidate>
+      <form onSubmit={submit} className="prototype-organizer-pages-auth-register-form-64" noValidate>
         {afterReset && <Notice kind="success" title="Your password is changed.">Sign in with it; you will be asked for your code as usual. Every other session of this account was signed out.</Notice>}
         <Field label="Email" htmlFor="login-email">
           <input id="login-email" autoFocus={autoFocusOnDesktop} type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
@@ -531,11 +532,11 @@ export function Login({ onSignedIn, afterReset = false }) {
           <Notice kind="error">
             {error}
             {needsVerification && (
-              <div className="mt-2">
+              <div className="prototype-organizer-pages-auth-login-div-78">
                 {resent ? (
                   <span>A new verification link is on its way.</span>
                 ) : (
-                  <button type="button" onClick={resend} className="font-semibold underline">
+                  <button type="button" onClick={resend} className="prototype-organizer-pages-auth-login-button-79">
                     Resend verification email
                   </button>
                 )}
@@ -543,14 +544,14 @@ export function Login({ onSignedIn, afterReset = false }) {
             )}
           </Notice>
         )}
-        <label className="flex items-center gap-2 text-sm text-slate-600">
-          <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-4 w-4 accent-blue-600" />
+        <label className="prototype-organizer-pages-auth-login-label-80">
+          <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="prototype-organizer-pages-auth-login-input-81" />
           Remember me on this device for 30 days
         </label>
         <Button type="submit" busy={busy} disabled={!email || !password}>
           Sign in <ArrowRight size={15} />
         </Button>
-        <Link to="/forgot" className="text-sm text-slate-500 underline">
+        <Link to="/forgot" className="prototype-organizer-pages-auth-login-link-82">
           Forgot your password?
         </Link>
       </form>
@@ -586,19 +587,19 @@ export function Forgot() {
       {sent ? (
         <>
           <Notice kind="success">If that email has an account, a reset link has been sent.</Notice>
-          <Link to="/login" className="mt-4 inline-block text-sm font-semibold text-blue-600">
+          <Link to="/login" className="prototype-organizer-pages-auth-forgot-link-83">
             Back to sign in
           </Link>
         </>
       ) : (
-        <form onSubmit={submit} className="grid gap-4" noValidate>
+        <form onSubmit={submit} className="prototype-organizer-pages-auth-register-form-64" noValidate>
           <Field label="Email" htmlFor="forgot-email">
             <input id="forgot-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
           </Field>
           <Button type="submit" busy={busy} disabled={!email}>
             Send reset link
           </Button>
-          <Link to="/login" className="text-sm text-slate-500 underline">
+          <Link to="/login" className="prototype-organizer-pages-auth-login-link-82">
             Back to sign in
           </Link>
         </form>
@@ -649,7 +650,7 @@ export function Reset({ token, onSignedIn }) {
       <AuthCard title={title}>
         <Notice kind="warning">
           This link is missing its token. Open the link from your email again, or{' '}
-          <Link to="/forgot" className="font-semibold underline">
+          <Link to="/forgot" className="prototype-organizer-pages-auth-login-button-79">
             request a new one
           </Link>
           .
@@ -659,7 +660,7 @@ export function Reset({ token, onSignedIn }) {
   }
   return (
     <AuthCard title={title}>
-      <form onSubmit={submit} className="grid gap-4" noValidate>
+      <form onSubmit={submit} className="prototype-organizer-pages-auth-register-form-64" noValidate>
         <Field label="New password" htmlFor="reset-pw">
           <PasswordInput id="reset-pw" required autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
           <PasswordStrength password={password} />

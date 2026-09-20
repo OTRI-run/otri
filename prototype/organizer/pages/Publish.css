@@ -1,0 +1,167 @@
+/* Component styles. Edit directly; no utility compiler is used. */
+
+.prototype-organizer-pages-publish-waiting-div-1 {
+  border-radius: var(--radius-xl);
+  border-style: var(--otri-border-style);
+  border-width: 1px;
+  border-color: var(--color-blue-100);
+  background-color: color-mix(in srgb, oklch(97% 0.014 254.604) 60%, transparent);
+  @supports (color: color-mix(in lab, red, red)) {
+    background-color: color-mix(in oklab, var(--color-blue-50) 60%, transparent);
+  }
+  padding: calc(var(--spacing) * 4);
+}
+.prototype-organizer-pages-publish-waiting-p-2 {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  --otri-tracking: .08em;
+  letter-spacing: .08em;
+  color: var(--color-blue-700);
+}
+.prototype-organizer-pages-publish-waiting-p-3 {
+  margin-top: var(--spacing);
+  font-size: var(--text-base);
+  line-height: var(--otri-leading, var(--text-base--line-height));
+  --otri-font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-bold);
+  --otri-tracking: -.02em;
+  letter-spacing: -.02em;
+  color: #19191d;
+}
+.prototype-organizer-pages-publish-waiting-ul-4 {
+  margin-top: calc(var(--spacing) * 2);
+  :where(& > :not(:last-child)) {
+    --otri-space-y-reverse: 0;
+    margin-block-start: calc(var(--spacing) * var(--otri-space-y-reverse));
+    margin-block-end: calc(var(--spacing) * calc(1 - var(--otri-space-y-reverse)));
+  }
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+  color: var(--color-slate-600);
+}
+.prototype-organizer-pages-publish-waiting-li-5 {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+}
+.prototype-organizer-pages-publish-waiting-map-icon-6 {
+  flex-shrink: 0;
+  color: var(--color-blue-600);
+}
+.prototype-organizer-pages-publish-waiting-span-7 {
+  min-width: 0px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.prototype-organizer-pages-publish-publish-scored-race-div-8 {
+  margin-top: calc(var(--spacing) * 8);
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--spacing) * 3);
+}
+.prototype-organizer-pages-publish-publish-scored-race-a-9 {
+  display: inline-flex;
+  min-height: calc(var(--spacing) * 11);
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  border-radius: var(--radius-lg);
+  --otri-gradient-position: to right in oklab;
+  background-image: linear-gradient(var(--otri-gradient-stops));
+  --otri-gradient-from: var(--color-blue-700);
+  --otri-gradient-to: var(--color-blue-500);
+  --otri-gradient-stops: var(--otri-gradient-via-stops, var(--otri-gradient-position), var(--otri-gradient-from) var(--otri-gradient-from-position), var(--otri-gradient-to) var(--otri-gradient-to-position));
+  padding-inline: calc(var(--spacing) * 4);
+  font-size: 13px;
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-white);
+  text-decoration-line: none;
+}
+.prototype-organizer-pages-publish-publish-scored-race-div-10 {
+  margin-top: calc(var(--spacing) * 5);
+  display: grid;
+  gap: calc(var(--spacing) * 3);
+}
+.prototype-organizer-pages-publish-publish-scored-race-p-11 {
+  margin-top: calc(var(--spacing) * 4);
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+  --otri-leading: calc(var(--spacing) * 5);
+  line-height: calc(var(--spacing) * 5);
+  color: var(--color-slate-500);
+}
+.prototype-organizer-pages-publish-publish-scored-race-button-12 {
+  margin-top: calc(var(--spacing) * 3);
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-slate-500);
+  &:hover {
+    @media (hover: hover) {
+      color: var(--color-red-600);
+    }
+  }
+}
+.prototype-organizer-pages-publish-publish-scored-race-form-13 {
+  margin-top: calc(var(--spacing) * 5);
+  display: grid;
+  gap: calc(var(--spacing) * 4);
+}
+.prototype-organizer-pages-publish-publish-scored-race-div-14 {
+  display: grid;
+  gap: calc(var(--spacing) * 4);
+  @media (width >= 40rem) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.prototype-organizer-pages-publish-publish-scored-race-ol-15 {
+  display: grid;
+  gap: calc(var(--spacing) * 1.5);
+  border-radius: var(--radius-xl);
+  background-color: var(--color-slate-50);
+  padding-inline: calc(var(--spacing) * 4);
+  padding-block: calc(var(--spacing) * 3);
+  font-size: var(--text-sm);
+  line-height: var(--otri-leading, var(--text-sm--line-height));
+}
+.prototype-organizer-pages-publish-publish-scored-race-li-16 {
+  color: var(--color-slate-400);
+}
+.prototype-organizer-pages-publish-publish-scored-race-li-17 {
+  color: #19191d;
+}
+.prototype-organizer-pages-publish-publish-scored-race-check-circle2-18 {
+  color: var(--color-emerald-600);
+}
+.prototype-organizer-pages-publish-publish-scored-race-loader2-19 {
+  animation: var(--animate-spin);
+  color: var(--color-blue-600);
+}
+.prototype-organizer-pages-publish-publish-scored-race-span-20 {
+  display: inline-block;
+  height: 15px;
+  width: 15px;
+  border-radius: calc(infinity * 1px);
+  border-style: var(--otri-border-style);
+  border-width: 1px;
+  border-color: var(--color-slate-300);
+}
+.prototype-organizer-pages-publish-publish-scored-race-div-21 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--spacing) * 3);
+}
+.prototype-organizer-pages-publish-publish-scored-race-p-22 {
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+  color: var(--color-slate-500);
+}
+.prototype-organizer-pages-publish-publish-scored-race-p-23 {
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+  --otri-leading: calc(var(--spacing) * 5);
+  line-height: calc(var(--spacing) * 5);
+  color: var(--color-slate-500);
+}

@@ -1,3 +1,4 @@
+import './main.css'
 import React, { useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ArrowUpRight } from 'lucide-react'
@@ -30,11 +31,11 @@ function useReportedHeight() {
 function Embed() {
   useReportedHeight()
   return (
-    <div className="max-w-full overflow-x-clip bg-[#f7f9fc] text-[#0b1220]">
+    <div className="prototype-embed-main-embed-div-1">
       <ScoreCalculator embedded />
-      <footer className="border-t border-slate-200 bg-white px-4 py-3 text-center text-xs text-slate-500">
+      <footer className="prototype-embed-main-embed-footer-2">
         Scored by the open{' '}
-        <a href="https://otri.run/prototype/#calculator" className="inline-flex items-center gap-0.5 font-semibold text-blue-600 no-underline hover:underline">
+        <a href="https://otri.run/prototype/#calculator" className="prototype-embed-main-embed-a-3">
           OTRI model <ArrowUpRight size={12} />
         </a>
         . The score depends on the course and the time, never on who else races.

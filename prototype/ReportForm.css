@@ -1,0 +1,111 @@
+/* Component styles. Edit directly; no utility compiler is used. */
+
+.prototype-report-form-report-form-p-1 {
+  margin-top: calc(var(--spacing) * 3);
+  border-radius: var(--radius-xl);
+  border-style: var(--otri-border-style);
+  border-width: 1px;
+  border-color: var(--color-emerald-100);
+  background-color: color-mix(in srgb, oklch(97.9% 0.021 166.113) 70%, transparent);
+  @supports (color: color-mix(in lab, red, red)) {
+    background-color: color-mix(in oklab, var(--color-emerald-50) 70%, transparent);
+  }
+  padding-inline: calc(var(--spacing) * 4);
+  padding-block: calc(var(--spacing) * 3);
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+  color: var(--color-emerald-900);
+}
+.prototype-report-form-report-form-div-2 {
+  margin-top: calc(var(--spacing) * 3);
+}
+.prototype-report-form-report-form-p-3 {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  --otri-tracking: .05em;
+  letter-spacing: .05em;
+  color: var(--color-slate-400);
+}
+.prototype-report-form-report-form-button-4 {
+  color: var(--color-blue-600);
+  text-decoration-line: underline;
+}
+.prototype-report-form-report-form-form-5 {
+  margin-top: calc(var(--spacing) * 3);
+  display: grid;
+  max-width: 560px;
+  gap: calc(var(--spacing) * 3);
+  border-radius: var(--radius-2xl);
+  border-style: var(--otri-border-style);
+  border-width: 1px;
+  border-color: var(--color-slate-200);
+  background-color: var(--color-white);
+  padding: calc(var(--spacing) * 4);
+  --otri-shadow: 0 1px 0 rgb(25 25 29 / .04);
+  box-shadow: var(--otri-inset-shadow), var(--otri-inset-ring-shadow), var(--otri-ring-offset-shadow), var(--otri-ring-shadow), var(--otri-shadow);
+}
+.prototype-report-form-report-form-p-6 {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  font-size: var(--text-sm);
+  line-height: var(--otri-leading, var(--text-sm--line-height));
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  color: #19191d;
+}
+.prototype-report-form-report-form-flag-icon-7 {
+  color: var(--color-blue-600);
+}
+.prototype-report-form-report-form-label-8 {
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+  color: var(--color-slate-600);
+}
+.prototype-report-form-report-form-select-9 {
+  margin-top: var(--spacing);
+  width: 100%;
+  border-radius: var(--radius-lg);
+  border-style: var(--otri-border-style);
+  border-width: 1px;
+  border-color: var(--color-slate-300);
+  background-color: var(--color-white);
+  padding-inline: calc(var(--spacing) * 3);
+  padding-block: calc(var(--spacing) * 2);
+  font-size: var(--text-sm);
+  line-height: var(--otri-leading, var(--text-sm--line-height));
+  color: #19191d;
+}
+.prototype-report-form-report-form-p-10 {
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+  color: var(--color-red-600);
+}
+.prototype-report-form-report-form-div-11 {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 3);
+}
+.prototype-report-form-report-form-button-12 {
+  display: inline-flex;
+  min-height: calc(var(--spacing) * 10);
+  align-items: center;
+  border-radius: var(--radius-lg);
+  --otri-gradient-position: to right in oklab;
+  background-image: linear-gradient(var(--otri-gradient-stops));
+  --otri-gradient-from: var(--color-blue-700);
+  --otri-gradient-to: var(--color-blue-500);
+  --otri-gradient-stops: var(--otri-gradient-via-stops, var(--otri-gradient-position), var(--otri-gradient-from) var(--otri-gradient-from-position), var(--otri-gradient-to) var(--otri-gradient-to-position));
+  padding-inline: calc(var(--spacing) * 4);
+  font-size: 13px;
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-white);
+  &:disabled {
+    opacity: 50%;
+  }
+}
+.prototype-report-form-report-form-span-13 {
+  font-size: 11px;
+  color: var(--color-slate-500);
+}

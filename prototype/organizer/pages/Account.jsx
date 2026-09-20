@@ -1,3 +1,4 @@
+import './Account.css'
 import { useEffect, useState } from 'react'
 import CountrySelect from '../../../src/components/CountrySelect'
 import { Check, Copy, Download, KeyRound, LogOut, ShieldCheck, Smartphone, Mail, Trash2 } from 'lucide-react'
@@ -31,15 +32,15 @@ function RecoveryCodes({ codes, method }) {
   }
   return (
     <Notice kind="success" title={`${method === 'email' ? 'Email codes' : 'Authenticator app'} switched on. Save these recovery codes now.`}>
-      <p className="text-xs">Each works once, when you cannot get a code. They are shown only this once.</p>
-      <ul className="mt-2 grid grid-cols-2 gap-1 font-mono text-xs sm:grid-cols-5">
+      <p className="prototype-organizer-pages-account-recovery-codes-p-1">Each works once, when you cannot get a code. They are shown only this once.</p>
+      <ul className="prototype-organizer-pages-account-recovery-codes-ul-2">
         {codes.map((code) => (
-          <li key={code} className="rounded bg-white px-2 py-1 text-[#0b1220]">
+          <li key={code} className="prototype-organizer-pages-account-recovery-codes-li-3">
             {code}
           </li>
         ))}
       </ul>
-      <button type="button" onClick={copy} className="mt-2 inline-flex items-center gap-1 text-xs font-semibold underline">
+      <button type="button" onClick={copy} className="prototype-organizer-pages-account-recovery-codes-button-4">
         {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? 'Copied' : 'Copy all'}
       </button>
     </Notice>
@@ -78,9 +79,9 @@ function ProfileForm({ me, onSaved }) {
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-4" noValidate>
-      <fieldset disabled={!ready} className="contents">
-      <div className="grid gap-4 sm:grid-cols-2">
+    <form onSubmit={submit} className="prototype-organizer-pages-account-profile-form-form-5" noValidate>
+      <fieldset disabled={!ready} className="prototype-organizer-pages-account-profile-form-fieldset-6">
+      <div className="prototype-organizer-pages-account-profile-form-div-7">
         <Field label="Your name" htmlFor="pf-name" hint="Shown to admins; not public.">
           <input id="pf-name" value={form.display_name} onChange={set('display_name')} className={inputClass} placeholder="Ann Organizer" />
         </Field>
@@ -97,11 +98,11 @@ function ProfileForm({ me, onSaved }) {
       <Field label="About" htmlFor="pf-bio" hint="A sentence or two about the races you organize.">
         <textarea id="pf-bio" rows={3} maxLength={1000} value={form.bio} onChange={set('bio')} className={inputClass} />
       </Field>
-      <label className="flex items-start gap-2 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
-        <input id="pf-news" type="checkbox" checked={form.marketing_opt_in} onChange={(e) => setForm((f) => ({ ...f, marketing_opt_in: e.target.checked }))} className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600" />
+      <label className="prototype-organizer-pages-account-profile-form-label-8">
+        <input id="pf-news" type="checkbox" checked={form.marketing_opt_in} onChange={(e) => setForm((f) => ({ ...f, marketing_opt_in: e.target.checked }))} className="prototype-organizer-pages-account-profile-form-input-9" />
         <span>
-          <span className="font-semibold text-[#0b1220]">Email me OTRI news.</span> New features, scoring-model updates, organizer tips; a few times a year.
-          {me?.profile?.marketing_opt_in_at && <span className="block text-xs text-slate-500">Subscribed since {new Date(me.profile.marketing_opt_in_at).toLocaleDateString()}.</span>}
+          <span className="prototype-organizer-pages-account-profile-form-span-10">Email me OTRI news.</span> New features, scoring-model updates, organizer tips; a few times a year.
+          {me?.profile?.marketing_opt_in_at && <span className="prototype-organizer-pages-account-profile-form-span-11">Subscribed since {new Date(me.profile.marketing_opt_in_at).toLocaleDateString()}.</span>}
         </span>
       </label>
       {error && <Notice kind="error">{error}</Notice>}
@@ -147,7 +148,7 @@ function ChangePasswordForm({ email, onChanged }) {
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-4" noValidate>
+    <form onSubmit={submit} className="prototype-organizer-pages-account-profile-form-form-5" noValidate>
       <Field label="Current password" htmlFor="cp-current">
         <PasswordInput id="cp-current" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} className={inputClass} />
       </Field>
@@ -245,34 +246,34 @@ function TwoFactor({ me, email, onChanged, onToken }) {
     })
 
   return (
-    <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3">
-        <p className="text-sm">
-          <span className="font-semibold text-[#0b1220]">Two-factor authentication</span>{' '}
+    <div className="prototype-organizer-pages-account-profile-form-form-5">
+      <div className="prototype-organizer-pages-account-two-factor-div-12">
+        <p className="prototype-organizer-pages-account-two-factor-p-13">
+          <span className="prototype-organizer-pages-account-profile-form-span-10">Two-factor authentication</span>{' '}
           {status.enabled ? (
-            <span className="text-emerald-700">
+            <span className="prototype-organizer-pages-account-two-factor-span-14">
               on · {status.method === 'totp' ? 'authenticator app' : 'email codes'} · {status.recovery_codes_left} recovery codes left
             </span>
           ) : (
-            <span className="text-slate-500">off · a second code at sign-in stops a stolen password on its own</span>
+            <span className="prototype-organizer-pages-account-two-factor-span-15">off · a second code at sign-in stops a stolen password on its own</span>
           )}
         </p>
         {!status.enabled && mode == null && (
-          <span className="flex flex-wrap gap-2">
-            <Button variant="secondary" busy={busy} onClick={() => { setPassword(''); setError(null); setMode('confirm-totp') }} className="min-h-10 text-xs">
+          <span className="prototype-organizer-pages-account-two-factor-span-16">
+            <Button variant="secondary" busy={busy} onClick={() => { setPassword(''); setError(null); setMode('confirm-totp') }} className="prototype-organizer-pages-account-two-factor-button-17">
               <Smartphone size={14} /> Authenticator app
             </Button>
-            <Button variant="secondary" busy={busy} onClick={() => { setPassword(''); setError(null); setMode('confirm-email') }} className="min-h-10 text-xs">
+            <Button variant="secondary" busy={busy} onClick={() => { setPassword(''); setError(null); setMode('confirm-email') }} className="prototype-organizer-pages-account-two-factor-button-17">
               <Mail size={14} /> Email codes
             </Button>
           </span>
         )}
         {status.enabled && mode == null && (
-          <span className="flex flex-wrap gap-2">
-            <Button variant="secondary" className="min-h-10 text-xs" onClick={() => setMode('codes')}>
+          <span className="prototype-organizer-pages-account-two-factor-span-16">
+            <Button variant="secondary" className="prototype-organizer-pages-account-two-factor-button-17" onClick={() => setMode('codes')}>
               New recovery codes
             </Button>
-            <Button variant="danger" className="min-h-10 text-xs" onClick={() => setMode('disable')}>
+            <Button variant="danger" className="prototype-organizer-pages-account-two-factor-button-17" onClick={() => setMode('disable')}>
               Turn off
             </Button>
           </span>
@@ -284,7 +285,7 @@ function TwoFactor({ me, email, onChanged, onToken }) {
 
       {(mode === 'confirm-totp' || mode === 'confirm-email') && (
         <form
-          className="mt-4 grid max-w-sm gap-3"
+          className="prototype-organizer-pages-account-two-factor-form-18"
           onSubmit={(event) => {
             event.preventDefault()
             if (mode === 'confirm-totp') startTotp()
@@ -294,7 +295,7 @@ function TwoFactor({ me, email, onChanged, onToken }) {
           <Field label="Your password" htmlFor="tf-confirm-pw" hint="Changing how your account is protected asks for it again.">
             <PasswordInput id="tf-confirm-pw" autoFocus autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
           </Field>
-          <div className="flex flex-wrap gap-2">
+          <div className="prototype-organizer-pages-account-two-factor-span-16">
             <Button type="submit" busy={busy} disabled={!password}>
               Continue
             </Button>
@@ -305,17 +306,17 @@ function TwoFactor({ me, email, onChanged, onToken }) {
         </form>
       )}
       {mode === 'totp' && setup && (
-        <div className="grid gap-4 sm:grid-cols-[200px_1fr]">
-          <div className="rounded-xl border border-slate-200 bg-white p-2" dangerouslySetInnerHTML={{ __html: setup.svg }} aria-label="QR code for your authenticator app" />
-          <div className="grid gap-3">
-            <p className="text-sm text-slate-600">
+        <div className="prototype-organizer-pages-account-two-factor-div-19">
+          <div className="prototype-organizer-pages-account-two-factor-div-20" dangerouslySetInnerHTML={{ __html: setup.svg }} aria-label="QR code for your authenticator app" />
+          <div className="prototype-organizer-pages-account-two-factor-div-21">
+            <p className="prototype-organizer-pages-account-two-factor-p-22">
               Scan the code with an authenticator app (any that speaks TOTP: Aegis, Google Authenticator, 1Password, Authy…), or enter the key by hand:
             </p>
-            <code className="select-all break-all rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs">{setup.secret}</code>
+            <code className="prototype-organizer-pages-account-two-factor-code-23">{setup.secret}</code>
             <Field label="Enter the 6-digit code the app shows" htmlFor="tf-code">
-              <input id="tf-code" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} className={`${inputClass} font-mono tracking-[.3em]`} maxLength={7} />
+              <input id="tf-code" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} className={`${inputClass} prototype-organizer-pages-account-two-factor-input-24`} maxLength={7} />
             </Field>
-            <div className="flex gap-2">
+            <div className="prototype-organizer-pages-account-two-factor-div-25">
               <Button busy={busy} disabled={code.replace(/\s/g, '').length !== 6} onClick={finishTotp}>
                 <ShieldCheck size={15} /> Turn on
               </Button>
@@ -328,12 +329,12 @@ function TwoFactor({ me, email, onChanged, onToken }) {
       )}
 
       {mode === 'email' && (
-        <div className="grid gap-3">
+        <div className="prototype-organizer-pages-account-two-factor-div-21">
           <Notice kind="info">{message ?? `A code was sent to ${email}.`} Codes expire after 10 minutes.</Notice>
           <Field label="Enter the code from the email" htmlFor="tf-email-code">
-            <input id="tf-email-code" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} className={`${inputClass} font-mono tracking-[.3em]`} maxLength={7} />
+            <input id="tf-email-code" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} className={`${inputClass} prototype-organizer-pages-account-two-factor-input-24`} maxLength={7} />
           </Field>
-          <div className="flex flex-wrap gap-2">
+          <div className="prototype-organizer-pages-account-two-factor-span-16">
             <Button busy={busy} disabled={code.replace(/\s/g, '').length !== 6} onClick={finishEmail}>
               <ShieldCheck size={15} /> Turn on
             </Button>
@@ -348,11 +349,11 @@ function TwoFactor({ me, email, onChanged, onToken }) {
       )}
 
       {(mode === 'disable' || mode === 'codes') && (
-        <div className="grid gap-3">
+        <div className="prototype-organizer-pages-account-two-factor-div-21">
           <Field label={mode === 'disable' ? 'Confirm with your password to turn two-factor off' : 'Confirm with your password to get new recovery codes'} htmlFor="tf-pw">
             <PasswordInput id="tf-pw" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
           </Field>
-          <div className="flex gap-2">
+          <div className="prototype-organizer-pages-account-two-factor-div-25">
             <Button variant={mode === 'disable' ? 'danger' : 'primary'} busy={busy} disabled={!password} onClick={mode === 'disable' ? disable : regenerate}>
               {mode === 'disable' ? 'Turn off two-factor' : 'Generate new codes'}
             </Button>
@@ -384,25 +385,25 @@ function SessionsCard({ onSignedOut }) {
     }
   }
   return (
-    <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm">
-          <span className="font-semibold text-[#0b1220]">Sign out everywhere</span>{' '}
-          <span className="text-slate-500">· lost a phone or used a shared computer? Every session ends, this one too.</span>
+    <div className="prototype-organizer-pages-account-sessions-card-div-26">
+      <div className="prototype-organizer-pages-account-sessions-card-div-27">
+        <p className="prototype-organizer-pages-account-two-factor-p-13">
+          <span className="prototype-organizer-pages-account-profile-form-span-10">Sign out everywhere</span>{' '}
+          <span className="prototype-organizer-pages-account-two-factor-span-15">· lost a phone or used a shared computer? Every session ends, this one too.</span>
         </p>
         {!open && (
-          <Button variant="secondary" className="min-h-10 text-xs" onClick={() => setOpen(true)}>
+          <Button variant="secondary" className="prototype-organizer-pages-account-two-factor-button-17" onClick={() => setOpen(true)}>
             <LogOut size={14} /> Sign out everywhere
           </Button>
         )}
       </div>
       {open && (
-        <div className="mt-3 grid gap-3">
+        <div className="prototype-organizer-pages-account-sessions-card-div-28">
           <Field label="Confirm with your password" htmlFor="so-pw">
             <PasswordInput id="so-pw" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
           </Field>
           {error && <Notice kind="error">{error}</Notice>}
-          <div className="flex gap-2">
+          <div className="prototype-organizer-pages-account-two-factor-div-25">
             <Button busy={busy} disabled={!password} onClick={go}>
               Sign out everywhere
             </Button>
@@ -451,30 +452,30 @@ function DataCard({ email, onDeleted }) {
   return (
     <Card>
       <Eyebrow>YOUR DATA</Eyebrow>
-      <div className="mt-3 grid gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3">
-          <p className="text-sm">
-            <span className="font-semibold text-[#0b1220]">Download my data</span>{' '}
-            <span className="text-slate-500">· your account, events, races, result rows and the emails we sent you, as JSON.</span>
+      <div className="prototype-organizer-pages-account-data-card-div-29">
+        <div className="prototype-organizer-pages-account-two-factor-div-12">
+          <p className="prototype-organizer-pages-account-two-factor-p-13">
+            <span className="prototype-organizer-pages-account-profile-form-span-10">Download my data</span>{' '}
+            <span className="prototype-organizer-pages-account-two-factor-span-15">· your account, events, races, result rows and the emails we sent you, as JSON.</span>
           </p>
-          <Button variant="secondary" className="min-h-10 text-xs" onClick={download}>
+          <Button variant="secondary" className="prototype-organizer-pages-account-two-factor-button-17" onClick={download}>
             <Download size={14} /> Download (JSON)
           </Button>
         </div>
-        <div className="rounded-xl border border-red-200 bg-red-50/60 px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm">
-              <span className="font-semibold text-red-700">Delete my account</span>{' '}
-              <span className="text-slate-600">· removes every event, race and result you uploaded. Published leaderboards disappear. This cannot be undone.</span>
+        <div className="prototype-organizer-pages-account-data-card-div-30">
+          <div className="prototype-organizer-pages-account-sessions-card-div-27">
+            <p className="prototype-organizer-pages-account-two-factor-p-13">
+              <span className="prototype-organizer-pages-account-data-card-span-31">Delete my account</span>{' '}
+              <span className="prototype-organizer-pages-account-data-card-span-32">· removes every event, race and result you uploaded. Published leaderboards disappear. This cannot be undone.</span>
             </p>
             {!open && (
-              <Button variant="danger" className="min-h-10 text-xs" onClick={() => setOpen(true)}>
+              <Button variant="danger" className="prototype-organizer-pages-account-two-factor-button-17" onClick={() => setOpen(true)}>
                 <Trash2 size={14} /> Delete account
               </Button>
             )}
           </div>
           {open && (
-            <div className="mt-3 grid gap-3">
+            <div className="prototype-organizer-pages-account-sessions-card-div-28">
               <Field label={`Type ${email} to confirm`} htmlFor="del-confirm">
                 <input id="del-confirm" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} className={inputClass} autoComplete="off" />
               </Field>
@@ -482,7 +483,7 @@ function DataCard({ email, onDeleted }) {
                 <PasswordInput id="del-pw" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
               </Field>
               {error && <Notice kind="error">{error}</Notice>}
-              <div className="flex gap-2">
+              <div className="prototype-organizer-pages-account-two-factor-div-25">
                 <Button variant="danger" busy={busy} disabled={!password || confirmText.trim().toLowerCase() !== email.toLowerCase()} onClick={remove}>
                   Delete my account for good
                 </Button>
@@ -523,25 +524,25 @@ export function AccountPage({ session, onToken, onSignOut }) {
       intro={`Signed in as ${session.email}. Your organization and website appear next to the races you publish; everything else stays with the OTRI admins.`}
     >
       {error && (
-        <div className="mt-6">
+        <div className="prototype-organizer-pages-account-account-page-div-33">
           <Notice kind="error">{error}</Notice>
         </div>
       )}
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1fr]">
+      <div className="prototype-organizer-pages-account-account-page-div-34">
         <Card>
           <Eyebrow>PROFILE</Eyebrow>
-          <div className="mt-3">
+          <div className="prototype-organizer-pages-account-account-page-div-35">
             <ProfileForm me={me} onSaved={setMe} />
           </div>
         </Card>
-        <div className="grid gap-6">
+        <div className="prototype-organizer-pages-account-account-page-div-36">
           <Card>
             <Eyebrow>SIGN-IN SECURITY</Eyebrow>
-            <div className="mt-3">
+            <div className="prototype-organizer-pages-account-account-page-div-35">
               <TwoFactor me={me} email={session.email} onChanged={load} onToken={keepToken} />
             </div>
             <SessionsCard onSignedOut={onSignOut} />
-            <p className="mt-4 text-[11px] leading-5 text-slate-500">
+            <p className="prototype-organizer-pages-account-account-page-p-37">
               Sessions last 12 hours, or 30 days when you tick "remember me" at sign-in. Password last changed:{' '}
               {me?.password_changed_at ? new Date(me.password_changed_at).toLocaleDateString() : 'never'}.
               {me?.profile?.terms_accepted_at && <> Terms accepted {new Date(me.profile.terms_accepted_at).toLocaleDateString()}.</>}
@@ -549,7 +550,7 @@ export function AccountPage({ session, onToken, onSignOut }) {
           </Card>
           <Card>
             <Eyebrow>PASSWORD</Eyebrow>
-            <div className="mt-3">
+            <div className="prototype-organizer-pages-account-account-page-div-35">
               <ChangePasswordForm email={session.email} onChanged={(result) => { keepToken(result); load() }} />
             </div>
           </Card>

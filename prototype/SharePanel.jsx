@@ -1,3 +1,4 @@
+import './SharePanel.css'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Copy, Download, Share2 } from 'lucide-react'
 import { FORMATS, canvasToBlob, drawLeaderboard, drawRunnerCard, drawScoreCard } from './shareImage'
@@ -22,11 +23,11 @@ const slug = (text) => String(text).toLowerCase().replace(/[^a-z0-9]+/g, '-').re
 
 function Choice({ label, options, value, onChange }) {
   return (
-    <div className="min-w-0">
-      <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">{label}</p>
-      <div className="mt-1.5 inline-flex flex-wrap overflow-hidden rounded-lg border border-slate-300 bg-white">
+    <div className="prototype-share-panel-choice-div-1">
+      <p className="prototype-share-panel-choice-p-2">{label}</p>
+      <div className="prototype-share-panel-choice-div-3">
         {options.map(([id, text, title]) => (
-          <button key={id} type="button" title={title} onClick={() => onChange(id)} aria-pressed={value === id} className={`px-3 py-1.5 text-xs font-semibold transition ${value === id ? 'bg-[#0b1220] text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-[#0b1220]'}`}>
+          <button key={id} type="button" title={title} onClick={() => onChange(id)} aria-pressed={value === id} className={`prototype-share-panel-choice-button-4 ${value === id ? "prototype-share-panel-choice-button-5" : "prototype-share-panel-choice-button-6"}`}>
             {text}
           </button>
         ))}
@@ -85,46 +86,46 @@ function Panel({ draw, fileName, suggestedText, url, children }) {
 
   const ratio = FORMATS[format].width / FORMATS[format].height
   return (
-    <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
-      <div className="min-w-0">
-        <canvas ref={canvasRef} aria-label="Preview of the share image" className="mx-auto block w-full max-w-[300px] rounded-xl shadow-[0_18px_44px_rgba(15,23,42,.18)]" style={{ aspectRatio: String(ratio) }} />
-        <p className="mt-2 text-center font-mono text-[10px] text-slate-500">{FORMATS[format].width} × {FORMATS[format].height} · {FORMATS[format].hint}</p>
+    <div className="prototype-share-panel-panel-div-7">
+      <div className="prototype-share-panel-choice-div-1">
+        <canvas ref={canvasRef} aria-label="Preview of the share image" className="prototype-share-panel-panel-canvas-8" style={{ aspectRatio: String(ratio) }} />
+        <p className="prototype-share-panel-panel-p-9">{FORMATS[format].width} × {FORMATS[format].height} · {FORMATS[format].hint}</p>
       </div>
-      <div className="min-w-0">
-        <div className="flex flex-wrap gap-x-5 gap-y-3">
+      <div className="prototype-share-panel-choice-div-1">
+        <div className="prototype-share-panel-panel-div-10">
           {children}
           <Choice label="FORMAT" value={format} onChange={setFormat} options={Object.entries(FORMATS).map(([id, f]) => [id, f.label, f.hint])} />
         </div>
-        <label className="mt-4 block font-mono text-[9px] tracking-[.08em] text-slate-500">
+        <label className="prototype-share-panel-panel-label-11">
           TEXT FOR YOUR POST · EDIT IT FREELY
-          <textarea value={text} onChange={(event) => { setText(event.target.value); setEdited(true) }} rows={9} className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 font-sans text-sm leading-6 tracking-normal text-[#0b1220] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+          <textarea value={text} onChange={(event) => { setText(event.target.value); setEdited(true) }} rows={9} className="prototype-share-panel-panel-textarea-12" />
         </label>
         {edited && (
-          <button type="button" onClick={() => setEdited(false)} className="mt-1 text-xs font-semibold text-blue-600 hover:underline">Write it again from the selection</button>
+          <button type="button" onClick={() => setEdited(false)} className="prototype-share-panel-panel-button-13">Write it again from the selection</button>
         )}
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button type="button" onClick={download} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-[#0b1220] px-4 text-xs font-semibold text-white">
+        <div className="prototype-share-panel-panel-div-14">
+          <button type="button" onClick={download} className="prototype-share-panel-panel-button-15">
             <Download size={14} /> Download image
           </button>
-          <button type="button" onClick={copy} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-xs font-semibold text-[#0b1220] hover:border-blue-300">
+          <button type="button" onClick={copy} className="prototype-share-panel-panel-button-16">
             {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Text copied' : 'Copy text'}
           </button>
           {(canShareFiles || typeof navigator?.share === 'function') && (
-            <button type="button" onClick={share} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-xs font-semibold text-[#0b1220] hover:border-blue-300">
+            <button type="button" onClick={share} className="prototype-share-panel-panel-button-16">
               <Share2 size={14} /> Share…
             </button>
           )}
         </div>
         {url && (
-          <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+          <p className="prototype-share-panel-panel-p-17">
             Or post the link:
-            <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`} target="_blank" rel="noreferrer" className="font-semibold text-blue-600 no-underline hover:underline">Facebook</a>
-            <a href={`https://wa.me/?text=${encodeURIComponent(`${text}`)}`} target="_blank" rel="noreferrer" className="font-semibold text-blue-600 no-underline hover:underline">WhatsApp</a>
-            <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(text.slice(0, 240))}`} target="_blank" rel="noreferrer" className="font-semibold text-blue-600 no-underline hover:underline">X</a>
+            <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`} target="_blank" rel="noreferrer" className="prototype-share-panel-panel-a-18">Facebook</a>
+            <a href={`https://wa.me/?text=${encodeURIComponent(`${text}`)}`} target="_blank" rel="noreferrer" className="prototype-share-panel-panel-a-18">WhatsApp</a>
+            <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(text.slice(0, 240))}`} target="_blank" rel="noreferrer" className="prototype-share-panel-panel-a-18">X</a>
           </p>
         )}
-        {error && <p className="mt-2 text-xs text-amber-700">{error}</p>}
-        <p className="mt-3 text-[11px] leading-5 text-slate-500">Facebook and Instagram take the image as an attachment: download it, then paste the text. On a phone, Share… hands both to the app.</p>
+        {error && <p className="prototype-share-panel-panel-p-19">{error}</p>}
+        <p className="prototype-share-panel-panel-p-20">Facebook and Instagram take the image as an attachment: download it, then paste the text. On a phone, Share… hands both to the app.</p>
       </div>
     </div>
   )

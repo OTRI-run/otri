@@ -1,3 +1,4 @@
+import './Events.css'
 import { autoFocusOnDesktop } from '../../../src/lib/comfort'
 import { useEffect, useState } from 'react'
 import { ArrowRight, ArrowUpRight, CalendarDays, Plus } from 'lucide-react'
@@ -33,8 +34,8 @@ export function Dashboard({ session }) {
       }
       intro="An event is one edition of your race weekend. Each race distance lives inside it, with its own course and results."
     >
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-        <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">
+      <div className="prototype-organizer-pages-events-dashboard-div-1">
+        <p className="prototype-organizer-pages-events-dashboard-p-2">
           {events ? `${events.length} EVENT${events.length === 1 ? '' : 'S'}` : ''}
         </p>
         {events?.length !== 0 && (
@@ -44,21 +45,21 @@ export function Dashboard({ session }) {
         )}
       </div>
       {hasHandoff() && (
-        <div className="mt-4">
+        <div className="prototype-organizer-pages-events-dashboard-div-3">
           <Notice kind="success" title="The race you scored is waiting.">
             The course and the results are in this browser.{' '}
-            <Link to="/publish" className="font-semibold text-emerald-900 underline">Build its race page</Link>
+            <Link to="/publish" className="prototype-organizer-pages-events-dashboard-link-4">Build its race page</Link>
           </Notice>
         </div>
       )}
       {error && (
-        <div className="mt-4">
+        <div className="prototype-organizer-pages-events-dashboard-div-3">
           <Notice kind="error">{error}</Notice>
         </div>
       )}
-      {events === null && !error && <p className="mt-6 text-sm text-slate-500">Loading your events…</p>}
+      {events === null && !error && <p className="prototype-organizer-pages-events-dashboard-p-5">Loading your events…</p>}
       {events?.length === 0 && (
-        <div className="mt-6">
+        <div className="prototype-organizer-pages-events-dashboard-div-6">
           <EmptyState
             title="No events yet"
             action={
@@ -72,21 +73,21 @@ export function Dashboard({ session }) {
         </div>
       )}
       {events?.length > 0 && (
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="prototype-organizer-pages-events-dashboard-div-7">
           {events.map((event) => (
             <Link
               key={event.event_id}
               to={`/events/${encodeURIComponent(event.event_id)}`}
-              className="group block min-w-0 rounded-2xl border border-slate-200 bg-white p-5 no-underline shadow-[0_10px_28px_rgba(15,23,42,.04)] transition hover:border-blue-300 hover:shadow-[0_14px_34px_rgba(37,99,235,.12)]"
+              className="prototype-organizer-pages-events-dashboard-link-8 otri-group"
             >
-              <div className="flex items-center justify-between">
-                <p className="flex items-center gap-1.5 font-mono text-[9px] tracking-[.08em] text-blue-600">
+              <div className="prototype-organizer-pages-events-dashboard-div-9">
+                <p className="prototype-organizer-pages-events-dashboard-p-10">
                   <CalendarDays size={11} /> {formatDate(event.event_date).toUpperCase()}
                 </p>
-                <ArrowUpRight size={14} className="text-slate-300 transition group-hover:text-blue-600" />
+                <ArrowUpRight size={14} className="prototype-organizer-pages-events-dashboard-arrow-up-right-11" />
               </div>
-              <h2 className="otri-fit mt-2 text-xl font-bold tracking-[-.03em] text-[#0b1220]">{event.event_name}</h2>
-              <p className="mt-4 text-xs font-semibold text-blue-600">
+              <h2 className="prototype-organizer-pages-events-dashboard-h2-12 otri-fit">{event.event_name}</h2>
+              <p className="prototype-organizer-pages-events-dashboard-p-13">
                 {event.race_count === 0 ? 'No races yet' : `${event.race_count} race${event.race_count === 1 ? '' : 's'}`}
               </p>
             </Link>
@@ -136,7 +137,7 @@ export function NewEvent({ session }) {
       intro="The event is the edition, for example “Doi Suthep Trail 2027”. Race distances come next."
       aside={
         <Card>
-          <form onSubmit={submit} className="grid gap-4" noValidate>
+          <form onSubmit={submit} className="prototype-organizer-pages-events-new-event-form-14" noValidate>
             <Field label="Event name" htmlFor="ev-name" hint="As runners know it, including the year if it is an annual event.">
               <input id="ev-name" autoFocus={autoFocusOnDesktop} required value={name} onChange={(e) => setName(e.target.value)} list={RACE_NAME_LIST} autoComplete="off" className={inputClass} placeholder="Doi Suthep Trail 2027" />
               <RaceNameList />
@@ -144,7 +145,7 @@ export function NewEvent({ session }) {
             <Field label="Event date" htmlFor="ev-date" hint="The first day of the event.">
               <input id="ev-date" required type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
             </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="prototype-organizer-pages-events-new-event-div-15">
               <Field label="Location" htmlFor="ev-location" hint="Town or area, as runners know it.">
                 <input
                   id="ev-location"
@@ -167,7 +168,7 @@ export function NewEvent({ session }) {
               </Field>
             </div>
             {error && <Notice kind="error">{error}</Notice>}
-            <div className="flex flex-wrap gap-3">
+            <div className="prototype-organizer-pages-events-new-event-div-16">
               <Button type="submit" busy={busy} disabled={!name.trim() || !date}>
                 Create event <ArrowRight size={15} />
               </Button>
@@ -175,7 +176,7 @@ export function NewEvent({ session }) {
                 Cancel
               </Button>
             </div>
-            {!busy && (!name.trim() || !date) && <p className="text-xs text-slate-500">{!name.trim() ? 'Enter the event name to continue.' : 'Pick the event date to continue.'}</p>}
+            {!busy && (!name.trim() || !date) && <p className="prototype-organizer-pages-events-new-event-p-17">{!name.trim() ? 'Enter the event name to continue.' : 'Pick the event date to continue.'}</p>}
           </form>
         </Card>
       }
@@ -190,18 +191,18 @@ function RaceRow({ race }) {
   return (
     <Link
       to={`/races/${encodeURIComponent(race.race_id)}/${next}`}
-      className="group flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 no-underline shadow-[0_10px_28px_rgba(15,23,42,.04)] transition hover:border-blue-300"
+      className="prototype-organizer-pages-events-race-row-link-18 otri-group"
     >
-      <div className="min-w-0">
-        <p className="truncate text-base font-bold tracking-[-.02em] text-[#0b1220]">{race.course_name}</p>
-        <p className="mt-0.5 font-mono text-[10px] text-slate-500">
+      <div className="prototype-organizer-pages-events-race-row-div-19">
+        <p className="prototype-organizer-pages-events-race-row-p-20">{race.course_name}</p>
+        <p className="prototype-organizer-pages-events-race-row-p-21">
           {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
           {race.has_gpx ? ' · measured from GPX' : ''}
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-3">
+      <div className="prototype-organizer-pages-events-race-row-div-22">
         <StatusChip status={status} />
-        <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 transition group-hover:gap-2">
+        <span className="prototype-organizer-pages-events-race-row-span-23">
           {status === 'published' ? 'Open' : status === 'scored' ? 'Review' : 'Continue'} <ArrowRight size={13} />
         </span>
       </div>
@@ -256,7 +257,7 @@ export function EventPage({ session, eventId }) {
   if (error && !event) {
     return (
       <Page back={{ to: '/events', label: 'Your events' }} title="Event">
-        <div className="mt-4">
+        <div className="prototype-organizer-pages-events-dashboard-div-3">
           <Notice kind="error">{error}</Notice>
         </div>
       </Page>
@@ -266,24 +267,24 @@ export function EventPage({ session, eventId }) {
 
   return (
     <Page back={{ to: '/events', label: 'Your events' }} eyebrow={`EVENT · ${formatDate(event.event_date).toUpperCase()}`} title={event.event_name}>
-      <div className="mt-4 flex flex-wrap gap-4 text-sm">
-        <button onClick={() => setEditing((v) => !v)} className="font-semibold text-blue-600 hover:underline">
+      <div className="prototype-organizer-pages-events-event-page-div-24">
+        <button onClick={() => setEditing((v) => !v)} className="prototype-organizer-pages-events-event-page-button-25">
           {editing ? 'Cancel edit' : 'Edit event'}
         </button>
-        <button onClick={remove} disabled={busy} className="font-semibold text-red-600 hover:underline">
+        <button onClick={remove} disabled={busy} className="prototype-organizer-pages-events-event-page-button-26">
           Delete event
         </button>
       </div>
       {editing && (
-        <Card className="mt-4 max-w-[520px]">
-          <form onSubmit={save} className="grid gap-4" noValidate>
+        <Card className="prototype-organizer-pages-events-event-page-card-27">
+          <form onSubmit={save} className="prototype-organizer-pages-events-new-event-form-14" noValidate>
             <Field label="Event name" htmlFor="ed-name">
               <input id="ed-name" required value={form.event_name} onChange={(e) => setForm((f) => ({ ...f, event_name: e.target.value }))} className={inputClass} />
             </Field>
             <Field label="Event date" htmlFor="ed-date">
               <input id="ed-date" required type="date" value={form.event_date} onChange={(e) => setForm((f) => ({ ...f, event_date: e.target.value }))} className={inputClass} />
             </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="prototype-organizer-pages-events-new-event-div-15">
               <Field label="Location" htmlFor="ed-location">
                 <input
                   id="ed-location"
@@ -307,22 +308,22 @@ export function EventPage({ session, eventId }) {
         </Card>
       )}
       {error && (
-        <div className="mt-4">
+        <div className="prototype-organizer-pages-events-dashboard-div-3">
           <Notice kind="error">{error}</Notice>
         </div>
       )}
 
-      <div className="mt-12 flex flex-wrap items-end justify-between gap-3 border-t border-slate-300 pt-8">
+      <div className="prototype-organizer-pages-events-event-page-div-28">
         <div>
           <Eyebrow>STEP 2 OF 4 · RACES</Eyebrow>
-          <h2 className="mt-2 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">Race distances</h2>
+          <h2 className="prototype-organizer-pages-events-event-page-h2-29">Race distances</h2>
         </div>
         <Button onClick={() => navigate(`/events/${encodeURIComponent(eventId)}/races/new`)}>
           <Plus size={15} /> Add race
         </Button>
       </div>
       {event.races.length === 0 ? (
-        <div className="mt-5">
+        <div className="prototype-organizer-pages-events-event-page-div-30">
           <EmptyState
             title="Create your first race"
             action={
@@ -335,7 +336,7 @@ export function EventPage({ session, eventId }) {
           </EmptyState>
         </div>
       ) : (
-        <div className="mt-5 grid gap-3">
+        <div className="prototype-organizer-pages-events-event-page-div-31">
           {event.races.map((race) => (
             <RaceRow key={race.race_id} race={race} />
           ))}

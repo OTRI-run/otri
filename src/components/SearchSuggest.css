@@ -1,0 +1,107 @@
+/* Component styles. Edit directly; no utility compiler is used. */
+
+.src-components-search-suggest-search-suggest-div-1 {
+  position: relative;
+}
+.src-components-search-suggest-search-suggest-search-2 {
+  pointer-events: none;
+  position: absolute;
+  top: calc(1 / 2 * 100%);
+  left: calc(var(--spacing) * 3);
+  --otri-translate-y: calc(calc(1 / 2 * 100%) * -1);
+  translate: var(--otri-translate-x) var(--otri-translate-y);
+  color: var(--color-slate-400);
+}
+.src-components-search-suggest-search-suggest-input-3 {
+  width: 100%;
+  border-radius: var(--radius-lg);
+  border-style: var(--otri-border-style);
+  border-width: 1px;
+  border-color: var(--color-slate-300);
+  background-color: var(--color-white);
+  padding-block: calc(var(--spacing) * 2.5);
+  padding-right: calc(var(--spacing) * 3);
+  padding-left: calc(var(--spacing) * 9);
+  font-size: var(--text-sm);
+  line-height: var(--otri-leading, var(--text-sm--line-height));
+  color: #19191d;
+  --otri-outline-style: none;
+  outline-style: none;
+  &::placeholder {
+    color: var(--color-slate-400);
+  }
+  &:focus {
+    border-color: var(--color-blue-500);
+  }
+  &:focus {
+    --otri-ring-shadow: var(--otri-ring-inset,) 0 0 0 calc(2px + var(--otri-ring-offset-width)) var(--otri-ring-color, currentcolor);
+    box-shadow: var(--otri-inset-shadow), var(--otri-inset-ring-shadow), var(--otri-ring-offset-shadow), var(--otri-ring-shadow), var(--otri-shadow);
+  }
+  &:focus {
+    --otri-ring-color: var(--color-blue-100);
+  }
+}
+.src-components-search-suggest-search-suggest-ul-4 {
+  position: absolute;
+  top: 100%;
+  right: 0px;
+  left: 0px;
+  z-index: 40;
+  margin-top: var(--spacing);
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  border-style: var(--otri-border-style);
+  border-width: 1px;
+  border-color: var(--color-slate-200);
+  background-color: var(--color-white);
+  padding-block: var(--spacing);
+  --otri-shadow: 0 1px 0 rgb(25 25 29 / .04);
+  box-shadow: var(--otri-inset-shadow), var(--otri-inset-ring-shadow), var(--otri-ring-offset-shadow), var(--otri-ring-shadow), var(--otri-shadow);
+}
+.src-components-search-suggest-search-suggest-li-5 {
+  display: flex;
+  cursor: pointer;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 3);
+  padding-inline: calc(var(--spacing) * 3);
+  padding-block: calc(var(--spacing) * 2);
+  font-size: var(--text-sm);
+  line-height: var(--otri-leading, var(--text-sm--line-height));
+}
+.src-components-search-suggest-search-suggest-li-6 {
+  background-color: var(--color-blue-50);
+}
+.src-components-search-suggest-search-suggest-span-7 {
+  min-width: 0px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  --otri-font-weight: var(--font-weight-medium);
+  font-weight: var(--font-weight-medium);
+}
+.src-components-search-suggest-search-suggest-span-8 {
+  color: #19191d;
+}
+.src-components-search-suggest-search-suggest-span-9 {
+  color: var(--color-slate-500);
+}
+.src-components-search-suggest-search-suggest-span-10 {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-slate-500);
+}
+.src-components-search-suggest-search-suggest-li-11 {
+  border-top-style: var(--otri-border-style);
+  border-top-width: 1px;
+  border-color: var(--color-slate-100);
+  padding-inline: calc(var(--spacing) * 3);
+  padding-top: calc(var(--spacing) * 1.5);
+  padding-bottom: var(--spacing);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  --otri-tracking: .06em;
+  letter-spacing: .06em;
+  color: var(--color-slate-400);
+}

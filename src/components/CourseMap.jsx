@@ -1,3 +1,4 @@
+import './CourseMap.css'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FullscreenControl, LngLatBounds, Map as MapLibreMap, NavigationControl, ScaleControl, addProtocol, setWorkerUrl } from 'maplibre-gl'
 import mlcontour from 'maplibre-contour'
@@ -591,28 +592,28 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
 
   return (
     <div className={className}>
-      <div className="relative">
-        <div ref={mapContainerRef} className="h-[360px] w-full overflow-hidden rounded-xl sm:h-[460px]" />
-        <div className="absolute right-2 top-2 flex gap-1.5">
+      <div className="src-components-course-map-course-map-div-1">
+        <div ref={mapContainerRef} className="src-components-course-map-course-map-div-2" />
+        <div className="src-components-course-map-course-map-div-3">
           {stretches.length > 0 && (
             <button
               onClick={() => setShowSteepness((value) => !value)}
               aria-pressed={showSteepness}
               title="Colour the route by how steep it is"
-              className={`rounded-md px-2.5 py-1.5 text-[10px] font-semibold shadow-sm ${showSteepness ? 'bg-[#0b1220] text-white' : 'bg-white/95 text-slate-700 hover:bg-white'}`}
+              className={`src-components-course-map-course-map-button-4 ${showSteepness ? "src-components-course-map-course-map-button-5" : "src-components-course-map-course-map-button-6"}`}
             >
               Steepness
             </button>
           )}
           <button
             onClick={() => setIs3D((value) => !value)}
-            className="rounded-md bg-white/95 px-2.5 py-1.5 text-[10px] font-semibold text-slate-700 shadow-sm hover:bg-white"
+            className="src-components-course-map-course-map-button-7"
           >
             {is3D ? '2D' : '3D'}
           </button>
           <button
             onClick={() => setIsSatellite((value) => !value)}
-            className="rounded-md bg-white/95 px-2.5 py-1.5 text-[10px] font-semibold text-slate-700 shadow-sm hover:bg-white"
+            className="src-components-course-map-course-map-button-7"
           >
             {isSatellite ? 'Map' : 'Satellite'}
           </button>
@@ -620,7 +621,7 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
       </div>
       <ElevationProfile profile={profile} stretches={showSteepness ? stretches : []} stepUnit={stepUnit} units={units} onHover={handleProfileHover} />
       {stretches.length > 0 && <SteepnessFigures stretches={stretches} profile={profile} units={units} shown={showSteepness} />}
-      <p className="mt-2 text-xs text-slate-500">{measurement ? elevationCaption(measurement) : 'Route preview. Analyze the GPX to calculate its elevation profile.'}</p>
+      <p className="src-components-course-map-course-map-p-8">{measurement ? elevationCaption(measurement) : 'Route preview. Analyze the GPX to calculate its elevation profile.'}</p>
     </div>
   )
 }
@@ -664,26 +665,26 @@ function SteepnessFigures({ stretches, profile, units, shown }) {
     ...(extremes ? [['LOW · HIGH', `${formatNumber(metresToUnit(extremes.low, units))} · ${formatNumber(metresToUnit(extremes.high, units))} ${elevationLabel}`]] : []),
   ]
   return (
-    <div className="mt-3">
+    <div className="src-components-course-map-steepness-figures-div-9">
       {/* The whole course as one bar: where the climbing and the steep ground sit. */}
-      <div className="flex h-2 w-full overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+      <div className="src-components-course-map-steepness-figures-div-10" aria-hidden="true">
         {GRADE_CLASSES.filter((entry) => summary.share[entry.id] > 0).map((entry) => (
           <span key={entry.id} style={{ width: `${summary.share[entry.id] * 100}%`, background: entry.color }} title={`${entry.label}: ${percent(summary.share[entry.id])}`} />
         ))}
       </div>
-      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-5">
+      <dl className="src-components-course-map-steepness-figures-dl-11">
         {figures.map(([label, value]) => (
-          <div key={label} className="min-w-0">
-            <dt className="font-mono text-[8px] tracking-[.08em] text-slate-500">{label}</dt>
-            <dd className="mt-0.5 truncate font-mono text-[13px] font-semibold text-[#0b1220]">{value}</dd>
+          <div key={label} className="src-components-course-map-steepness-figures-div-12">
+            <dt className="src-components-course-map-steepness-figures-dt-13">{label}</dt>
+            <dd className="src-components-course-map-steepness-figures-dd-14">{value}</dd>
           </div>
         ))}
       </dl>
       {shown && (
-        <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5" aria-label="What the colours mean">
+        <ul className="src-components-course-map-steepness-figures-ul-15" aria-label="What the colours mean">
           {GRADE_CLASSES.map((entry) => (
-            <li key={entry.id} className="flex items-center gap-1.5 font-mono text-[9px] text-slate-500" title={entry.label}>
-              <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: entry.color }} />
+            <li key={entry.id} className="src-components-course-map-steepness-figures-li-16" title={entry.label}>
+              <span className="src-components-course-map-steepness-figures-span-17" style={{ background: entry.color }} />
               {entry.range}
             </li>
           ))}
@@ -843,14 +844,14 @@ function ElevationProfile({ profile, stretches = [], stepUnit, units, onHover })
   const tooltipAlign = hover && geometry && hover.x > width - 140 ? 'translateX(-100%)' : 'none'
 
   return (
-    <div ref={wrapperRef} className="relative mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
+    <div ref={wrapperRef} className="src-components-course-map-elevation-profile-div-18">
       {geometry ? (
         <>
           <svg
             width={width}
             height={PROFILE_HEIGHT}
             viewBox={`0 0 ${width} ${PROFILE_HEIGHT}`}
-            className="block select-none"
+            className="src-components-course-map-elevation-profile-svg-19"
             role="img"
             aria-label="Elevation profile"
             onMouseMove={updateHover}
@@ -948,16 +949,16 @@ function ElevationProfile({ profile, stretches = [], stepUnit, units, onHover })
 
           {hover && (
             <div
-              className="pointer-events-none absolute top-2 rounded-lg bg-[#0b1220] px-2.5 py-1.5 font-mono text-[10px] leading-4 text-white shadow-lg"
+              className="src-components-course-map-elevation-profile-div-20"
               style={{ left: tooltipLeft, transform: tooltipAlign }}
             >
-              <div className="font-semibold">
+              <div className="src-components-course-map-elevation-profile-div-21">
                 {(Math.round(hover.distance * 10) / 10).toFixed(1)} {distanceLabel}
               </div>
-              <div className="text-slate-300">
+              <div className="src-components-course-map-elevation-profile-div-22">
                 {formatNumber(hover.elevation)} {elevationLabel}
                 {hover.grade != null && (
-                  <span className={hover.grade >= 0 ? 'text-cyan-300' : 'text-blue-300'}>
+                  <span className={hover.grade >= 0 ? "src-components-course-map-elevation-profile-span-23" : "src-components-course-map-elevation-profile-span-24"}>
                     {' '}
                     · {hover.grade >= 0 ? '+' : ''}
                     {hover.grade.toFixed(0)}%
@@ -968,7 +969,7 @@ function ElevationProfile({ profile, stretches = [], stepUnit, units, onHover })
           )}
         </>
       ) : (
-        <div style={{ height: PROFILE_HEIGHT }} className="flex items-center justify-center text-xs text-slate-400">
+        <div style={{ height: PROFILE_HEIGHT }} className="src-components-course-map-elevation-profile-div-25">
           {valid.length < 2 ? 'No elevation data in this profile.' : ''}
         </div>
       )}

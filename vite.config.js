@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
 import { resolve } from 'node:path'
 import { execSync } from 'node:child_process'
 
@@ -20,7 +19,7 @@ function gitInfo() {
 const { commit, commitFull, commitDate } = gitInfo()
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react()],
   base: './',
   define: {
     __OTRI_COMMIT__: JSON.stringify(commit),
@@ -31,6 +30,8 @@ export default defineConfig({
     exclude: ['maplibre-gl'],
   },
   build: {
+    // Country flags load only when displayed, instead of embedding every flag in CSS.
+    assetsInlineLimit: 0,
     rollupOptions: {
       input: {
         main: resolve(import.meta.dirname, 'index.html'),

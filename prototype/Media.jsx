@@ -1,3 +1,4 @@
+import './Media.css'
 import { useState } from 'react'
 import { Check, Copy, Download, Mail } from 'lucide-react'
 
@@ -5,12 +6,12 @@ import { Check, Copy, Download, Mail } from 'lucide-react'
 // that wants to say its results were scored here, an app that uses the API. The files are built by
 // scripts/build_brand_kit.py (letters as outlines, so they need no font) and live in public/brand.
 
-const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
+const CONTAINER = "prototype-media-container-style-1"
 const BRAND = new URL('../brand/', window.location.href.split('#')[0]).href
 const file = (name) => `${BRAND}${name}`
 
-const LABEL = 'font-mono text-[10px] font-medium tracking-[.1em] text-blue-600'
-const H2 = 'text-[clamp(22px,3vw,30px)] font-bold tracking-[-.04em] text-[#0b1220]'
+const LABEL = "prototype-media-label-style-2"
+const H2 = "prototype-media-h2-style-3"
 
 // The chequered ground says "transparent" without a word, as every design tool does.
 const CHECKER = {
@@ -61,7 +62,7 @@ function useCopy() {
 
 function FileLink({ href, children }) {
   return (
-    <a href={href} download className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 font-mono text-[11px] font-semibold text-[#0b1220] no-underline hover:border-blue-400 hover:text-blue-700">
+    <a href={href} download className="prototype-media-file-link-a-4">
       <Download size={12} /> {children}
     </a>
   )
@@ -69,16 +70,16 @@ function FileLink({ href, children }) {
 
 function LogoCard({ logo }) {
   return (
-    <figure className="m-0 flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white">
-      <div className="flex h-[150px] items-center justify-center px-6" style={GROUNDS[logo.ground]}>
-        <img src={file(logo.svg ?? logo.png)} alt={`OTRI: ${logo.title.toLowerCase()}`} style={{ width: logo.width, maxWidth: '100%' }} className={logo.round ? 'rounded-full' : ''} loading="lazy" />
+    <figure className="prototype-media-logo-card-figure-5">
+      <div className="prototype-media-logo-card-div-6" style={GROUNDS[logo.ground]}>
+        <img src={file(logo.svg ?? logo.png)} alt={`OTRI: ${logo.title.toLowerCase()}`} style={{ width: logo.width, maxWidth: '100%' }} className={logo.round ? "prototype-media-logo-card-img-7" : ''} loading="lazy" />
       </div>
-      <figcaption className="flex flex-1 flex-col gap-3 border-t border-slate-200 p-4">
+      <figcaption className="prototype-media-logo-card-figcaption-8">
         <div>
-          <p className="text-sm font-semibold text-[#0b1220]">{logo.title}</p>
-          <p className="mt-0.5 text-[13px] leading-5 text-slate-500">{logo.note}</p>
+          <p className="prototype-media-logo-card-p-9">{logo.title}</p>
+          <p className="prototype-media-logo-card-p-10">{logo.note}</p>
         </div>
-        <div className="mt-auto flex flex-wrap gap-2">
+        <div className="prototype-media-logo-card-div-11">
           {logo.svg && <FileLink href={file(logo.svg)}>SVG</FileLink>}
           {logo.png && <FileLink href={file(logo.png)}>PNG</FileLink>}
           {logo.alt && <FileLink href={file(logo.alt)}>PNG, light</FileLink>}
@@ -100,129 +101,129 @@ export default function Media() {
   const [copied, copy] = useCopy()
   return (
     <>
-      <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
-        <div className={`${CONTAINER} py-12 sm:py-14`}>
+      <section className="prototype-media-media-section-12">
+        <div className={`${CONTAINER} prototype-media-media-div-13`}>
           <div className={LABEL}>
-            OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> MEDIA AND BRAND
+            OPEN TRAIL RUNNING INDEX <span className="prototype-media-media-span-14">·</span> MEDIA AND BRAND
           </div>
-          <h1 className="mt-5 max-w-[760px] text-[clamp(34px,5vw,56px)] font-bold leading-[1.02] tracking-[-.06em] text-[#0b1220]">
+          <h1 className="prototype-media-media-h1-15">
             Our logo,
             <br />
-            <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">yours to use.</em>
+            <em className="prototype-media-media-em-16">yours to use.</em>
           </h1>
-          <p className="mt-5 max-w-[680px] text-base leading-7 text-slate-600">
+          <p className="prototype-media-media-p-17">
             Writing about OTRI, showing that your race was scored with it, or building on the API? Take the logo. You do not need to ask, only to use it as it is and not to suggest that OTRI approves anything: it measures, it does not certify.
           </p>
-          <div className="mt-7 flex flex-wrap items-center gap-3">
-            <a href={file('otri-brand-kit.zip')} download className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white no-underline shadow-[0_8px_24px_rgba(37,99,235,.28)] hover:bg-blue-700">
-              <Download size={16} /> Download the whole kit <span className="font-mono text-[11px] font-medium text-blue-100">ZIP · 0.7 MB</span>
+          <div className="prototype-media-media-div-18">
+            <a href={file('otri-brand-kit.zip')} download className="prototype-media-media-a-19">
+              <Download size={16} /> Download the whole kit <span className="prototype-media-media-span-20">ZIP · 0.7 MB</span>
             </a>
-            <a href="mailto:hello@otri.run?subject=Press" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 text-sm font-semibold text-[#0b1220] no-underline hover:border-blue-300">
+            <a href="mailto:hello@otri.run?subject=Press" className="prototype-media-media-a-21">
               <Mail size={16} /> Press: hello@otri.run
             </a>
           </div>
         </div>
       </section>
 
-      <div className={`${CONTAINER} py-12`}>
+      <div className={`${CONTAINER} prototype-media-media-div-22`}>
         <section aria-labelledby="media-logos">
           <p className={LABEL}>01 · LOGOS</p>
-          <h2 id="media-logos" className={`${H2} mt-2`}>Pick the one for your background.</h2>
-          <p className="mt-2 max-w-[680px] text-sm leading-7 text-slate-600">
+          <h2 id="media-logos" className={`${H2} prototype-media-media-h2-23`}>Pick the one for your background.</h2>
+          <p className="prototype-media-media-p-24">
             SVG for the web and for print (it stays sharp at any size and needs no font), PNG with a transparent background for everything that takes no SVG: slides, documents, social posts.
           </p>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="prototype-media-media-div-25">
             {LOGOS.map((logo) => (
               <LogoCard key={logo.title} logo={logo} />
             ))}
           </div>
         </section>
 
-        <section aria-labelledby="media-badge" className="mt-16 grid gap-8 lg:grid-cols-[1fr_1.1fr] lg:items-start">
+        <section aria-labelledby="media-badge" className="prototype-media-media-section-26">
           <div>
             <p className={LABEL}>02 · FOR RACES</p>
-            <h2 id="media-badge" className={`${H2} mt-2`}>Scored with OTRI.</h2>
-            <p className="mt-2 text-sm leading-7 text-slate-600">
+            <h2 id="media-badge" className={`${H2} prototype-media-media-h2-23`}>Scored with OTRI.</h2>
+            <p className="prototype-media-media-p-27">
               A badge for your results page, next to results you scored here. It says what happened, which is all OTRI can say about a race: there is no “OTRI certified” and no “OTRI approved”, because OTRI approves no races. Link it to your race on otri.run if you published it, so runners can see how every score came about.
             </p>
-            <div className="mt-5 flex flex-wrap items-center gap-4">
-              <span className="inline-flex rounded-xl border border-slate-200 bg-white p-4">
+            <div className="prototype-media-media-div-28">
+              <span className="prototype-media-media-span-29">
                 <img src={file('otri-badge-scored.svg')} alt="Scored with OTRI" height="32" style={{ height: 32 }} />
               </span>
-              <span className="inline-flex rounded-xl bg-slate-700 p-4">
+              <span className="prototype-media-media-span-30">
                 <img src={file('otri-badge-scored-dark.svg')} alt="Scored with OTRI, dark" height="32" style={{ height: 32 }} />
               </span>
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="prototype-media-media-div-31">
               <FileLink href={file('otri-badge-scored.svg')}>Light, SVG</FileLink>
               <FileLink href={file('otri-badge-scored-dark.svg')}>Dark, SVG</FileLink>
             </div>
           </div>
-          <div className="min-w-0 overflow-hidden rounded-xl border border-slate-800 bg-[#0b1220]">
-            <div className="flex items-center justify-between border-b border-slate-800 px-4 py-2">
-              <span className="font-mono text-[9px] uppercase tracking-[.08em] text-slate-400">HTML for your results page</span>
-              <button type="button" onClick={() => copy('badge', BADGE_HTML)} className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-300 hover:text-white">
+          <div className="prototype-media-media-div-32">
+            <div className="prototype-media-media-div-33">
+              <span className="prototype-media-media-span-34">HTML for your results page</span>
+              <button type="button" onClick={() => copy('badge', BADGE_HTML)} className="prototype-media-media-button-35">
                 {copied === 'badge' ? <Check size={12} /> : <Copy size={12} />} {copied === 'badge' ? 'copied' : 'copy'}
               </button>
             </div>
-            <pre className="overflow-x-auto px-4 py-3 text-[12px] leading-5 text-slate-100"><code>{BADGE_HTML}</code></pre>
+            <pre className="prototype-media-media-pre-36"><code>{BADGE_HTML}</code></pre>
           </div>
         </section>
 
-        <section aria-labelledby="media-space" className="mt-16">
+        <section aria-labelledby="media-space" className="prototype-media-media-section-37">
           <p className={LABEL}>03 · SPACE AND SIZE</p>
-          <h2 id="media-space" className={`${H2} mt-2`}>Give it room. Keep it readable.</h2>
-          <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
-              <div className="flex justify-center py-4">
+          <h2 id="media-space" className={`${H2} prototype-media-media-h2-23`}>Give it room. Keep it readable.</h2>
+          <div className="prototype-media-media-div-38">
+            <div className="prototype-media-media-div-39">
+              <div className="prototype-media-media-div-40">
                 {/* Half the mark's height on every side: drawn, so nobody has to measure. */}
-                <div className="relative inline-block p-[26px] outline-dashed outline-1 outline-blue-300" style={{ background: 'repeating-linear-gradient(45deg,rgba(37,99,235,.07) 0 6px,transparent 6px 12px)' }}>
-                  <div className="bg-white">
+                <div className="prototype-media-media-div-41" style={{ background: 'repeating-linear-gradient(45deg,rgba(37,99,235,.07) 0 6px,transparent 6px 12px)' }}>
+                  <div className="prototype-media-media-div-42">
                     <img src={file('otri-logo.svg')} alt="" style={{ height: 52, display: 'block' }} />
                   </div>
-                  <span className="absolute left-1/2 top-1 -translate-x-1/2 font-mono text-[9px] text-blue-600">½ mark</span>
-                  <span className="absolute left-0.5 top-1/2 -translate-y-1/2 font-mono text-[9px] text-blue-600">½</span>
+                  <span className="prototype-media-media-span-43">½ mark</span>
+                  <span className="prototype-media-media-span-44">½</span>
                 </div>
               </div>
-              <p className="mt-3 text-sm font-semibold text-[#0b1220]">Clear space</p>
-              <p className="mt-1 text-[13px] leading-6 text-slate-600">Keep at least half the height of the mark free on every side: no text, no other logo, no edge of the page. The files already carry a little of it.</p>
+              <p className="prototype-media-media-p-45">Clear space</p>
+              <p className="prototype-media-media-p-46">Keep at least half the height of the mark free on every side: no text, no other logo, no edge of the page. The files already carry a little of it.</p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
-              <div className="flex items-end justify-center gap-10 py-4">
-                <div className="text-center">
-                  <img src={file('otri-logo.svg')} alt="" style={{ width: 120 }} className="mx-auto block" />
-                  <p className="mt-2 font-mono text-[10px] text-slate-500">120 px · 30 mm</p>
+            <div className="prototype-media-media-div-39">
+              <div className="prototype-media-media-div-47">
+                <div className="prototype-media-media-div-48">
+                  <img src={file('otri-logo.svg')} alt="" style={{ width: 120 }} className="prototype-media-media-img-49" />
+                  <p className="prototype-media-media-p-50">120 px · 30 mm</p>
                 </div>
-                <div className="text-center">
-                  <img src={file('otri-logo-compact.svg')} alt="" style={{ width: 64 }} className="mx-auto block" />
-                  <p className="mt-2 font-mono text-[10px] text-slate-500">64 px · 16 mm</p>
+                <div className="prototype-media-media-div-48">
+                  <img src={file('otri-logo-compact.svg')} alt="" style={{ width: 64 }} className="prototype-media-media-img-49" />
+                  <p className="prototype-media-media-p-50">64 px · 16 mm</p>
                 </div>
-                <div className="text-center">
-                  <img src={file('otri-mark.svg')} alt="" style={{ width: 24 }} className="mx-auto block" />
-                  <p className="mt-2 font-mono text-[10px] text-slate-500">24 px · 6 mm</p>
+                <div className="prototype-media-media-div-48">
+                  <img src={file('otri-mark.svg')} alt="" style={{ width: 24 }} className="prototype-media-media-img-49" />
+                  <p className="prototype-media-media-p-50">24 px · 6 mm</p>
                 </div>
               </div>
-              <p className="mt-3 text-sm font-semibold text-[#0b1220]">Smallest sizes</p>
-              <p className="mt-1 text-[13px] leading-6 text-slate-600">Below these the full name stops being readable: switch to the compact logo, then to the mark, instead of shrinking further.</p>
+              <p className="prototype-media-media-p-45">Smallest sizes</p>
+              <p className="prototype-media-media-p-46">Below these the full name stops being readable: switch to the compact logo, then to the mark, instead of shrinking further.</p>
             </div>
           </div>
         </section>
 
-        <section aria-labelledby="media-dont" className="mt-16">
+        <section aria-labelledby="media-dont" className="prototype-media-media-section-37">
           <p className={LABEL}>04 · PLEASE DO NOT</p>
-          <h2 id="media-dont" className={`${H2} mt-2`}>Use it as it is.</h2>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <h2 id="media-dont" className={`${H2} prototype-media-media-h2-23`}>Use it as it is.</h2>
+          <div className="prototype-media-media-div-25">
             {DONT.map((item) => (
-              <div key={item.label} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                <div className="relative flex h-[120px] items-center justify-center overflow-hidden" style={{ background: item.ground ?? '#fff' }}>
+              <div key={item.label} className="prototype-media-media-div-51">
+                <div className="prototype-media-media-div-52" style={{ background: item.ground ?? '#fff' }}>
                   <img src={file(item.ground ? 'otri-logo-compact-white.svg' : 'otri-logo-compact.svg')} alt="" style={{ width: 120, ...item.style }} />
-                  <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-sm font-bold leading-none text-white" aria-hidden="true">×</span>
+                  <span className="prototype-media-media-span-53" aria-hidden="true">×</span>
                 </div>
-                <p className="border-t border-slate-200 p-3 text-[13px] leading-5 text-slate-700">{item.label}</p>
+                <p className="prototype-media-media-p-54">{item.label}</p>
               </div>
             ))}
           </div>
-          <ul className="mt-6 grid gap-x-10 gap-y-2 text-sm leading-7 text-slate-600 sm:grid-cols-2">
+          <ul className="prototype-media-media-ul-55">
             <li>Do not suggest that OTRI approves, certifies, sanctions or sponsors a race, a product or a runner.</li>
             <li>Do not make it part of your own logo, app icon or product name.</li>
             <li>Do not redraw it or set the wordmark in another typeface.</li>
@@ -230,76 +231,76 @@ export default function Media() {
           </ul>
         </section>
 
-        <section aria-labelledby="media-colour" className="mt-16">
+        <section aria-labelledby="media-colour" className="prototype-media-media-section-37">
           <p className={LABEL}>05 · COLOUR AND TYPE</p>
-          <h2 id="media-colour" className={`${H2} mt-2`}>Six colours, two typefaces.</h2>
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <h2 id="media-colour" className={`${H2} prototype-media-media-h2-23`}>Six colours, two typefaces.</h2>
+          <div className="prototype-media-media-div-56">
             {COLOURS.map((colour) => (
               <button
                 key={colour.hex}
                 type="button"
                 onClick={() => copy(colour.hex, colour.hex)}
                 title={`Copy ${colour.hex}`}
-                className={`group flex min-h-[132px] flex-col justify-between rounded-2xl p-4 text-left transition hover:-translate-y-0.5 ${colour.border ? 'border border-slate-200' : ''}`}
+                className={`prototype-media-media-button-57 otri-group ${colour.border ? "prototype-media-media-button-58" : ''}`}
                 style={{ background: colour.hex, color: colour.text }}
               >
-                <span className="flex items-center justify-between text-sm font-semibold">
-                  {colour.name} {copied === colour.hex ? <Check size={14} /> : <Copy size={13} className="opacity-0 transition group-hover:opacity-70" />}
+                <span className="prototype-media-media-span-59">
+                  {colour.name} {copied === colour.hex ? <Check size={14} /> : <Copy size={13} className="prototype-media-media-copy-60" />}
                 </span>
                 <span>
-                  <span className="block font-mono text-[12px]">{copied === colour.hex ? 'copied' : colour.hex}</span>
-                  <span className="mt-1 block text-[11px] leading-4 opacity-75">{colour.use}</span>
+                  <span className="prototype-media-media-span-61">{copied === colour.hex ? 'copied' : colour.hex}</span>
+                  <span className="prototype-media-media-span-62">{colour.use}</span>
                 </span>
               </button>
             ))}
           </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
-              <p className="text-[44px] font-bold leading-none tracking-[-.05em] text-[#0b1220]" style={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>Aa 1000</p>
-              <p className="mt-4 text-sm font-semibold text-[#0b1220]">Inter</p>
-              <p className="mt-1 text-[13px] leading-6 text-slate-600">Bold for the wordmark and headlines, regular for text. Open licence (SIL OFL). The site itself uses your device’s own sans-serif, which is its closest relative.</p>
+          <div className="prototype-media-media-div-63">
+            <div className="prototype-media-media-div-39">
+              <p className="prototype-media-media-p-64" style={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>Aa 1000</p>
+              <p className="prototype-media-media-p-65">Inter</p>
+              <p className="prototype-media-media-p-46">Bold for the wordmark and headlines, regular for text. Open licence (SIL OFL). The site itself uses your device’s own sans-serif, which is its closest relative.</p>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
-              <p className="font-mono text-[30px] font-bold leading-none tracking-[.06em] text-blue-600">04:12:37</p>
-              <p className="mt-4 text-sm font-semibold text-[#0b1220]">JetBrains Mono</p>
-              <p className="mt-1 text-[13px] leading-6 text-slate-600">For the full name, for labels, and for every number that is a measurement: times, distances, scores. Open licence (SIL OFL).</p>
+            <div className="prototype-media-media-div-39">
+              <p className="prototype-media-media-p-66">04:12:37</p>
+              <p className="prototype-media-media-p-65">JetBrains Mono</p>
+              <p className="prototype-media-media-p-46">For the full name, for labels, and for every number that is a measurement: times, distances, scores. Open licence (SIL OFL).</p>
             </div>
           </div>
         </section>
 
-        <section aria-labelledby="media-words" className="mt-16 grid gap-8 lg:grid-cols-[1fr_1.2fr]">
+        <section aria-labelledby="media-words" className="prototype-media-media-section-67">
           <div>
             <p className={LABEL}>06 · IN WORDS</p>
-            <h2 id="media-words" className={`${H2} mt-2`}>How to write about OTRI.</h2>
-            <dl className="mt-4 space-y-3 text-sm leading-7 text-slate-600">
+            <h2 id="media-words" className={`${H2} prototype-media-media-h2-23`}>How to write about OTRI.</h2>
+            <dl className="prototype-media-media-dl-68">
               <div>
-                <dt className="font-semibold text-[#0b1220]">The name</dt>
+                <dt className="prototype-media-media-dt-69">The name</dt>
                 <dd>OTRI, in capitals. In full: Open Trail Running Index. Not “the OTRI index”: the I already is the index.</dd>
               </div>
               <div>
-                <dt className="font-semibold text-[#0b1220]">The number</dt>
+                <dt className="prototype-media-media-dt-69">The number</dt>
                 <dd>An OTRI score: “she ran an OTRI score of 742”. Runners have an OTRI index, built from their scores.</dd>
               </div>
               <div>
-                <dt className="font-semibold text-[#0b1220]">What it is not</dt>
+                <dt className="prototype-media-media-dt-69">What it is not</dt>
                 <dd>Not a federation, a ranking body or a label for races. A race is “scored with OTRI”, never “OTRI certified”.</dd>
               </div>
             </dl>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6">
-            <div className="flex items-center justify-between gap-3">
-              <p className="font-mono text-[10px] font-medium tracking-[.08em] text-slate-500">ABOUT OTRI · FREE TO QUOTE</p>
-              <button type="button" onClick={() => copy('about', BOILERPLATE)} className="inline-flex items-center gap-1 rounded-lg border border-slate-300 px-2.5 py-1 font-mono text-[11px] font-semibold text-[#0b1220] hover:border-blue-400">
+          <div className="prototype-media-media-div-39">
+            <div className="prototype-media-media-div-70">
+              <p className="prototype-media-media-p-71">ABOUT OTRI · FREE TO QUOTE</p>
+              <button type="button" onClick={() => copy('about', BOILERPLATE)} className="prototype-media-media-button-72">
                 {copied === 'about' ? <Check size={12} /> : <Copy size={12} />} {copied === 'about' ? 'copied' : 'copy'}
               </button>
             </div>
-            <p className="mt-3 text-[15px] leading-7 text-slate-700">{BOILERPLATE}</p>
+            <p className="prototype-media-media-p-73">{BOILERPLATE}</p>
           </div>
         </section>
 
-        <p className="mt-14 border-t border-slate-200 pt-6 text-[13px] leading-6 text-slate-500">
+        <p className="prototype-media-media-p-74">
           OTRI’s code and methodology are open source. The name and the logo are not part of that licence: they say that something comes from, or was scored with, this project. Another format, a question, an interview:{' '}
-          <a href="mailto:hello@otri.run" className="font-medium text-blue-600">hello@otri.run</a>.
+          <a href="mailto:hello@otri.run" className="prototype-media-media-a-75">hello@otri.run</a>.
         </p>
       </div>
     </>

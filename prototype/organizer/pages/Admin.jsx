@@ -1,6 +1,7 @@
+import './Admin.css'
 import { useEffect, useState } from 'react'
 import { Activity, ArrowUpRight, Check, Eye, EyeOff, Flag as FlagIcon, HardDrive, Map, Server, ShieldCheck, Trash2, UserCheck } from 'lucide-react'
-import CourseMap from '../../../src/components/CourseMap'
+import CourseMap from '../../../src/components/LazyCourseMap'
 import {
   setRaceListed,
   deleteAdminOrganizer,
@@ -70,25 +71,25 @@ function when(iso) {
 
 function Tile({ label, value, sub }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
-      <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">{value}</p>
-      {sub && <p className="mt-0.5 font-mono text-[10px] text-slate-500">{sub}</p>}
+    <div className="prototype-organizer-pages-admin-tile-div-1">
+      <p className="prototype-organizer-pages-admin-tile-p-2">{label}</p>
+      <p className="prototype-organizer-pages-admin-tile-p-3">{value}</p>
+      {sub && <p className="prototype-organizer-pages-admin-tile-p-4">{sub}</p>}
     </div>
   )
 }
 
 function KeyValues({ title, icon: Icon, rows }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
-      <p className="flex items-center gap-2 font-mono text-[9px] tracking-[.08em] text-slate-500">
-        {Icon && <Icon size={13} className="text-blue-600" />} {title}
+    <section className="prototype-organizer-pages-admin-key-values-section-5">
+      <p className="prototype-organizer-pages-admin-key-values-p-6">
+        {Icon && <Icon size={13} className="prototype-organizer-pages-admin-key-values-icon-7" />} {title}
       </p>
-      <dl className="mt-3 divide-y divide-slate-100">
+      <dl className="prototype-organizer-pages-admin-key-values-dl-8">
         {rows.map(([k, v, tone]) => (
-          <div key={k} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-3 py-2 text-xs">
-            <dt className="text-slate-500">{k}</dt>
-            <dd className={`break-words font-mono ${tone === 'bad' ? 'text-red-600' : tone === 'ok' ? 'text-emerald-700' : 'text-[#0b1220]'}`}>{v}</dd>
+          <div key={k} className="prototype-organizer-pages-admin-key-values-div-9">
+            <dt className="prototype-organizer-pages-admin-key-values-dt-10">{k}</dt>
+            <dd className={`prototype-organizer-pages-admin-key-values-dd-11 ${tone === 'bad' ? "prototype-organizer-pages-admin-key-values-dd-12" : tone === 'ok' ? "prototype-organizer-pages-admin-key-values-dd-13" : "prototype-organizer-pages-admin-key-values-dd-14"}`}>{v}</dd>
           </div>
         ))}
       </dl>
@@ -105,13 +106,13 @@ function Overview({ session }) {
     getAdminOverview(session.token).then(setData).catch((err) => setError(err.message))
   }, [session.token])
   if (error) return <Notice kind="error">{error}</Notice>
-  if (!data) return <p className="text-sm text-slate-500">Loading…</p>
+  if (!data) return <p className="prototype-organizer-pages-admin-overview-p-15">Loading…</p>
   const { stats, api, security, recent_signups: signups, recent_races: races } = data
   const yes = (v) => (v ? ['configured', 'ok'] : ['not configured', 'bad'])
 
   return (
-    <div className="grid gap-6">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="prototype-organizer-pages-admin-overview-div-16">
+      <div className="prototype-organizer-pages-admin-overview-div-17">
         <Tile label="ACCOUNTS" value={stats.organizers} sub={`${stats.verified} verified · ${stats.unverified} pending · ${stats.newsletter ?? 0} on the newsletter`} />
         <Tile label="EVENTS" value={stats.events} sub={`${stats.orphan_events} without owner`} />
         <Tile label="RACES" value={stats.races} sub={`${stats.published_races} published · ${stats.races_with_gpx} with course`} />
@@ -125,7 +126,7 @@ function Overview({ session }) {
         </Notice>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="prototype-organizer-pages-admin-overview-div-18">
         <KeyValues
           title="API"
           icon={Map}
@@ -163,52 +164,52 @@ function Overview({ session }) {
         />
       </div>
 
-      <section className="rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
-        <p className="flex items-center gap-2 font-mono text-[9px] tracking-[.08em] text-amber-700">
+      <section className="prototype-organizer-pages-admin-overview-section-19">
+        <p className="prototype-organizer-pages-admin-overview-p-20">
           <ShieldCheck size={13} /> WHO IS ADMIN
         </p>
-        <ul className="mt-2 flex flex-wrap gap-2">
+        <ul className="prototype-organizer-pages-admin-overview-ul-21">
           {(data.admin_accounts ?? []).map((email) => (
-            <li key={email} className="rounded-full bg-white px-3 py-1 font-mono text-xs text-[#0b1220] shadow-sm">
+            <li key={email} className="prototype-organizer-pages-admin-overview-li-22">
               {email}
             </li>
           ))}
-          {(data.admin_accounts ?? []).length === 0 && <li className="text-xs text-slate-500">Nobody has signed in as admin yet.</li>}
+          {(data.admin_accounts ?? []).length === 0 && <li className="prototype-organizer-pages-admin-overview-li-23">Nobody has signed in as admin yet.</li>}
         </ul>
-        <p className="mt-2 text-[11px] text-slate-600">
+        <p className="prototype-organizer-pages-admin-overview-p-24">
           Granted by the server's OTRI_ADMIN_EMAILS at sign-in ({(security.admin_emails ?? []).join(', ') || 'empty'}). Remove an email there and restart to revoke.
         </p>
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
-          <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">RECENT SIGN-UPS</p>
-          <ul className="mt-2 divide-y divide-slate-100 text-xs">
+      <div className="prototype-organizer-pages-admin-overview-div-18">
+        <section className="prototype-organizer-pages-admin-key-values-section-5">
+          <p className="prototype-organizer-pages-admin-tile-p-2">RECENT SIGN-UPS</p>
+          <ul className="prototype-organizer-pages-admin-overview-ul-25">
             {signups.map((o) => (
-              <li key={o.id} className="flex items-center justify-between gap-3 py-2">
-                <span className="min-w-0 truncate font-mono text-[#0b1220]">{o.email}</span>
-                <span className="shrink-0 text-slate-500">
-                  {when(o.created_at)} · {o.email_verified ? 'verified' : <span className="text-amber-700">pending</span>}
+              <li key={o.id} className="prototype-organizer-pages-admin-overview-li-26">
+                <span className="prototype-organizer-pages-admin-overview-span-27">{o.email}</span>
+                <span className="prototype-organizer-pages-admin-overview-span-28">
+                  {when(o.created_at)} · {o.email_verified ? 'verified' : <span className="prototype-organizer-pages-admin-overview-span-29">pending</span>}
                 </span>
               </li>
             ))}
-            {signups.length === 0 && <li className="py-2 text-slate-500">None yet.</li>}
+            {signups.length === 0 && <li className="prototype-organizer-pages-admin-overview-li-30">None yet.</li>}
           </ul>
         </section>
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
-          <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">RECENT RACES</p>
-          <ul className="mt-2 divide-y divide-slate-100 text-xs">
+        <section className="prototype-organizer-pages-admin-key-values-section-5">
+          <p className="prototype-organizer-pages-admin-tile-p-2">RECENT RACES</p>
+          <ul className="prototype-organizer-pages-admin-overview-ul-25">
             {races.map((r) => (
-              <li key={r.race_id} className="flex items-center justify-between gap-3 py-2">
-                <Link to={`/races/${encodeURIComponent(r.race_id)}/review`} className="min-w-0 truncate no-underline hover:underline">
+              <li key={r.race_id} className="prototype-organizer-pages-admin-overview-li-26">
+                <Link to={`/races/${encodeURIComponent(r.race_id)}/review`} className="prototype-organizer-pages-admin-overview-link-31">
                   {r.event_name} · {r.course_name}
                 </Link>
-                <span className="shrink-0">
+                <span className="prototype-organizer-pages-admin-overview-span-32">
                   <StatusChip status={raceStatus(r, (r.finisher_count ?? 0) > 0)} />
                 </span>
               </li>
             ))}
-            {races.length === 0 && <li className="py-2 text-slate-500">None yet.</li>}
+            {races.length === 0 && <li className="prototype-organizer-pages-admin-overview-li-30">None yet.</li>}
           </ul>
         </section>
       </div>
@@ -264,7 +265,7 @@ function ReportCard({ report, token, onChanged }) {
       <Button
         variant="danger"
         busy={busy}
-        className="min-h-9 px-3 text-xs"
+        className="prototype-organizer-pages-admin-report-card-button-33"
         onClick={() => run(async () => { await deleteAdminRunner(report.subject_id, token); await resolveAdminReport(report.id, 'runner profile and results deleted', token) }, `Delete the runner "${report.subject_label ?? report.subject_id}" and every result attached to them? This cannot be undone.`)}
       >
         <Trash2 size={13} /> Delete runner data
@@ -272,62 +273,62 @@ function ReportCard({ report, token, onChanged }) {
     ),
     race: (
       <>
-        <Button variant="secondary" busy={busy} className="min-h-9 px-3 text-xs" onClick={() => run(async () => { await unpublishRace(report.subject_id, token); await resolveAdminReport(report.id, 'race unpublished', token) }, `Unpublish "${report.subject_label ?? report.subject_id}"?`)}>
+        <Button variant="secondary" busy={busy} className="prototype-organizer-pages-admin-report-card-button-33" onClick={() => run(async () => { await unpublishRace(report.subject_id, token); await resolveAdminReport(report.id, 'race unpublished', token) }, `Unpublish "${report.subject_label ?? report.subject_id}"?`)}>
           <EyeOff size={13} /> Unpublish race
         </Button>
-        <Button variant="danger" busy={busy} className="min-h-9 px-3 text-xs" onClick={() => run(async () => { await deleteRace(report.subject_id, token); await resolveAdminReport(report.id, 'race deleted', token) }, `Delete the race "${report.subject_label ?? report.subject_id}" and its results? This cannot be undone.`)}>
+        <Button variant="danger" busy={busy} className="prototype-organizer-pages-admin-report-card-button-33" onClick={() => run(async () => { await deleteRace(report.subject_id, token); await resolveAdminReport(report.id, 'race deleted', token) }, `Delete the race "${report.subject_label ?? report.subject_id}" and its results? This cannot be undone.`)}>
           <Trash2 size={13} /> Delete race
         </Button>
       </>
     ),
     shared_course: (
-      <Button variant="danger" busy={busy} className="min-h-9 px-3 text-xs" onClick={() => run(async () => { await deleteSharedCourse(report.subject_id, token); await resolveAdminReport(report.id, 'shared course deleted', token) }, `Delete the shared course "${report.subject_label ?? report.subject_id}"? Links to it stop working.`)}>
+      <Button variant="danger" busy={busy} className="prototype-organizer-pages-admin-report-card-button-33" onClick={() => run(async () => { await deleteSharedCourse(report.subject_id, token); await resolveAdminReport(report.id, 'shared course deleted', token) }, `Delete the shared course "${report.subject_label ?? report.subject_id}"? Links to it stop working.`)}>
         <Trash2 size={13} /> Delete shared course
       </Button>
     ),
   }
 
   return (
-    <li className={`rounded-2xl border p-4 ${open ? 'border-amber-200 bg-white' : 'border-slate-200 bg-slate-50/60'}`}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="rounded-full bg-[#0b1220] px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-white">{KIND_LABEL[report.kind] ?? report.kind}</span>
-            {report.reason && <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-slate-600">{REASON_LABEL[report.reason] ?? report.reason}</span>}
-            <span className="font-mono text-[10px] text-slate-500">{when(report.created_at)}</span>
-            {!open && <span className="font-mono text-[10px] text-emerald-700">resolved {when(report.resolved_at)} by {report.resolved_by}{report.resolution ? ` · ${report.resolution}` : ''}</span>}
+    <li className={`prototype-organizer-pages-admin-report-card-li-34 ${open ? "prototype-organizer-pages-admin-report-card-li-35" : "prototype-organizer-pages-admin-report-card-li-36"}`}>
+      <div className="prototype-organizer-pages-admin-report-card-div-37">
+        <div className="prototype-organizer-pages-admin-report-card-div-38">
+          <p className="prototype-organizer-pages-admin-report-card-p-39">
+            <span className="prototype-organizer-pages-admin-report-card-span-40">{KIND_LABEL[report.kind] ?? report.kind}</span>
+            {report.reason && <span className="prototype-organizer-pages-admin-report-card-span-41">{REASON_LABEL[report.reason] ?? report.reason}</span>}
+            <span className="prototype-organizer-pages-admin-report-card-span-42">{when(report.created_at)}</span>
+            {!open && <span className="prototype-organizer-pages-admin-report-card-span-43">resolved {when(report.resolved_at)} by {report.resolved_by}{report.resolution ? ` · ${report.resolution}` : ''}</span>}
           </p>
-          <p className="mt-2 text-sm font-semibold text-[#0b1220]">
-            <a href={subjectLink(report)} className="no-underline hover:underline">
-              {report.subject_label ?? report.subject_id} <ArrowUpRight size={12} className="inline" />
+          <p className="prototype-organizer-pages-admin-report-card-p-44">
+            <a href={subjectLink(report)} className="prototype-organizer-pages-admin-report-card-a-45">
+              {report.subject_label ?? report.subject_id} <ArrowUpRight size={12} className="prototype-organizer-pages-admin-report-card-arrow-up-right-46" />
             </a>
-            <span className="ml-2 font-mono text-[10px] font-normal text-slate-400">{report.subject_id}</span>
+            <span className="prototype-organizer-pages-admin-report-card-span-47">{report.subject_id}</span>
           </p>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{report.message}</p>
-          <p className="mt-1 font-mono text-[10px] text-slate-500">
+          <p className="prototype-organizer-pages-admin-report-card-p-48">{report.message}</p>
+          <p className="prototype-organizer-pages-admin-report-card-p-49">
             {report.reporter_email ? (
-              <a href={`mailto:${report.reporter_email}?subject=${encodeURIComponent(`Your OTRI report about ${report.subject_label ?? report.subject_id}`)}`} className="text-blue-600 no-underline hover:underline">
+              <a href={`mailto:${report.reporter_email}?subject=${encodeURIComponent(`Your OTRI report about ${report.subject_label ?? report.subject_id}`)}`} className="prototype-organizer-pages-admin-report-card-a-50">
                 {report.reporter_email}
               </a>
             ) : (
               'no email left'
             )}
           </p>
-          {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+          {error && <p className="prototype-organizer-pages-admin-report-card-p-51">{error}</p>}
         </div>
         {open && (
-          <div className="flex shrink-0 flex-col items-end gap-2">
-            <div className="flex flex-wrap justify-end gap-2">{subjectActions[report.kind] ?? null}</div>
-            <div className="flex items-center gap-2">
-              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="note (optional)" className="w-40 rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
-              <Button variant="secondary" busy={busy} className="min-h-9 px-3 text-xs" onClick={() => resolve(note || null)}>
+          <div className="prototype-organizer-pages-admin-report-card-div-52">
+            <div className="prototype-organizer-pages-admin-report-card-div-53">{subjectActions[report.kind] ?? null}</div>
+            <div className="prototype-organizer-pages-admin-report-card-div-54">
+              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="note (optional)" className="prototype-organizer-pages-admin-report-card-input-55" />
+              <Button variant="secondary" busy={busy} className="prototype-organizer-pages-admin-report-card-button-33" onClick={() => resolve(note || null)}>
                 <Check size={13} /> Mark resolved
               </Button>
             </div>
           </div>
         )}
         {!open && (
-          <button type="button" onClick={() => run(() => deleteAdminReport(report.id, token), 'Delete this resolved report?')} className="text-xs font-semibold text-slate-500 hover:text-red-600">
+          <button type="button" onClick={() => run(() => deleteAdminReport(report.id, token), 'Delete this resolved report?')} className="prototype-organizer-pages-admin-report-card-button-56">
             Delete
           </button>
         )}
@@ -348,22 +349,22 @@ function Reports({ session }) {
   }, [session.token, showAll, version])
   const reload = () => setVersion((v) => v + 1)
   if (error && !rows) return <Notice kind="error">{error}</Notice>
-  if (!rows) return <p className="text-sm text-slate-500">Loading…</p>
+  if (!rows) return <p className="prototype-organizer-pages-admin-overview-p-15">Loading…</p>
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="flex items-center gap-2 font-mono text-[10px] tracking-[.08em] text-slate-500">
-          <FlagIcon size={13} className="text-blue-600" /> {rows.length} {showAll ? 'REPORT' : 'OPEN REPORT'}{rows.length === 1 ? '' : 'S'}
+      <div className="prototype-organizer-pages-admin-reports-div-57">
+        <p className="prototype-organizer-pages-admin-reports-p-58">
+          <FlagIcon size={13} className="prototype-organizer-pages-admin-key-values-icon-7" /> {rows.length} {showAll ? 'REPORT' : 'OPEN REPORT'}{rows.length === 1 ? '' : 'S'}
         </p>
-        <button type="button" onClick={() => setShowAll((v) => !v)} className="text-xs font-semibold text-blue-600">
+        <button type="button" onClick={() => setShowAll((v) => !v)} className="prototype-organizer-pages-admin-reports-button-59">
           {showAll ? 'Show open only' : 'Show resolved too'}
         </button>
       </div>
-      <ul className="mt-4 grid gap-3">
+      <ul className="prototype-organizer-pages-admin-reports-ul-60">
         {rows.map((report) => (
           <ReportCard key={report.id} report={report} token={session.token} onChanged={reload} />
         ))}
-        {rows.length === 0 && <li className="rounded-2xl border border-dashed border-slate-300 px-6 py-10 text-center text-sm text-slate-500">Nothing reported. The public pages have a "Report a problem" form under every runner profile, leaderboard and shared course.</li>}
+        {rows.length === 0 && <li className="prototype-organizer-pages-admin-reports-li-61">Nothing reported. The public pages have a "Report a problem" form under every runner profile, leaderboard and shared course.</li>}
       </ul>
     </div>
   )
@@ -408,7 +409,7 @@ function Accounts({ session }) {
   }
 
   if (error && !rows) return <Notice kind="error">{error}</Notice>
-  if (!rows) return <p className="text-sm text-slate-500">Loading…</p>
+  if (!rows) return <p className="prototype-organizer-pages-admin-overview-p-15">Loading…</p>
   async function exportNewsletter() {
     setError(null)
     try {
@@ -427,74 +428,74 @@ function Accounts({ session }) {
   const subscribers = rows.filter((o) => o.marketing_opt_in && o.email_verified && !o.is_demo).length
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+      <div className="prototype-organizer-pages-admin-accounts-div-62">
         <span>
-          <span className="font-semibold text-[#0b1220]">{subscribers}</span> verified {subscribers === 1 ? 'account' : 'accounts'} agreed to receive OTRI news. Only those may get marketing email; the export is the audience for a Resend broadcast.
+          <span className="prototype-organizer-pages-admin-accounts-span-63">{subscribers}</span> verified {subscribers === 1 ? 'account' : 'accounts'} agreed to receive OTRI news. Only those may get marketing email; the export is the audience for a Resend broadcast.
         </span>
-        <Button variant="secondary" className="min-h-9 px-3 text-xs" onClick={exportNewsletter} disabled={subscribers === 0}>
+        <Button variant="secondary" className="prototype-organizer-pages-admin-report-card-button-33" onClick={exportNewsletter} disabled={subscribers === 0}>
           Download newsletter list (CSV)
         </Button>
       </div>
       {error && (
-        <div className="mb-4">
+        <div className="prototype-organizer-pages-admin-accounts-div-64">
           <Notice kind="error">{error}</Notice>
         </div>
       )}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
-        <table className="w-full min-w-[820px] text-left text-sm">
+      <div className="prototype-organizer-pages-admin-accounts-div-65">
+        <table className="prototype-organizer-pages-admin-accounts-table-66">
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
-              <th className="px-4 py-3">Email</th>
-              <th className="px-4 py-3">Who</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Created</th>
-              <th className="px-4 py-3">Events</th>
-              <th className="px-4 py-3">Races</th>
-              <th className="px-4 py-3 text-right">Actions</th>
+            <tr className="prototype-organizer-pages-admin-accounts-tr-67">
+              <th className="prototype-organizer-pages-admin-accounts-th-68">Email</th>
+              <th className="prototype-organizer-pages-admin-accounts-th-68">Who</th>
+              <th className="prototype-organizer-pages-admin-accounts-th-68">Status</th>
+              <th className="prototype-organizer-pages-admin-accounts-th-68">Created</th>
+              <th className="prototype-organizer-pages-admin-accounts-th-68">Events</th>
+              <th className="prototype-organizer-pages-admin-accounts-th-68">Races</th>
+              <th className="prototype-organizer-pages-admin-accounts-th-69">Actions</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((o) => (
-              <tr key={o.id} className="border-b border-slate-100 last:border-0">
-                <td className="px-4 py-3 font-mono text-xs text-[#0b1220]">
+              <tr key={o.id} className="prototype-organizer-pages-admin-accounts-tr-70">
+                <td className="prototype-organizer-pages-admin-accounts-td-71">
                   {o.email}
-                  {o.email === session.email && <span className="ml-2 text-slate-400">(you)</span>}
+                  {o.email === session.email && <span className="prototype-organizer-pages-admin-accounts-span-72">(you)</span>}
                 </td>
-                <td className="px-4 py-3 text-xs text-slate-600">
+                <td className="prototype-organizer-pages-admin-accounts-td-73">
                   {o.display_name || o.organization ? (
                     <>
-                      <span className="font-semibold text-[#0b1220]">{o.display_name ?? '—'}</span>
-                      {o.organization && <span className="block text-slate-500">{o.organization}</span>}
+                      <span className="prototype-organizer-pages-admin-accounts-span-63">{o.display_name ?? '—'}</span>
+                      {o.organization && <span className="prototype-organizer-pages-admin-accounts-span-74">{o.organization}</span>}
                     </>
                   ) : (
-                    <span className="text-slate-400">no profile yet</span>
+                    <span className="prototype-organizer-pages-admin-accounts-span-75">no profile yet</span>
                   )}
                 </td>
-                <td className="px-4 py-3">
-                  <span className="flex flex-wrap items-center gap-1.5">
-                    {o.two_factor_method && <span className="rounded-full bg-emerald-600 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-white">2FA</span>}
-                    {o.marketing_opt_in && <span className="rounded-full bg-blue-50 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-blue-700">news</span>}
+                <td className="prototype-organizer-pages-admin-accounts-th-68">
+                  <span className="prototype-organizer-pages-admin-accounts-span-76">
+                    {o.two_factor_method && <span className="prototype-organizer-pages-admin-accounts-span-77">2FA</span>}
+                    {o.marketing_opt_in && <span className="prototype-organizer-pages-admin-accounts-span-78">news</span>}
                     {o.email_verified ? (
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-emerald-700">verified</span>
+                      <span className="prototype-organizer-pages-admin-accounts-span-79">verified</span>
                     ) : (
-                      <span className="rounded-full bg-amber-50 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-amber-700">pending</span>
+                      <span className="prototype-organizer-pages-admin-accounts-span-80">pending</span>
                     )}
-                    {o.is_admin && <span className="rounded-full bg-amber-500 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-white">admin</span>}
-                    {o.is_demo && <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-slate-600">demo</span>}
+                    {o.is_admin && <span className="prototype-organizer-pages-admin-accounts-span-81">admin</span>}
+                    {o.is_demo && <span className="prototype-organizer-pages-admin-report-card-span-41">demo</span>}
                   </span>
                 </td>
-                <td className="px-4 py-3 font-mono text-xs text-slate-500">{when(o.created_at)}</td>
-                <td className="px-4 py-3 font-mono text-xs text-slate-500">{o.event_count}</td>
-                <td className="px-4 py-3 font-mono text-xs text-slate-500">{o.race_count}</td>
-                <td className="px-4 py-3">
-                  <span className="flex justify-end gap-2">
+                <td className="prototype-organizer-pages-admin-accounts-td-82">{when(o.created_at)}</td>
+                <td className="prototype-organizer-pages-admin-accounts-td-82">{o.event_count}</td>
+                <td className="prototype-organizer-pages-admin-accounts-td-82">{o.race_count}</td>
+                <td className="prototype-organizer-pages-admin-accounts-th-68">
+                  <span className="prototype-organizer-pages-admin-accounts-span-83">
                     {!o.email_verified && (
-                      <Button variant="secondary" className="min-h-9 px-3 text-xs" busy={busyId === o.id} onClick={() => verify(o)}>
+                      <Button variant="secondary" className="prototype-organizer-pages-admin-report-card-button-33" busy={busyId === o.id} onClick={() => verify(o)}>
                         <UserCheck size={13} /> Verify
                       </Button>
                     )}
                     {o.email !== session.email && (
-                      <Button variant="danger" className="min-h-9 px-3 text-xs" busy={busyId === o.id} onClick={() => remove(o)}>
+                      <Button variant="danger" className="prototype-organizer-pages-admin-report-card-button-33" busy={busyId === o.id} onClick={() => remove(o)}>
                         <Trash2 size={13} /> Delete
                       </Button>
                     )}
@@ -505,7 +506,7 @@ function Accounts({ session }) {
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-xs text-slate-500">
+      <p className="prototype-organizer-pages-admin-accounts-p-84">
         Admin rights come from the server's OTRI_ADMIN_EMAILS list and are applied at sign-in. Deleting an account removes everything it owns.
       </p>
     </div>
@@ -529,9 +530,9 @@ function CoursePreview({ raceId, token }) {
       cancelled = true
     }
   }, [raceId, token])
-  if (error) return <p className="mt-2 text-xs text-red-600">{error}</p>
-  if (!course) return <p className="mt-2 text-xs text-slate-500">Loading course…</p>
-  return <CourseMap gpxText={course.gpxText} measurement={course.measurement} className="mt-3" />
+  if (error) return <p className="prototype-organizer-pages-admin-course-preview-p-85">{error}</p>
+  if (!course) return <p className="prototype-organizer-pages-admin-course-preview-p-86">Loading course…</p>
+  return <CourseMap gpxText={course.gpxText} measurement={course.measurement} className="prototype-organizer-pages-admin-course-preview-course-map-87" />
 }
 
 function AdminRaceRow({ race, token, onChanged }) {
@@ -556,47 +557,47 @@ function AdminRaceRow({ race, token, onChanged }) {
   }
 
   return (
-    <li className="border-t border-slate-100 py-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#0b1220]">{race.course_name}</p>
-          <p className="font-mono text-[10px] text-slate-500">
+    <li className="prototype-organizer-pages-admin-admin-race-row-li-88">
+      <div className="prototype-organizer-pages-admin-reports-div-57">
+        <div className="prototype-organizer-pages-admin-report-card-div-38">
+          <p className="prototype-organizer-pages-admin-admin-race-row-p-89">{race.course_name}</p>
+          <p className="prototype-organizer-pages-admin-report-card-span-42">
             {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })} · {race.finisher_count ?? 0} scored ·{' '}
             {modelLabel(race.scoring_version)}
             {race.has_gpx ? ` · ${race.measurement_version ?? 'course attached'}` : ' · no course file'}
             {race.is_listed ? ' · listed' : ''}
           </p>
-          {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+          {error && <p className="prototype-organizer-pages-admin-report-card-p-51">{error}</p>}
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <div className="prototype-organizer-pages-admin-admin-race-row-div-90">
           <StatusChip status={status} />
-          <Link to={`/races/${encodeURIComponent(race.race_id)}/review`} className="text-xs font-semibold text-blue-600 no-underline hover:underline">
+          <Link to={`/races/${encodeURIComponent(race.race_id)}/review`} className="prototype-organizer-pages-admin-admin-race-row-link-91">
             Open
           </Link>
           {race.has_gpx && (
-            <button type="button" onClick={() => setShowCourse((v) => !v)} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:underline">
+            <button type="button" onClick={() => setShowCourse((v) => !v)} className="prototype-organizer-pages-admin-admin-race-row-button-92">
               <Map size={12} /> {showCourse ? 'Hide course' : 'View course'}
             </button>
           )}
           {!race.is_published && (
-            <Button variant="secondary" busy={busy} className="min-h-9 px-3 text-xs" onClick={() => run(() => setRaceListed(race.race_id, !race.is_listed, token))}>
+            <Button variant="secondary" busy={busy} className="prototype-organizer-pages-admin-report-card-button-33" onClick={() => run(() => setRaceListed(race.race_id, !race.is_listed, token))}>
               {race.is_listed ? <EyeOff size={13} /> : <Eye size={13} />} {race.is_listed ? 'Unlist' : 'List publicly'}
             </Button>
           )}
           {race.is_listed && !race.is_published && (
-            <a href={`../#races/${encodeURIComponent(race.race_id)}`} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 no-underline hover:underline">
+            <a href={`../#races/${encodeURIComponent(race.race_id)}`} className="prototype-organizer-pages-admin-admin-race-row-a-93">
               Public page <ArrowUpRight size={12} />
             </a>
           )}
           {race.is_published && (
             <>
-              <a href={`../#races/${encodeURIComponent(race.race_id)}`} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 no-underline hover:underline">
+              <a href={`../#races/${encodeURIComponent(race.race_id)}`} className="prototype-organizer-pages-admin-admin-race-row-a-93">
                 Public page <ArrowUpRight size={12} />
               </a>
               <Button
                 variant="secondary"
                 busy={busy}
-                className="min-h-9 px-3 text-xs"
+                className="prototype-organizer-pages-admin-report-card-button-33"
                 onClick={() => run(() => unpublishRace(race.race_id, token), `Unpublish "${race.event_name} · ${race.course_name}"?`)}
               >
                 <EyeOff size={13} /> Unpublish
@@ -606,7 +607,7 @@ function AdminRaceRow({ race, token, onChanged }) {
           <Button
             variant="danger"
             busy={busy}
-            className="min-h-9 px-3 text-xs"
+            className="prototype-organizer-pages-admin-report-card-button-33"
             onClick={() => run(() => deleteRace(race.race_id, token), `Delete the race "${race.event_name} · ${race.course_name}" and its ${race.finisher_count ?? 0} results? This cannot be undone.`)}
           >
             <Trash2 size={13} /> Delete
@@ -646,7 +647,7 @@ function EventsAdmin({ session }) {
   }
 
   if (error && !events) return <Notice kind="error">{error}</Notice>
-  if (!events) return <p className="text-sm text-slate-500">Loading…</p>
+  if (!events) return <p className="prototype-organizer-pages-admin-overview-p-15">Loading…</p>
   const raceCount = events.reduce((n, e) => n + e.race_count, 0)
   // Thousands of events once listings are imported: search, and draw a screenful at a time.
   const needle = query.trim().toLowerCase()
@@ -656,58 +657,58 @@ function EventsAdmin({ session }) {
   return (
     <div>
       {error && (
-        <div className="mb-4">
+        <div className="prototype-organizer-pages-admin-accounts-div-64">
           <Notice kind="error">{error}</Notice>
         </div>
       )}
-      <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">
+      <p className="prototype-organizer-pages-admin-events-admin-p-94">
         {events.length} EVENT{events.length === 1 ? '' : 'S'} · {raceCount} RACE{raceCount === 1 ? '' : 'S'} · {publishedCount} PUBLISHED
       </p>
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      <div className="prototype-organizer-pages-admin-events-admin-div-95">
         <input
           type="search"
           value={query}
           onChange={(e) => { setQuery(e.target.value); setVisible(EVENTS_PER_PAGE) }}
           placeholder="Find an event: name, place, country, owner or date"
           aria-label="Find an event"
-          className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+          className="prototype-organizer-pages-admin-events-admin-input-96"
         />
-        <p className="font-mono text-[10px] text-slate-500">
+        <p className="prototype-organizer-pages-admin-report-card-span-42">
           {shownEvents.length} OF {matching.length} SHOWN
         </p>
       </div>
-      <div className="mt-4 grid gap-4">
+      <div className="prototype-organizer-pages-admin-events-admin-div-97">
         {shownEvents.map((event) => (
-          <section key={event.event_id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <div className="min-w-0">
-                <p className="font-mono text-[9px] tracking-[.08em] text-blue-600">{formatDate(event.event_date).toUpperCase()}</p>
-                <h2 className="mt-1 text-lg font-bold tracking-[-.02em] text-[#0b1220]">
-                  <Link to={`/events/${encodeURIComponent(event.event_id)}`} className="no-underline hover:underline">
+          <section key={event.event_id} className="prototype-organizer-pages-admin-key-values-section-5">
+            <div className="prototype-organizer-pages-admin-events-admin-div-98">
+              <div className="prototype-organizer-pages-admin-report-card-div-38">
+                <p className="prototype-organizer-pages-admin-events-admin-p-99">{formatDate(event.event_date).toUpperCase()}</p>
+                <h2 className="prototype-organizer-pages-admin-events-admin-h2-100">
+                  <Link to={`/events/${encodeURIComponent(event.event_id)}`} className="prototype-organizer-pages-admin-report-card-a-45">
                     {event.event_name}
                   </Link>
                 </h2>
               </div>
-              <div className="flex items-center gap-3">
-                <p className="font-mono text-[10px] text-slate-500">
+              <div className="prototype-organizer-pages-admin-events-admin-div-101">
+                <p className="prototype-organizer-pages-admin-report-card-span-42">
                   {event.organizer_email ?? 'no owner'} · {event.published_count}/{event.race_count} published
                 </p>
-                <button type="button" onClick={() => removeEvent(event)} className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline">
+                <button type="button" onClick={() => removeEvent(event)} className="prototype-organizer-pages-admin-events-admin-button-102">
                   <Trash2 size={12} /> Delete event
                 </button>
               </div>
             </div>
-            <ul className="mt-3">
+            <ul className="prototype-organizer-pages-admin-course-preview-course-map-87">
               {event.races.map((race) => (
                 <AdminRaceRow key={race.race_id} race={race} token={session.token} onChanged={reload} />
               ))}
-              {event.races.length === 0 && <li className="border-t border-slate-100 py-3 text-xs text-slate-500">No races yet.</li>}
+              {event.races.length === 0 && <li className="prototype-organizer-pages-admin-events-admin-li-103">No races yet.</li>}
             </ul>
           </section>
         ))}
       </div>
       {matching.length > shownEvents.length && (
-        <div className="mt-4 flex justify-center">
+        <div className="prototype-organizer-pages-admin-events-admin-div-104">
           <Button variant="secondary" onClick={() => setVisible((n) => n + EVENTS_PER_PAGE)}>
             Show {Math.min(EVENTS_PER_PAGE, matching.length - shownEvents.length)} more
           </Button>
@@ -744,45 +745,45 @@ function SharedCourses({ session }) {
   }
 
   if (error && !rows) return <Notice kind="error">{error}</Notice>
-  if (!rows) return <p className="text-sm text-slate-500">Loading…</p>
+  if (!rows) return <p className="prototype-organizer-pages-admin-overview-p-15">Loading…</p>
   const total = rows.reduce((n, r) => n + (r.size_bytes ?? 0), 0)
   return (
     <div>
       {error && (
-        <div className="mb-4">
+        <div className="prototype-organizer-pages-admin-accounts-div-64">
           <Notice kind="error">{error}</Notice>
         </div>
       )}
-      <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">
+      <p className="prototype-organizer-pages-admin-events-admin-p-94">
         {rows.length} SHARED COURSE{rows.length === 1 ? '' : 'S'} · {fmtBytes(total)} ON DISK (GZIP)
       </p>
-      <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
-        <table className="w-full min-w-[760px] text-left text-sm">
+      <div className="prototype-organizer-pages-admin-shared-courses-div-105">
+        <table className="prototype-organizer-pages-admin-shared-courses-table-106">
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">File</th>
-              <th className="px-4 py-3">Shared</th>
-              <th className="px-4 py-3">Size</th>
-              <th className="px-4 py-3 text-right">Actions</th>
+            <tr className="prototype-organizer-pages-admin-accounts-tr-67">
+              <th className="prototype-organizer-pages-admin-accounts-th-68">Name</th>
+              <th className="prototype-organizer-pages-admin-accounts-th-68">File</th>
+              <th className="prototype-organizer-pages-admin-accounts-th-68">Shared</th>
+              <th className="prototype-organizer-pages-admin-accounts-th-68">Size</th>
+              <th className="prototype-organizer-pages-admin-accounts-th-69">Actions</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.share_id} className="border-b border-slate-100 last:border-0">
-                <td className="px-4 py-3 text-[#0b1220]">
-                  {row.name ?? <span className="text-slate-400">untitled</span>}
-                  <span className="block font-mono text-[10px] text-slate-400">{row.share_id}</span>
+              <tr key={row.share_id} className="prototype-organizer-pages-admin-accounts-tr-70">
+                <td className="prototype-organizer-pages-admin-shared-courses-td-107">
+                  {row.name ?? <span className="prototype-organizer-pages-admin-accounts-span-75">untitled</span>}
+                  <span className="prototype-organizer-pages-admin-shared-courses-span-108">{row.share_id}</span>
                 </td>
-                <td className="px-4 py-3 font-mono text-xs text-slate-500">{row.filename ?? '—'}</td>
-                <td className="px-4 py-3 font-mono text-xs text-slate-500">{when(row.created_at)}</td>
-                <td className="px-4 py-3 font-mono text-xs text-slate-500">{fmtBytes(row.size_bytes)}</td>
-                <td className="px-4 py-3">
-                  <span className="flex justify-end gap-2">
-                    <a href={`../#calculator?gpx=${encodeURIComponent(row.share_id)}${row.name ? `&name=${encodeURIComponent(row.name)}` : ''}`} className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-[#0b1220] no-underline hover:border-blue-300">
+                <td className="prototype-organizer-pages-admin-accounts-td-82">{row.filename ?? '—'}</td>
+                <td className="prototype-organizer-pages-admin-accounts-td-82">{when(row.created_at)}</td>
+                <td className="prototype-organizer-pages-admin-accounts-td-82">{fmtBytes(row.size_bytes)}</td>
+                <td className="prototype-organizer-pages-admin-accounts-th-68">
+                  <span className="prototype-organizer-pages-admin-accounts-span-83">
+                    <a href={`../#calculator?gpx=${encodeURIComponent(row.share_id)}${row.name ? `&name=${encodeURIComponent(row.name)}` : ''}`} className="prototype-organizer-pages-admin-shared-courses-a-109">
                       Open <ArrowUpRight size={12} />
                     </a>
-                    <Button variant="danger" className="min-h-9 px-3 text-xs" busy={busyId === row.share_id} onClick={() => remove(row)}>
+                    <Button variant="danger" className="prototype-organizer-pages-admin-report-card-button-33" busy={busyId === row.share_id} onClick={() => remove(row)}>
                       <Trash2 size={13} /> Delete
                     </Button>
                   </span>
@@ -791,7 +792,7 @@ function SharedCourses({ session }) {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-sm text-slate-500">
+                <td colSpan={5} className="prototype-organizer-pages-admin-shared-courses-td-110">
                   Nobody has shared a course yet.
                 </td>
               </tr>
@@ -807,10 +808,10 @@ function SharedCourses({ session }) {
 
 function Bar({ value, max, tone = 'blue' }) {
   const pct = max ? Math.min(100, Math.round((value / max) * 100)) : 0
-  const color = pct > 90 ? 'bg-red-500' : pct > 75 ? 'bg-amber-500' : tone === 'blue' ? 'bg-blue-600' : 'bg-emerald-500'
+  const color = pct > 90 ? "otri-state-9" : pct > 75 ? "otri-state-10" : tone === 'blue' ? "otri-state-11" : "otri-state-12"
   return (
-    <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
-      <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+    <div className="prototype-organizer-pages-admin-bar-div-111" aria-hidden="true">
+      <div className={`prototype-organizer-pages-admin-bar-div-112 ${color}`} style={{ width: `${pct}%` }} />
     </div>
   )
 }
@@ -825,7 +826,7 @@ function uptime(seconds) {
 
 function Unavailable({ what, reason }) {
   return (
-    <p className="text-xs text-slate-500">
+    <p className="prototype-organizer-pages-admin-overview-li-23">
       {what} not available on this host{reason ? ` (${reason})` : ''}.
     </p>
   )
@@ -838,104 +839,104 @@ function ServerTab({ session }) {
     getAdminServer(session.token).then(setData).catch((err) => setError(err.message))
   }, [session.token])
   if (error) return <Notice kind="error">{error}</Notice>
-  if (!data) return <p className="text-sm text-slate-500">Reading the server…</p>
+  if (!data) return <p className="prototype-organizer-pages-admin-overview-p-15">Reading the server…</p>
   const { host, storage, services, watchdog, backups, firewall, fail2ban, api_usage: usage, tls } = data
   const memUsed = host.memory_total != null && host.memory_available != null ? host.memory_total - host.memory_available : null
   const maxHour = usage?.per_hour ? Math.max(1, ...usage.per_hour) : 1
-  const panel = 'rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)]'
-  const label = 'font-mono text-[9px] tracking-[.08em] text-slate-500'
+  const panel = "prototype-organizer-pages-admin-key-values-section-5"
+  const label = "prototype-organizer-pages-admin-tile-p-2"
 
   return (
-    <div className="grid gap-6">
-      <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">
+    <div className="prototype-organizer-pages-admin-overview-div-16">
+      <p className="prototype-organizer-pages-admin-events-admin-p-94">
         {host.hostname?.toUpperCase()} · SNAPSHOT {when(data.generated_at)} · REFRESHED EVERY 30 S
       </p>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="prototype-organizer-pages-admin-server-tab-div-113">
         <div className={panel}>
           <p className={label}>CPU</p>
-          <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">{host.cpu_percent != null ? `${host.cpu_percent}%` : '—'}</p>
-          <p className="mt-0.5 font-mono text-[10px] text-slate-500">
+          <p className="prototype-organizer-pages-admin-tile-p-3">{host.cpu_percent != null ? `${host.cpu_percent}%` : '—'}</p>
+          <p className="prototype-organizer-pages-admin-tile-p-4">
             {host.cpu_count ?? '?'} core{host.cpu_count === 1 ? '' : 's'} · load {host.load_1 ?? '—'} / {host.load_5 ?? '—'} / {host.load_15 ?? '—'}
           </p>
           {host.cpu_percent != null && <Bar value={host.cpu_percent} max={100} />}
         </div>
         <div className={panel}>
           <p className={label}>MEMORY</p>
-          <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">{memUsed != null ? fmtBytes(memUsed) : '—'}</p>
-          <p className="mt-0.5 font-mono text-[10px] text-slate-500">of {fmtBytes(host.memory_total)} · swap {fmtBytes(host.swap_total)}</p>
+          <p className="prototype-organizer-pages-admin-tile-p-3">{memUsed != null ? fmtBytes(memUsed) : '—'}</p>
+          <p className="prototype-organizer-pages-admin-tile-p-4">of {fmtBytes(host.memory_total)} · swap {fmtBytes(host.swap_total)}</p>
           {memUsed != null && <Bar value={memUsed} max={host.memory_total} />}
         </div>
         <div className={panel}>
           <p className={label}>DISK</p>
-          <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">{fmtBytes(storage.disk_used)}</p>
-          <p className="mt-0.5 font-mono text-[10px] text-slate-500">of {fmtBytes(storage.disk_total)} · {fmtBytes(storage.disk_free)} free</p>
+          <p className="prototype-organizer-pages-admin-tile-p-3">{fmtBytes(storage.disk_used)}</p>
+          <p className="prototype-organizer-pages-admin-tile-p-4">of {fmtBytes(storage.disk_total)} · {fmtBytes(storage.disk_free)} free</p>
           {storage.disk_total && <Bar value={storage.disk_used} max={storage.disk_total} />}
         </div>
         <div className={panel}>
           <p className={label}>UPTIME</p>
-          <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">{uptime(host.uptime_seconds)}</p>
-          <p className="mt-0.5 font-mono text-[10px] text-slate-500">
+          <p className="prototype-organizer-pages-admin-tile-p-3">{uptime(host.uptime_seconds)}</p>
+          <p className="prototype-organizer-pages-admin-tile-p-4">
             TLS {tls?.available ? `${tls.days_left} days left` : 'not checked'}
           </p>
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="prototype-organizer-pages-admin-overview-div-18">
         <section className={panel}>
-          <p className={`${label} flex items-center gap-2`}>
-            <Activity size={13} className="text-blue-600" /> API USAGE · LAST {usage?.hours ?? 24} H
+          <p className={`${label} prototype-organizer-pages-admin-report-card-div-54`}>
+            <Activity size={13} className="prototype-organizer-pages-admin-key-values-icon-7" /> API USAGE · LAST {usage?.hours ?? 24} H
           </p>
           {usage?.available ? (
             <>
-              <div className="mt-3 grid grid-cols-3 gap-3">
+              <div className="prototype-organizer-pages-admin-server-tab-div-114">
                 <div>
                   <p className={label}>REQUESTS</p>
-                  <p className="text-xl font-bold text-[#0b1220]">{usage.total.toLocaleString()}</p>
+                  <p className="prototype-organizer-pages-admin-server-tab-p-115">{usage.total.toLocaleString()}</p>
                 </div>
                 <div>
                   <p className={label}>CLIENTS</p>
-                  <p className="text-xl font-bold text-[#0b1220]">{usage.unique_ips}</p>
+                  <p className="prototype-organizer-pages-admin-server-tab-p-115">{usage.unique_ips}</p>
                 </div>
                 <div>
                   <p className={label}>5XX ERRORS</p>
-                  <p className={`text-xl font-bold ${usage.errors_5xx ? 'text-red-600' : 'text-[#0b1220]'}`}>{usage.errors_5xx}</p>
+                  <p className={`prototype-organizer-pages-admin-server-tab-p-116 ${usage.errors_5xx ? "prototype-organizer-pages-admin-key-values-dd-12" : "prototype-organizer-pages-admin-key-values-dd-14"}`}>{usage.errors_5xx}</p>
                 </div>
               </div>
-              <div className="mt-4 flex h-16 items-end gap-[3px]" aria-label="Requests per hour">
+              <div className="prototype-organizer-pages-admin-server-tab-div-117" aria-label="Requests per hour">
                 {usage.per_hour.map((n, i) => (
-                  <div key={i} title={`${n} requests`} className="flex-1 rounded-t bg-blue-600/80" style={{ height: `${Math.max(2, (n / maxHour) * 100)}%` }} />
+                  <div key={i} title={`${n} requests`} className="prototype-organizer-pages-admin-server-tab-div-118" style={{ height: `${Math.max(2, (n / maxHour) * 100)}%` }} />
                 ))}
               </div>
-              <p className="mt-1 flex justify-between font-mono text-[9px] text-slate-400">
+              <p className="prototype-organizer-pages-admin-server-tab-p-119">
                 <span>{usage.hours} h ago</span>
                 <span>now</span>
               </p>
-              <p className="mt-3 font-mono text-[10px] text-slate-500">
+              <p className="prototype-organizer-pages-admin-server-tab-p-120">
                 {Object.entries(usage.by_status)
                   .sort()
                   .map(([k, v]) => `${k} ${v}`)
                   .join(' · ') || 'no requests'}
               </p>
-              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <div className="prototype-organizer-pages-admin-server-tab-div-121">
                 <div>
                   <p className={label}>TOP ENDPOINTS</p>
-                  <ul className="mt-1 divide-y divide-slate-100 font-mono text-[11px]">
+                  <ul className="prototype-organizer-pages-admin-server-tab-ul-122">
                     {usage.top_paths.map((row) => (
-                      <li key={row.path} className="flex justify-between gap-2 py-1">
-                        <span className="min-w-0 truncate text-[#0b1220]">{row.path}</span>
-                        <span className="text-slate-500">{row.count}</span>
+                      <li key={row.path} className="prototype-organizer-pages-admin-server-tab-li-123">
+                        <span className="prototype-organizer-pages-admin-server-tab-span-124">{row.path}</span>
+                        <span className="prototype-organizer-pages-admin-key-values-dt-10">{row.count}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
                 <div>
                   <p className={label}>TOP CLIENTS</p>
-                  <ul className="mt-1 divide-y divide-slate-100 font-mono text-[11px]">
+                  <ul className="prototype-organizer-pages-admin-server-tab-ul-122">
                     {usage.top_ips.map((row) => (
-                      <li key={row.ip} className="flex justify-between gap-2 py-1">
-                        <span className="text-[#0b1220]">{row.ip}</span>
-                        <span className="text-slate-500">{row.count}</span>
+                      <li key={row.ip} className="prototype-organizer-pages-admin-server-tab-li-123">
+                        <span className="prototype-organizer-pages-admin-key-values-dd-14">{row.ip}</span>
+                        <span className="prototype-organizer-pages-admin-key-values-dt-10">{row.count}</span>
                       </li>
                     ))}
                   </ul>
@@ -943,75 +944,75 @@ function ServerTab({ session }) {
               </div>
             </>
           ) : (
-            <div className="mt-2">
+            <div className="prototype-organizer-pages-admin-server-tab-div-125">
               <Unavailable what="Request log" reason={usage?.reason} />
             </div>
           )}
         </section>
 
-        <div className="grid gap-4">
+        <div className="prototype-organizer-pages-admin-server-tab-div-126">
           <section className={panel}>
-            <p className={`${label} flex items-center gap-2`}>
-              <ShieldCheck size={13} className="text-blue-600" /> FIREWALL & FAIL2BAN
+            <p className={`${label} prototype-organizer-pages-admin-report-card-div-54`}>
+              <ShieldCheck size={13} className="prototype-organizer-pages-admin-key-values-icon-7" /> FIREWALL & FAIL2BAN
             </p>
             {firewall?.available ? (
-              <p className="mt-2 text-xs text-[#0b1220]">
-                ufw <span className={firewall.active ? 'font-semibold text-emerald-700' : 'font-semibold text-red-600'}>{firewall.active ? 'active' : 'inactive'}</span>
-                {firewall.rules?.length ? <span className="text-slate-500"> · {firewall.rules.length} rules</span> : null}
+              <p className="prototype-organizer-pages-admin-server-tab-p-127">
+                ufw <span className={firewall.active ? "prototype-organizer-pages-admin-server-tab-span-128" : "prototype-organizer-pages-admin-server-tab-span-129"}>{firewall.active ? 'active' : 'inactive'}</span>
+                {firewall.rules?.length ? <span className="prototype-organizer-pages-admin-key-values-dt-10"> · {firewall.rules.length} rules</span> : null}
               </p>
             ) : (
-              <div className="mt-2">
+              <div className="prototype-organizer-pages-admin-server-tab-div-125">
                 <Unavailable what="Firewall status" />
               </div>
             )}
             {fail2ban?.available ? (
-              <ul className="mt-2 divide-y divide-slate-100">
+              <ul className="prototype-organizer-pages-admin-server-tab-ul-130">
                 {fail2ban.jails.map((jail) => (
-                  <li key={jail.name} className="py-2 text-xs">
-                    <p className="flex items-center justify-between">
-                      <span className="font-mono font-semibold text-[#0b1220]">jail {jail.name}</span>
-                      <span className="font-mono text-slate-500">
+                  <li key={jail.name} className="prototype-organizer-pages-admin-server-tab-li-131">
+                    <p className="prototype-organizer-pages-admin-server-tab-p-132">
+                      <span className="prototype-organizer-pages-admin-server-tab-span-133">jail {jail.name}</span>
+                      <span className="prototype-organizer-pages-admin-server-tab-span-134">
                         {jail.currently_banned} banned now · {jail.total_banned} total · {jail.total_failed} failed attempts
                       </span>
                     </p>
                     {jail.banned_ips.length > 0 && (
-                      <p className="mt-1 font-mono text-[10px] text-slate-500">{jail.banned_ips.slice(0, 12).join(' · ')}{jail.banned_ips.length > 12 ? ' …' : ''}</p>
+                      <p className="prototype-organizer-pages-admin-report-card-p-49">{jail.banned_ips.slice(0, 12).join(' · ')}{jail.banned_ips.length > 12 ? ' …' : ''}</p>
                     )}
                   </li>
                 ))}
-                {fail2ban.jails.length === 0 && <li className="py-2 text-xs text-slate-500">fail2ban is running with no jails.</li>}
+                {fail2ban.jails.length === 0 && <li className="prototype-organizer-pages-admin-server-tab-li-135">fail2ban is running with no jails.</li>}
               </ul>
             ) : (
-              <div className="mt-2">
+              <div className="prototype-organizer-pages-admin-server-tab-div-125">
                 <Unavailable what="fail2ban" reason={fail2ban?.reason} />
               </div>
             )}
           </section>
 
           <section className={panel}>
-            <p className={`${label} flex items-center gap-2`}>
-              <Server size={13} className="text-blue-600" /> SERVICES
+            <p className={`${label} prototype-organizer-pages-admin-report-card-div-54`}>
+              <Server size={13} className="prototype-organizer-pages-admin-key-values-icon-7" /> SERVICES
             </p>
             {services?.available ? (
-              <ul className="mt-2 grid grid-cols-2 gap-1 font-mono text-xs">
+              <ul className="prototype-organizer-pages-admin-server-tab-ul-136">
                 {Object.entries(services.units).map(([unit, state]) => (
-                  <li key={unit} className="flex items-center gap-2">
-                    <i className={`h-2 w-2 rounded-full ${state === 'active' ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                    {unit} <span className="text-slate-400">{state}</span>
+                  <li key={unit} className="prototype-organizer-pages-admin-report-card-div-54">
+                    <i className={`prototype-organizer-pages-admin-server-tab-i-137 ${state === 'active' ? "prototype-organizer-pages-admin-server-tab-i-138" : "prototype-organizer-pages-admin-server-tab-i-139"}`} />
+                    {unit} <span className="prototype-organizer-pages-admin-accounts-span-75">{state}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <div className="mt-2">
+              <div className="prototype-organizer-pages-admin-server-tab-div-125">
                 <Unavailable what="Service status" />
               </div>
             )}
             {/* Both report by email or not at all: a missing email looks the same as one that never ran. */}
-            <ul className="mt-3 space-y-1 border-t border-slate-100 pt-3 font-mono text-xs">
-              <li className="flex items-center gap-2">
-                <i className={`h-2 w-2 shrink-0 rounded-full ${watchdog?.active && watchdog.last_result === 'success' ? 'bg-emerald-500' : watchdog?.available ? 'bg-red-500' : 'bg-slate-300'}`} />
+            <ul className="prototype-organizer-pages-admin-server-tab-ul-140">
+              <li className="prototype-organizer-pages-admin-report-card-div-54">
+                <i className={`prototype-organizer-pages-admin-server-tab-i-141 ${watchdog?.active && watchdog.last_result === 'success' ? "prototype-organizer-pages-admin-server-tab-i-138" : watchdog?.available ? "prototype-organizer-pages-admin-server-tab-i-139" : "prototype-organizer-pages-admin-server-tab-i-142"}`} />
                 watchdog{' '}
-                <span className="text-slate-400">
+                <span className="prototype-organizer-pages-admin-accounts-span-75">
                   {!watchdog?.available
                     ? 'unknown here'
                     : !watchdog.active
@@ -1019,10 +1020,10 @@ function ServerTab({ session }) {
                       : `last check ${watchdog.last_check ?? 'not yet'}${watchdog.last_result && watchdog.last_result !== 'success' ? ` (${watchdog.last_result})` : ''}`}
                 </span>
               </li>
-              <li className="flex items-center gap-2">
-                <i className={`h-2 w-2 shrink-0 rounded-full ${backups?.ok ? 'bg-emerald-500' : backups?.available ? 'bg-red-500' : 'bg-slate-300'}`} />
+              <li className="prototype-organizer-pages-admin-report-card-div-54">
+                <i className={`prototype-organizer-pages-admin-server-tab-i-141 ${backups?.ok ? "prototype-organizer-pages-admin-server-tab-i-138" : backups?.available ? "prototype-organizer-pages-admin-server-tab-i-139" : "prototype-organizer-pages-admin-server-tab-i-142"}`} />
                 database backup{' '}
-                <span className="text-slate-400">
+                <span className="prototype-organizer-pages-admin-accounts-span-75">
                   {!backups?.available
                     ? 'unknown here'
                     : !backups.newest
@@ -1034,20 +1035,20 @@ function ServerTab({ session }) {
           </section>
 
           <section className={panel}>
-            <p className={`${label} flex items-center gap-2`}>
-              <HardDrive size={13} className="text-blue-600" /> STORAGE
+            <p className={`${label} prototype-organizer-pages-admin-report-card-div-54`}>
+              <HardDrive size={13} className="prototype-organizer-pages-admin-key-values-icon-7" /> STORAGE
             </p>
-            <ul className="mt-2 divide-y divide-slate-100 font-mono text-xs">
-              <li className="flex justify-between py-1">
+            <ul className="prototype-organizer-pages-admin-server-tab-ul-143">
+              <li className="prototype-organizer-pages-admin-server-tab-li-144">
                 <span>database</span>
-                <span className="text-slate-500">{fmtBytes(storage.database_bytes)}</span>
+                <span className="prototype-organizer-pages-admin-key-values-dt-10">{fmtBytes(storage.database_bytes)}</span>
               </li>
               {Object.entries(storage.dirs ?? {}).map(([name, info]) => (
-                <li key={name} className="flex justify-between gap-3 py-1">
-                  <span className="min-w-0 truncate" title={info.path ?? ''}>
+                <li key={name} className="prototype-organizer-pages-admin-server-tab-li-145">
+                  <span className="prototype-organizer-pages-admin-server-tab-span-146" title={info.path ?? ''}>
                     {name.replace('_', ' ')}
                   </span>
-                  <span className="shrink-0 text-slate-500">{info.bytes == null ? '—' : fmtBytes(info.bytes)}</span>
+                  <span className="prototype-organizer-pages-admin-overview-span-28">{info.bytes == null ? '—' : fmtBytes(info.bytes)}</span>
                 </li>
               ))}
             </ul>
@@ -1074,19 +1075,19 @@ export function AdminEvents({ session, tab = 'overview' }) {
       }
       intro="Accounts, events, races, results, shared courses and the state of the API. Every destructive action asks first and cannot be undone."
     >
-      <nav className="mt-8 flex flex-wrap gap-2 border-b border-slate-300">
+      <nav className="prototype-organizer-pages-admin-admin-events-nav-147">
         {TABS.map(([id, label]) => (
           <button
             key={id}
             type="button"
             onClick={() => setActive(id)}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm font-semibold ${active === id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-[#0b1220]'}`}
+            className={`prototype-organizer-pages-admin-admin-events-button-148 ${active === id ? "prototype-organizer-pages-admin-admin-events-button-149" : "prototype-organizer-pages-admin-admin-events-button-150"}`}
           >
             {label}
           </button>
         ))}
       </nav>
-      <div className="mt-6">
+      <div className="prototype-organizer-pages-admin-admin-events-div-151">
         {active === 'overview' && <Overview session={session} />}
         {active === 'reports' && <Reports session={session} />}
         {active === 'accounts' && <Accounts session={session} />}

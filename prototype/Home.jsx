@@ -34,12 +34,13 @@ export default function Home() {
     <section className={s.hero} data-home-hero>
       <TopographicHero />
       <div className={s.heroContent}>
-        <h1 aria-label="Open Trail Running Index">OPEN TRAIL<br />RUNNING INDEX</h1>
-        <p className={s.intro}>A score for your trail performance.<br className={s.desktopBreak} /> Based on the course and your finish time.</p>
+        <p className={s.heroLabel}>TRAIL RUNNING / OPEN PERFORMANCE INDEX</p>
+        <h1 aria-label="Open Trail Running Index">OPEN TRAIL<br /><span>RUNNING INDEX</span></h1>
+        <p className={s.intro}>Your trail performance, measured.<br /> One score from your course and finish time.</p>
         <div className={s.actions}>
           {[
-            { Icon: Calculator, number: '01', audience: 'For runners', title: 'Calculate my score', text: 'Pick a course. Add your time. See your score.', href: '#calculator', cta: 'Start calculating' },
-            { Icon: Upload, number: '02', audience: 'For race organizers', title: 'Score all finishers', text: 'Add your course and results. Get everyone’s scores.', href: '#score', cta: 'Upload race files' },
+            { Icon: Calculator, number: '01', audience: 'For runners', title: 'Calculate my score', text: 'Your course + your finish time.', href: '#calculator', cta: 'Start calculating' },
+            { Icon: Upload, number: '02', audience: 'For race organizers', title: 'Score all finishers', text: 'Your course + your results file.', href: '#score', cta: 'Upload race files' },
           ].map(({Icon,number,audience,title,text,href,cta})=><a href={href} key={href} className={s.action} data-home-action data-audience={number === '01' ? 'runner' : 'organizer'}>
             <span className={s.actionTop}><span>{number} / {audience}</span><Icon size={19} aria-hidden="true" /></span>
             <span className={s.actionTitle}>{title}</span>

@@ -1,3 +1,4 @@
+import './BuildBanner.css'
 import { useEffect, useState } from 'react'
 
 // "Built from commit … · API last restarted …" — the same strip on the bottom of every page.
@@ -60,17 +61,17 @@ export default function BuildBanner() {
   }, [apiStartedAt])
 
   return (
-    <div className="bg-[#0b1220] px-4 text-center font-mono text-[10px] leading-7 text-slate-300">
+    <div className="src-components-build-banner-build-banner-div-1">
       Built from commit{' '}
       {COMMIT_URL ? (
-        <a href={COMMIT_URL} target="_blank" rel="noreferrer" className="font-semibold text-white underline underline-offset-2">
+        <a href={COMMIT_URL} target="_blank" rel="noreferrer" className="src-components-build-banner-build-banner-a-2">
           {COMMIT}
         </a>
       ) : (
-        <span className="font-semibold text-white">{COMMIT}</span>
+        <span className="src-components-build-banner-build-banner-span-3">{COMMIT}</span>
       )}
       {timeAgo ? ` · ${timeAgo}` : ''}
-      {apiStartedAt && <span className="hidden sm:inline">{` · API last restarted ${apiTimeAgo}`}</span>}
+      {apiStartedAt && <span className="src-components-build-banner-build-banner-span-4">{` · API last restarted ${apiTimeAgo}`}</span>}
       {apiUnreachable && ' · API unreachable'}
     </div>
   )

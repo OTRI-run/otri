@@ -1,0 +1,14 @@
+.workbench{padding:60px 0 72px;background:#f6f6f6;border-bottom:1px solid #dddde0;min-height:calc(100svh - 76px)}
+.container{max-width:800px;margin:auto}
+.heading{text-align:left;margin-bottom:36px;border-bottom:1px solid #cfcfd5;padding-bottom:28px}
+.heading h1{font-size:clamp(34px,4vw,52px);line-height:1.03;font-weight:750;letter-spacing:-.045em;color:#19191d}
+.heading>p:not(.eyebrow){font-size:17px;line-height:1.65;color:#68686f;margin-top:16px}
+.heading .eyebrow{color:#a82d19;font:11px/1.5 var(--font-mono);letter-spacing:.06em;margin:0 0 18px}
+.heading ol{justify-content:flex-start;font-size:13px;gap:28px;margin-top:24px}.heading li[aria-current]{color:#a82d19}
+.switcher{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:0 0 22px;border-bottom:1px solid #c4c4cc}
+.switcher button{background:transparent;border:0;border-bottom:3px solid transparent;padding:17px 12px;border-radius:0;box-shadow:none;font-size:15px;text-align:left;font-weight:650;color:#68686f}
+.switcher button[aria-pressed=true]{border-color:#c63c23;color:#19191d;background:transparent;box-shadow:none}
+.panel,.form{border:1px solid #d4d4db;background:#fff;padding:32px;border-radius:8px;box-shadow:none;min-width:0}
+.panel[hidden]{display:none}.workbench input:not([type=file]):not([type=checkbox]):not([type=radio]){min-height:50px;font-size:16px;border-radius:4px}
+.workbench input:focus{border-color:#c63c23;outline:2px solid #ffe4da;outline-offset:1px}.uploadPair{display:grid;grid-template-columns:1fr 1fr;gap:24px}.uploadPair>div>p{margin:0 0 12px;color:#19191d;font-size:15px}.uploadPair label{display:flex;align-items:flex-start;flex-direction:column;justify-content:center;gap:20px;min-height:154px;padding:24px;border-radius:4px;background:#f9f9fa;border-color:#b8b8c1}.uploadPair label:hover{border-color:#c63c23;background:#fff8f5}.uploadPair label span{overflow-wrap:anywhere;white-space:normal}.uploadPair label:focus-within{outline:2px solid #c63c23;outline-offset:3px}.form button[type=submit]{min-height:52px;font-size:16px;background:#c63c23;color:white;border-radius:4px;box-shadow:none}.form button[type=submit]:hover:not(:disabled){background:#a82d19}.form button[type=submit]:disabled{background:#dbdbdf;color:#67676f;opacity:1}.workbench :where(h3){letter-spacing:-.02em}
+@media(max-width:639px){.workbench{padding:36px 0 48px}.container{width:100%}.heading{padding-bottom:25px;margin-bottom:26px}.heading h1{font-size:36px}.heading .eyebrow{font-size:9px}.heading>p:not(.eyebrow){font-size:16px}.panel,.form{padding:20px}.uploadPair{grid-template-columns:1fr;gap:24px}.uploadPair label{min-height:106px;flex-direction:row;align-items:center;padding:18px}.switcher button{font-size:14px;padding-inline:0}.heading ol{gap:20px}}

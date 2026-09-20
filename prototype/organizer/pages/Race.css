@@ -1,0 +1,459 @@
+/* Component styles. Edit directly; no utility compiler is used. */
+
+.prototype-organizer-pages-race-race-shell-div-1 {
+  margin-top: calc(var(--spacing) * 8);
+}
+.prototype-organizer-pages-race-new-race-form-2 {
+  display: grid;
+  gap: calc(var(--spacing) * 4);
+}
+.prototype-organizer-pages-race-new-race-div-3 {
+  display: grid;
+  gap: calc(var(--spacing) * 4);
+  @media (width >= 40rem) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.prototype-organizer-pages-race-new-race-div-4 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--spacing) * 3);
+}
+.prototype-organizer-pages-race-new-race-p-5 {
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+  color: var(--color-slate-500);
+}
+.prototype-organizer-pages-race-course-facts-div-6 {
+  display: grid;
+  gap: calc(var(--spacing) * 3);
+}
+.prototype-organizer-pages-race-course-facts-dl-7 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc(var(--spacing) * 3);
+  @media (width >= 40rem) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.prototype-organizer-pages-race-course-facts-div-8 {
+  border-radius: var(--radius-lg);
+  background-color: var(--color-slate-50);
+  padding-inline: calc(var(--spacing) * 3);
+  padding-block: calc(var(--spacing) * 2);
+}
+.prototype-organizer-pages-race-course-facts-dt-9 {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  --otri-tracking: .06em;
+  letter-spacing: .06em;
+  color: var(--color-slate-400);
+  text-transform: uppercase;
+}
+.prototype-organizer-pages-race-course-facts-dd-10 {
+  margin-top: calc(var(--spacing) * 0.5);
+  font-size: var(--text-sm);
+  line-height: var(--otri-leading, var(--text-sm--line-height));
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  color: #19191d;
+}
+.prototype-organizer-pages-race-course-facts-dd-11 {
+  font-size: 11px;
+}
+.prototype-organizer-pages-race-course-facts-dd-12 {
+  color: var(--color-amber-700);
+}
+.prototype-organizer-pages-race-course-facts-dd-13 {
+  color: var(--color-slate-500);
+}
+.prototype-organizer-pages-race-course-step-div-14 {
+  margin-top: calc(var(--spacing) * 4);
+}
+.prototype-organizer-pages-race-course-step-div-15 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 3);
+}
+.prototype-organizer-pages-race-course-step-p-16 {
+  margin-top: var(--spacing);
+  font-size: var(--text-sm);
+  line-height: var(--otri-leading, var(--text-sm--line-height));
+  color: var(--color-slate-600);
+}
+.prototype-organizer-pages-race-course-step-div-17 {
+  margin-top: calc(var(--spacing) * 3);
+}
+.prototype-organizer-pages-race-course-step-div-18 {
+  margin-top: calc(var(--spacing) * 5);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--spacing) * 3);
+}
+.prototype-organizer-pages-race-example-file-div-19 {
+  margin-top: calc(var(--spacing) * 4);
+  border-radius: var(--radius-xl);
+  border-style: var(--otri-border-style);
+  border-width: 1px;
+  border-color: var(--color-slate-200);
+  background-color: color-mix(in srgb, oklch(98.4% 0.003 247.858) 60%, transparent);
+  @supports (color: color-mix(in lab, red, red)) {
+    background-color: color-mix(in oklab, var(--color-slate-50) 60%, transparent);
+  }
+}
+.prototype-organizer-pages-race-example-file-div-20 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 3);
+  padding-inline: calc(var(--spacing) * 4);
+  padding-block: calc(var(--spacing) * 3);
+}
+.prototype-organizer-pages-race-example-file-p-21 {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  --otri-tracking: .08em;
+  letter-spacing: .08em;
+  color: var(--color-slate-500);
+}
+.prototype-organizer-pages-race-example-file-p-22 {
+  margin-top: calc(var(--spacing) * 0.5);
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+  color: var(--color-slate-600);
+}
+.prototype-organizer-pages-race-example-file-div-23 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+}
+.prototype-organizer-pages-race-example-file-a-24 {
+  display: inline-flex;
+  min-height: calc(var(--spacing) * 9);
+  align-items: center;
+  border-radius: var(--radius-lg);
+  border-style: var(--otri-border-style);
+  border-width: 1px;
+  border-color: var(--color-slate-300);
+  background-color: var(--color-white);
+  padding-inline: calc(var(--spacing) * 3);
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  color: #19191d;
+  text-decoration-line: none;
+  &:hover {
+    @media (hover: hover) {
+      border-color: var(--color-blue-300);
+    }
+  }
+}
+.prototype-organizer-pages-race-example-file-button-25 {
+  min-height: calc(var(--spacing) * 9);
+  padding-inline: calc(var(--spacing) * 3);
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+}
+.prototype-organizer-pages-race-example-file-button-26 {
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-blue-600);
+}
+.prototype-organizer-pages-race-example-file-div-27 {
+  overflow-x: auto;
+  border-top-style: var(--otri-border-style);
+  border-top-width: 1px;
+  border-color: var(--color-slate-200);
+}
+.prototype-organizer-pages-race-example-file-table-28 {
+  width: 100%;
+  min-width: 820px;
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.prototype-organizer-pages-race-example-file-tr-29 {
+  background-color: var(--color-white);
+  font-size: 9px;
+  --otri-tracking: .06em;
+  letter-spacing: .06em;
+  color: var(--color-slate-500);
+  text-transform: uppercase;
+}
+.prototype-organizer-pages-race-example-file-th-30 {
+  padding-inline: calc(var(--spacing) * 3);
+  padding-block: calc(var(--spacing) * 2);
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+.prototype-organizer-pages-race-example-file-tr-31 {
+  border-top-style: var(--otri-border-style);
+  border-top-width: 1px;
+  border-color: var(--color-slate-100);
+  color: #19191d;
+}
+.prototype-organizer-pages-race-example-file-td-32 {
+  padding-inline: calc(var(--spacing) * 3);
+  padding-block: calc(var(--spacing) * 1.5);
+  white-space: nowrap;
+}
+.prototype-organizer-pages-race-example-file-span-33 {
+  color: var(--color-slate-300);
+}
+.prototype-organizer-pages-race-issue-list-ul-34 {
+  margin-top: calc(var(--spacing) * 2);
+  max-height: calc(var(--spacing) * 64);
+  :where(& > :not(:last-child)) {
+    --otri-space-y-reverse: 0;
+    margin-block-start: calc(calc(var(--spacing) * 1.5) * var(--otri-space-y-reverse));
+    margin-block-end: calc(calc(var(--spacing) * 1.5) * calc(1 - var(--otri-space-y-reverse)));
+  }
+  overflow: auto;
+  font-size: var(--text-sm);
+  line-height: var(--otri-leading, var(--text-sm--line-height));
+}
+.prototype-organizer-pages-race-issue-list-li-35 {
+  color: var(--color-red-700);
+}
+.prototype-organizer-pages-race-issue-list-li-36 {
+  color: var(--color-amber-800);
+}
+.prototype-organizer-pages-race-issue-list-span-37 {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+}
+.prototype-organizer-pages-race-scores-table-div-38 {
+  overflow-x: auto;
+  border-radius: var(--radius-2xl);
+  border-style: var(--otri-border-style);
+  border-width: 1px;
+  border-color: var(--color-slate-200);
+  background-color: var(--color-white);
+}
+.prototype-organizer-pages-race-scores-table-table-39 {
+  width: 100%;
+  text-align: left;
+  font-size: var(--text-sm);
+  line-height: var(--otri-leading, var(--text-sm--line-height));
+}
+.prototype-organizer-pages-race-scores-table-table-40 {
+  min-width: 480px;
+}
+.prototype-organizer-pages-race-scores-table-tr-41 {
+  border-bottom-style: var(--otri-border-style);
+  border-bottom-width: 1px;
+  border-color: var(--color-slate-200);
+  background-color: var(--color-slate-50);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  --otri-tracking: .06em;
+  letter-spacing: .06em;
+  color: var(--color-slate-500);
+  text-transform: uppercase;
+}
+.prototype-organizer-pages-race-scores-table-th-42 {
+  padding-inline: calc(var(--spacing) * 3);
+  padding-block: calc(var(--spacing) * 2);
+}
+.prototype-organizer-pages-race-scores-table-th-43 {
+  padding-inline: calc(var(--spacing) * 3);
+  padding-block: calc(var(--spacing) * 2);
+  text-align: right;
+}
+.prototype-organizer-pages-race-scores-table-tr-44 {
+  border-bottom-style: var(--otri-border-style);
+  border-bottom-width: 1px;
+  border-color: var(--color-slate-100);
+  &:last-child {
+    border-style: var(--otri-border-style);
+    border-width: 0px;
+  }
+}
+.prototype-organizer-pages-race-scores-table-td-45 {
+  padding-inline: calc(var(--spacing) * 3);
+  padding-block: calc(var(--spacing) * 2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+  color: var(--color-slate-500);
+}
+.prototype-organizer-pages-race-scores-table-td-46 {
+  padding-inline: calc(var(--spacing) * 3);
+  padding-block: calc(var(--spacing) * 2);
+  --otri-font-weight: var(--font-weight-medium);
+  font-weight: var(--font-weight-medium);
+  color: #19191d;
+}
+.prototype-organizer-pages-race-scores-table-td-47 {
+  padding-inline: calc(var(--spacing) * 3);
+  padding-block: calc(var(--spacing) * 2);
+  text-align: right;
+  font-family: var(--font-mono);
+  --otri-font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-blue-600);
+}
+.prototype-organizer-pages-race-scores-table-span-48 {
+  --otri-font-weight: var(--font-weight-normal);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-slate-400);
+}
+.prototype-organizer-pages-race-scores-table-p-49 {
+  padding-inline: calc(var(--spacing) * 3);
+  padding-block: calc(var(--spacing) * 2);
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+  color: var(--color-slate-500);
+}
+.prototype-organizer-pages-race-results-step-link-50 {
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  text-decoration-line: underline;
+}
+.prototype-organizer-pages-race-results-step-div-51 {
+  margin-top: calc(var(--spacing) * 3);
+  overflow-x: auto;
+  border-radius: var(--radius-xl);
+  border-style: var(--otri-border-style);
+  border-width: 1px;
+  border-color: var(--color-slate-200);
+}
+.prototype-organizer-pages-race-results-step-table-52 {
+  width: 100%;
+  min-width: 560px;
+  text-align: left;
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+}
+.prototype-organizer-pages-race-results-step-tr-53 {
+  border-bottom-style: var(--otri-border-style);
+  border-bottom-width: 1px;
+  border-color: var(--color-slate-200);
+  background-color: var(--color-slate-50);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  --otri-tracking: .06em;
+  letter-spacing: .06em;
+  color: var(--color-slate-500);
+  text-transform: uppercase;
+}
+.prototype-organizer-pages-race-results-step-td-54 {
+  padding-inline: calc(var(--spacing) * 3);
+  padding-block: calc(var(--spacing) * 1.5);
+  font-family: var(--font-mono);
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  color: #19191d;
+}
+.prototype-organizer-pages-race-results-step-td-55 {
+  padding-inline: calc(var(--spacing) * 3);
+  padding-block: calc(var(--spacing) * 1.5);
+  color: var(--color-slate-500);
+}
+.prototype-organizer-pages-race-results-step-p-56 {
+  padding-inline: calc(var(--spacing) * 3);
+  padding-block: calc(var(--spacing) * 2);
+  font-size: 11px;
+  color: var(--color-slate-500);
+}
+.prototype-organizer-pages-race-results-step-div-57 {
+  margin-top: calc(var(--spacing) * 4);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--spacing) * 3);
+}
+.prototype-organizer-pages-race-results-step-div-58 {
+  margin-top: calc(var(--spacing) * 3);
+  scroll-margin-top: calc(var(--spacing) * 24);
+}
+.prototype-organizer-pages-race-results-step-div-59 {
+  scroll-margin-top: calc(var(--spacing) * 24);
+  --otri-outline-style: none;
+  outline-style: none;
+}
+.prototype-organizer-pages-race-results-step-details-60 {
+  margin-top: calc(var(--spacing) * 3);
+  border-radius: var(--radius-lg);
+  background-color: color-mix(in srgb, oklch(98.7% 0.022 95.277) 60%, transparent);
+  @supports (color: color-mix(in lab, red, red)) {
+    background-color: color-mix(in oklab, var(--color-amber-50) 60%, transparent);
+  }
+  padding-inline: calc(var(--spacing) * 3);
+  padding-block: calc(var(--spacing) * 2);
+}
+.prototype-organizer-pages-race-results-step-summary-61 {
+  cursor: pointer;
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-amber-800);
+}
+.prototype-organizer-pages-race-results-step-columns-read-62 {
+  margin-bottom: calc(var(--spacing) * 3);
+}
+.prototype-organizer-pages-race-review-step-div-63 {
+  display: grid;
+  gap: calc(var(--spacing) * 4);
+  @media (width >= 64rem) {
+    grid-template-columns: minmax(0,1fr) 360px;
+  }
+}
+.prototype-organizer-pages-race-review-step-div-64 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 3);
+}
+.prototype-organizer-pages-race-review-step-ul-65 {
+  margin-top: calc(var(--spacing) * 2);
+  :where(& > :not(:last-child)) {
+    --otri-divide-y-reverse: 0;
+    border-bottom-style: var(--otri-border-style);
+    border-top-style: var(--otri-border-style);
+    border-top-width: calc(1px * var(--otri-divide-y-reverse));
+    border-bottom-width: calc(1px * calc(1 - var(--otri-divide-y-reverse)));
+  }
+  :where(& > :not(:last-child)) {
+    border-color: var(--color-slate-100);
+  }
+}
+.prototype-organizer-pages-race-review-step-div-66 {
+  margin-top: calc(var(--spacing) * 5);
+}
+.prototype-organizer-pages-race-review-step-p-67 {
+  margin-top: calc(var(--spacing) * 3);
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+  --otri-leading: calc(var(--spacing) * 5);
+  line-height: calc(var(--spacing) * 5);
+  color: var(--color-slate-500);
+}
+.prototype-organizer-pages-race-review-step-a-68 {
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-blue-600);
+}
+.prototype-organizer-pages-race-review-step-div-69 {
+  margin-top: calc(var(--spacing) * 5);
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--spacing) * 3);
+}
+.prototype-organizer-pages-race-review-step-p-70 {
+  margin-top: calc(var(--spacing) * 3);
+  font-size: var(--text-sm);
+  line-height: var(--otri-leading, var(--text-sm--line-height));
+  color: var(--color-slate-500);
+}

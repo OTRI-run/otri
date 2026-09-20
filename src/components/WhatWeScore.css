@@ -1,0 +1,88 @@
+/* Component styles. Edit directly; no utility compiler is used. */
+
+.src-components-what-we-score-mark-style-1 {
+  border-color: var(--color-emerald-200);
+  background-color: var(--color-emerald-50);
+  color: var(--color-emerald-700);
+}
+.src-components-what-we-score-mark-style-2 {
+  border-color: var(--color-amber-200);
+  background-color: var(--color-amber-50);
+  color: var(--color-amber-700);
+}
+.src-components-what-we-score-mark-style-3 {
+  border-color: var(--color-slate-200);
+  background-color: var(--color-slate-100);
+  color: var(--color-slate-600);
+}
+.src-components-what-we-score-what-we-score-table-li-5 {
+  display: grid;
+  column-gap: calc(var(--spacing) * 3);
+  row-gap: calc(var(--spacing) * 0.5);
+  padding-block: calc(var(--spacing) * 2.5);
+  @media (width >= 40rem) {
+    grid-template-columns: 92px minmax(0,1fr);
+  }
+}
+.src-components-what-we-score-what-we-score-table-span-6 {
+  display: inline-block;
+  border-radius: calc(infinity * 1px);
+  border-style: var(--otri-border-style);
+  border-width: 1px;
+  padding-inline: calc(var(--spacing) * 2);
+  padding-block: calc(var(--spacing) * 0.5);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  --otri-tracking: .06em;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.src-components-what-we-score-what-we-score-table-span-7 {
+  min-width: 0px;
+  font-size: 13px;
+  --otri-leading: calc(var(--spacing) * 5);
+  line-height: calc(var(--spacing) * 5);
+  color: var(--color-slate-600);
+}
+.src-components-what-we-score-what-we-score-table-b-8 {
+  color: #19191d;
+}
+.src-components-what-we-score-what-we-score-table-p-9 {
+  margin-top: calc(var(--spacing) * 2);
+  border-top-style: var(--otri-border-style);
+  border-top-width: 1px;
+  border-color: var(--color-slate-100);
+  padding-top: calc(var(--spacing) * 3);
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+  --otri-leading: calc(var(--spacing) * 5);
+  line-height: calc(var(--spacing) * 5);
+  color: var(--color-slate-500);
+}
+.src-components-what-we-score-what-we-score-details-10 {
+  border-radius: var(--radius-xl);
+  border-style: var(--otri-border-style);
+  border-width: 1px;
+  border-color: var(--color-slate-200);
+  background-color: var(--color-white);
+  padding-inline: calc(var(--spacing) * 4);
+  padding-block: calc(var(--spacing) * 3);
+  font-size: var(--text-sm);
+  line-height: var(--otri-leading, var(--text-sm--line-height));
+  color: var(--color-slate-600);
+}
+.src-components-what-we-score-what-we-score-summary-11 {
+  cursor: pointer;
+  list-style-type: none;
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  color: #19191d;
+}
+.src-components-what-we-score-what-we-score-span-12 {
+  color: var(--color-blue-600);
+}
+.src-components-what-we-score-what-we-score-what-we-score-table-13 {
+  margin-top: calc(var(--spacing) * 2);
+}

@@ -1,3 +1,4 @@
+import './BackToTop.css'
 import { useEffect, useState } from 'react'
 import { ArrowUp } from 'lucide-react'
 import { scrollBehavior } from '../lib/comfort'
@@ -28,7 +29,7 @@ export default function BackToTop() {
       aria-label="Back to the top of the page"
       title="Back to top"
       tabIndex={shown ? 0 : -1}
-      className={`fixed bottom-5 right-5 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-500 shadow-[0_10px_28px_rgba(15,23,42,.12)] backdrop-blur transition duration-200 hover:border-blue-300 hover:text-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 print:hidden ${shown ? 'opacity-100' : 'pointer-events-none translate-y-2 opacity-0'}`}
+      className={`src-components-back-to-top-back-to-top-button-1 ${shown ? "src-components-back-to-top-back-to-top-button-2" : "src-components-back-to-top-back-to-top-button-3"}`}
     >
       <ArrowUp size={18} />
     </button>

@@ -1,3 +1,4 @@
+import './CountrySelect.css'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import countries from 'i18n-iso-countries'
 import en from 'i18n-iso-countries/langs/en.json'
@@ -113,12 +114,12 @@ export default function CountrySelect({ id, value, onChange, className = '', pla
   }
 
   return (
-    <div ref={rootRef} className="relative" onBlur={(event) => { if (!rootRef.current?.contains(event.relatedTarget)) settle() }}>
-      <div className="relative">
+    <div ref={rootRef} className="src-components-country-select-country-select-div-1" onBlur={(event) => { if (!rootRef.current?.contains(event.relatedTarget)) settle() }}>
+      <div className="src-components-country-select-country-select-div-1">
         {/* The flag sits in a wrapper: flag-icons' own `.fi { position: relative }` beats an `absolute` on the same element. */}
         {selected && text === selected.name && (
-          <span className="pointer-events-none absolute left-3 top-1/2 flex -translate-y-1/2 items-center" aria-hidden="true">
-            <span className={`fi fi-${selected.alpha2} rounded-[2px]`} />
+          <span className="src-components-country-select-country-select-span-2" aria-hidden="true">
+            <span className={`fi fi-${selected.alpha2} src-components-country-select-country-select-span-3`} />
           </span>
         )}
         <input
@@ -141,8 +142,8 @@ export default function CountrySelect({ id, value, onChange, className = '', pla
         />
       </div>
       {open && (
-        <ul id={listId} role="listbox" className="absolute left-0 right-0 top-full z-40 mt-1 max-h-72 overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-[0_18px_44px_rgba(15,23,42,.14)]">
-          {options.length === 0 && <li className="px-3 py-2 text-sm text-slate-500">No country matches “{text}”.</li>}
+        <ul id={listId} role="listbox" className="src-components-country-select-country-select-ul-4">
+          {options.length === 0 && <li className="src-components-country-select-country-select-li-5">No country matches “{text}”.</li>}
           {options.map((option, index) => (
             <li
               key={option.code}
@@ -152,11 +153,11 @@ export default function CountrySelect({ id, value, onChange, className = '', pla
               tabIndex={-1}
               onMouseDown={(event) => { event.preventDefault(); choose(option) }}
               onMouseEnter={() => setActive(index)}
-              className={`flex cursor-pointer items-center gap-2.5 px-3 py-2 text-sm ${index === active ? 'bg-blue-50 text-[#0b1220]' : 'text-slate-700'}`}
+              className={`src-components-country-select-country-select-li-6 ${index === active ? "src-components-country-select-country-select-li-7" : "src-components-country-select-country-select-li-8"}`}
             >
-              <span className={`fi fi-${option.alpha2} shrink-0 rounded-[2px]`} aria-hidden="true" />
-              <span className="min-w-0 flex-1 truncate">{option.name}</span>
-              <span className="font-mono text-[10px] text-slate-400">{option.code}</span>
+              <span className={`fi fi-${option.alpha2} src-components-country-select-country-select-span-9`} aria-hidden="true" />
+              <span className="src-components-country-select-country-select-span-10">{option.name}</span>
+              <span className="src-components-country-select-country-select-span-11">{option.code}</span>
             </li>
           ))}
         </ul>

@@ -1,3 +1,4 @@
+import './Publish.css'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowRight, CheckCircle2, FileSpreadsheet, Loader2, Map as MapIcon } from 'lucide-react'
 import { attachRaceGpx, createEvent, createRace, submitRaceResults } from '../../apiClient'
@@ -20,12 +21,12 @@ const STEPS = ['Creating the event', 'Measuring the course', 'Scoring the result
 function Waiting({ race }) {
   const units = useUnits()
   return (
-    <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
-      <p className="font-mono text-[9px] tracking-[.08em] text-blue-700">WAITING IN THIS BROWSER</p>
-      <p className="mt-1 text-base font-bold tracking-[-.02em] text-[#0b1220]">{race.raceName || 'Your scored race'}</p>
-      <ul className="mt-2 space-y-1 text-xs text-slate-600">
-        <li className="flex items-center gap-2"><MapIcon size={13} className="shrink-0 text-blue-600" /> <span className="min-w-0 truncate">{race.gpx.name} · {formatDistance(race.course.distance_km, units)} · {formatElevation(race.course.elevation_gain_m, units, { sign: '+' })}</span></li>
-        <li className="flex items-center gap-2"><FileSpreadsheet size={13} className="shrink-0 text-blue-600" /> <span className="min-w-0 truncate">{race.results.name} · {race.summary?.finishers ?? 0} finishers scored</span></li>
+    <div className="prototype-organizer-pages-publish-waiting-div-1">
+      <p className="prototype-organizer-pages-publish-waiting-p-2">WAITING IN THIS BROWSER</p>
+      <p className="prototype-organizer-pages-publish-waiting-p-3">{race.raceName || 'Your scored race'}</p>
+      <ul className="prototype-organizer-pages-publish-waiting-ul-4">
+        <li className="prototype-organizer-pages-publish-waiting-li-5"><MapIcon size={13} className="prototype-organizer-pages-publish-waiting-map-icon-6" /> <span className="prototype-organizer-pages-publish-waiting-span-7">{race.gpx.name} · {formatDistance(race.course.distance_km, units)} · {formatElevation(race.course.elevation_gain_m, units, { sign: '+' })}</span></li>
+        <li className="prototype-organizer-pages-publish-waiting-li-5"><FileSpreadsheet size={13} className="prototype-organizer-pages-publish-waiting-map-icon-6" /> <span className="prototype-organizer-pages-publish-waiting-span-7">{race.results.name} · {race.summary?.finishers ?? 0} finishers scored</span></li>
       </ul>
     </div>
   )
@@ -94,8 +95,8 @@ export default function PublishScoredRace({ session }) {
         headline={<>Nothing is<br /><Gradient>waiting here.</Gradient></>}
         intro="Score a race on the public site first and press “Publish this race”: the course and the results come along, so there is nothing to upload twice. A scored race waits for a day in the browser it was scored in."
       >
-        <div className="mt-8 flex flex-wrap gap-3">
-          <a href="../#score" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 px-4 text-[13px] font-semibold text-white no-underline">
+        <div className="prototype-organizer-pages-publish-publish-scored-race-div-8">
+          <a href="../#score" className="prototype-organizer-pages-publish-publish-scored-race-a-9">
             Score my race <ArrowRight size={15} />
           </a>
           {session && <Button variant="secondary" onClick={() => navigate('/events')}>Your events</Button>}
@@ -113,14 +114,14 @@ export default function PublishScoredRace({ session }) {
         aside={
           <Card>
             <Waiting race={race} />
-            <div className="mt-5 grid gap-3">
+            <div className="prototype-organizer-pages-publish-publish-scored-race-div-10">
               <Button onClick={() => navigate('/register')}>Create my free account <ArrowRight size={15} /></Button>
               <Button variant="secondary" onClick={() => navigate('/login')}>I already have an account</Button>
             </div>
-            <p className="mt-4 text-xs leading-5 text-slate-500">
+            <p className="prototype-organizer-pages-publish-publish-scored-race-p-11">
               You are signed in as soon as the account exists and come straight back here. We email you a link to confirm the address; you only need it before you press Publish.
             </p>
-            <button type="button" onClick={discard} className="mt-3 text-xs font-semibold text-slate-500 hover:text-red-600">Forget this race</button>
+            <button type="button" onClick={discard} className="prototype-organizer-pages-publish-publish-scored-race-button-12">Forget this race</button>
           </Card>
         }
       />
@@ -137,12 +138,12 @@ export default function PublishScoredRace({ session }) {
       aside={
         <Card>
           <Waiting race={race} />
-          <form onSubmit={create} className="mt-5 grid gap-4" noValidate>
+          <form onSubmit={create} className="prototype-organizer-pages-publish-publish-scored-race-form-13" noValidate>
             <Field label="Event name" htmlFor="pb-name" hint="As runners know it, including the year if it is an annual event.">
               <input id="pb-name" required value={eventName} onChange={(e) => setEventName(e.target.value)} list={RACE_NAME_LIST} autoComplete="off" className={inputClass} placeholder="Doi Suthep Trail 2026" disabled={busy} />
               <RaceNameList />
             </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="prototype-organizer-pages-publish-publish-scored-race-div-14">
               <Field label="Race date" htmlFor="pb-date" hint="The day this race was run.">
                 <input id="pb-date" required type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} disabled={busy} />
               </Field>
@@ -151,7 +152,7 @@ export default function PublishScoredRace({ session }) {
                 <DistanceNameList />
               </Field>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="prototype-organizer-pages-publish-publish-scored-race-div-14">
               <Field label="Location" htmlFor="pb-location" hint="Optional.">
                 <input
                   id="pb-location"
@@ -175,10 +176,10 @@ export default function PublishScoredRace({ session }) {
             </div>
 
             {busy && (
-              <ol className="grid gap-1.5 rounded-xl bg-slate-50 px-4 py-3 text-sm">
+              <ol className="prototype-organizer-pages-publish-publish-scored-race-ol-15">
                 {STEPS.map((label, index) => (
-                  <li key={label} className={`flex items-center gap-2 ${index > step ? 'text-slate-400' : 'text-[#0b1220]'}`}>
-                    {index < step ? <CheckCircle2 size={15} className="text-emerald-600" /> : index === step ? <Loader2 size={15} className="animate-spin text-blue-600" /> : <span className="inline-block h-[15px] w-[15px] rounded-full border border-slate-300" />}
+                  <li key={label} className={`prototype-organizer-pages-publish-waiting-li-5 ${index > step ? "prototype-organizer-pages-publish-publish-scored-race-li-16" : "prototype-organizer-pages-publish-publish-scored-race-li-17"}`}>
+                    {index < step ? <CheckCircle2 size={15} className="prototype-organizer-pages-publish-publish-scored-race-check-circle2-18" /> : index === step ? <Loader2 size={15} className="prototype-organizer-pages-publish-publish-scored-race-loader2-19" /> : <span className="prototype-organizer-pages-publish-publish-scored-race-span-20" />}
                     {label}
                   </li>
                 ))}
@@ -186,7 +187,7 @@ export default function PublishScoredRace({ session }) {
             )}
             {error && <Notice kind="error" title="That did not go through.">{error} Nothing is lost: press the button again and it continues where it stopped.</Notice>}
 
-            <div className="flex flex-wrap gap-3">
+            <div className="prototype-organizer-pages-publish-publish-scored-race-div-21">
               <Button type="submit" busy={busy} disabled={Boolean(missing)}>
                 Build my race page <ArrowRight size={15} />
               </Button>
@@ -194,8 +195,8 @@ export default function PublishScoredRace({ session }) {
                 Not now
               </Button>
             </div>
-            {!busy && missing && <p className="text-xs text-slate-500">{missing}</p>}
-            <p className="text-xs leading-5 text-slate-500">Building the page publishes nothing. The next screen shows the leaderboard as runners will see it, with one Publish button.</p>
+            {!busy && missing && <p className="prototype-organizer-pages-publish-publish-scored-race-p-22">{missing}</p>}
+            <p className="prototype-organizer-pages-publish-publish-scored-race-p-23">Building the page publishes nothing. The next screen shows the leaderboard as runners will see it, with one Publish button.</p>
           </form>
         </Card>
       }

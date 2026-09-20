@@ -1,0 +1,76 @@
+/* Component styles. Edit directly; no utility compiler is used. */
+
+.src-components-not-found-not-found-div-1 {
+  padding-block: calc(var(--spacing) * 12);
+  @media (width >= 40rem) {
+    padding-block: calc(var(--spacing) * 16);
+  }
+}
+.src-components-not-found-not-found-p-2 {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  --otri-tracking: .08em;
+  letter-spacing: .08em;
+  color: var(--color-slate-500);
+}
+.src-components-not-found-not-found-h1-3 {
+  margin-top: calc(var(--spacing) * 3);
+  font-size: clamp(30px, 4.5vw, 50px);
+  --otri-leading: .98;
+  line-height: .98;
+  --otri-font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-bold);
+  --otri-tracking: -.05em;
+  letter-spacing: -.05em;
+  color: #19191d;
+}
+.src-components-not-found-not-found-p-4 {
+  margin-top: calc(var(--spacing) * 3);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--otri-leading, var(--text-xs--line-height));
+  word-break: break-all;
+  color: var(--color-slate-400);
+}
+.src-components-not-found-not-found-p-5 {
+  margin-top: calc(var(--spacing) * 4);
+  max-width: var(--container-md);
+  font-size: var(--text-sm);
+  line-height: var(--otri-leading, var(--text-sm--line-height));
+  --otri-leading: calc(var(--spacing) * 6);
+  line-height: calc(var(--spacing) * 6);
+  color: var(--color-slate-600);
+}
+.src-components-not-found-not-found-div-6 {
+  margin-top: calc(var(--spacing) * 6);
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--spacing) * 3);
+}
+.src-components-not-found-not-found-a-7 {
+  border-radius: var(--radius-xl);
+  background-color: var(--color-blue-600);
+  padding-inline: calc(var(--spacing) * 5);
+  padding-block: calc(var(--spacing) * 3);
+  font-size: var(--text-sm);
+  line-height: var(--otri-leading, var(--text-sm--line-height));
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-white);
+  text-decoration-line: none;
+}
+.src-components-not-found-not-found-a-8 {
+  border-radius: var(--radius-xl);
+  border-style: var(--otri-border-style);
+  border-width: 1px;
+  border-color: var(--color-slate-200);
+  background-color: var(--color-white);
+  padding-inline: calc(var(--spacing) * 5);
+  padding-block: calc(var(--spacing) * 3);
+  font-size: var(--text-sm);
+  line-height: var(--otri-leading, var(--text-sm--line-height));
+  --otri-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+  color: #19191d;
+  text-decoration-line: none;
+}
