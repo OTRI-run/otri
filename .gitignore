@@ -35,3 +35,4 @@ docs/race result data/
 # Outreach plans, contact lists, drafts and post queue. Contains other people's contact
 # details and unpublished text, so it stays on this machine and is never pushed.
 marketing/
+marketingchatgpt/
