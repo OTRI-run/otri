@@ -15,7 +15,7 @@ export default function Logo({ dark = false, href = '#top' }) {
   return (
     <a href={href} className="group flex min-w-0 shrink-0 items-center no-underline" aria-label="OTRI home">
       <span className={`otri-wordmark ${dark ? 'text-white' : 'text-[#0b1220]'}`}>
-        <span className={dark ? 'text-sky-300' : 'text-blue-600'}>O</span>TRI
+        OTRI
         <BrandElevation className="otri-wordmark-terrain" />
       </span>
     </a>

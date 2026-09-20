@@ -122,7 +122,7 @@ function Header({ tab }) {
     <>
       <header className={`otri-main-header ${tab === 'home' ? 'is-home' : ''} sticky top-0 z-50 h-[68px] border-b border-slate-200/90 bg-white/95 backdrop-blur`}>
         <div className="mx-auto flex h-full min-w-0 w-[min(1120px,calc(100%-28px))] items-center">
-          <Logo href="#home" dark={tab === 'home'} />
+          <Logo href="#home" />
           <nav className="ml-auto hidden shrink-0 items-center gap-5 md:flex lg:gap-7">
             {NAV.map((item) => (
               <NavLink key={item.id} item={item} active={tab === item.id} />

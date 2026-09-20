@@ -72,7 +72,7 @@ export default function Home() {
         <div className={`${CONTAINER} relative z-10 py-9 sm:py-14 lg:py-16`}>
           <div className="mx-auto max-w-[800px] text-center">
             <h1 className="otri-hero-wordmark text-white" aria-label="Open Trail Running Index">
-              <span className="text-sky-300">O</span>PEN TRAIL<br />RUNNING INDEX
+              OPEN TRAIL<br />RUNNING INDEX
             </h1>
             <BrandElevation className="otri-hero-elevation mx-auto mt-3" />
             <p className="mx-auto mt-5 max-w-[620px] text-[19px] leading-7 text-slate-300 sm:text-[22px] sm:leading-8">
