@@ -65,46 +65,49 @@ export default function Home() {
   return (
     <>
       {/* Hero */}
-      <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
+      <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_50%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
         <div className={`${CONTAINER} py-9 sm:py-14 lg:py-16`}>
-          <div className="mx-auto max-w-[760px]">
+          <div className="mx-auto max-w-[800px] text-center">
             <div className="font-mono text-[10px] font-medium tracking-[.1em] text-blue-600">
               OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> PROTOTYPE
             </div>
             <h1 className="mt-4 text-[clamp(36px,6vw,64px)] font-bold leading-[1.08] tracking-[-.055em] text-[#0b1220]">
-              Your trail run. <Gradient>One clear score.</Gradient>
+              See what your<br className="hidden sm:block" /> trail time <Gradient>is worth.</Gradient>
             </h1>
-            <p className="mt-4 max-w-[620px] text-[16px] leading-6 text-slate-600 sm:text-[18px] sm:leading-7">
-              OTRI turns your course and finish time into a score you can compare across trail races.
+            <p className="mx-auto mt-4 max-w-[540px] text-[16px] leading-6 text-slate-600 sm:text-[18px] sm:leading-7">
+              A trail running score based on your finish time and the course difficulty.
             </p>
-            <div className="mt-6 grid gap-3 sm:mt-8 sm:grid-cols-2">
+            <div className="mx-auto mt-6 grid max-w-[720px] gap-3 sm:mt-8 sm:grid-cols-2">
               {[
                 {
                   Icon: Calculator,
-                  title: 'Index calculator',
-                  text: 'Choose a course and enter your finish time.',
+                  audience: 'For runners',
+                  title: 'Calculate my score',
+                  text: 'Pick a course. Add your time. See your score.',
                   href: '#calculator',
                 },
                 {
                   Icon: Upload,
-                  title: 'Score a race',
-                  text: 'Upload a course and results to score every finisher.',
+                  audience: 'For race organizers',
+                  title: 'Score all finishers',
+                  text: 'Add your course and results. Get everyone’s scores.',
                   href: '#score',
                 },
-              ].map(({ Icon, title, text, href }) => (
+              ].map(({ Icon, audience, title, text, href }) => (
                 <a
                   key={href}
                   href={href}
-                  className="group flex min-w-0 items-center gap-4 rounded-2xl border border-blue-200 bg-white p-5 text-inherit no-underline shadow-[0_10px_28px_rgba(15,23,42,.04)] transition hover:border-blue-500 hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 sm:items-start sm:p-6"
+                  className="group relative flex min-w-0 items-center gap-4 rounded-2xl border border-blue-200 bg-white p-5 text-inherit no-underline shadow-[0_10px_28px_rgba(15,23,42,.04)] transition hover:border-blue-500 hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 sm:flex-col sm:p-6"
                 >
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
                     <Icon size={22} aria-hidden="true" />
                   </span>
-                  <span className="min-w-0 flex-1">
+                  <span className="min-w-0 flex-1 text-left sm:text-center">
+                    <span className="mb-1.5 block text-[11px] font-medium text-slate-500">{audience}</span>
                     <span className="block text-[20px] font-bold leading-6 tracking-[-.02em] text-blue-700">{title}</span>
                     <span className="mt-2 block text-[13px] leading-5 text-slate-600">{text}</span>
                   </span>
-                  <ArrowRight size={18} aria-hidden="true" className="mt-1 shrink-0 text-blue-600 transition group-hover:translate-x-1" />
+                  <ArrowRight size={18} aria-hidden="true" className="shrink-0 text-blue-600 transition group-hover:translate-x-1 sm:absolute sm:right-5 sm:top-5" />
                 </a>
               ))}
             </div>
