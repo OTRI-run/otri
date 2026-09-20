@@ -134,7 +134,7 @@ function Header({ tab }) {
 
 function Footer() {
   return <footer className={shell.footer}><div className={shell.footerInner}>
-    <Logo href="../"/>
+    <Logo href="#home"/>
     <nav aria-label="Footer navigation">
       {[["#api","API and embed"],[GITHUB_URL,"GitHub"],["#contribute","Contribute"],["#faq","FAQ"],["#media","Media and logo"],[`${GITHUB_URL}/blob/main/PRIVACY.md`,"Privacy"]].map(([href,label])=><a key={label} href={href}>{label}</a>)}
       <a href="mailto:hello@otri.run"><Mail size={14}/>hello@otri.run</a>

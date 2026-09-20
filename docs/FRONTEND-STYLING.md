@@ -23,7 +23,7 @@ The static reset/property primitives retain their original third-party notice in
 
 The shared wordmark geometry lives in `src/brand/identity.json`. Run `python scripts/build_brand_kit.py`, then `CHROME=/path/to/chrome node scripts/build_brand_png.mjs` to regenerate icons, logo downloads and the ZIP. Outfit is self-hosted via Fontsource, with no third-party font requests.
 
-The public homepage is shared by both entry points. Optional tool routes are loaded through Preact lazy/Suspense. Vite’s Preact preset aliases React-based third-party components to `preact/compat`; React DOM is not in the client bundle.
+The homepage exists only at `/prototype/`. There is no root `index.html` or root homepage build entry. The other HTML entries are `/prototype/organizer/` and `/prototype/embed/`; the Pages artifact check requires the root homepage to be absent. Optional tool routes are loaded through Preact lazy/Suspense. Vite’s Preact preset aliases React-based third-party components to `preact/compat`; React DOM is not in the client bundle.
 
 ## OTRI Field interface framework
 

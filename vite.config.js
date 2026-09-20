@@ -30,11 +30,12 @@ export default defineConfig({
     exclude: ['maplibre-gl'],
   },
   build: {
+    // Remove obsolete HTML entries as well as old assets on rebuild.
+    emptyOutDir: true,
     // Country flags load only when displayed, instead of embedding every flag in CSS.
     assetsInlineLimit: 0,
     rollupOptions: {
       input: {
-        main: resolve(import.meta.dirname, 'index.html'),
         prototype: resolve(import.meta.dirname, 'prototype/index.html'),
         organizer: resolve(import.meta.dirname, 'prototype/organizer/index.html'),
         // The calculator for other websites to put in an iframe (see the API page).

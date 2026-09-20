@@ -37,9 +37,8 @@ jobs:
       - run: npm run build
       - name: Verify Pages artifact
         run: |
-          test -s dist/index.html
+          test ! -e dist/index.html
           test -d dist/assets
-          ! grep -Eq '(^|["'\''(=])/(assets|src)/' dist/index.html
           test -s dist/prototype/index.html
           ! grep -Eq '(^|["'\''(=])/(assets|src)/' dist/prototype/index.html
           test -s dist/prototype/organizer/index.html
