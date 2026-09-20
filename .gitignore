@@ -28,3 +28,10 @@ gpx courses/
 # Race calendars and results collected from third-party sources, kept to pick listings from. Local
 # only (DATA_POLICY.md: facts are re-compiled into a listings CSV, the source files are not published).
 docs/race result data/
+
+# Local marketing plans, outreach notes, and AI drafts.
+/marketingchatgpt/
+
+# Outreach plans, contact lists, drafts and post queue. Contains other people's contact
+# details and unpublished text, so it stays on this machine and is never pushed.
+marketing/
