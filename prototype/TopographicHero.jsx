@@ -26,17 +26,17 @@ const route=routePoints.map((p,i)=>`${i?'L':'M'}${pair(p)}`).join(' ')
 function TerrainLab() {
   return <svg className="otri-terrain-layer otri-terrain-near" viewBox="0 0 1440 800" fill="none" aria-hidden="true" focusable="false">
     <defs>
-      <linearGradient id="otri-survey-line" x1="120" y1="300" x2="1320" y2="500" gradientUnits="userSpaceOnUse"><stop stopColor="#325788"/><stop offset=".5" stopColor="#638fc9"/><stop offset="1" stopColor="#325788"/></linearGradient>
-      <linearGradient id="otri-survey-fill" x1="720" y1="160" x2="720" y2="780" gradientUnits="userSpaceOnUse"><stop stopColor="#142c4b"/><stop offset="1" stopColor="#071326"/></linearGradient>
+      <linearGradient id="otri-survey-line" x1="120" y1="300" x2="1320" y2="500" gradientUnits="userSpaceOnUse"><stop stopColor="#9cb2cc"/><stop offset=".5" stopColor="#7d9aba"/><stop offset="1" stopColor="#9cb2cc"/></linearGradient>
+      <linearGradient id="otri-survey-fill" x1="720" y1="160" x2="720" y2="780" gradientUnits="userSpaceOnUse"><stop stopColor="#edf2f8"/><stop offset="1" stopColor="#f4f7fb"/></linearGradient>
     </defs>
     {profiles.map(({d,fill},i)=><g key={i}><path d={fill} fill="url(#otri-survey-fill)"/><path d={d} stroke="url(#otri-survey-line)" strokeWidth={i%5===0?1.4:.65} strokeOpacity={i%5===0?.85:.5}/></g>)}
     <path d={route} stroke="#2563eb" strokeWidth="16" strokeOpacity=".08"/>
     <path d={route} stroke="#3b82f6" strokeWidth="7" strokeOpacity=".18"/>
-    <path className="otri-terrain-trail" d={route} pathLength="100" stroke="#70acff" strokeWidth="2.2" strokeLinecap="round"/>
-    <path className="otri-index-pulse" d={route} pathLength="100" stroke="#e3f0ff" strokeWidth="3" strokeLinecap="round" strokeDasharray="2 98"/>
+    <path className="otri-terrain-trail" d={route} pathLength="100" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round"/>
+    <path className="otri-index-pulse" d={route} pathLength="100" stroke="#1d4ed8" strokeWidth="3" strokeLinecap="round" strokeDasharray="2 98"/>
     {[0,50,125,190,240].map(n=>{
       const [cx,cy]=routePoints[n]
-      return <g key={n}><circle cx={cx} cy={cy} r="9" fill="#60a5fa" fillOpacity=".1"/><circle cx={cx} cy={cy} r="3" fill="#c6e1ff" stroke="#3b82f6" strokeWidth="1.5"/></g>
+      return <g key={n}><circle cx={cx} cy={cy} r="9" fill="#60a5fa" fillOpacity=".1"/><circle cx={cx} cy={cy} r="3" fill="#ffffff" stroke="#3b82f6" strokeWidth="1.5"/></g>
     })}
   </svg>
 }

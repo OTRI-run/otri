@@ -1,32 +1,32 @@
-/* A night-blue survey landscape: a measured course leading into the index. */
-.otri-index-hero{background:#071326}
-.otri-terrain{position:absolute;inset:0;overflow:hidden;pointer-events:none;background:radial-gradient(ellipse at 50% 48%,#173454 0%,#0d2038 43%,#081424 85%)}
-.otri-terrain-layer{position:absolute;top:73%;left:50%;width:max(1440px,110%);height:auto;overflow:visible;opacity:.7}
+/* A quiet, light survey surface behind the primary actions. */
+.otri-index-hero{background:#f4f7fb}
+.otri-terrain{position:absolute;inset:0;overflow:hidden;pointer-events:none;background:radial-gradient(ellipse at 80% 10%,#fff6df 0%,transparent 37%),linear-gradient(180deg,#fff 0%,#f4f7fb 100%)}
+.otri-terrain-layer{position:absolute;top:68%;left:50%;width:max(1440px,110%);height:auto;overflow:visible;opacity:.8}
 .otri-terrain-near{transform:translate3d(calc(-50% + var(--terrain-x,0px)),calc(-50% + var(--terrain-near,0px)),0) rotate(var(--terrain-tilt,0deg));transform-origin:center}
 .otri-terrain-trail{stroke-dasharray:100;stroke-dashoffset:var(--trail-hidden,8)}
 .otri-index-pulse{animation:otri-index-signal 16s linear infinite;animation-play-state:var(--signal-state,running)}
 @keyframes otri-index-signal{to{stroke-dashoffset:-100}}
-.otri-terrain-veil{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 22%,rgba(8,20,36,.96) 0%,rgba(8,20,36,.85) 30%,rgba(8,20,36,.3) 62%,transparent 85%),linear-gradient(to bottom,rgba(7,19,38,.35),transparent 55%,#071326 100%)}
+.otri-terrain-veil{position:absolute;inset:0;background:linear-gradient(to bottom,#ffffffd9 0%,#ffffffdb 24%,#ffffff8c 43%,transparent 64%,#f4f7fb 100%)}
 @media(max-width:639px){
  .otri-terrain-layer{width:1000px;top:70%}
- .otri-terrain-veil{background:linear-gradient(to bottom,#071326 0%,rgba(7,19,38,.9) 22%,rgba(7,19,38,.2) 48%,rgba(7,19,38,.2) 76%,#071326 100%)}
+ .otri-terrain-veil{background:linear-gradient(to bottom,#ffffffed 0%,#ffffffd9 22%,#ffffff66 48%,#ffffff33 76%,#f4f7fb 100%)}
 }
 @media(prefers-reduced-motion:reduce){.otri-terrain-near{transform:translate(-50%,-50%)}.otri-terrain-trail{stroke-dashoffset:0}.otri-index-pulse{animation:none;opacity:0}}
 
 /* The hero fills the available first screen; shorter screens can still scroll naturally. */
 .otri-index-hero{min-height:calc(100svh - 68px);display:flex;align-items:center}
-.otri-index-action{border-color:#385474;background:linear-gradient(135deg,rgba(21,43,71,.97),rgba(10,26,46,.97));box-shadow:0 16px 48px #02081550;cursor:pointer;transition:transform .2s,border-color .2s,box-shadow .2s}
+.otri-index-action{border-color:#d9e2ef;background:linear-gradient(145deg,#fff,#ffffffed);box-shadow:0 16px 44px #1734540e;cursor:pointer;transition:transform .2s,border-color .2s,box-shadow .2s}
 .otri-index-action[data-audience="runner"]{border-top:3px solid #fbbf24}
 .otri-index-action[data-audience="organizer"]{border-top:3px solid #60a5fa}
-.otri-index-action:hover{transform:translateY(-5px);border-color:#94b5e0;box-shadow:0 20px 55px #02081580}
+.otri-index-action:hover{transform:translateY(-5px);border-color:#94b5e0;box-shadow:0 20px 50px #17345420}
 .otri-index-action:active{transform:translateY(-1px)}
 .otri-index-action:focus-visible{outline:3px solid #fcd34d;outline-offset:5px}
-.otri-action-icon{background:#233d5d;color:#93c5fd}
-[data-audience="runner"] .otri-action-icon{background:#fbbf241a;color:#fcd34d}
+.otri-action-icon{background:#eff5ff;color:#2563eb}
+[data-audience="runner"] .otri-action-icon{background:#fff5d6;color:#8a5700}
 .otri-action-cta{background:#3b82f6;color:white;box-shadow:0 4px 16px #2563eb30}
 [data-audience="runner"] .otri-action-cta{background:#fbbf24;color:#172033;box-shadow:0 4px 16px #fbbf2420}
 .otri-index-action:hover .otri-action-cta{filter:brightness(1.1)}
-.otri-main-header.is-home{background:rgba(250,251,253,.97);border-color:#dbe3ee;box-shadow:0 2px 14px #02081508}
+.otri-main-header.is-home{background:rgba(255,255,255,.97);border-color:#dbe3ee;box-shadow:0 2px 14px #02081508}
 .otri-main-header.is-home nav>a:not(.otri-organizer-link){color:#334155;font-size:14px}
 .otri-main-header.is-home nav>a:not(.otri-organizer-link):hover{color:#1d4ed8}
 .otri-main-header .otri-organizer-link{background:#fbbf24;color:#172033;border-color:#fbbf24;font-weight:700}
@@ -37,4 +37,3 @@
 @media(prefers-reduced-motion:reduce){.otri-index-action,.otri-index-action svg{transition:none}.otri-index-action:hover{transform:none}}
 
 .otri-hero-wordmark{font-size:clamp(34px,5.2vw,68px);font-weight:800;line-height:1.04;letter-spacing:-.045em}
-.otri-hero-elevation{width:120px;height:15px;color:#60a5fa}

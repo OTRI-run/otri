@@ -1,4 +1,3 @@
-import { BrandElevation } from '../src/components/Logo'
 import { scrollBehavior } from '../src/lib/comfort'
 import { ArrowRight, ArrowUpRight, Calculator, Database, FileText, GitBranch, Mountain, ShieldCheck, Timer, Upload, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -67,15 +66,14 @@ export default function Home() {
   return (
     <>
       {/* Hero */}
-      <section className="otri-index-hero relative isolate overflow-hidden border-b border-slate-800">
+      <section className="otri-index-hero relative isolate overflow-hidden border-b border-slate-200">
         <TopographicHero />
         <div className={`${CONTAINER} relative z-10 py-9 sm:py-14 lg:py-16`}>
           <div className="mx-auto max-w-[800px] text-center">
-            <h1 className="otri-hero-wordmark text-white" aria-label="Open Trail Running Index">
+            <h1 className="otri-hero-wordmark text-[#0b1220]" aria-label="Open Trail Running Index">
               OPEN TRAIL<br />RUNNING INDEX
             </h1>
-            <BrandElevation className="otri-hero-elevation mx-auto mt-3" />
-            <p className="mx-auto mt-5 max-w-[620px] text-[19px] leading-7 text-slate-300 sm:text-[22px] sm:leading-8">
+            <p className="mx-auto mt-5 max-w-[620px] text-[19px] leading-7 text-slate-600 sm:text-[22px] sm:leading-8">
               Compare trail running performances with a score based on the course and finish time.
             </p>
             <div className="mx-auto mt-6 grid max-w-[720px] gap-3 sm:mt-8 sm:grid-cols-2">
@@ -105,10 +103,10 @@ export default function Home() {
                     <span className="otri-action-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
                       <Icon size={20} aria-hidden="true" />
                     </span>
-                    <span className="text-[12px] font-semibold uppercase tracking-[.1em] text-slate-300">{audience}</span>
+                    <span className="text-[12px] font-semibold uppercase tracking-[.1em] text-slate-600">{audience}</span>
                   </span>
-                  <span className="mt-4 block text-[25px] font-bold leading-8 tracking-[-.025em] text-white">{title}</span>
-                  <span className="mt-2 mb-5 block flex-1 text-[16px] leading-6 text-slate-300">{text}</span>
+                  <span className="mt-4 block text-[25px] font-bold leading-8 tracking-[-.025em] text-[#0b1220]">{title}</span>
+                  <span className="mt-2 mb-5 block flex-1 text-[16px] leading-6 text-slate-600">{text}</span>
                   <span className="otri-action-cta flex min-h-12 items-center justify-between gap-4 rounded-xl px-4 text-[15px] font-bold">
                     {href === '#calculator' ? 'Start calculating' : 'Upload race files'}
                     <ArrowRight size={20} aria-hidden="true" className="transition-transform group-hover:translate-x-1" />
@@ -116,7 +114,7 @@ export default function Home() {
                 </a>
               ))}
             </div>
-            <p className="mt-5 text-[15px] text-slate-300">Free to use · No account needed · Open scoring</p>
+            <p className="mt-5 text-[15px] text-slate-600">Free to use · No account needed · Open scoring</p>
           </div>
         </div>
       </section>
