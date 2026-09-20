@@ -1,13 +1,11 @@
-/* Keep the illustrative relief below the primary actions, with a clear reading area. */
-.otri-terrain{position:absolute;inset:0;overflow:hidden;pointer-events:none;background:linear-gradient(180deg,#fff 0%,#f8fbff 60%,#edf4ff 100%)}
-.otri-terrain-layer{position:absolute;bottom:18px;left:50%;width: min(1000px,110vw);height:auto;overflow:visible}
-.otri-terrain-near{transform:translate3d(calc(-50% + var(--terrain-x,0px)),var(--terrain-near,0px),0) rotate(var(--terrain-tilt,0deg));transform-origin:50% 70%}
-.otri-terrain-trail{stroke-dasharray:100;stroke-dashoffset:var(--trail-hidden,8)}
-.otri-terrain-veil{position:absolute;inset:0;background:linear-gradient(to bottom,white 0%,rgba(255,255,255,.94) 30%,rgba(255,255,255,.5) 53%,transparent 72%)}
-.otri-terrain-survey{position:absolute;inset:auto 24px 15px;display:flex;justify-content:space-between;color:#6b85a6;font:8px ui-monospace,monospace;letter-spacing:.14em}
+/* A single centered terrain field behind the index actions. */
+.otri-terrain{position:absolute;inset:0;overflow:hidden;pointer-events:none;background:linear-gradient(180deg,#fff 0%,#f7faff 65%,#f1f6ff 100%)}
+.otri-terrain-layer{position:absolute;top:60%;left:50%;width:max(1100px,100%);height:auto;overflow:visible}
+.otri-terrain-near{transform:translate3d(calc(-50% + var(--terrain-x,0px)),calc(-50% + var(--terrain-near,0px)),0) rotate(var(--terrain-tilt,0deg));transform-origin:center}
+.otri-terrain-trail{stroke-dasharray:100;stroke-dashoffset:var(--trail-hidden,8);opacity:.75}
+.otri-terrain-veil{position:absolute;inset:0;background:linear-gradient(to bottom,#fff 0%,rgba(255,255,255,.93) 16%,rgba(255,255,255,.45) 35%,transparent 53%,transparent 86%,#f8fbff 100%)}
 @media(max-width:639px){
- .otri-terrain-layer{width:600px;bottom:18px;left:40%}
- .otri-terrain-survey{inset:auto 16px 10px;font-size:7px}.otri-terrain-survey span:first-child{display:none}
- .otri-terrain-veil{background:linear-gradient(to bottom,white 0%,rgba(255,255,255,.96) 54%,rgba(255,255,255,.4) 71%,transparent 84%)}
+ .otri-terrain-layer{width:950px;top:65%}
+ .otri-terrain-veil{background:linear-gradient(to bottom,#fff 0%,rgba(255,255,255,.9) 20%,rgba(255,255,255,.2) 39%,transparent 55%,transparent 86%,#f8fbff 100%)}
 }
-@media(prefers-reduced-motion:reduce){.otri-terrain-near{transform:translateX(-50%)}.otri-terrain-trail{stroke-dashoffset:0}}
+@media(prefers-reduced-motion:reduce){.otri-terrain-near{transform:translate(-50%,-50%)}.otri-terrain-trail{stroke-dashoffset:0}}
