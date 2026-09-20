@@ -1,5 +1,5 @@
 import './BackToTop.css'
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'preact/compat'
 import { ArrowUp } from 'lucide-react'
 import { scrollBehavior } from '../lib/comfort'
 

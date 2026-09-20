@@ -1,6 +1,6 @@
 import './Events.css'
 import { autoFocusOnDesktop } from '../../../src/lib/comfort'
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'preact/compat'
 import { ArrowRight, ArrowUpRight, CalendarDays, Plus } from 'lucide-react'
 import { createEvent, deleteEvent, getEvent, listMyEvents, updateEvent } from '../../apiClient'
 import { Link, navigate } from '../router'

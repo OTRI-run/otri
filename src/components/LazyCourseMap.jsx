@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense } from 'preact/compat'
 
 // Keep the map renderer, terrain decoder and WebGL worker off the initial page load.
 const CourseMap = lazy(() => import('./CourseMap'))

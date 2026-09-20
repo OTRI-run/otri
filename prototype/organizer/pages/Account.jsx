@@ -1,5 +1,5 @@
 import './Account.css'
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'preact/compat'
 import CountrySelect from '../../../src/components/CountrySelect'
 import { Check, Copy, Download, KeyRound, LogOut, ShieldCheck, Smartphone, Mail, Trash2 } from 'lucide-react'
 import QRCode from 'qrcode'

@@ -4,7 +4,7 @@
   border-bottom-style: var(--otri-border-style);
   border-bottom-width: 1px;
   border-color: var(--color-slate-200);
-  background-image: radial-gradient(circle at 78% 28%,rgba(198,60,35,.12),transparent 30%),linear-gradient(180deg,#fff 0%,#f7f7f8 100%);
+  background-image: radial-gradient(circle at 78% 28%,rgba(99,54,182,.12),transparent 30%),linear-gradient(180deg,#fff 0%,#faf8fd 100%);
 }
 .prototype-organizer-pages-auth-welcome-div-2 {
   display: grid;
@@ -50,7 +50,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.065em;
   letter-spacing: -.065em;
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-auth-welcome-em-7 {
   --otri-gradient-position: to right in oklab;
@@ -127,7 +127,7 @@
   min-width: 0px;
   overflow: hidden;
   border-radius: var(--radius-2xl);
-  background-image: linear-gradient(145deg,#151518 0%,#242428 58%,#38383e 100%);
+  background-image: linear-gradient(145deg,#241431 0%,#352143 58%,#4b2e62 100%);
   padding: calc(var(--spacing) * 4);
   color: var(--color-white);
   --otri-shadow: 0 1px 0 rgb(25 25 29 / .04);
@@ -282,7 +282,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.06em;
   letter-spacing: -.06em;
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-auth-welcome-p-32 {
   margin-top: calc(var(--spacing) * 5);
@@ -325,7 +325,7 @@
 }
 .prototype-organizer-pages-auth-welcome-strong-37 {
   font-size: 13px;
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-auth-welcome-p-38 {
   margin-top: calc(var(--spacing) * 0.5);
@@ -336,7 +336,7 @@
   color: var(--color-slate-500);
 }
 .prototype-organizer-pages-auth-welcome-section-39 {
-  background-image: linear-gradient(135deg,#f6f6f6 0%,#f1f1f2 55%,#fafafa 100%);
+  background-image: linear-gradient(135deg,#faf9fd 0%,#f4eff9 55%,#fafafa 100%);
   padding-block: calc(var(--spacing) * 14);
   @media (width >= 40rem) {
     padding-block: calc(var(--spacing) * 20);
@@ -368,7 +368,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.06em;
   letter-spacing: -.06em;
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-auth-welcome-p-44 {
   min-width: 0px;
@@ -429,7 +429,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.03em;
   letter-spacing: -.03em;
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-auth-welcome-span-52 {
   margin-top: var(--spacing);
@@ -464,7 +464,7 @@
   }
 }
 .prototype-organizer-pages-auth-welcome-section-55 {
-  background-image: linear-gradient(115deg,#a82d19 0%,#c63c23 48%,#0891b2 100%);
+  background-image: linear-gradient(115deg,#532b9a 0%,#6336b6 48%,#0891b2 100%);
   padding-block: calc(var(--spacing) * 14);
   color: var(--color-white);
   @media (width >= 40rem) {

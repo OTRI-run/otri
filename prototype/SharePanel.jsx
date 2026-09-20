@@ -1,5 +1,5 @@
 import './SharePanel.css'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'preact/compat'
 import { Check, Copy, Download, Share2 } from 'lucide-react'
 import { FORMATS, canvasToBlob, drawLeaderboard, drawRunnerCard, drawScoreCard } from './shareImage'
 

@@ -1,7 +1,7 @@
 import './Runners.css'
 import RankBadge from '../src/components/RankBadge'
 import { fitFontSize } from '../src/lib/fitText'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'preact/compat'
 import { useDocumentTitle } from '../src/lib/title'
 import { ArrowLeft, ArrowUpRight, Check, Image as ImageIcon, Link2 } from 'lucide-react'
 import { ShareRunner } from './SharePanel'

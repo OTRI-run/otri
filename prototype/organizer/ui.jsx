@@ -1,6 +1,6 @@
 import './ui.css'
 import { fitFontSize } from '../../src/lib/fitText'
-import { useState } from 'react'
+import { useState } from 'preact/compat'
 import useFileDrop from '../../src/lib/useFileDrop'
 import { AlertTriangle, ArrowLeft, Check, CheckCircle2, Info, Upload, XCircle } from 'lucide-react'
 import { Link } from './router'

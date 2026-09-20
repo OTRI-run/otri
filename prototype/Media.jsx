@@ -1,5 +1,5 @@
 import './Media.css'
-import { useState } from 'react'
+import { useState } from 'preact/compat'
 import { Check, Copy, Download, Mail } from 'lucide-react'
 
 // Media and brand: the logo as files, and what may be done with them. For a journalist, a race
@@ -32,15 +32,13 @@ const LOGOS = [
   { title: 'Profile picture', note: 'A square that survives being cut to a circle.', png: 'otri-avatar-1024.png', alt: 'otri-avatar-light-1024.png', ground: 'dark', width: 96, round: true },
 ]
 
-const GROUNDS = { light: { background: '#fff' }, dark: { background: '#0b1220' }, blue: { background: 'linear-gradient(135deg,#2563eb,#1d4ed8)' }, checker: CHECKER }
+const GROUNDS = { light: { background: '#fff' }, dark: { background: '#21152f' }, blue: { background: '#6336b6' }, checker: CHECKER }
 
 const COLOURS = [
-  { name: 'Blue', hex: '#2563eb', use: 'The mark, links, every call to action', text: '#fff' },
-  { name: 'Deep blue', hex: '#1d4ed8', use: 'Where the gradient of the mark ends', text: '#fff' },
-  { name: 'Sky', hex: '#60a5fa', use: 'Where it begins', text: '#0b1220' },
-  { name: 'Cyan', hex: '#06b6d4', use: 'The full name, accents in charts', text: '#0b1220' },
-  { name: 'Ink', hex: '#0b1220', use: 'Text, dark backgrounds', text: '#fff' },
-  { name: 'Paper', hex: '#f7f9fc', use: 'Page backgrounds', text: '#0b1220', border: true },
+  { name: 'Violet', hex: '#6336b6', use: 'Actions, links and the standalone symbol', text: '#fff' },
+  { name: 'Lavender', hex: '#c6afea', use: 'Supporting surfaces and illustrations', text: '#21152f' },
+  { name: 'Ink', hex: '#21152f', use: 'Wordmark and primary text', text: '#fff' },
+  { name: 'Light', hex: '#faf9ff', use: 'Page backgrounds', text: '#21152f', border: true },
 ]
 
 const BOILERPLATE =
@@ -94,7 +92,7 @@ const DONT = [
   { label: 'Do not stretch or squeeze it', style: { transform: 'scaleX(1.5)' } },
   { label: 'Do not recolour it', style: { filter: 'hue-rotate(140deg) saturate(1.6)' } },
   { label: 'Do not tilt it or add effects', style: { transform: 'rotate(-9deg)', filter: 'drop-shadow(3px 4px 2px rgba(0,0,0,.45))' } },
-  { label: 'Do not put it on a busy or low-contrast ground', ground: 'repeating-linear-gradient(45deg,#2563eb 0 9px,#60a5fa 9px 18px)' },
+  { label: 'Do not put it on a busy or low-contrast ground', ground: 'repeating-linear-gradient(45deg,#6336b6 0 9px,#c6afea 9px 18px)' },
 ]
 
 export default function Media() {
@@ -116,7 +114,7 @@ export default function Media() {
           </p>
           <div className="prototype-media-media-div-18">
             <a href={file('otri-brand-kit.zip')} download className="prototype-media-media-a-19">
-              <Download size={16} /> Download the whole kit <span className="prototype-media-media-span-20">ZIP · 0.7 MB</span>
+              <Download size={16} /> Download the whole kit <span className="prototype-media-media-span-20">SVG + PNG · ZIP</span>
             </a>
             <a href="mailto:hello@otri.run?subject=Press" className="prototype-media-media-a-21">
               <Mail size={16} /> Press: hello@otri.run
@@ -130,7 +128,7 @@ export default function Media() {
           <p className={LABEL}>01 · LOGOS</p>
           <h2 id="media-logos" className={`${H2} prototype-media-media-h2-23`}>Pick the one for your background.</h2>
           <p className="prototype-media-media-p-24">
-            SVG for the web and for print (it stays sharp at any size and needs no font), PNG with a transparent background for everything that takes no SVG: slides, documents, social posts.
+            SVG for the web and print (the wordmark stays sharp at any size), PNG with a transparent background for everything that takes no SVG: slides, documents, social posts.
           </p>
           <div className="prototype-media-media-div-25">
             {LOGOS.map((logo) => (
@@ -233,7 +231,7 @@ export default function Media() {
 
         <section aria-labelledby="media-colour" className="prototype-media-media-section-37">
           <p className={LABEL}>05 · COLOUR AND TYPE</p>
-          <h2 id="media-colour" className={`${H2} prototype-media-media-h2-23`}>Six colours, two typefaces.</h2>
+          <h2 id="media-colour" className={`${H2} prototype-media-media-h2-23`}>A quieter palette. A clear identity.</h2>
           <div className="prototype-media-media-div-56">
             {COLOURS.map((colour) => (
               <button
@@ -256,14 +254,14 @@ export default function Media() {
           </div>
           <div className="prototype-media-media-div-63">
             <div className="prototype-media-media-div-39">
-              <p className="prototype-media-media-p-64" style={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>Aa 1000</p>
-              <p className="prototype-media-media-p-65">Inter</p>
-              <p className="prototype-media-media-p-46">Bold for the wordmark and headlines, regular for text. Open licence (SIL OFL). The site itself uses your device’s own sans-serif, which is its closest relative.</p>
+              <p className="prototype-media-media-p-64" style={{ fontFamily: 'Outfit Variable, sans-serif' }}>Aa 1000</p>
+              <p className="prototype-media-media-p-65">Outfit</p>
+              <p className="prototype-media-media-p-46">A self-hosted geometric typeface for headlines and text, under the SIL Open Font License. The OTRI wordmark is custom vector geometry, not live type.</p>
             </div>
             <div className="prototype-media-media-div-39">
               <p className="prototype-media-media-p-66">04:12:37</p>
-              <p className="prototype-media-media-p-65">JetBrains Mono</p>
-              <p className="prototype-media-media-p-46">For the full name, for labels, and for every number that is a measurement: times, distances, scores. Open licence (SIL OFL).</p>
+              <p className="prototype-media-media-p-65">System monospace</p>
+              <p className="prototype-media-media-p-46">For labels and measurements: times, distances and scores. Uses the monospace font already available on the device.</p>
             </div>
           </div>
         </section>

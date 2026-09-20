@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'preact/compat'
 import styles from './UnitsMenu.module.css'
 import { ChevronDown } from 'lucide-react'
 import { distanceUnit, setUnits, unitsSummary, useUnits } from '../lib/units'

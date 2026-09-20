@@ -1,7 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-labelledby="title desc">
-<title id="title">OTRI mark</title><desc id="desc">Open Trail Running Index mountain O mark for dark backgrounds.</desc>
-<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset=".55" stop-color="#2563eb"/><stop offset="1" stop-color="#1d4ed8"/></linearGradient></defs>
-<circle cx="120" cy="120" r="91" fill="none" stroke="url(#g)" stroke-width="23"/>
-<path d="M49 151 93 115l22 16 36-38 42 35" fill="none" stroke="url(#g)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M60 173c27-32 55-40 91-56" fill="none" stroke="#38bdf8" stroke-width="16" stroke-linecap="round"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="OTRI — Open Trail Running Index"><title>OTRI — Open Trail Running Index</title><g transform="translate(7 8)"><path d="M24 2C10 2 1 11 1 24s9 22 23 22 23-9 23-22S38 2 24 2Zm0 10c8 0 12 5 12 12s-4 12-12 12-12-5-12-12 4-12 12-12Z" fill="#c6afea" fill-rule="evenodd"/><circle cx="24" cy="24" r="3" fill="#c6afea"/></g></svg>

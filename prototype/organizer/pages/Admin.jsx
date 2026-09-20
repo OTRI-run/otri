@@ -1,5 +1,5 @@
 import './Admin.css'
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'preact/compat'
 import { Activity, ArrowUpRight, Check, Eye, EyeOff, Flag as FlagIcon, HardDrive, Map, Server, ShieldCheck, Trash2, UserCheck } from 'lucide-react'
 import CourseMap from '../../../src/components/LazyCourseMap'
 import {

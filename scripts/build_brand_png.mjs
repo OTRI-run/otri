@@ -9,10 +9,14 @@ import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const brand = join(root, 'public', 'brand')
-const INK = '#0b1220'
+const INK = '#21152f'
 
 // [output, source svg, width, height, background or null for transparent, share of the box the artwork fills]
 const JOBS = [
+  ['../media/brand/otri-github-avatar-256.png', 'otri-mark-on-dark.svg', 256, 256, INK, .66],
+  ['../media/brand/otri-github-avatar.png', 'otri-mark-on-dark.svg', 512, 512, INK, .66],
+  ['../media/brand/otri-github-avatar-final.png', 'otri-mark-on-dark.svg', 512, 512, INK, .66],
+  ['og-image.png', 'otri-share-card.svg', 1200, 630, '#faf9ff', 1],
   ['brand/otri-mark-512.png', 'otri-mark.svg', 512, 512, null, 1],
   ['brand/otri-mark-1024.png', 'otri-mark.svg', 1024, 1024, null, 1],
   ['brand/otri-mark-white-1024.png', 'otri-mark-white.svg', 1024, 1024, null, 1],
@@ -34,7 +38,7 @@ const JOBS = [
 
 const chrome = process.env.CHROME || ['C:/Program Files/Google/Chrome/Application/chrome.exe', '/usr/bin/google-chrome', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'].find(existsSync)
 const profile = mkdtempSync(join(tmpdir(), 'otri-brand-'))
-const proc = spawn(chrome, ['--headless=new', '--remote-debugging-port=9377', `--user-data-dir=${profile}`, '--hide-scrollbars', 'about:blank'], { stdio: 'ignore' })
+const proc = spawn(chrome, ['--headless=new', '--disable-dev-shm-usage', '--disable-gpu', '--no-zygote', ...(process.getuid?.() === 0 ? ['--no-sandbox'] : []), '--remote-debugging-port=9377', `--user-data-dir=${profile}`, '--hide-scrollbars', 'about:blank'], { stdio: 'ignore' })
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 let target
 for (let i = 0; i < 60 && !target; i++) {

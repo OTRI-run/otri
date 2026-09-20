@@ -1,5 +1,5 @@
 import './CalculatorCourses.css'
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'preact/compat'
 import { ArrowUpRight, Pencil, Trash2 } from 'lucide-react'
 import { addCalculatorCourse, deleteCalculatorCourse, listCalculatorCourses, updateCalculatorCourse } from '../../apiClient'
 import { revealElement } from '../../../src/lib/comfort'

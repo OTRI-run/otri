@@ -1,12 +1,12 @@
 # OTRI brand assets
 
-The `media/brand` folder is the source-of-truth location for OTRI logo assets.
+Wordmark geometry and colors live in `src/brand/identity.json`. `public/brand` contains generated website downloads; this folder mirrors the current identity for repository and social use.
 
 ## Files
 
 - `otri-logo.svg` — primary horizontal logo for light backgrounds.
 - `otri-logo-dark.svg` — primary horizontal logo for dark backgrounds.
-- `otri-mark.svg` — standalone OTRI mountain mark for light backgrounds.
+- `otri-mark.svg` — standalone closed-O survey mark for light backgrounds.
 - `otri-mark-dark.svg` — standalone mark for dark backgrounds.
 
 ## Size policy
@@ -32,7 +32,7 @@ Use descriptive, usage-based names rather than vague names such as `logo-small.p
 
 Examples: `otri-logo-light-320.png`, `otri-logo-dark-640.png`, `otri-mark-512.png`.
 
-The vector SVG files remain the canonical masters. Raster files are exports from those masters, not separate artwork.
+The shared identity JSON remains the canonical geometry. Raster files are exports from those masters, not separate artwork.
 
 ## Clear space
 

@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import preact from '@preact/preset-vite'
 import { resolve } from 'node:path'
 import { execSync } from 'node:child_process'
 
@@ -19,7 +19,7 @@ function gitInfo() {
 const { commit, commitFull, commitDate } = gitInfo()
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [preact()],
   base: './',
   define: {
     __OTRI_COMMIT__: JSON.stringify(commit),

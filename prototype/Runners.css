@@ -82,7 +82,7 @@
   line-height: var(--otri-leading, var(--text-sm--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-runners-runner-row-span-10 {
   display: flex;
@@ -123,7 +123,7 @@
   }
 }
 .prototype-runners-runners-page-section-14 {
-  background-image: linear-gradient(135deg,#f6f6f6 0%,#f1f1f2 55%,#fafafa 100%);
+  background-image: linear-gradient(135deg,#faf9fd 0%,#f4eff9 55%,#fafafa 100%);
   padding-block: calc(var(--spacing) * 14);
   @media (width >= 40rem) {
     padding-block: calc(var(--spacing) * 20);
@@ -160,7 +160,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.06em;
   letter-spacing: -.06em;
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-runners-runners-page-span-19 {
   --otri-gradient-position: to right in oklab;
@@ -223,14 +223,14 @@
   font-weight: var(--font-weight-semibold);
 }
 .prototype-runners-runners-page-button-26 {
-  background-color: #19191d;
+  background-color: #21152f;
   color: var(--color-white);
 }
 .prototype-runners-runners-page-button-27 {
   color: var(--color-slate-500);
   &:hover {
     @media (hover: hover) {
-      color: #19191d;
+      color: #21152f;
     }
   }
 }
@@ -278,7 +278,7 @@
 .prototype-runners-runners-page-p-32 {
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-runners-runners-page-p-33 {
   margin-top: var(--spacing);
@@ -344,7 +344,7 @@
   line-height: var(--otri-leading, var(--text-sm--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
   &:hover {
     @media (hover: hover) {
       border-color: var(--color-blue-300);
@@ -519,7 +519,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.045em;
   letter-spacing: -.045em;
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-runners-runner-profile-page-p-62 {
   margin-top: calc(var(--spacing) * 3);
@@ -578,7 +578,7 @@
   font-size: 13px;
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
   &:hover {
     @media (hover: hover) {
       border-color: var(--color-blue-300);
@@ -592,7 +592,7 @@
   min-width: 0px;
   overflow: hidden;
   border-radius: var(--radius-2xl);
-  background-image: linear-gradient(145deg,#151518 0%,#242428 58%,#38383e 100%);
+  background-image: linear-gradient(145deg,#241431 0%,#352143 58%,#4b2e62 100%);
   padding: calc(var(--spacing) * 5);
   color: var(--color-white);
   --otri-shadow: 0 1px 0 rgb(25 25 29 / .04);
@@ -688,7 +688,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.03em;
   letter-spacing: -.03em;
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-runners-runner-profile-page-p-77 {
   margin-top: var(--spacing);
@@ -756,7 +756,7 @@
   color: var(--color-slate-500);
 }
 .otri-state-6 {
-  color: #19191d;
+  color: #21152f;
 }
 .otri-state-7 {
   color: var(--color-slate-400);

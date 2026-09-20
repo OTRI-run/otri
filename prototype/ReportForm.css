@@ -52,7 +52,7 @@
   line-height: var(--otri-leading, var(--text-sm--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-report-form-report-form-flag-icon-7 {
   color: var(--color-blue-600);
@@ -74,7 +74,7 @@
   padding-block: calc(var(--spacing) * 2);
   font-size: var(--text-sm);
   line-height: var(--otri-leading, var(--text-sm--line-height));
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-report-form-report-form-p-10 {
   font-size: var(--text-xs);

@@ -1,5 +1,5 @@
 import './Publish.css'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'preact/compat'
 import { ArrowRight, CheckCircle2, FileSpreadsheet, Loader2, Map as MapIcon } from 'lucide-react'
 import { attachRaceGpx, createEvent, createRace, submitRaceResults } from '../../apiClient'
 import { clearHandoff, loadHandoff } from '../../publishHandoff'

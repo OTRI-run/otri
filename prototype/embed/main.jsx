@@ -1,6 +1,6 @@
 import './main.css'
-import React, { useEffect } from 'react'
-import { createRoot } from 'react-dom/client'
+import React, { useEffect } from 'preact/compat'
+import { createRoot } from 'preact/compat/client'
 import { ArrowUpRight } from 'lucide-react'
 import ScoreCalculator from '../ScoreCalculator'
 import ErrorBoundary from '../../src/components/ErrorBoundary'

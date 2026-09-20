@@ -1,6 +1,6 @@
 import './Faq.css'
 import { NOT_MEASURED, WHAT_WE_SCORE, WhatWeScoreTable } from '../src/components/WhatWeScore'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'preact/compat'
 import { ArrowUpRight, Mail, Search } from 'lucide-react'
 import NextSteps from './NextSteps'
 

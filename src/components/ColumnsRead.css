@@ -15,7 +15,7 @@
   cursor: pointer;
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
 }
 .src-components-columns-read-columns-read-span-3 {
   --otri-font-weight: var(--font-weight-normal);
@@ -55,7 +55,7 @@
   font-size: 12px;
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
 }
 .src-components-columns-read-columns-read-p-8 {
   margin-top: calc(var(--spacing) * 3);

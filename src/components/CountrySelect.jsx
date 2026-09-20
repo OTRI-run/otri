@@ -1,5 +1,5 @@
 import './CountrySelect.css'
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'preact/compat'
 import countries from 'i18n-iso-countries'
 import en from 'i18n-iso-countries/langs/en.json'
 import 'flag-icons/css/flag-icons.min.css'

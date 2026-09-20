@@ -1,6 +1,6 @@
 import './Auth.css'
 import { autoFocusOnDesktop } from '../../../src/lib/comfort'
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'preact/compat'
 import { ArrowRight, ArrowUpRight, CalendarDays, FileSpreadsheet, Mountain, ShieldCheck } from 'lucide-react'
 import { completeTwoFactor, loginOrganizer, registerOrganizer, requestPasswordReset, resendVerification, resetPassword, verifyEmail } from '../../apiClient'
 import PasswordStrength, { assessPassword } from '../../../src/components/PasswordStrength'

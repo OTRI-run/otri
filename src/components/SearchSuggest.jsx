@@ -1,5 +1,5 @@
 import './SearchSuggest.css'
-import { useId, useRef, useState } from 'react'
+import { useId, useRef, useState } from 'preact/compat'
 import { Search } from 'lucide-react'
 import { willNavigate } from '../lib/comfort'
 

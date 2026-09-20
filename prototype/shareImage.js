@@ -1,3 +1,4 @@
+import identity from '../src/brand/identity.json'
 // Share images, drawn in the browser on a <canvas>: a race's top finishers for the organizer, a
 // target time for the runner. Nothing is uploaded to make them; the PNG exists only where it is
 // drawn.
@@ -13,7 +14,7 @@ const MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", 
 const INK = '#ffffff'
 const SOFT = 'rgba(255,255,255,.72)'
 const FAINT = 'rgba(255,255,255,.16)'
-const ACCENT = '#67e8f9'
+const ACCENT = '#cfb3f1'
 const MEDALS = ['#fbbf24', '#cbd5e1', '#d6a06c']
 
 function setup(canvas, format) {
@@ -22,15 +23,15 @@ function setup(canvas, format) {
   canvas.height = height
   const ctx = canvas.getContext('2d')
   const background = ctx.createLinearGradient(0, 0, width, height)
-  background.addColorStop(0, '#0b1220')
-  background.addColorStop(0.55, '#10204a')
-  background.addColorStop(1, '#1d4ed8')
+  background.addColorStop(0, '#21152f')
+  background.addColorStop(0.55, '#36204e')
+  background.addColorStop(1, '#6336b6')
   ctx.fillStyle = background
   ctx.fillRect(0, 0, width, height)
   // a soft light in the corner, as on the site's hero
   const glow = ctx.createRadialGradient(width * 0.85, height * 0.12, 0, width * 0.85, height * 0.12, width * 0.7)
-  glow.addColorStop(0, 'rgba(56,189,248,.28)')
-  glow.addColorStop(1, 'rgba(56,189,248,0)')
+  glow.addColorStop(0, 'rgba(190,154,230,.28)')
+  glow.addColorStop(1, 'rgba(190,154,230,0)')
   ctx.fillStyle = glow
   ctx.fillRect(0, 0, width, height)
   ctx.textBaseline = 'alphabetic'
@@ -79,24 +80,12 @@ function footer(ctx, { width, height, pad }, text) {
   ctx.moveTo(pad, y - 66)
   ctx.lineTo(width - pad, y - 66)
   ctx.stroke()
-  // the mark: a ring with a ridge line, then the word
-  ctx.strokeStyle = '#60a5fa'
-  ctx.lineWidth = 7
-  ctx.beginPath()
-  ctx.arc(pad + 24, y - 14, 21, 0, Math.PI * 2)
-  ctx.stroke()
-  ctx.lineWidth = 5
-  ctx.lineJoin = 'round'
-  ctx.beginPath()
-  ctx.moveTo(pad + 9, y - 6)
-  ctx.lineTo(pad + 19, y - 15)
-  ctx.lineTo(pad + 25, y - 10)
-  ctx.lineTo(pad + 33, y - 20)
-  ctx.lineTo(pad + 40, y - 13)
-  ctx.stroke()
-  ctx.font = `800 40px ${SANS}`
+  ctx.save()
+  ctx.translate(pad, y - 38)
+  ctx.scale(.9, .9)
   ctx.fillStyle = INK
-  ctx.fillText('OTRI', pad + 62, y)
+  for (const d of identity.wordmark) ctx.fill(new Path2D(d), 'evenodd')
+  ctx.restore()
   ctx.font = `500 25px ${SANS}`
   ctx.fillStyle = SOFT
   ctx.textAlign = 'right'
@@ -150,7 +139,7 @@ export function drawLeaderboard(canvas, { format = 'post', raceName, facts, head
     ctx.fillStyle = index < 3 ? MEDALS[index] : 'rgba(255,255,255,.12)'
     ctx.fill()
     ctx.font = `800 ${Math.round(radius * 0.95)}px ${SANS}`
-    ctx.fillStyle = index < 3 ? '#0b1220' : INK
+    ctx.fillStyle = index < 3 ? '#21152f' : INK
     ctx.textAlign = 'center'
     ctx.fillText(String(row.place), pad + radius, middle + radius * 0.33)
     ctx.textAlign = 'left'

@@ -1,5 +1,5 @@
 import './ApiDocs.css'
-import { useState } from 'react'
+import { useState } from 'preact/compat'
 import { ArrowUpRight, Check, Copy } from 'lucide-react'
 import { API_BASE_URL } from './apiClient'
 

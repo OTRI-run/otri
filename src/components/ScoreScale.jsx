@@ -1,5 +1,5 @@
 import './ScoreScale.css'
-import React from 'react'
+import React from 'preact/compat'
 import { LEVELS, levelFor, marathonSecondsForShare, nextLevel, shareForScore } from '../lib/scoreLevels'
 
 // Where a score stands: a scale from Beginner to World class with the score marked on it. For the

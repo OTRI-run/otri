@@ -1,6 +1,6 @@
 import './Race.css'
 import RankBadge from '../../../src/components/RankBadge'
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'preact/compat'
 import CourseMap from '../../../src/components/LazyCourseMap'
 import ColumnsRead from '../../../src/components/ColumnsRead'
 import { autoFocusOnDesktop, revealElement } from '../../../src/lib/comfort'

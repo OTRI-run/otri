@@ -26,7 +26,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.02em;
   letter-spacing: -.02em;
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-publish-waiting-ul-4 {
   margin-top: calc(var(--spacing) * 2);
@@ -130,7 +130,7 @@
   color: var(--color-slate-400);
 }
 .prototype-organizer-pages-publish-publish-scored-race-li-17 {
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-publish-publish-scored-race-check-circle2-18 {
   color: var(--color-emerald-600);

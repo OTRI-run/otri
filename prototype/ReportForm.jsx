@@ -1,5 +1,5 @@
 import './ReportForm.css'
-import { useState } from 'react'
+import { useState } from 'preact/compat'
 import { Flag as FlagIcon } from 'lucide-react'
 import { submitReport } from './apiClient'
 

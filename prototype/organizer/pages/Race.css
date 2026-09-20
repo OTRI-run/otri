@@ -56,7 +56,7 @@
   line-height: var(--otri-leading, var(--text-sm--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-race-course-facts-dd-11 {
   font-size: 11px;
@@ -146,7 +146,7 @@
   line-height: var(--otri-leading, var(--text-xs--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
   text-decoration-line: none;
   &:hover {
     @media (hover: hover) {
@@ -199,7 +199,7 @@
   border-top-style: var(--otri-border-style);
   border-top-width: 1px;
   border-color: var(--color-slate-100);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-race-example-file-td-32 {
   padding-inline: calc(var(--spacing) * 3);
@@ -292,7 +292,7 @@
   padding-block: calc(var(--spacing) * 2);
   --otri-font-weight: var(--font-weight-medium);
   font-weight: var(--font-weight-medium);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-race-scores-table-td-47 {
   padding-inline: calc(var(--spacing) * 3);
@@ -353,7 +353,7 @@
   font-family: var(--font-mono);
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-race-results-step-td-55 {
   padding-inline: calc(var(--spacing) * 3);

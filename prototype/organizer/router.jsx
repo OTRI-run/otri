@@ -1,5 +1,5 @@
 import { willNavigate } from '../../src/lib/comfort'
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'preact/compat'
 
 // Hash routing, on purpose: the site is static on GitHub Pages, so `/prototype/organizer/#/verify?token=…`
 // is a URL an email can point at and a refresh can return to, with no server-side rewrites.

@@ -25,7 +25,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.03em;
   letter-spacing: -.03em;
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-admin-tile-p-4 {
   margin-top: calc(var(--spacing) * 0.5);
@@ -91,7 +91,7 @@
   color: var(--color-emerald-700);
 }
 .prototype-organizer-pages-admin-key-values-dd-14 {
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-admin-overview-p-15 {
   font-size: var(--text-sm);
@@ -155,7 +155,7 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   line-height: var(--otri-leading, var(--text-xs--line-height));
-  color: #19191d;
+  color: #21152f;
   --otri-shadow: 0 1px 0 rgb(25 25 29 / .04);
   box-shadow: var(--otri-inset-shadow), var(--otri-inset-ring-shadow), var(--otri-ring-offset-shadow), var(--otri-ring-shadow), var(--otri-shadow);
 }
@@ -197,7 +197,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-admin-overview-span-28 {
   flex-shrink: 0;
@@ -268,7 +268,7 @@
 }
 .prototype-organizer-pages-admin-report-card-span-40 {
   border-radius: calc(infinity * 1px);
-  background-color: #19191d;
+  background-color: #21152f;
   padding-inline: calc(var(--spacing) * 2);
   padding-block: calc(var(--spacing) * 0.5);
   font-family: var(--font-mono);
@@ -306,7 +306,7 @@
   line-height: var(--otri-leading, var(--text-sm--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-admin-report-card-a-45 {
   text-decoration-line: none;
@@ -457,7 +457,7 @@
 .prototype-organizer-pages-admin-accounts-span-63 {
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-admin-accounts-div-64 {
   margin-bottom: calc(var(--spacing) * 4);
@@ -515,7 +515,7 @@
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   line-height: var(--otri-leading, var(--text-xs--line-height));
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-admin-accounts-span-72 {
   margin-left: calc(var(--spacing) * 2);
@@ -646,7 +646,7 @@
   line-height: var(--otri-leading, var(--text-sm--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-admin-admin-race-row-div-90 {
   display: flex;
@@ -753,7 +753,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.02em;
   letter-spacing: -.02em;
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-admin-events-admin-div-101 {
   display: flex;
@@ -810,7 +810,7 @@
 .prototype-organizer-pages-admin-shared-courses-td-107 {
   padding-inline: calc(var(--spacing) * 4);
   padding-block: calc(var(--spacing) * 3);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-admin-shared-courses-span-108 {
   display: block;
@@ -833,7 +833,7 @@
   line-height: var(--otri-leading, var(--text-xs--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
   text-decoration-line: none;
   &:hover {
     @media (hover: hover) {
@@ -880,7 +880,7 @@
   line-height: var(--otri-leading, var(--text-xl--line-height));
   --otri-font-weight: var(--font-weight-bold);
   font-weight: var(--font-weight-bold);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-admin-server-tab-p-116 {
   font-size: var(--text-xl);
@@ -952,7 +952,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-admin-server-tab-div-125 {
   margin-top: calc(var(--spacing) * 2);
@@ -965,7 +965,7 @@
   margin-top: calc(var(--spacing) * 2);
   font-size: var(--text-xs);
   line-height: var(--otri-leading, var(--text-xs--line-height));
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-admin-server-tab-span-128 {
   --otri-font-weight: var(--font-weight-semibold);
@@ -1004,7 +1004,7 @@
   font-family: var(--font-mono);
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-organizer-pages-admin-server-tab-span-134 {
   font-family: var(--font-mono);
@@ -1122,7 +1122,7 @@
   color: var(--color-slate-500);
   &:hover {
     @media (hover: hover) {
-      color: #19191d;
+      color: #21152f;
     }
   }
 }

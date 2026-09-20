@@ -3,7 +3,7 @@
  * (min per distance unit | speed). The API and every stored number stay metric; this
  * only changes how they are shown. The choice is remembered per browser in localStorage.
  */
-import { useSyncExternalStore } from 'react'
+import { useSyncExternalStore } from 'preact/compat'
 
 export const DEFAULT_UNITS = Object.freeze({ distance: 'km', elevation: 'm', pace: 'pace' })
 

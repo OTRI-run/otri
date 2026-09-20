@@ -2,8 +2,8 @@ import './main.css'
 import shell from './Shell.module.css'
 import RankBadge from '../src/components/RankBadge'
 import { fitFontSize } from '../src/lib/fitText'
-import React, { useEffect, useMemo, useState } from 'react'
-import { createRoot } from 'react-dom/client'
+import React, { useEffect, useMemo, useState, lazy, Suspense } from 'preact/compat'
+import { createRoot } from 'preact/compat/client'
 import { ArrowLeft, ArrowUpRight, Mail, Download, Upload, Play, ArrowRight, Calculator as CalculatorIcon } from 'lucide-react'
 import { countryName } from '../src/components/CountrySelect'
 import Logo from '../src/components/Logo'
@@ -13,12 +13,13 @@ import Home from './Home'
 import NextSteps from './NextSteps'
 import RaceCard, { DemoBadge, VerticalBadge } from './RaceCard'
 import RaceListing, { ListingBadge } from './RaceListing'
-import ScoreCalculator from './ScoreCalculator'
-import ScoreRace from './ScoreRace'
-import ApiDocs from './ApiDocs'
-import Media from './Media'
-import FaqPage from './Faq'
-import { RunnerProfilePage, RunnersPage } from './Runners'
+const ScoreCalculator = lazy(() => import('./ScoreCalculator'))
+const ScoreRace = lazy(() => import('./ScoreRace'))
+const ApiDocs = lazy(() => import('./ApiDocs'))
+const Media = lazy(() => import('./Media'))
+const FaqPage = lazy(() => import('./Faq'))
+const RunnersPage = lazy(() => import('./Runners').then(m => ({ default: m.RunnersPage })))
+const RunnerProfilePage = lazy(() => import('./Runners').then(m => ({ default: m.RunnerProfilePage })))
 import CourseMap from '../src/components/LazyCourseMap'
 import ReportForm from './ReportForm'
 import { ShareResults } from './SharePanel'
@@ -115,7 +116,7 @@ function Header({ tab }) {
   return <>
     <header className={shell.header} data-home={tab === 'home' || undefined}>
       <div className={shell.headerInner}>
-        <Logo href="#home" dark={tab === 'home'} />
+        <Logo href="#home" />
         <nav className={shell.desktopNav} aria-label="Main navigation">
           {NAV.map(item=><NavLink key={item.id} item={item} active={tab===item.id}/>)}
           <UnitsMenu compact />
@@ -647,7 +648,7 @@ function App() {
   return (
     <div id="top" className="prototype-main-app-div-77">
       <Header tab={route.tab} />
-      <main>
+      <main><Suspense fallback={<div role="status" className={shell.routeLoading}>Loading…</div>}>
         {route.tab === 'home' && <Home />}
         {route.tab === 'races' && <RacesPage raceId={route.raceId} />}
         {route.tab === 'runners' && (route.runnerId ? <RunnerProfilePage runnerId={route.runnerId} onBack={() => navigate('#runners')} /> : <RunnersPage />)}
@@ -657,7 +658,7 @@ function App() {
         {route.tab === 'media' && <Media />}
         {route.tab === 'faq' && <FaqPage initialQuery={route.faqQuery} />}
         {route.tab === 'notfound' && <NotFound where={window.location.hash} home="#home" />}
-      </main>
+      </Suspense></main>
       <Footer />
       <BackToTop />
       <BuildBanner />

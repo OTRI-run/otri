@@ -19,7 +19,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.04em;
   letter-spacing: -.04em;
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-media-file-link-a-4 {
   display: inline-flex;
@@ -36,7 +36,7 @@
   font-size: 11px;
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
   text-decoration-line: none;
   &:hover {
     @media (hover: hover) {
@@ -86,7 +86,7 @@
   line-height: var(--otri-leading, var(--text-sm--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-media-logo-card-p-10 {
   margin-top: calc(var(--spacing) * 0.5);
@@ -105,7 +105,7 @@
   border-bottom-style: var(--otri-border-style);
   border-bottom-width: 1px;
   border-color: var(--color-slate-200);
-  background-image: radial-gradient(circle at 78% 28%,rgba(198,60,35,.12),transparent 30%),linear-gradient(180deg,#fff 0%,#f7f7f8 100%);
+  background-image: radial-gradient(circle at 78% 28%,rgba(99,54,182,.12),transparent 30%),linear-gradient(180deg,#fff 0%,#faf8fd 100%);
 }
 .prototype-media-media-div-13 {
   padding-block: calc(var(--spacing) * 12);
@@ -126,7 +126,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.06em;
   letter-spacing: -.06em;
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-media-media-em-16 {
   --otri-gradient-position: to right in oklab;
@@ -201,7 +201,7 @@
   line-height: var(--otri-leading, var(--text-sm--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
   text-decoration-line: none;
   &:hover {
     @media (hover: hover) {
@@ -289,7 +289,7 @@
   border-style: var(--otri-border-style);
   border-width: 1px;
   border-color: var(--color-slate-800);
-  background-color: #19191d;
+  background-color: #21152f;
 }
 .prototype-media-media-div-33 {
   display: flex;
@@ -394,7 +394,7 @@
   line-height: var(--otri-leading, var(--text-sm--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-media-media-p-46 {
   margin-top: var(--spacing);
@@ -566,7 +566,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.05em;
   letter-spacing: -.05em;
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-media-media-p-65 {
   margin-top: calc(var(--spacing) * 4);
@@ -574,7 +574,7 @@
   line-height: var(--otri-leading, var(--text-sm--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-media-media-p-66 {
   font-family: var(--font-mono);
@@ -611,7 +611,7 @@
 .prototype-media-media-dt-69 {
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-media-media-div-70 {
   display: flex;
@@ -642,7 +642,7 @@
   font-size: 11px;
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
   &:hover {
     @media (hover: hover) {
       border-color: var(--color-blue-400);

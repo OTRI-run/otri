@@ -1,5 +1,5 @@
 import './BuildBanner.css'
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'preact/compat'
 
 // "Built from commit … · API last restarted …" — the same strip on the bottom of every page.
 // Commit facts are injected at build time by vite.config.js; the API's start time comes from

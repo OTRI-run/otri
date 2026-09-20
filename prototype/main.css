@@ -45,7 +45,7 @@
   display: flex;
   align-items: center;
   gap: calc(var(--spacing) * 2);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-main-leaderboard-h2-6 {
   margin-top: calc(var(--spacing) * 2);
@@ -55,7 +55,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.045em;
   letter-spacing: -.045em;
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-main-leaderboard-p-7 {
   margin-top: calc(var(--spacing) * 3);
@@ -83,7 +83,7 @@
 .prototype-main-leaderboard-span-10 {
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-main-leaderboard-div-11 {
   margin-top: calc(var(--spacing) * 6);
@@ -136,7 +136,7 @@
   line-height: var(--otri-leading, var(--text-xs--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
   text-decoration-line: none;
   &:hover {
     @media (hover: hover) {
@@ -160,7 +160,7 @@
   color: var(--color-slate-700);
 }
 .prototype-main-leaderboard-strong-17 {
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-main-leaderboard-div-18 {
   margin-top: calc(var(--spacing) * 6);
@@ -241,7 +241,7 @@
   padding-block: calc(var(--spacing) * 3);
   --otri-font-weight: var(--font-weight-medium);
   font-weight: var(--font-weight-medium);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-main-leaderboard-a-28 {
   text-decoration-line: none;
@@ -324,7 +324,7 @@
   line-height: var(--otri-leading, var(--text-xs--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
   &:hover {
     @media (hover: hover) {
       border-color: var(--color-blue-300);
@@ -352,7 +352,7 @@
   box-shadow: var(--otri-inset-shadow), var(--otri-inset-ring-shadow), var(--otri-ring-offset-shadow), var(--otri-ring-shadow), var(--otri-shadow);
 }
 .prototype-main-no-races-yet-div-39 {
-  background-image: linear-gradient(135deg,#f6f6f6 0%,#f1f1f2 55%,#fafafa 100%);
+  background-image: linear-gradient(135deg,#faf9fd 0%,#f4eff9 55%,#fafafa 100%);
   padding-inline: calc(var(--spacing) * 5);
   padding-block: calc(var(--spacing) * 6);
   @media (width >= 40rem) {
@@ -374,7 +374,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.03em;
   letter-spacing: -.03em;
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-main-no-races-yet-p-42 {
   margin-top: calc(var(--spacing) * 2);
@@ -433,7 +433,7 @@
 .prototype-main-no-races-yet-b-47 {
   display: block;
   font-size: 15px;
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-main-no-races-yet-span-48 {
   margin-top: var(--spacing);
@@ -467,7 +467,7 @@
   }
 }
 .prototype-main-races-page-section-51 {
-  background-image: linear-gradient(135deg,#f6f6f6 0%,#f1f1f2 55%,#fafafa 100%);
+  background-image: linear-gradient(135deg,#faf9fd 0%,#f4eff9 55%,#fafafa 100%);
   padding-block: calc(var(--spacing) * 14);
   @media (width >= 40rem) {
     padding-block: calc(var(--spacing) * 20);
@@ -502,7 +502,7 @@
   font-weight: var(--font-weight-bold);
   --otri-tracking: -.06em;
   letter-spacing: -.06em;
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-main-races-page-span-56 {
   --otri-gradient-position: to right in oklab;
@@ -582,14 +582,14 @@
   white-space: nowrap;
 }
 .prototype-main-races-page-button-65 {
-  background-color: #19191d;
+  background-color: #21152f;
   color: var(--color-white);
 }
 .prototype-main-races-page-button-66 {
   color: var(--color-slate-500);
   &:hover {
     @media (hover: hover) {
-      color: #19191d;
+      color: #21152f;
     }
   }
 }
@@ -605,7 +605,7 @@
   line-height: var(--otri-leading, var(--text-xs--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
 }
 .prototype-main-races-page-p-68 {
   margin-top: calc(var(--spacing) * 3);
@@ -681,7 +681,7 @@
   line-height: var(--otri-leading, var(--text-sm--line-height));
   --otri-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
-  color: #19191d;
+  color: #21152f;
   &:hover {
     @media (hover: hover) {
       border-color: var(--color-blue-300);
@@ -692,6 +692,6 @@
   min-height: 100vh;
   max-width: 100%;
   overflow-x: clip;
-  background-color: #f6f6f6;
-  color: #19191d;
+  background-color: #faf9fd;
+  color: #21152f;
 }
