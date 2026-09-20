@@ -224,7 +224,7 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
 
 // ----------------------------------------------------------------------------- explanation
 // Two audiences, one section. The plain-language story reads the API's own breakdown of the
-// score — nothing is recomputed here — and the maths lives behind a native <details>.
+// score — nothing is recomputed here — with the maths shown below the explanation.
 
 function Stat({ label, value, mono = true }) {
   return (
@@ -380,10 +380,10 @@ function ScoreExplanation({ estimate, features, targetSeconds }) {
           </div>
         </div>
 
-        <details className="group mt-10 rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
-          <summary className="cursor-pointer select-none px-5 py-3.5 font-mono text-[10px] uppercase tracking-[.08em] text-slate-500 hover:text-slate-700">
-            <span className="inline-block transition-transform group-open:rotate-90">▸</span> Show the maths
-          </summary>
+        <section className="group mt-10 rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+          <h3 className="px-5 py-3.5 font-mono text-[10px] uppercase tracking-[.08em] text-slate-500 ">
+            The maths
+          </h3>
           <div className="border-t border-slate-200 px-5 py-5">
             {b && (
               <pre className="overflow-x-auto rounded-xl bg-[#0b1220] p-4 font-mono text-[11px] leading-relaxed text-slate-100">
@@ -425,7 +425,7 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
             </p>
 
           </div>
-        </details>
+        </section>
 
         <p className="mt-4 text-xs text-slate-500">Model-based projection · {estimate.disclaimer}</p>
         <NextSteps
@@ -764,10 +764,10 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
         </div>
         {loadingCourse && <p role="status" className="mt-3 text-center text-sm text-blue-700">Loading your course…</p>}
         {(refused || loadError) && <p className="mt-3 text-sm text-red-600" role="alert">{refused || loadError}</p>}
-            <details className="group mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-              <summary className="cursor-pointer list-none font-semibold text-[#0b1220]">
+            <section className="group mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+              <h3 className="font-semibold text-[#0b1220]">
                 <span className="text-blue-600">What is a GPX, and where do I get one?</span>
-              </summary>
+              </h3>
               <div className="mt-2 grid gap-2 leading-6">
                 <p>
                   A GPX file is the route as a list of GPS points, the format every watch, phone app and route planner can export. It weighs
@@ -788,7 +788,7 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
                   </a>
                 </p>
               </div>
-            </details>
+            </section>
         <WhatWeScore className="mt-2" />
         </div>
       </div>
@@ -1004,8 +1004,8 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
         <span>{range.known ? `${formatHms(range.max)} · SCORE ${SLIDER_MIN_SCORE}` : formatHms(range.max)}</span>
       </div>
       {range.known && (
-        <details className="mt-4">
-          <summary className="cursor-pointer text-xs font-semibold text-blue-700">Find a time for a target score</summary>
+        <section className="mt-4">
+          <h3 className="text-xs font-semibold text-blue-700">Find a time for a target score</h3>
           <div className="mt-3 flex flex-wrap gap-1.5">
           {SCORE_JUMPS.map((target) => (
             <button
@@ -1019,7 +1019,7 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
             </button>
           ))}
           </div>
-        </details>
+        </section>
       )}
       {analysisError && <p className="mt-2 text-xs text-red-600">{analysisError}</p>}
     </div>
@@ -1029,7 +1029,6 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
 // `embedded`: the calculator inside another website's page (prototype/embed/): no share links and no
 // links into the rest of OTRI, which the host page does not have.
 export default function ScoreCalculator({ embedded = false }) {
-  const [courseDetailsOpen, setCourseDetailsOpen] = useState(false)
   const [shareImageOpen, setShareImageOpen] = useState(false)
   useEffect(() => {
     if (shareImageOpen) setTimeout(() => document.getElementById('calculator-share')?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' }), 50)
@@ -1200,7 +1199,6 @@ export default function ScoreCalculator({ embedded = false }) {
   }
 
   function startOver() {
-    setCourseDetailsOpen(false)
     setShareImageOpen(false)
     analysisRunId.current += 1
     loadedLinkRef.current = null
@@ -1280,10 +1278,10 @@ export default function ScoreCalculator({ embedded = false }) {
       )}
 
       {!embedded && hasCourse && estimate && (
-        <details className={`${CONTAINER} my-5`}>
-          <summary className="cursor-pointer text-sm font-semibold text-blue-700">Share my score</summary>
+        <section className={`${CONTAINER} my-5`}>
+          <h3 className="text-sm font-semibold text-blue-700">Share my score</h3>
           <ShareBox courseLabel={courseLabel} courseFile={courseFile} targetSeconds={targetSeconds} shareId={shareId} onShared={setShareId} imageOpen={shareImageOpen} onToggleImage={estimate ? () => setShareImageOpen((open) => !open) : null} />
-        </details>
+        </section>
       )}
 
       {!embedded && hasCourse && estimate && shareImageOpen && (
@@ -1301,21 +1299,21 @@ export default function ScoreCalculator({ embedded = false }) {
       )}
 
       {hasCourse && (
-        <details className="border-b border-slate-200" open={courseDetailsOpen} onToggle={(event) => setCourseDetailsOpen(event.currentTarget.open)}>
-          <summary className={`${CONTAINER} cursor-pointer py-5 text-sm font-semibold text-blue-700`}>View course map and details</summary>
-          {courseDetailsOpen && course}
-        </details>
+        <section className="border-b border-slate-200">
+          <h3 className={`${CONTAINER} py-5 text-sm font-semibold text-blue-700`}>Course map and details</h3>
+          {course}
+        </section>
       )}
 
       {hasCourse && estimate && (
-        <details>
-          <summary className={`${CONTAINER} cursor-pointer py-5 text-sm font-semibold text-blue-700`}>How is my score calculated?</summary>
+        <section>
+          <h3 className={`${CONTAINER} py-5 text-sm font-semibold text-blue-700`}>How is my score calculated?</h3>
         <ScoreExplanation
           estimate={estimate}
           features={features}
           targetSeconds={targetSeconds}
         />
-        </details>
+        </section>
       )}
     </>
   )

@@ -27,8 +27,8 @@ const trailPoints = Array.from({length:161},(_,i)=>{
   return point(.76-.44*t+.1*Math.sin(t*Math.PI*6)*Math.sin(t*Math.PI), .94-.58*t)
 })
 const trail = trailPoints.map((p,i)=>`${i?'L':'M'}${pair(p)}`).join(' ')
-function Mountain({near=false}) {
-  return <svg className={`otri-terrain-layer ${near?'otri-terrain-near':'otri-terrain-far'}`} viewBox="0 0 600 750" fill="none" aria-hidden="true" focusable="false">
+function Mountain() {
+  return <svg className="otri-terrain-layer otri-terrain-near" viewBox="0 0 600 750" fill="none" aria-hidden="true" focusable="false">
     <ellipse cx="300" cy="590" rx="260" ry="58" fill="#bed5f2" opacity=".2" />
     <g strokeLinejoin="round">
       {tiles.map((tile,i)=><polygon key={i} points={tile.points} fill={tile.fill} stroke={tile.fill} strokeWidth=".5" />)}
@@ -37,7 +37,7 @@ function Mountain({near=false}) {
     </g>
     <path d={trail} stroke="white" strokeWidth="7" strokeLinecap="round" opacity=".9" />
     <path d={trail} stroke="#2563eb" strokeOpacity=".25" strokeWidth="3" />
-    <path className="otri-terrain-trail" d={trail} pathLength="100" stroke={near?'#2563eb':'#0891b2'} strokeWidth="3" strokeLinecap="round" />
+    <path className="otri-terrain-trail" d={trail} pathLength="100" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" />
     {[trailPoints[0],trailPoints[160]].map(([cx,cy],i)=><g key={i}><circle cx={cx} cy={cy} r="6" fill="white" stroke="#2563eb" strokeWidth="2" /><circle cx={cx} cy={cy} r="2" fill="#2563eb" /></g>)}
   </svg>
 }
@@ -62,7 +62,6 @@ export default function TopographicHero() {
       const progress = Math.min(1, Math.max(0, (68 - rect.top) / Math.max(1, rect.height * .75)))
       element.style.setProperty('--terrain-x', `${pointerX * 14}px`)
       element.style.setProperty('--terrain-tilt', `${pointerY * 2}deg`)
-      element.style.setProperty('--terrain-far', `${progress * 60}px`)
       element.style.setProperty('--terrain-near', `${progress * -85}px`)
       element.style.setProperty('--trail-hidden', `${18 * (1 - progress)}`)
     }
@@ -87,7 +86,6 @@ export default function TopographicHero() {
       if (motion.matches) {
         element.style.removeProperty('--terrain-x')
         element.style.removeProperty('--terrain-tilt')
-        element.style.removeProperty('--terrain-far')
         element.style.removeProperty('--terrain-near')
         element.style.removeProperty('--trail-hidden')
       } else {
@@ -119,7 +117,6 @@ export default function TopographicHero() {
   return (
     <div ref={ref} className="otri-terrain" aria-hidden="true">
       <Mountain />
-      <Mountain near />
       <div className="otri-terrain-veil" />
       <div className="otri-terrain-survey"><span>+ TERRAIN / PERFORMANCE</span><span>+ OPEN TRAIL RUNNING INDEX</span></div>
     </div>

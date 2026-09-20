@@ -180,20 +180,20 @@ function Scored({ result, fileStem, gpxText, children }) {
         </div>
       )}
       {flags.length > 0 && (
-        <details className="mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
-          <summary className="cursor-pointer font-semibold text-[#0b1220]">{flags.length} quality flag{flags.length === 1 ? '' : 's'} from the course measurement and the model</summary>
+        <section className="mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
+          <h3 className="font-semibold text-[#0b1220]">{flags.length} quality flag{flags.length === 1 ? '' : 's'} from the course measurement and the model</h3>
           <ul className="mt-2 space-y-1 font-mono text-[11px] text-slate-500">
             {flags.map((flag) => (
               <li key={flag} className="break-words">{flag}</li>
             ))}
           </ul>
-        </details>
+        </section>
       )}
       {result.warnings.length > 0 && (
-        <details className="mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
-          <summary className="cursor-pointer font-semibold text-[#0b1220]">{result.warnings.length} note{result.warnings.length === 1 ? '' : 's'} on the results file (nothing that blocks scoring)</summary>
+        <section className="mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
+          <h3 className="font-semibold text-[#0b1220]">{result.warnings.length} note{result.warnings.length === 1 ? '' : 's'} on the results file (nothing that blocks scoring)</h3>
           <Issues issues={result.warnings} kind="warning" />
-        </details>
+        </section>
       )}
       <ColumnsRead columns={result.columns} ignored={result.ignored_columns} className="mt-3" />
 
@@ -264,8 +264,8 @@ function ExampleRace({ onUse, busy, rowsOpen, onToggleRows }) {
       >
         {state === 'loading' ? 'Loading the example…' : 'Try with sample files'}
       </button>
-      <details className="mt-2 text-center text-xs leading-5 text-slate-500">
-        <summary className="cursor-pointer">Preview or download sample files</summary>
+      <section className="mt-2 text-center text-xs leading-5 text-slate-500">
+        <h3 className="cursor-pointer">Preview or download sample files</h3>
         <p className="mt-2">Demo course · 100 sample finishers.{' '}
         <button type="button" onClick={onToggleRows} aria-expanded={rowsOpen} aria-controls="example-rows" className="font-semibold text-blue-600 hover:underline">
           {rowsOpen ? 'Hide' : 'Show'} rows
@@ -275,7 +275,7 @@ function ExampleRace({ onUse, busy, rowsOpen, onToggleRows }) {
         {' · '}
         <a href={EXAMPLE.course.url} download={EXAMPLE.course.file} className="font-semibold text-blue-600 no-underline hover:underline">GPX</a>
         </p>
-      </details>
+      </section>
       {state === 'failed' && <p className="mt-2 text-center text-xs text-red-600">The example files could not be loaded. Try again in a moment.</p>}
     </div>
   )
@@ -494,14 +494,13 @@ export default function ScoreRace() {
               <FilePick icon={FileSpreadsheet} label="Upload results" hint="CSV or Excel · Runner names and finish times" accept=".csv,.tsv,.txt,.xlsx,.xlsm,text/csv" file={results} onFile={setResults} disabled={busy} />
             </div>
 
-            <details className="mt-4">
-              <summary className="cursor-pointer text-xs font-semibold text-slate-600">Add a race name (optional)</summary>
-            <label className="mt-3 block font-mono text-[9px] tracking-[.08em] text-slate-500">
-              RACE NAME
+            <section className="mt-4">
+                          <label className="mt-3 block font-mono text-[9px] tracking-[.08em] text-slate-500">
+              RACE NAME (OPTIONAL)
               <input value={raceName} onChange={(e) => setRaceName(e.target.value)} maxLength={200} list={RACE_NAME_LIST} autoComplete="off" className={`${input} mt-2 font-sans tracking-normal`} placeholder="Doi Suthep Trail 30K" />
               <RaceNameList />
             </label>
-            </details>
+            </section>
 
             {error && (
               <div id="score-error" role="alert" className="mt-4 flex gap-2 rounded-xl border border-red-100 bg-red-50/70 px-3 py-2.5 text-sm text-red-900">
@@ -514,12 +513,12 @@ export default function ScoreRace() {
             {!busy && missing && <p className="mt-2 text-center text-xs text-slate-500">{missing}</p>}
             <ExampleRace onUse={useExample} busy={busy} rowsOpen={rowsOpen} onToggleRows={() => setRowsOpen((open) => !open)} />
           </form>
-          <details className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-            <summary className="cursor-pointer font-semibold text-blue-700">Need help with your files?</summary>
+          <section className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+            <h3 className="font-semibold text-blue-700">Need help with your files?</h3>
             <p className="mt-3 leading-6"><b>Course:</b> upload the route as a GPX file. Distance and elevation totals alone are not enough.</p>
             <p className="mt-2 leading-6"><b>Results:</b> upload your timing export or spreadsheet with runner names and finish times. CSV, TSV and Excel (.xlsx or .xlsm) are supported.</p>
             <p className="mt-2 leading-6">You can also drop both files onto the form. After scoring, download the scores or choose to publish a race page.</p>
-          </details>
+          </section>
           <WhatWeScore className="mt-2" />
           </div>
           {rowsOpen && <ExampleRows onClose={() => setRowsOpen(false)} />}
@@ -548,8 +547,8 @@ export default function ScoreRace() {
           </Scored>
         )}
 
-        <details className="mt-6">
-          <summary className="cursor-pointer text-sm font-semibold text-blue-700">Publishing, website tools and scoring help</summary>
+        <section className="mt-6">
+          <h3 className="text-sm font-semibold text-blue-700">Publishing, website tools and scoring help</h3>
         <section className="mt-4 grid gap-4 md:grid-cols-3">
           {[
             ['Want a public race page?', 'Score the race here first, then press Publish this race: the course and the results come with you into a free organizer account. No approval, and you decide when it goes public.', 'organizer/', 'Or start with an account'],
@@ -563,7 +562,7 @@ export default function ScoreRace() {
             </a>
           ))}
         </section>
-        </details>
+        </section>
       </div>
     </>
   )
