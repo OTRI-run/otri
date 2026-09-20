@@ -4,31 +4,34 @@
   inset: 0;
   overflow: hidden;
   pointer-events: none;
-  color: rgba(59, 130, 246, .22);
+  color: rgba(37, 99, 235, .46);
 }
 .otri-terrain-layer {
   position: absolute;
-  inset: -50px 0;
+  inset: -100px 0;
   width: 100%;
-  height: calc(100% + 100px);
+  height: calc(100% + 200px);
 }
 .otri-terrain-far { transform: translate3d(0, var(--terrain-far, 0px), 0); }
 .otri-terrain-near { transform: translate3d(0, var(--terrain-near, 0px), 0); }
 .otri-terrain-trail {
   stroke-dasharray: 100;
-  stroke-dashoffset: var(--trail-hidden, 72);
-  opacity: .65;
+  stroke-dashoffset: var(--trail-hidden, 38);
+  opacity: .9;
 }
 .otri-terrain-veil {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 50% 38%, rgba(255,255,255,.96) 0%, rgba(250,252,255,.88) 30%, rgba(248,251,255,.15) 75%), linear-gradient(to bottom, transparent 80%, #f8fbff);
+  background: radial-gradient(ellipse at 50% 38%, rgba(255,255,255,.98) 0%, rgba(250,252,255,.86) 25%, rgba(248,251,255,0) 65%), linear-gradient(to bottom, transparent 80%, #f8fbff);
 }
 @media (max-width: 639px) {
-  .otri-terrain { color: rgba(59,130,246,.18); }
-  .otri-terrain-trail { opacity: .4; }
+  .otri-terrain { color: rgba(37,99,235,.38); }
+  .otri-terrain-trail { opacity: .8; }
 }
 @media (prefers-reduced-motion: reduce) {
   .otri-terrain-layer { transform: none; }
   .otri-terrain-trail { stroke-dashoffset: 0; }
 }
+
+.otri-terrain-survey{position:absolute;inset:24px 24px auto;display:flex;justify-content:space-between;color:#6087b5;font:9px ui-monospace,monospace;letter-spacing:.12em}
+@media(max-width:639px){.otri-terrain-survey{display:none}.otri-terrain-veil{background:radial-gradient(ellipse at 50% 32%,rgba(255,255,255,.95),rgba(250,252,255,.72) 35%,transparent 85%),linear-gradient(to bottom,transparent 80%,#f8fbff)}}
