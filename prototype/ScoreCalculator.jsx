@@ -628,6 +628,7 @@ function NoCourseHelp({ name, onClose }) {
 }
 
 function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuery, onChooseRace, onUpload, loadingCourse, loadError }) {
+  const [source, setSource] = useState('race')
   const units = useUnits()
   const [missing, setMissing] = useState(null) // a well-known race the visitor picked that has no course here
   const known = useMemo(() => knownButNotHere(RACE_NAMES, query, (allRaces ?? races).map((race) => race.event_name)), [query, allRaces, races])
@@ -645,57 +646,27 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
   return (
     <section className="border-b border-slate-200 bg-white py-10 sm:py-14">
       <div className={CONTAINER}>
-        <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
-          <div className="hidden font-mono text-xs text-blue-600 md:block">01</div>
-          <div className="min-w-0">
-            <Eyebrow className="mb-3">COURSE</Eyebrow>
-            <h2 className="text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
-              Start with
-              <br />
-              <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">the course.</span>
-            </h2>
+        <div className="mx-auto max-w-[680px]">
+          <div className="text-center">
+            <h1 className="text-[clamp(30px,5vw,44px)] font-bold leading-tight tracking-[-.04em] text-[#0b1220]">Calculate my score</h1>
+            <p className="mt-2 text-base text-slate-600">Choose your course, then enter your finish time.</p>
+            <ol aria-label="Calculation steps" className="mt-5 flex justify-center gap-5 text-sm font-semibold">
+              <li aria-current="step" className="text-blue-700">1. Choose course</li>
+              <li className="text-slate-500">2. Enter time</li>
+            </ol>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm leading-7 text-slate-500">
-              Pick a race, or upload your own GPX. Either way OTRI measures the track itself: its distance, its climb and
-              how steep it is.
-            </p>
-            <details className="group mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-              <summary className="cursor-pointer list-none font-semibold text-[#0b1220]">
-                <span className="text-blue-600">What is a GPX, and where do I get one?</span>
-              </summary>
-              <div className="mt-2 grid gap-2 leading-6">
-                <p>
-                  A GPX file is the route as a list of GPS points, the format every watch, phone app and route planner can export. It weighs
-                  a megabyte or two and holds nothing about you unless you exported a recording with timestamps.
-                </p>
-                <p>
-                  <span className="font-semibold text-[#0b1220]">Before a race:</span> most organizers publish the course GPX on the race
-                  website's course or route page weeks ahead, often per distance; look for "Download GPX", "Track" or "Trace", or check
-                  the final participant email.{' '}
-                  <span className="font-semibold text-[#0b1220]">After a race:</span> export your own recording (Garmin Connect, Strava,
-                  Coros, Suunto, Polar all have "Export GPX"); it will be slightly longer than the official course.
-                </p>
-                <p>
-                  A file with a point at least every 30 m scores at High confidence; a heavily simplified file still scores, labelled Low.
-                  Uploads are measured and forgotten unless you share the score.{' '}
-                  <a href="https://github.com/OTRI-run/otri/blob/main/docs/WHAT-IS-A-GPX.md" target="_blank" rel="noreferrer" className="font-semibold text-blue-600">
-                    Full guide ↗
-                  </a>
-                </p>
-              </div>
-            </details>
-            <WhatWeScore className="mt-2" />
+          <div role="group" aria-label="Course source" className="mt-6 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
+            {[['race', 'Find a race'], ['upload', 'Upload my course']].map(([value, label]) => (
+              <button key={value} type="button" aria-pressed={source === value} aria-controls={`course-source-${value}`} onClick={() => setSource(value)} className={`min-h-11 rounded-lg px-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-blue-600 ${source === value ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:bg-white/60'}`}>{label}</button>
+            ))}
           </div>
-        </div>
-
-        <div className="mt-10 grid gap-4 lg:grid-cols-2">
-          <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] sm:p-6">
+        <div className="mt-3">
+          <div id="course-source-race" hidden={source !== 'race'} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] sm:p-6">
             <div className="flex items-center gap-2">
               <Search size={16} className="text-blue-600" />
               <h3 className="text-base font-bold tracking-[-.02em] text-[#0b1220]">Pick a race</h3>
             </div>
-            <p className="mt-1 text-xs leading-5 text-slate-500">A hand-picked selection of courses, not every race. Yours is missing? Upload its GPX.</p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">Search below and select your race.</p>
             <input
               type="text"
               value={query}
@@ -703,7 +674,7 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
                 onQuery(event.target.value)
                 setMissing(null)
               }}
-              placeholder="Race name, e.g. Lavaredo, UTMB, Doi Inthanon…"
+              placeholder="Search by race name…"
               aria-label="Search races"
               autoComplete="off"
               className="mt-4 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-[#0b1220] outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
@@ -717,7 +688,7 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
             {!racesLoading && !racesError && races.length === 0 && query.trim().length < 2 && (
               <p className="mt-3 text-xs text-slate-500">No races with a course yet. Upload a GPX to start.</p>
             )}
-            <div className="mt-3 max-h-[360px] space-y-2 overflow-y-auto pr-1">
+            <div className="mt-3 max-h-[240px] space-y-2 overflow-y-auto pr-1">
               {races.map((race) => (
                 <button
                   key={race.race_id}
@@ -758,40 +729,67 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
             {missing ? <NoCourseHelp name={missing} onClose={() => setMissing(null)} /> : nothingFound && known.length === 0 && <NoCourseHelp name={query.trim()} />}
           </div>
 
-          <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] sm:p-6">
+          <div id="course-source-upload" hidden={source !== 'upload'} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] sm:p-6">
             <div className="flex items-center gap-2">
               <Upload size={16} className="text-blue-600" />
-              <h3 className="text-base font-bold tracking-[-.02em] text-[#0b1220]">Upload a GPX</h3>
+              <h3 className="text-base font-bold tracking-[-.02em] text-[#0b1220]">Upload your course</h3>
             </div>
-            <p className="mt-1 text-xs text-slate-500">Any course, from your watch or the organizer's website.</p>
+            <p className="mt-1 text-xs text-slate-500">Choose a GPX route file from your watch or race organizer.</p>
             <label
               htmlFor="calc-gpx-input"
               {...dropProps}
-              className={`mt-4 flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center text-sm transition hover:border-blue-400 hover:bg-blue-50/40 ${dragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-slate-50'}`}
+              className={`mt-4 flex min-h-[180px] focus-within:ring-2 focus-within:ring-blue-500 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center text-sm transition hover:border-blue-400 hover:bg-blue-50/40 ${dragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-slate-50'}`}
             >
               {loadingCourse ? (
                 <>
                   <Spinner className="h-8 w-8 border-4" />
                   <span className="font-semibold text-[#0b1220]">Reading course…</span>
-                  <span className="text-xs text-slate-500">Measuring the track on the server.</span>
+                  <span className="text-xs text-slate-500">This may take a few seconds.</span>
                 </>
               ) : (
                 <>
                   <Upload size={22} className="text-blue-600" />
                   <span className="font-semibold text-[#0b1220]">Drop a .gpx file here, or browse</span>
                   <span className="max-w-[320px] text-xs text-slate-500">
-                    The file is analysed for this calculation and not stored unless you create a share link. Dense
-                    recordings (a point at least every 30 m) give a trustworthy result.
+                    Your file stays private unless you create a share link.
                   </span>
                   <span className="mt-1 inline-flex min-h-10 items-center rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 px-4 text-[13px] font-semibold text-white shadow-[0_10px_28px_rgba(37,99,235,.2)]">
                     Choose file
                   </span>
                 </>
               )}
-              <input id="calc-gpx-input" type="file" accept=".gpx" onChange={onUpload} disabled={loadingCourse} className="hidden" />
+              <input id="calc-gpx-input" type="file" accept=".gpx" onChange={onUpload} disabled={loadingCourse} className="sr-only" />
             </label>
-            {(refused || loadError) && <p className="mt-3 text-xs leading-5 text-red-600" role="alert">{refused || loadError}</p>}
           </div>
+        </div>
+        {loadingCourse && <p role="status" className="mt-3 text-center text-sm text-blue-700">Loading your course…</p>}
+        {(refused || loadError) && <p className="mt-3 text-sm text-red-600" role="alert">{refused || loadError}</p>}
+            <details className="group mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+              <summary className="cursor-pointer list-none font-semibold text-[#0b1220]">
+                <span className="text-blue-600">What is a GPX, and where do I get one?</span>
+              </summary>
+              <div className="mt-2 grid gap-2 leading-6">
+                <p>
+                  A GPX file is the route as a list of GPS points, the format every watch, phone app and route planner can export. It weighs
+                  a megabyte or two and holds nothing about you unless you exported a recording with timestamps.
+                </p>
+                <p>
+                  <span className="font-semibold text-[#0b1220]">Before a race:</span> most organizers publish the course GPX on the race
+                  website's course or route page weeks ahead, often per distance; look for "Download GPX", "Track" or "Trace", or check
+                  the final participant email.{' '}
+                  <span className="font-semibold text-[#0b1220]">After a race:</span> export your own recording (Garmin Connect, Strava,
+                  Coros, Suunto, Polar all have "Export GPX"); it will be slightly longer than the official course.
+                </p>
+                <p>
+                  A file with a point at least every 30 m scores at High confidence; a heavily simplified file still scores, labelled Low.
+                  Uploads are measured and forgotten unless you share the score.{' '}
+                  <a href="https://github.com/OTRI-run/otri/blob/main/docs/WHAT-IS-A-GPX.md" target="_blank" rel="noreferrer" className="font-semibold text-blue-600">
+                    Full guide ↗
+                  </a>
+                </p>
+              </div>
+            </details>
+        <WhatWeScore className="mt-2" />
         </div>
       </div>
     </section>
@@ -972,8 +970,8 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
   const chip = 'rounded-full border px-3 py-1.5 font-mono text-[11px] font-semibold transition'
 
   return (
-    <div className="mt-8 rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] backdrop-blur">
-      <p className="font-mono text-[9px] tracking-[.08em] text-blue-600">YOUR TARGET FINISH TIME · TYPE IT, DRAG IT, OR PICK A SCORE</p>
+    <div className="mt-3 rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] backdrop-blur">
+      <p className="text-base font-semibold text-blue-700">2 · Enter your finish time</p>
       <div className="mt-3 flex flex-wrap items-start gap-x-5 gap-y-3">
         <div className="flex items-start gap-1" role="group" aria-label="Target finish time">
           <TimePart id="calc-hours" label="HOURS" value={hours} max={199} wide onCommit={(h) => set(h, minutes, seconds)} nextId="calc-minutes" />
@@ -1006,8 +1004,9 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
         <span>{range.known ? `${formatHms(range.max)} · SCORE ${SLIDER_MIN_SCORE}` : formatHms(range.max)}</span>
       </div>
       {range.known && (
-        <div className="mt-4 flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 font-mono text-[9px] tracking-[.08em] text-slate-500">WHAT TIME SCORES</span>
+        <details className="mt-4">
+          <summary className="cursor-pointer text-xs font-semibold text-blue-700">Find a time for a target score</summary>
+          <div className="mt-3 flex flex-wrap gap-1.5">
           {SCORE_JUMPS.map((target) => (
             <button
               key={target}
@@ -1019,7 +1018,8 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
               {target}
             </button>
           ))}
-        </div>
+          </div>
+        </details>
       )}
       {analysisError && <p className="mt-2 text-xs text-red-600">{analysisError}</p>}
     </div>
@@ -1029,6 +1029,7 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
 // `embedded`: the calculator inside another website's page (prototype/embed/): no share links and no
 // links into the rest of OTRI, which the host page does not have.
 export default function ScoreCalculator({ embedded = false }) {
+  const [courseDetailsOpen, setCourseDetailsOpen] = useState(false)
   const [shareImageOpen, setShareImageOpen] = useState(false)
   useEffect(() => {
     if (shareImageOpen) setTimeout(() => document.getElementById('calculator-share')?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' }), 50)
@@ -1199,6 +1200,8 @@ export default function ScoreCalculator({ embedded = false }) {
   }
 
   function startOver() {
+    setCourseDetailsOpen(false)
+    setShareImageOpen(false)
     analysisRunId.current += 1
     loadedLinkRef.current = null
     setShareId(null)
@@ -1247,23 +1250,21 @@ export default function ScoreCalculator({ embedded = false }) {
   return (
     <>
       {!hasCourse && course}
+      {hasCourse && (
       <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
-        <div className={`${CONTAINER} grid min-w-0 items-center gap-12 py-14 sm:py-16 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-20 lg:py-20`}>
+        <div className={`${CONTAINER} grid min-w-0 items-start gap-6 py-8 sm:py-10 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-10`}>
           <div className="min-w-0">
             <div className="font-mono text-[10px] font-medium tracking-[.1em] text-blue-600">
               OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> SCORE CALCULATOR
             </div>
-            {hasCourse ? (
-              <>
                 <h1 className="otri-fit mt-5 max-w-[760px] font-bold leading-[1.06] tracking-[-.05em] text-[#0b1220]" style={{ fontSize: fitFontSize(courseLabel.name, { min: 30, vw: 5, max: 56 }) }}>
-                  Your score on
-                  <br />
+                  Your course:{' '}
                   <em className="otri-gradient-text not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">{courseLabel.name}</em>
                 </h1>
                 <p className="mt-4 max-w-[620px] text-[15px] leading-7 text-slate-500">
-                  It starts at the time that scores {DEFAULT_TARGET_SCORE} here. Set your own target: type it, drag the slider, or pick
-                  a score to see the time it takes. The same code scores official results.
+                  Replace the suggested time with your own. Your score updates automatically.
                 </p>
+                <button type="button" onClick={startOver} className="mt-2 min-h-11 text-sm font-semibold text-blue-700 hover:underline">Change course</button>
                 <TargetTimeControls
                   targetSeconds={targetSeconds}
                   onChange={updateTargetSeconds}
@@ -1272,51 +1273,18 @@ export default function ScoreCalculator({ embedded = false }) {
                   ceilingSeconds={estimate?.breakdown?.world_best_time_seconds}
                   score={estimate?.predicted_score}
                 />
-                {!embedded && <ShareBox courseLabel={courseLabel} courseFile={courseFile} targetSeconds={targetSeconds} shareId={shareId} onShared={setShareId} imageOpen={shareImageOpen} onToggleImage={estimate ? () => setShareImageOpen((open) => !open) : null} />}
-              </>
-            ) : (
-              <>
-                <h1 className="mt-5 max-w-[760px] text-[clamp(40px,6.5vw,76px)] font-bold leading-[1.06] tracking-[-.065em] text-[#0b1220]">
-                  Know your score
-                  <br />
-                  <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">before you race.</em>
-                </h1>
-                <p className="mt-6 max-w-[620px] text-[15px] leading-7 text-slate-500 sm:text-[17px]">
-                  Choose a course and a target finish time. OTRI measures the course, works out how hard it is, and tells
-                  you how close that time would be to the best a human has ever run over that much ground.
-                </p>
-                <div className="mt-7 flex flex-col gap-2 sm:flex-row">
-                  <a
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 px-4 text-[13px] font-semibold text-white no-underline shadow-[0_10px_28px_rgba(37,99,235,.2)] hover:from-blue-800 hover:to-blue-600"
-                    href="#calculator-course"
-                  >
-                    Choose a course <Mountain size={15} />
-                  </a>
-                  <a
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white/90 px-4 text-[13px] font-semibold text-[#0b1220] no-underline hover:border-blue-300"
-                    href={METHODOLOGY_URL}
-                  >
-                    How it's calculated <ArrowUpRight size={15} />
-                  </a>
-                </div>
-                <div className="mt-7 flex flex-wrap gap-x-4 gap-y-2 font-mono text-[8px] tracking-[.08em] text-slate-500 sm:text-[9px]">
-                  <span className="text-blue-600">COURSE</span>
-                  <span>+ TIME</span>
-                  <span>+ VERSION</span>
-                  <span>= SCORE</span>
-                </div>
-                {!embedded && <p className="mt-5 text-sm text-slate-500">
-                  Just want to look around?{' '}
-                  <a href="#races" className="font-semibold text-blue-600 no-underline hover:underline">
-                    Browse scored races →
-                  </a>
-                </p>}
-              </>
-            )}
           </div>
           <ScorePanel estimate={estimate} scoring={scoring} targetSeconds={targetSeconds} features={features} courseLabel={courseLabel} />
         </div>
       </section>
+      )}
+
+      {!embedded && hasCourse && estimate && (
+        <details className={`${CONTAINER} my-5`}>
+          <summary className="cursor-pointer text-sm font-semibold text-blue-700">Share my score</summary>
+          <ShareBox courseLabel={courseLabel} courseFile={courseFile} targetSeconds={targetSeconds} shareId={shareId} onShared={setShareId} imageOpen={shareImageOpen} onToggleImage={estimate ? () => setShareImageOpen((open) => !open) : null} />
+        </details>
+      )}
 
       {!embedded && hasCourse && estimate && shareImageOpen && (
         <section id="calculator-share" className="scroll-mt-[68px] border-b border-slate-200 bg-white py-10">
@@ -1332,14 +1300,22 @@ export default function ScoreCalculator({ embedded = false }) {
         </section>
       )}
 
-      {hasCourse && course}
+      {hasCourse && (
+        <details className="border-b border-slate-200" open={courseDetailsOpen} onToggle={(event) => setCourseDetailsOpen(event.currentTarget.open)}>
+          <summary className={`${CONTAINER} cursor-pointer py-5 text-sm font-semibold text-blue-700`}>View course map and details</summary>
+          {courseDetailsOpen && course}
+        </details>
+      )}
 
       {hasCourse && estimate && (
+        <details>
+          <summary className={`${CONTAINER} cursor-pointer py-5 text-sm font-semibold text-blue-700`}>How is my score calculated?</summary>
         <ScoreExplanation
           estimate={estimate}
           features={features}
           targetSeconds={targetSeconds}
         />
+        </details>
       )}
     </>
   )
