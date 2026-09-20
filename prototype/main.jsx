@@ -123,7 +123,7 @@ function Header({ tab }) {
       <header className={`otri-main-header ${tab === 'home' ? 'is-home' : ''} sticky top-0 z-50 h-[68px] border-b border-slate-200/90 bg-white/95 backdrop-blur`}>
         <div className="mx-auto flex h-full min-w-0 w-[min(1120px,calc(100%-28px))] items-center">
           <Logo href="#home" />
-          <nav className="ml-auto hidden shrink-0 items-center gap-5 md:flex lg:gap-7">
+          <nav className="ml-auto hidden shrink-0 items-center gap-5 lg:flex lg:gap-7">
             {NAV.map((item) => (
               <NavLink key={item.id} item={item} active={tab === item.id} />
             ))}
@@ -133,7 +133,7 @@ function Header({ tab }) {
             </a>
           </nav>
           <a
-            className="otri-organizer-link ml-auto flex shrink-0 items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white no-underline md:hidden"
+            className="otri-organizer-link ml-auto flex shrink-0 items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white no-underline lg:hidden"
             href="organizer/"
           >
             Organizers <ArrowUpRight size={13} />
@@ -141,7 +141,7 @@ function Header({ tab }) {
         </div>
       </header>
       {/* Small screens: the section links live in their own row under the header. */}
-      <div className={`otri-mobile-nav ${tab === 'home' ? 'is-home' : ''} border-b border-slate-200 bg-white md:hidden`}>
+      <div className={`otri-mobile-nav ${tab === 'home' ? 'is-home' : ''} border-b border-slate-200 bg-white lg:hidden`}>
         <div className="mx-auto flex w-[min(1120px,calc(100%-28px))] items-center gap-4 overflow-x-auto">
           {NAV.map((item) => (
             <NavLink

@@ -1,39 +1,47 @@
-/* A quiet, light survey surface behind the primary actions. */
-.otri-index-hero{background:#f4f7fb}
-.otri-terrain{position:absolute;inset:0;overflow:hidden;pointer-events:none;background:radial-gradient(ellipse at 80% 10%,#fff6df 0%,transparent 37%),linear-gradient(180deg,#fff 0%,#f4f7fb 100%)}
-.otri-terrain-layer{position:absolute;top:68%;left:50%;width:max(1440px,110%);height:auto;overflow:visible;opacity:.8}
+/* Homepage palette: ink, cobalt, warm white, and amber for the primary action. */
+.otri-index-hero{background:#f7f9fc;min-height:calc(100svh - 68px);display:flex;align-items:center}
+.otri-terrain{position:absolute;inset:0;overflow:hidden;pointer-events:none;background:radial-gradient(ellipse at 50% 32%,#fff 0%,#fafbfc 43%,#eef3fa 100%)}
+.otri-terrain-layer{position:absolute;top:69%;left:50%;width:max(1440px,110%);height:auto;overflow:visible;opacity:.52}
 .otri-terrain-near{transform:translate3d(calc(-50% + var(--terrain-x,0px)),calc(-50% + var(--terrain-near,0px)),0) rotate(var(--terrain-tilt,0deg));transform-origin:center}
 .otri-terrain-trail{stroke-dasharray:100;stroke-dashoffset:var(--trail-hidden,8)}
-.otri-index-pulse{animation:otri-index-signal 16s linear infinite;animation-play-state:var(--signal-state,running)}
+.otri-index-pulse{animation:otri-index-signal 20s linear infinite;animation-play-state:var(--signal-state,running);opacity:.6}
 @keyframes otri-index-signal{to{stroke-dashoffset:-100}}
-.otri-terrain-veil{position:absolute;inset:0;background:linear-gradient(to bottom,#ffffffd9 0%,#ffffffdb 24%,#ffffff8c 43%,transparent 64%,#f4f7fb 100%)}
-@media(max-width:639px){
- .otri-terrain-layer{width:1000px;top:70%}
- .otri-terrain-veil{background:linear-gradient(to bottom,#ffffffed 0%,#ffffffd9 22%,#ffffff66 48%,#ffffff33 76%,#f4f7fb 100%)}
-}
-@media(prefers-reduced-motion:reduce){.otri-terrain-near{transform:translate(-50%,-50%)}.otri-terrain-trail{stroke-dashoffset:0}.otri-index-pulse{animation:none;opacity:0}}
-
-/* The hero fills the available first screen; shorter screens can still scroll naturally. */
-.otri-index-hero{min-height:calc(100svh - 68px);display:flex;align-items:center}
-.otri-index-action{border-color:#d9e2ef;background:linear-gradient(145deg,#fff,#ffffffed);box-shadow:0 16px 44px #1734540e;cursor:pointer;transition:transform .2s,border-color .2s,box-shadow .2s}
-.otri-index-action[data-audience="runner"]{border-top:3px solid #fbbf24}
-.otri-index-action[data-audience="organizer"]{border-top:3px solid #60a5fa}
-.otri-index-action:hover{transform:translateY(-5px);border-color:#94b5e0;box-shadow:0 20px 50px #17345420}
+.otri-terrain-veil{position:absolute;inset:0;background:linear-gradient(to bottom,#fafbfceb 0%,#ffffffdb 24%,#ffffff80 44%,transparent 65%,#f7f9fc 100%)}
+.otri-hero-wordmark{font-size:clamp(34px,5.2vw,70px);font-weight:800;line-height:1.02;letter-spacing:-.045em}
+.otri-index-action{border-color:#dbe3ef;background:rgba(255,255,255,.97);box-shadow:0 12px 36px #1734540b;cursor:pointer;transition:transform .2s,border-color .2s,box-shadow .2s}
+.otri-index-action[data-audience="runner"]{background:linear-gradient(145deg,#234dd0,#163aa8);border-color:#234dd0;box-shadow:0 18px 48px #234dd025}
+.otri-action-audience{color:#64748b}
+.otri-action-title{color:#0b1220}
+.otri-action-description{color:#526177}
+[data-audience="runner"] .otri-action-audience{color:#d0dfff}
+[data-audience="runner"] .otri-action-title{color:#fff}
+[data-audience="runner"] .otri-action-description{color:#e0e9ff}
+.otri-action-icon{background:#eef3fc;color:#234dd0}
+[data-audience="runner"] .otri-action-icon{background:#ffffff1a;color:#fff}
+.otri-action-cta{background:#0e203a;color:#fff;transition:background .2s}
+[data-audience="runner"] .otri-action-cta{background:#fbbf24;color:#14213a}
+.otri-index-action:hover{transform:translateY(-4px);border-color:#7593d9;box-shadow:0 20px 48px #17345420}
+.otri-index-action:hover .otri-action-cta{background:#234dd0}
+.otri-index-action[data-audience="runner"]:hover .otri-action-cta{background:#fcd34d}
 .otri-index-action:active{transform:translateY(-1px)}
-.otri-index-action:focus-visible{outline:3px solid #fcd34d;outline-offset:5px}
-.otri-action-icon{background:#eff5ff;color:#2563eb}
-[data-audience="runner"] .otri-action-icon{background:#fff5d6;color:#8a5700}
-.otri-action-cta{background:#3b82f6;color:white;box-shadow:0 4px 16px #2563eb30}
-[data-audience="runner"] .otri-action-cta{background:#fbbf24;color:#172033;box-shadow:0 4px 16px #fbbf2420}
-.otri-index-action:hover .otri-action-cta{filter:brightness(1.1)}
-.otri-main-header.is-home{background:rgba(255,255,255,.97);border-color:#dbe3ee;box-shadow:0 2px 14px #02081508}
-.otri-main-header.is-home nav>a:not(.otri-organizer-link){color:#334155;font-size:14px}
-.otri-main-header.is-home nav>a:not(.otri-organizer-link):hover{color:#1d4ed8}
-.otri-main-header .otri-organizer-link{background:#fbbf24;color:#172033;border-color:#fbbf24;font-weight:700}
-.otri-main-header .otri-organizer-link:hover{background:#fcd34d}
-.otri-mobile-nav.is-home{background:#f8fafc;border-color:#dbe3ee}
-.otri-mobile-nav.is-home a{color:#334155}
-@media(max-width:767px){.otri-index-hero{min-height:calc(100svh - 114px)}}
-@media(prefers-reduced-motion:reduce){.otri-index-action,.otri-index-action svg{transition:none}.otri-index-action:hover{transform:none}}
-
-.otri-hero-wordmark{font-size:clamp(34px,5.2vw,68px);font-weight:800;line-height:1.04;letter-spacing:-.045em}
+.otri-index-action:focus-visible{outline:3px solid #234dd0;outline-offset:5px}
+.otri-main-header.is-home{background:rgba(255,255,255,.97);border-color:#e4e9f1;box-shadow:0 1px 12px #17345404}
+.otri-main-header.is-home nav{gap:8px}
+.otri-main-header.is-home nav>a:not(.otri-organizer-link){padding:9px 11px;border-radius:8px;color:#41526a;font-size:14px;font-weight:600;transition:background .15s,color .15s}
+.otri-main-header.is-home nav>a:not(.otri-organizer-link):hover{background:#eef3fc;color:#234dd0}
+.otri-main-header .otri-organizer-link{background:#0e203a;color:#fff;border-color:#0e203a;font-weight:600}
+.otri-main-header .otri-organizer-link:hover{background:#234dd0;border-color:#234dd0}
+.otri-mobile-nav.is-home{background:#fff;border-color:#e4e9f1}
+.otri-mobile-nav.is-home a{color:#41526a}
+@media(max-width:1023px){.otri-index-hero{min-height:calc(100svh - 114px)}}
+@media(max-width:639px){
+ .otri-terrain-layer{width:1000px;top:68%}
+ .otri-terrain-veil{background:linear-gradient(to bottom,#ffffffed 0%,#ffffffdb 25%,#ffffff66 48%,#ffffff33 76%,#f7f9fc 100%)}
+ .otri-index-action{padding:20px}
+ .otri-action-title{font-size:24px;margin-top:12px}
+ .otri-action-description{margin-bottom:18px}
+}
+@media(prefers-reduced-motion:reduce){
+ .otri-terrain-near{transform:translate(-50%,-50%)}.otri-terrain-trail{stroke-dashoffset:0}.otri-index-pulse{animation:none;opacity:0}
+ .otri-index-action,.otri-index-action svg,.otri-action-cta{transition:none}.otri-index-action:hover{transform:none}
+}
