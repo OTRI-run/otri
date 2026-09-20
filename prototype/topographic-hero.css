@@ -7,10 +7,34 @@
 .otri-index-pulse{animation:otri-index-signal 16s linear infinite;animation-play-state:var(--signal-state,running)}
 @keyframes otri-index-signal{to{stroke-dashoffset:-100}}
 .otri-terrain-veil{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 22%,rgba(7,19,38,.93) 0%,rgba(7,19,38,.75) 23%,transparent 60%),linear-gradient(to bottom,rgba(7,19,38,.35),transparent 55%,#071326 100%)}
-.otri-index-action{box-shadow:0 16px 50px #02081540!important;border-color:#b7d1f1!important;background:linear-gradient(145deg,#fff,#edf4ff)!important}
-.otri-index-action:hover{box-shadow:0 16px 56px #2563eb30!important;border-color:#60a5fa!important}
 @media(max-width:639px){
  .otri-terrain-layer{width:1000px;top:64%}
  .otri-terrain-veil{background:linear-gradient(to bottom,#071326 0%,rgba(7,19,38,.9) 22%,rgba(7,19,38,.2) 48%,rgba(7,19,38,.2) 76%,#071326 100%)}
 }
 @media(prefers-reduced-motion:reduce){.otri-terrain-near{transform:translate(-50%,-50%)}.otri-terrain-trail{stroke-dashoffset:0}.otri-index-pulse{animation:none;opacity:0}}
+
+/* The hero fills the available first screen; shorter screens can still scroll naturally. */
+.otri-index-hero{min-height:calc(100svh - 68px);display:flex;align-items:center}
+.otri-index-action{border-color:#385474;background:linear-gradient(135deg,rgba(21,43,71,.97),rgba(10,26,46,.97));box-shadow:0 16px 48px #02081550;cursor:pointer;transition:transform .2s,border-color .2s,box-shadow .2s}
+.otri-index-action[data-audience="runner"]{border-top:3px solid #fbbf24}
+.otri-index-action[data-audience="organizer"]{border-top:3px solid #60a5fa}
+.otri-index-action:hover{transform:translateY(-5px);border-color:#94b5e0;box-shadow:0 20px 55px #02081580}
+.otri-index-action:active{transform:translateY(-1px)}
+.otri-index-action:focus-visible{outline:3px solid #fcd34d;outline-offset:5px}
+.otri-action-icon{background:#233d5d;color:#93c5fd}
+[data-audience="runner"] .otri-action-icon{background:#fbbf241a;color:#fcd34d}
+.otri-action-cta{background:#3b82f6;color:white;box-shadow:0 4px 16px #2563eb30}
+[data-audience="runner"] .otri-action-cta{background:#fbbf24;color:#172033;box-shadow:0 4px 16px #fbbf2420}
+.otri-index-action:hover .otri-action-cta{filter:brightness(1.1)}
+.otri-main-header.is-home{background:#09172cf5;border-color:#28415d}
+.otri-main-header.is-home nav>a:not(.otri-organizer-link){color:#cbd5e1;font-size:14px}
+.otri-main-header.is-home nav>a:not(.otri-organizer-link):hover{color:#fcd34d}
+.otri-main-header .otri-organizer-link{background:#fbbf24;color:#172033;border-color:#fbbf24;font-weight:700}
+.otri-main-header .otri-organizer-link:hover{background:#fcd34d}
+.otri-mobile-nav.is-home{background:#0c1d34;border-color:#28415d}
+.otri-mobile-nav.is-home a{color:#cbd5e1}
+@media(max-width:767px){.otri-index-hero{min-height:calc(100svh - 114px)}}
+@media(prefers-reduced-motion:reduce){.otri-index-action,.otri-index-action svg{transition:none}.otri-index-action:hover{transform:none}}
+
+.otri-hero-wordmark{font-size:clamp(34px,5.2vw,68px);font-weight:800;line-height:1.04;letter-spacing:-.045em}
+.otri-hero-elevation{width:120px;height:15px;color:#60a5fa}

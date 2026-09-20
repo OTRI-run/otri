@@ -1,3 +1,4 @@
+import { BrandElevation } from '../src/components/Logo'
 import { scrollBehavior } from '../src/lib/comfort'
 import { ArrowRight, ArrowUpRight, Calculator, Database, FileText, GitBranch, Mountain, ShieldCheck, Timer, Upload, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -70,9 +71,10 @@ export default function Home() {
         <TopographicHero />
         <div className={`${CONTAINER} relative z-10 py-9 sm:py-14 lg:py-16`}>
           <div className="mx-auto max-w-[800px] text-center">
-            <h1 className="text-[clamp(38px,6vw,68px)] font-bold leading-[1.08] tracking-[-.05em] text-white">
-              Open Trail<br /> <span className="bg-gradient-to-r from-blue-200 via-blue-400 to-blue-200 bg-clip-text text-transparent">Running Index</span>
+            <h1 className="otri-hero-wordmark text-white" aria-label="Open Trail Running Index">
+              <span className="text-sky-300">O</span>PEN TRAIL<br />RUNNING INDEX
             </h1>
+            <BrandElevation className="otri-hero-elevation mx-auto mt-3" />
             <p className="mx-auto mt-5 max-w-[620px] text-[19px] leading-7 text-slate-300 sm:text-[22px] sm:leading-8">
               Compare trail running performances with a score based on the course and finish time.
             </p>
@@ -96,17 +98,21 @@ export default function Home() {
                 <a
                   key={href}
                   href={href}
-                  className="otri-index-action group relative flex min-w-0 items-center gap-4 rounded-2xl border border-blue-200 bg-white p-5 text-inherit no-underline shadow-[0_10px_28px_rgba(15,23,42,.04)] transition hover:border-blue-500 hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 sm:flex-col sm:p-6"
+                  data-audience={href === '#calculator' ? 'runner' : 'organizer'}
+                  className="otri-index-action group flex min-w-0 flex-col rounded-2xl border p-5 text-left no-underline sm:p-6"
                 >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
-                    <Icon size={22} aria-hidden="true" />
+                  <span className="flex items-center gap-3">
+                    <span className="otri-action-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+                      <Icon size={20} aria-hidden="true" />
+                    </span>
+                    <span className="text-[12px] font-semibold uppercase tracking-[.1em] text-slate-300">{audience}</span>
                   </span>
-                  <span className="min-w-0 flex-1 text-left sm:text-center">
-                    <span className="mb-2 block text-[17px] font-semibold text-slate-600">{audience}</span>
-                    <span className="block text-[24px] font-bold leading-7 tracking-[-.02em] text-blue-700">{title}</span>
-                    <span className="mt-3 block text-[16px] leading-6 text-slate-600">{text}</span>
+                  <span className="mt-4 block text-[25px] font-bold leading-8 tracking-[-.025em] text-white">{title}</span>
+                  <span className="mt-2 mb-5 block flex-1 text-[16px] leading-6 text-slate-300">{text}</span>
+                  <span className="otri-action-cta flex min-h-12 items-center justify-between gap-4 rounded-xl px-4 text-[15px] font-bold">
+                    {href === '#calculator' ? 'Start calculating' : 'Upload race files'}
+                    <ArrowRight size={20} aria-hidden="true" className="transition-transform group-hover:translate-x-1" />
                   </span>
-                  <ArrowRight size={18} aria-hidden="true" className="shrink-0 text-blue-600 transition group-hover:translate-x-1 sm:absolute sm:right-5 sm:top-5" />
                 </a>
               ))}
             </div>

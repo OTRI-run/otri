@@ -6,14 +6,14 @@ import './topographic-hero.css'
 const pair=([x,y])=>`${x.toFixed(2)},${y.toFixed(2)}`
 function height(x,z) {
   const peak=(cx,cz,wx,wz,h)=>h*Math.exp(-((x-cx)**2/wx+(z-cz)**2/wz))
-  const massif=peak(.5,.4,.075,.14,1.05)+peak(.2,.58,.025,.1,.62)+peak(.81,.54,.028,.1,.78)
+  const massif=peak(.5,.4,.075,.14,1.05)+peak(.19,.54,.028,.1,.78)+peak(.81,.54,.028,.1,.78)
   const rock=.82+.10*Math.sin(x*51+z*6)+.05*Math.sin(x*113-z*13)+.035*Math.cos(x*187+z*31)
   return massif*rock
 }
 function surface(x,z) {return [720+(x-.5)*(1050+z*1150),255+z*420-height(x,z)*240]}
 const profiles=Array.from({length:42},(_,i)=>{
   const z=i/41
-  const points=Array.from({length:221},(_,j)=>surface(j/220,z))
+  const points=Array.from({length:301},(_,j)=>surface(-.5+j/300*2,z))
   const d=points.map((p,j)=>`${j?'L':'M'}${pair(p)}`).join(' ')
   return {d,fill:d+`L${pair([points.at(-1)[0],850])}L${pair([points[0][0],850])}Z`,z}
 })
