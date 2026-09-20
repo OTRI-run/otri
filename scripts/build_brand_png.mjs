@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const brand = join(root, 'public', 'brand')
 const identity = JSON.parse(readFileSync(join(root, 'src', 'brand', 'identity.json'), 'utf8'))
-const { night, paper } = identity.colours
+const { night, graphite, bg } = identity.colours
 
 // [output, source svg, width, height, background or null for transparent, share of the box the artwork fills]
 const JOBS = [
@@ -24,14 +24,14 @@ const JOBS = [
   ['brand/otri-logo-compact-1200.png', 'otri-logo-compact.svg', 1200, null, null, 1],
   ['brand/otri-logo-compact-white-1200.png', 'otri-logo-compact-white.svg', 1200, null, null, 1],
   // Profile pictures: a square that survives being cut to a circle.
-  ['brand/otri-avatar-1024.png', 'otri-mark-on-dark.svg', 1024, 1024, night, 0.66],
-  ['brand/otri-avatar-light-1024.png', 'otri-mark.svg', 1024, 1024, paper, 0.66],
+  ['brand/otri-avatar-1024.png', 'otri-mark-on-dark.svg', 1024, 1024, graphite, 0.66],
+  ['brand/otri-avatar-light-1024.png', 'otri-mark.svg', 1024, 1024, bg, 0.66],
   // The site's own icons (linked from the pages' <head> and site.webmanifest).
-  ['apple-touch-icon.png', 'otri-mark.svg', 180, 180, paper, 0.78],
+  ['apple-touch-icon.png', 'otri-mark.svg', 180, 180, bg, 0.78],
   ['favicon-32.png', 'otri-mark.svg', 32, 32, null, 1.1],
-  ['icon-192.png', 'otri-mark.svg', 192, 192, paper, 0.78],
-  ['icon-512.png', 'otri-mark.svg', 512, 512, paper, 0.78],
-  ['icon-maskable-512.png', 'otri-mark.svg', 512, 512, paper, 0.6],
+  ['icon-192.png', 'otri-mark.svg', 192, 192, bg, 0.78],
+  ['icon-512.png', 'otri-mark.svg', 512, 512, bg, 0.78],
+  ['icon-maskable-512.png', 'otri-mark.svg', 512, 512, bg, 0.6],
   // The link preview and the mark in transactional email.
   ['og-image.png', 'otri-share-card.svg', 1200, 630, null, 1],
   ['email/otri-mark.png', 'otri-mark.svg', 160, 160, null, 1],
@@ -74,10 +74,10 @@ ws.onmessage = (m) => {
 const send = (method, params = {}) => new Promise((done) => { pending.set(++id, done); ws.send(JSON.stringify({ id, method, params })) })
 
 // The fonts the share card names, so the rendered PNG matches the site.
-const fontFaces = ['BarlowCondensed-800-latin', 'Barlow-400-latin', 'JetBrainsMono-600-latin']
+const fontFaces = ['SpaceGrotesk-700-latin', 'IBMPlexSans-400-latin', 'IBMPlexMono-600-latin']
   .map((file) => {
     const [family, weight] = file.split('-')
-    const name = family === 'BarlowCondensed' ? 'Barlow Condensed' : family === 'JetBrainsMono' ? 'JetBrains Mono' : 'Barlow'
+    const name = family === 'SpaceGrotesk' ? 'Space Grotesk' : family === 'IBMPlexMono' ? 'IBM Plex Mono' : 'IBM Plex Sans'
     const data = readFileSync(join(root, 'src', 'ui', 'fonts', `${file}.woff2`)).toString('base64')
     return `@font-face{font-family:'${name}';font-weight:${weight};src:url(data:font/woff2;base64,${data}) format('woff2')}`
   })

@@ -5,12 +5,12 @@ import Flag from '../src/components/Flag'
 import { ListingBadge } from './RaceListing'
 
 export function DemoBadge({ className = '' }) {
-  return <span className={`badge badge--ochre ${className}`}>Demo data</span>
+  return <span className={`badge badge--amber ${className}`}>Demo data</span>
 }
 
 // Uphill-only course (the API's is_vertical). A label for finding races; it never enters a score.
 export function VerticalBadge({ className = '' }) {
-  return <span className={`badge badge--sky ${className}`}>Vertical</span>
+  return <span className={`badge badge--cyan ${className}`}>Vertical</span>
 }
 
 // A published race from the API, as a real link so it can be opened in a new tab. The strip
@@ -42,9 +42,9 @@ export default function RaceCard({ race }) {
         )}
       </p>
       <div className="race-card__facts mt-4">
-        <span><Track size={14} className="icon--moss" /> {formatDistance(race.distance_km, units)}</span>
-        <span><Mountain size={14} className="icon--moss" /> {formatElevation(race.elevation_gain_m, units, { sign: '+' })}</span>
-        {race.has_gpx && <span className="badge badge--moss">Measured course</span>}
+        <span><Track size={14} className="icon--accent" /> {formatDistance(race.distance_km, units)}</span>
+        <span><Mountain size={14} className="icon--accent" /> {formatElevation(race.elevation_gain_m, units, { sign: '+' })}</span>
+        {race.has_gpx && <span className="badge badge--mint">Measured course</span>}
       </div>
       <div className="race-card__foot mt-4">
         <span className="num">{scored ? `${race.finisher_count ?? 0} ${race.is_vertical ? 'finishers' : 'scored'}` : race.listing_status === 'upcoming' ? 'Upcoming' : 'Results to come'}</span>
@@ -64,8 +64,8 @@ function ProfileStrip({ distanceKm, gainM, vertical }) {
     : `0,30 8,${30 - h * 0.35} 20,${30 - h * 0.7} 30,${30 - h * 0.4} 42,${30 - h} 55,${30 - h * 0.55} 66,${30 - h * 0.85} 80,${30 - h * 0.3} 92,${30 - h * 0.5} 100,30`
   return (
     <svg className="race-card__profile" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
-      <polygon points={`0,30 ${points} 100,30`} fill="var(--moss-pale)" />
-      <polyline points={points} fill="none" stroke="var(--moss)" strokeWidth="1.2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+      <polygon points={`0,30 ${points} 100,30`} fill="var(--cyan-pale)" />
+      <polyline points={points} fill="none" stroke="var(--cyan-deep)" strokeWidth="1.2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
     </svg>
   )
 }

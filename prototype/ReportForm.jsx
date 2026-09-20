@@ -67,7 +67,7 @@ export default function ReportForm({ kind, subjectId, subjectLabel, prompt = 'Is
       {open && (
         <form onSubmit={submit} className="card stack report-form__form mt-4">
           <p className="h-4 cluster cluster--tight">
-            <FlagIcon size={16} className="icon--moss" /> Report: {subjectLabel}
+            <FlagIcon size={16} className="icon--accent" /> Report: {subjectLabel}
           </p>
           <label className="field">
             <span className="field__label">What is wrong?</span>

@@ -264,7 +264,7 @@ function Leaderboard({ raceId, onBack }) {
             <ListingBadge status={race.listing_status} />
             {race.is_vertical && <VerticalBadge />}
             {race.is_demo && <DemoBadge />}
-            {race.has_gpx && <span className="badge badge--moss">Measured course</span>}
+            {race.has_gpx && <span className="badge badge--mint">Measured course</span>}
           </div>
           <h1 className="otri-fit mt-3" style={{ fontSize: fitFontSize(race.event_name, { min: 34, vw: 5.5, max: 72 }) }}>{race.event_name}</h1>
           <p className="lead mt-3">

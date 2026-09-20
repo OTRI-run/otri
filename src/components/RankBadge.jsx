@@ -4,7 +4,7 @@ import { Medal, Trophy } from '../ui/icons'
 // bronze medal, beside the number. Any other rank, and DNF / DNS / DSQ, is the plain text it was.
 const PODIUM = {
   1: { Icon: Trophy, color: 'var(--gold)', label: 'Winner' },
-  2: { Icon: Medal, color: '#918878', label: 'Second place' },
+  2: { Icon: Medal, color: 'var(--silver)', label: 'Second place' },
   3: { Icon: Medal, color: 'var(--bronze)', label: 'Third place' },
 }
 

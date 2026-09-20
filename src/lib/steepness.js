@@ -1,23 +1,23 @@
 // How steep a course is, stretch by stretch: the one palette and the one set of classes used by the
 // route on the map, the elevation profile and the figures under it, so the three always agree.
 //
-// The palette is the site's own, in order from the darkest ink to the warmest warning: pine and
-// stone for the descents, the paper's own greys for the flats, sun, blaze and berry for the climbs.
-// The values mirror src/ui/tokens.css (pine-2, stone, line-strong, gravel-2, sun, blaze, berry);
-// they are written here because MapLibre paint and SVG fills cannot read CSS variables. The map,
-// profile and legend share this palette. "Steep" starts at 20 %, the grade from which OTRI's
-// terrain factor counts a stretch as steep ground (scoring/terrain.py).
+// The palette is a scientific ramp, not a hiking map: cool for losing height, neutral grey for flat,
+// hot for gaining it, so a glance reads direction before it reads detail. Every value mirrors
+// src/ui/tokens.css (cyan-deep, cyan, chalk-muted, line-strong, volt, amber, rose); they are written
+// out here because MapLibre paint and SVG fills cannot read CSS variables. The seven stay apart from
+// each other both on a pale map and on a dark profile. "Steep" starts at 20 %, the grade from which
+// OTRI's terrain factor counts a stretch as steep ground (scoring/terrain.py).
 
 export const STEEP_GRADE = 0.2
 
 export const GRADE_CLASSES = [
-  { id: 'down-steep', label: 'Steep descent', range: '−20 % and steeper', color: '#1e3328', test: (g) => g <= -STEEP_GRADE },
-  { id: 'down', label: 'Descent', range: '−20 to −8 %', color: '#586057', test: (g) => g <= -0.08 },
-  { id: 'down-gentle', label: 'Gentle descent', range: '−8 to −3 %', color: '#b5ae9f', test: (g) => g <= -0.03 },
-  { id: 'flat', label: 'Flat', range: '−3 to 3 %', color: '#e2dccd', test: (g) => g < 0.03 },
-  { id: 'up-gentle', label: 'Gentle climb', range: '3 to 8 %', color: '#f2c14e', test: (g) => g < 0.08 },
-  { id: 'up', label: 'Climb', range: '8 to 20 %', color: '#ee6b3b', test: (g) => g < STEEP_GRADE },
-  { id: 'up-steep', label: 'Steep climb', range: '20 % and steeper', color: '#a9333a', test: () => true },
+  { id: 'down-steep', label: 'Steep descent', range: '−20 % and steeper', color: '#086a7c', test: (g) => g <= -STEEP_GRADE },
+  { id: 'down', label: 'Descent', range: '−20 to −8 %', color: '#46dcea', test: (g) => g <= -0.08 },
+  { id: 'down-gentle', label: 'Gentle descent', range: '−8 to −3 %', color: '#93a7b4', test: (g) => g <= -0.03 },
+  { id: 'flat', label: 'Flat', range: '−3 to 3 %', color: '#aebdc7', test: (g) => g < 0.03 },
+  { id: 'up-gentle', label: 'Gentle climb', range: '3 to 8 %', color: '#cbf53f', test: (g) => g < 0.08 },
+  { id: 'up', label: 'Climb', range: '8 to 20 %', color: '#ffb347', test: (g) => g < STEEP_GRADE },
+  { id: 'up-steep', label: 'Steep climb', range: '20 % and steeper', color: '#ff7484', test: () => true },
 ]
 
 export function gradeClass(grade) {
@@ -102,7 +102,7 @@ export function steepnessSummary(stretches) {
  * `lineMetrics: true`. Each boundary gets two stops a hair apart, so classes meet in a crisp edge
  * instead of blending into colours that mean nothing.
  */
-export function lineGradientExpression(stretches, fallback = '#ee6b3b') {
+export function lineGradientExpression(stretches, fallback = '#cbf53f') {
   const total = stretches.length ? stretches[stretches.length - 1].toKm : 0
   if (!(total > 0)) return fallback
   const stops = []

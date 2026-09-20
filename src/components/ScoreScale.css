@@ -1,44 +1,119 @@
-/* The level scale on the dark score panel: nine bands from pale moss to deep moss, the record in
-   blaze, and the score marked above the bar. Colours are the dark-surface tokens; the panel has
-   already flipped `--pine`, `--stone` and `--line`, so the system text classes read as they should. */
+/* The level scale, drawn as a calibrated gauge inside the calculator's dark readout panel.
+   Nine bands run left to right from a dimmed deep cyan up to volt at the record end, each one a
+   measured mix over the fixed tokens (the band's index arrives as `--i` from the component). Below
+   them a hairline rule with tick marks; above them the score rides on a volt chip with a tick.
 
-.score-scale { width: 100%; max-width: 340px; margin: var(--s-5) auto 0; text-align: left; }
-.score-scale__level { font-family: var(--font-display); font-weight: 700; font-size: 22px; line-height: 1.1; letter-spacing: -.01em; color: var(--paper); }
+   The panel has already flipped `--bg`, `--surface`, `--text` and `--line`, so the system text
+   classes read correctly here; anything drawn on its own ground uses the fixed tokens
+   (`--volt`, `--cyan`, `--chalk`, `--chalk-muted`, `--night`). */
 
-/* The bar. The band fill is a mix of moss into paper that deepens with the band's index. */
-.score-scale__axis { position: relative; margin-top: var(--s-8); }
-.score-scale__bands { display: flex; gap: 2px; height: 16px; border-radius: var(--r-pill); overflow: hidden; }
-.score-scale__band, .score-scale__swatch { background: color-mix(in srgb, var(--moss) calc(24% + var(--i, 0) * 9.5%), var(--paper)); }
-.score-scale__band { display: block; opacity: .72; transition: opacity var(--calm) var(--ease); }
-.score-scale__band--record { background: var(--blaze); }
-.score-scale__band.is-active { opacity: 1; outline: 2px solid var(--paper); outline-offset: -2px; }
+.score-scale { width: 100%; margin-top: var(--s-6); text-align: left; }
 
-/* The score, on a paper flag that points down at the bar. */
-.score-scale__marker { position: absolute; top: -26px; translate: -50% 0; pointer-events: none; transition: left var(--calm) var(--ease); }
-.score-scale__marker-value { display: block; padding: 3px 7px; border-radius: 5px; background: var(--paper); color: var(--pine-2); font-family: var(--font-mono); font-size: var(--text-tiny); font-weight: 700; line-height: 1; }
-.score-scale__marker-tip { display: block; width: 0; height: 0; margin-inline: auto; border-inline: 5px solid transparent; border-top: 6px solid var(--paper); }
+/* ------------------------------------------------------------------ head: the band and its span */
+.score-scale__head { padding-bottom: var(--s-2); border-bottom: 1px solid var(--line-dark); }
+.score-scale__level {
+  font-family: var(--font-display); font-weight: 700; font-size: clamp(20px, 2.2vw, 25px);
+  line-height: 1.1; letter-spacing: -.03em; color: var(--chalk);
+}
+.score-scale .score-scale__range { font-size: var(--text-tiny); letter-spacing: var(--track-mono); color: var(--chalk-muted); }
+.score-scale__blurb { max-width: 46ch; }
 
-.score-scale__ticks { position: relative; height: 18px; margin-top: 4px; font-family: var(--font-mono); font-size: var(--text-tiny); color: var(--on-dark-muted); }
-.score-scale__ticks span { position: absolute; translate: -50% 0; }
-.score-scale__ticks .score-scale__tick--record { color: var(--sun); font-weight: 600; }
-.score-scale__ends { display: flex; justify-content: space-between; margin-top: 2px; font-family: var(--font-mono); font-size: var(--text-tiny); letter-spacing: .06em; color: var(--on-dark-muted); }
+/* ------------------------------------------------------------------ the gauge */
+.score-scale__axis { position: relative; margin-top: var(--s-10); }
 
-.score-scale__notes { margin-top: var(--s-4); padding-top: var(--s-3); border-top: 1px solid var(--on-dark-line); display: grid; gap: 6px; }
+/* Nine calibrated steps. `--i` runs 0 (Beginner) to 8 (beyond the record): the hue walks from ice
+   cyan to volt, and the mix against the panel ground brightens with it, so the scale reads as one
+   instrument ramp rather than a set of unrelated colours. */
+.score-scale__band,
+.score-scale__swatch {
+  --band-hue: color-mix(in srgb, var(--volt) calc(var(--i, 0) * 12.5%), var(--cyan));
+  background: color-mix(in srgb, var(--band-hue) calc(38% + var(--i, 0) * 7.75%), var(--night));
+}
+.score-scale__bands { display: flex; gap: 2px; height: 20px; }
+.score-scale__band {
+  display: block; border-radius: 1px; opacity: .84;
+  transition: opacity var(--calm) var(--ease), box-shadow var(--calm) var(--ease);
+}
+.score-scale__band--record { background: var(--volt); }
+.score-scale__band.is-active { opacity: 1; box-shadow: inset 0 0 0 1.5px var(--chalk); }
+
+/* The score on a volt chip, with a tick down onto the band it sits over. */
+.score-scale__marker {
+  position: absolute; top: -33px; translate: -50% 0; pointer-events: none;
+  display: grid; justify-items: center;
+  transition: left var(--calm) var(--ease);
+}
+.score-scale__marker-value {
+  display: block; padding: 3px 8px; border-radius: 2px;
+  background: var(--volt); color: var(--ink);
+  font-family: var(--font-mono); font-size: var(--text-tiny); font-weight: 700; line-height: 1.3;
+  letter-spacing: .01em; font-variant-numeric: tabular-nums;
+}
+.score-scale__marker-tip { display: block; width: 2px; height: 9px; background: var(--volt); }
+
+/* The calibration: a hairline under the bands, a tick under each labelled score. */
+.score-scale__ticks {
+  position: relative; height: 24px; padding-top: 11px; border-top: 1px solid var(--line-dark-strong);
+  margin-top: 5px; font-family: var(--font-mono); font-size: var(--text-tiny); line-height: 1;
+  letter-spacing: .01em; font-variant-numeric: tabular-nums; color: var(--chalk-muted);
+}
+.score-scale__ticks span { position: absolute; top: 11px; translate: -50% 0; }
+.score-scale__ticks span::before {
+  content: ''; position: absolute; left: 50%; top: -11px; width: 1px; height: 7px;
+  background: var(--line-dark-strong);
+}
+.score-scale .score-scale__tick--record { color: var(--volt); font-weight: 600; }
+.score-scale .score-scale__tick--record::before { background: var(--volt); height: 9px; top: -11px; }
+
+.score-scale__ends {
+  display: flex; justify-content: space-between; gap: var(--s-3); margin-top: var(--s-1);
+  font-family: var(--font-mono); font-size: var(--text-tiny); line-height: 1.4;
+  letter-spacing: var(--track-mono); color: var(--chalk-muted);
+}
+
+/* ------------------------------------------------------------------ the notes under the gauge */
+.score-scale__notes {
+  margin-top: var(--s-5); padding-top: var(--s-4); border-top: 1px solid var(--line-dark);
+  display: grid; gap: 7px;
+}
 .score-scale__notes:empty { display: none; }
+.score-scale__notes strong { font-variant-numeric: tabular-nums; }
 
 /* The disclosure: the summary text swaps with the state, the system chevron turns. */
 .score-scale__more { margin-top: var(--s-3); }
+.score-scale .score-scale__more > summary {
+  font-family: var(--font-mono); font-size: var(--text-tiny); font-weight: 600;
+  letter-spacing: var(--track-mono); color: var(--chalk-muted);
+}
+.score-scale .score-scale__more > summary:hover { color: var(--volt); }
 .score-scale__more-open { display: none; }
 .score-scale__more[open] .score-scale__more-open { display: inline; }
 .score-scale__more[open] .score-scale__more-closed { display: none; }
 
-/* The table of all levels, drawn for the dark panel (the system table is for paper). */
-.score-scale__table { width: 100%; margin-top: var(--s-2); font-size: var(--text-tiny); color: var(--on-dark-muted); }
-.score-scale__table th { padding: 0 0 6px; text-align: left; font-family: var(--font-mono); font-weight: 600; letter-spacing: .06em; }
-.score-scale__table td { padding: 6px 0; border-top: 1px solid var(--on-dark-line); vertical-align: middle; }
+/* The table of all levels, drawn for the dark panel (the system table is for a reading surface). */
+.score-scale__table {
+  width: 100%; margin-top: var(--s-2); font-size: var(--text-tiny); line-height: 1.5;
+  font-variant-numeric: tabular-nums; color: var(--chalk-muted);
+}
+.score-scale__table th {
+  padding: 0 0 7px; text-align: left;
+  font-family: var(--font-mono); font-weight: 600; letter-spacing: var(--track-mono); color: var(--chalk-muted);
+}
+.score-scale__table td { padding: 7px 0; border-top: 1px solid var(--line-dark); vertical-align: middle; }
 .score-scale__table .right { text-align: right; }
-.score-scale__table td + td { padding-left: var(--s-2); white-space: nowrap; }
-.score-scale__table tr.is-current td { color: var(--paper); font-weight: 600; }
-.score-scale__swatch { display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 3px; vertical-align: middle; }
+.score-scale__table td + td { padding-left: var(--s-3); white-space: nowrap; }
+.score-scale__table tr.is-current td { color: var(--chalk); font-weight: 600; }
+.score-scale__table tr.is-current td:first-child { box-shadow: inset 2px 0 0 var(--volt); padding-left: 7px; }
+.score-scale__swatch {
+  display: inline-block; width: 10px; height: 10px; margin-right: 9px; border-radius: 1px;
+  vertical-align: -1px;
+}
 
-@media (prefers-reduced-motion: reduce) { .score-scale__marker, .score-scale__band { transition: none; } }
+@media (max-width: 479px) {
+  .score-scale__ends { font-size: var(--text-tiny); letter-spacing: .04em; }
+  .score-scale__table td + td { padding-left: var(--s-2); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .score-scale__marker, .score-scale__band { transition: none; }
+}

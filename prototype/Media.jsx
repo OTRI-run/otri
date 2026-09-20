@@ -10,14 +10,14 @@ import identity from '../src/brand/identity.json'
 
 const BRAND = new URL('../brand/', window.location.href.split('#')[0]).href
 const file = (name) => `${BRAND}${name}`
-const KIT_SIZE = '0.5 MB'
+const KIT_SIZE = '0.3 MB'
 
 // Every logo card: what to show, on which ground, and the files behind it as [label, name].
-// Grounds are drawn by Media.css: light is paper, dark is night, colour is moss.
+// Grounds are drawn by Media.css: light is the reading surface, dark is night, colour is deep cyan.
 const LOGOS = [
-  { title: 'Logo', note: 'The first choice, on paper and other light backgrounds.', preview: 'otri-logo.svg', ground: 'light', width: 300, files: [['SVG', 'otri-logo.svg'], ['PNG', 'otri-logo-1600.png']] },
-  { title: 'Logo for dark backgrounds', note: 'Letters and rings in paper; the trail keeps its orange.', preview: 'otri-logo-on-dark.svg', ground: 'dark', width: 300, files: [['SVG', 'otri-logo-on-dark.svg'], ['PNG', 'otri-logo-on-dark-1600.png']] },
-  { title: 'Logo, white', note: 'One colour, on moss, on any colour, on photographs.', preview: 'otri-logo-white.svg', ground: 'colour', width: 300, files: [['SVG', 'otri-logo-white.svg'], ['PNG', 'otri-logo-white-1600.png']] },
+  { title: 'Logo', note: 'The first choice, on the paper-light reading surfaces.', preview: 'otri-logo.svg', ground: 'light', width: 300, files: [['SVG', 'otri-logo.svg'], ['PNG', 'otri-logo-1600.png']] },
+  { title: 'Logo for dark backgrounds', note: 'Ring, ridge and letters in chalk; the summit keeps its volt.', preview: 'otri-logo-on-dark.svg', ground: 'dark', width: 300, files: [['SVG', 'otri-logo-on-dark.svg'], ['PNG', 'otri-logo-on-dark-1600.png']] },
+  { title: 'Logo, white', note: 'One colour, on cyan, on any colour, on photographs.', preview: 'otri-logo-white.svg', ground: 'colour', width: 300, files: [['SVG', 'otri-logo-white.svg'], ['PNG', 'otri-logo-white-1600.png']] },
   { title: 'Logo, one colour', note: 'Where only one ink prints: a bib, a stamp, a fax.', preview: 'otri-logo-black.svg', ground: 'light', width: 300, files: [['SVG', 'otri-logo-black.svg']] },
   { title: 'Compact', note: 'The mark and the wordmark without the full name, where space is tight.', preview: 'otri-logo-compact.svg', ground: 'light', width: 150, files: [['SVG', 'otri-logo-compact.svg'], ['PNG', 'otri-logo-compact-1200.png'], ['On dark, SVG', 'otri-logo-compact-on-dark.svg'], ['Black, SVG', 'otri-logo-compact-black.svg']] },
   { title: 'Compact, white', note: 'The same, on dark or colour.', preview: 'otri-logo-compact-white.svg', ground: 'dark', width: 150, files: [['SVG', 'otri-logo-compact-white.svg'], ['PNG', 'otri-logo-compact-white-1200.png']] },
@@ -28,12 +28,13 @@ const LOGOS = [
 // The palette, read from the same file the logo is drawn from. `on` names the ink that reads on it.
 const C = identity.colours
 const COLOURS = [
-  { name: 'Pine', hex: C.pine, token: '--pine', use: 'Text and dark surfaces', on: 'paper' },
-  { name: 'Paper', hex: C.paper, token: '--paper', use: 'The page', on: 'pine', border: true },
-  { name: 'Blaze', hex: C.blaze, token: '--blaze', use: 'The trail marker: the one thing to press', on: 'pine' },
-  { name: 'Moss', hex: C.moss, token: '--moss', use: 'The brand green', on: 'paper' },
-  { name: 'Fern', hex: C.fern, token: '--fern', use: 'The accent on dark surfaces', on: 'pine' },
-  { name: 'Night', hex: C.night, token: '--night', use: 'The darkest surface', on: 'paper' },
+  { name: 'Ink', hex: C.ink, token: '--ink', use: 'Text, and the ink of a dark button', on: 'chalk' },
+  { name: 'Graphite', hex: C.graphite, token: '--graphite', use: 'Chrome: header, footer, dark sections', on: 'chalk' },
+  { name: 'Night', hex: C.night, token: '--night', use: 'The deepest ground', on: 'chalk' },
+  { name: 'Paper', hex: C.bg, token: '--bg', use: 'The reading surface', on: 'ink', border: true },
+  { name: 'Volt', hex: C.volt, token: '--volt', use: 'The one action to press, always with ink on it', on: 'ink' },
+  { name: 'Cyan', hex: C.cyan, token: '--cyan', use: 'Data and accents on dark', on: 'ink' },
+  { name: 'Cyan deep', hex: C.cyanDeep, token: '--cyan-deep', use: 'Links and accents on light', on: 'chalk' },
 ]
 
 // The smallest the logo may be shown, from the kit's README: [file, width in px, caption].
@@ -94,7 +95,7 @@ const DONT = [
   { label: 'Do not stretch or squeeze it', style: { transform: 'scaleX(1.5)' } },
   { label: 'Do not recolour it', style: { filter: 'hue-rotate(140deg) saturate(1.6)' } },
   { label: 'Do not tilt it or add effects', style: { transform: 'rotate(-9deg)', filter: 'drop-shadow(3px 4px 2px rgba(0,0,0,.45))' } },
-  { label: 'Do not put it on a busy or low-contrast ground', ground: 'repeating-linear-gradient(45deg, var(--blaze) 0 9px, var(--fern) 9px 18px)' },
+  { label: 'Do not put it on a busy or low-contrast ground', ground: 'repeating-linear-gradient(45deg, var(--volt) 0 9px, var(--mint) 9px 18px)' },
 ]
 
 function CopyButton({ active, onClick }) {
@@ -140,7 +141,7 @@ export default function Media() {
           <p className="eyebrow">01 · Logos</p>
           <h2 id="media-logos" className="h-1 mt-2">Pick the one for your background.</h2>
           <p className="muted measure mt-3">
-            SVG for the web and print (the letters are drawn as outlines, so the files need no font and stay sharp at any size), PNG with a transparent background for everything that takes no SVG: slides, documents, social posts. Use the colour logo on paper-light backgrounds, the on-dark one on dark backgrounds and photographs, the white one on colour, the black one where only one ink prints. The link preview image is in the kit too: <a href={file('otri-share-card.svg')} download className="link">otri-share-card.svg</a>.
+            SVG for the web and print (the letters are drawn as outlines, so the files need no font and stay sharp at any size), PNG with a transparent background for everything that takes no SVG: slides, documents, social posts. Use the colour logo on the paper-light reading surfaces, the on-dark one on graphite, night and photographs, the white one on cyan or any other colour, the black one where only one ink prints. The link preview image is in the kit too: <a href={file('otri-share-card.svg')} download className="link">otri-share-card.svg</a>.
           </p>
           <div className="grid grid--4 mt-6">
             {LOGOS.map((logo) => (
@@ -152,9 +153,9 @@ export default function Media() {
         <section aria-labelledby="media-mark" className="media-block grid grid--aside">
           <div>
             <p className="eyebrow">02 · The mark</p>
-            <h2 id="media-mark" className="h-1 mt-2">Three contour lines, one trail, the summit.</h2>
+            <h2 id="media-mark" className="h-1 mt-2">A closed ring, a ridge, the summit.</h2>
             <p className="muted measure mt-3">
-              The mark is a summit drawn the way a map draws it: three contour rings around the top. Each ring is opened where a trail climbs through it, the dashed orange line of a footpath on that same map, up to the point at the centre. Read as a letter, it is the O of OTRI; the wordmark that follows it supplies the rest. The rings take the colour of the text around them, paper on dark and pine on light, and the trail is always the blaze orange.
+              The mark is one closed ring — the letter O — with a ridge drawn inside it and a volt dot where that ridge tops out. It is a symbol, not a letter you may build a word from: the wordmark beside it always spells OTRI in full, so the logo can never be read as “TRI”. The ring and the ridge take the colour of the text around them, chalk on the dark chrome and ink on the light reading surfaces; the summit dot is always volt.
             </p>
           </div>
           <div className="grid grid--2 grid--2-sm grid--tight">
@@ -220,7 +221,7 @@ export default function Media() {
                 ))}
               </div>
               <p className="h-4 mt-3">Smallest sizes</p>
-              <p className="small muted mt-1">Do not show the logo with the full name narrower than 160 px, or the mark smaller than 20 px. Below that the letters stop being readable: switch to the compact logo, then to the mark, instead of shrinking further.</p>
+              <p className="small muted mt-1">Do not show the logo with the full name narrower than 160 px, or the mark smaller than 20 px. Below that the ridge closes up and the letters stop being readable: switch to the compact logo, then to the mark, instead of shrinking further.</p>
             </div>
           </div>
         </section>
@@ -249,9 +250,9 @@ export default function Media() {
 
         <section aria-labelledby="media-colour" className="media-block">
           <p className="eyebrow">06 · Colour and letters</p>
-          <h2 id="media-colour" className="h-1 mt-2">A day on a trail, drawn like a map.</h2>
+          <h2 id="media-colour" className="h-1 mt-2">An instrument for the mountains.</h2>
           <p className="muted measure mt-3">
-            Chalk paper for the ground, pine ink for the words, moss for the brand, and the blaze orange of a painted trail marker for the one thing to press. Each swatch copies its value; the names are the tokens the site itself uses.
+            Graphite for the chrome and the data panels, a cool near-white for anything to be read, ink for the words on it, and two signals: volt lime for the one thing you are meant to press — always with ink on it — and ice cyan for data and links, deep cyan where that data sits on light. Each swatch copies its value; the names are the tokens the site itself uses.
           </p>
           <div className="media-swatches mt-6">
             {COLOURS.map((colour) => (
@@ -277,17 +278,17 @@ export default function Media() {
           <div className="grid grid--3 mt-5">
             <div className="card">
               <p className="media-type media-type--display">OTRI 1000</p>
-              <p className="h-4 mt-4">Barlow Condensed ExtraBold</p>
+              <p className="h-4 mt-4">Space Grotesk Bold</p>
               <p className="small muted mt-1">The wordmark and every heading on the site. In the logo files the letters are drawn as outlines, so nothing needs the font installed.</p>
             </div>
             <div className="card">
               <p className="media-type media-type--mono">04:12:37</p>
-              <p className="h-4 mt-4">JetBrains Mono</p>
-              <p className="small muted mt-1">The full name under the wordmark, set bold, and every measurement on the site: times, distances, scores.</p>
+              <p className="h-4 mt-4">IBM Plex Mono</p>
+              <p className="small muted mt-1">The full name under the wordmark, and every measurement on the site: times, distances, scores, labels.</p>
             </div>
             <div className="card">
               <p className="media-type media-type--body">Course + time = score.</p>
-              <p className="h-4 mt-4">Barlow</p>
+              <p className="h-4 mt-4">IBM Plex Sans</p>
               <p className="small muted mt-1">The text face. All three are self-hosted and under the SIL Open Font License, so anything written about OTRI can be set in them.</p>
             </div>
           </div>
@@ -300,7 +301,7 @@ export default function Media() {
             <dl className="stack mt-4">
               <div>
                 <dt className="h-4">The name</dt>
-                <dd className="small muted mt-1">OTRI, in capitals. In full: Open Trail Running Index. Not “the OTRI index”: the I already is the index.</dd>
+                <dd className="small muted mt-1">OTRI, in capitals, all four letters. In full: Open Trail Running Index. Not “the OTRI index”: the I already is the index.</dd>
               </div>
               <div>
                 <dt className="h-4">The number</dt>

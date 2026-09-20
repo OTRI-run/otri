@@ -3,15 +3,15 @@
 
 /* The whole form is a drop target: while a file is over it, it lights up like a dropzone. */
 .score-race-form { position: relative; transition: border-color var(--quick) var(--ease), background-color var(--quick) var(--ease); }
-.score-race-form.is-dragging { border-color: var(--blaze); background-color: var(--blaze-pale); }
+.score-race-form.is-dragging { border-color: var(--volt); background-color: var(--volt-pale); }
 .score-race-form__drop {
   margin-bottom: var(--s-5); padding: 10px 14px; border-radius: var(--r-control);
-  background: var(--blaze); color: var(--pine); font-weight: 600; font-size: var(--text-small); text-align: center;
+  background: var(--volt); color: var(--text); font-weight: 600; font-size: var(--text-small); text-align: center;
 }
 
 /* The two file fields: a dropzone each; with a file chosen it turns solid moss. */
 .score-race-drop { position: relative; min-height: 180px; }
-.score-race-drop.has-file { border-style: solid; border-color: var(--moss); background-color: var(--moss-pale); }
+.score-race-drop.has-file { border-style: solid; border-color: var(--cyan-deep); background-color: var(--cyan-pale); }
 .score-race-drop.is-disabled { opacity: .6; cursor: not-allowed; }
 
 /* "Just trying it out?": a quiet block under the button. */
@@ -23,11 +23,11 @@
 /* Validation issues: one line each, coloured by kind, the row and column named in mono. */
 .score-race-issues { display: grid; gap: 6px; }
 .score-race-issues li {
-  padding: 8px 12px; border-radius: var(--r-control); border-left: 3px solid var(--stone);
-  background: var(--gravel); font-size: var(--text-small); line-height: 1.5;
+  padding: 8px 12px; border-radius: var(--r-control); border-left: 3px solid var(--text-muted);
+  background: var(--surface-2); font-size: var(--text-small); line-height: 1.5;
 }
-.score-race-issues--error li { border-left-color: var(--berry); background: var(--berry-pale); }
-.score-race-issues--warning li { border-left-color: var(--ochre); background: var(--ochre-pale); }
+.score-race-issues--error li { border-left-color: var(--rose-deep); background: var(--rose-pale); }
+.score-race-issues--warning li { border-left-color: var(--amber-deep); background: var(--amber-pale); }
 .score-race-issues__where { font-family: var(--font-mono); font-size: 12px; font-weight: 600; letter-spacing: .04em; }
 
 /* Summary tiles: four figures, sized to fit "24.3 km · +1,240 m" on one line. */
@@ -35,8 +35,8 @@
 
 /* The reasons behind a Low confidence, and the raw flags behind them. */
 .score-race-reasons { display: grid; gap: 6px; padding-left: 1.1em; list-style: disc; }
-.score-race-reasons li::marker { color: var(--ochre); }
-.score-race-flags { display: grid; gap: 4px; font-family: var(--font-mono); font-size: var(--text-tiny); color: var(--stone); overflow-wrap: anywhere; }
+.score-race-reasons li::marker { color: var(--amber-deep); }
+.score-race-flags { display: grid; gap: 4px; font-family: var(--font-mono); font-size: var(--text-tiny); color: var(--text-muted); overflow-wrap: anywhere; }
 
 /* The scored table: names carry the weight, the rest is data. */
 .score-race-runner { font-weight: 600; }

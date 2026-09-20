@@ -22,7 +22,7 @@ function Waiting({ race }) {
   const units = useUnits()
   return (
     <div className="publish-waiting">
-      <p className="eyebrow eyebrow--sm eyebrow--moss">WAITING IN THIS BROWSER</p>
+      <p className="eyebrow eyebrow--sm eyebrow--cyan">WAITING IN THIS BROWSER</p>
       <p className="h-4 mt-1">{race.raceName || 'Your scored race'}</p>
       <ul className="publish-waiting__files mt-2">
         <li><MapIcon size={14} /> <span className="truncate">{race.gpx.name} · {formatDistance(race.course.distance_km, units)} · {formatElevation(race.course.elevation_gain_m, units, { sign: '+' })}</span></li>
@@ -179,7 +179,7 @@ export default function PublishScoredRace({ session }) {
               <ol className="publish-steps">
                 {STEPS.map((label, index) => (
                   <li key={label} className={index > step ? 'is-todo' : 'is-now'}>
-                    {index < step ? <CheckCircle size={18} className="icon--moss" /> : index === step ? <span aria-hidden="true" className="spinner" /> : <span aria-hidden="true" className="publish-steps__dot" />}
+                    {index < step ? <CheckCircle size={18} className="icon--accent" /> : index === step ? <span aria-hidden="true" className="spinner" /> : <span aria-hidden="true" className="publish-steps__dot" />}
                     {label}
                   </li>
                 ))}

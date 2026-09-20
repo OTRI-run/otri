@@ -4,7 +4,7 @@ import { Mark } from './Logo'
 export default function NotFound({ eyebrow = '404 · Not found', title = 'That page is not here.', where, note, home = '#home', homeLabel = 'Back to the start', secondaryHref = '#calculator', secondaryLabel = 'Calculate a score' }) {
   return (
     <div className="section-tight stack" style={{ paddingBlock: 'var(--s-12)' }}>
-      <Mark size={48} tone="mono" className="icon--stone" />
+      <Mark size={48} tone="mono" className="icon--muted" />
       <p className="eyebrow">{eyebrow}</p>
       <h1 className="display-2">{title}</h1>
       {where && <p className="mono tiny muted break">{where}</p>}

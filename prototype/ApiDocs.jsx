@@ -108,7 +108,7 @@ function Endpoint({ method, path, children }) {
   return (
     <section className="card api-endpoint" id={path.replace(/\W+/g, '-').replace(/^-/, '')}>
       <h2 className="h-2 cluster cluster--tight">
-        <span className="badge badge--solid-moss badge--lg">{method}</span>
+        <span className="badge badge--volt badge--lg">{method}</span>
         <code className="api-endpoint__path">{path}</code>
       </h2>
       <div className="prose small mt-4">{children}</div>

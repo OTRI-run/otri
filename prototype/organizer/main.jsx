@@ -61,7 +61,7 @@ function AccountMenu({ session, onSignOut }) {
             <p title={session.email}>{session.email}</p>
             <p className="cluster cluster--tight mt-1">
               <span className="badge">Organizer</span>
-              {session.isAdmin && <span className="badge badge--ochre">Admin</span>}
+              {session.isAdmin && <span className="badge badge--amber">Admin</span>}
             </p>
           </div>
           <div className="menu__sep" />
@@ -87,11 +87,11 @@ function Header({ session, onSignOut }) {
         <div className="wrap site-header__inner">
           <div className="site-header__brand">
             <Logo href="../#home" compact />
-            <Link to="/" className="badge badge--solid-moss hide-sm">For organizers</Link>
+            <Link to="/" className="badge badge--volt hide-sm">For organizers</Link>
           </div>
           <nav className="site-nav" aria-label="Organizer">
             {session && <Link to="/events" className="site-nav__link">Your events</Link>}
-            {session?.isAdmin && <Link to="/admin" className="site-nav__link"><span className="badge badge--ochre">Admin</span></Link>}
+            {session?.isAdmin && <Link to="/admin" className="site-nav__link"><span className="badge badge--amber">Admin</span></Link>}
             <a href="../#home" className="site-nav__link">Public site <ArrowUpRight size={14} /></a>
             <span className="site-nav__sep" aria-hidden="true" />
             <UnitsMenu compact />

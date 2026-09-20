@@ -1,14 +1,17 @@
 /* The share panel: the drawn image on the left, the choices and the text on the right. Only the
-   preview frame and the two-column arrangement are this component's own. */
+   preview frame and the two-column arrangement are this component's own; everything else is a
+   system class. */
 
 .share-panel { display: grid; gap: var(--s-6); min-width: 0; }
 @media (min-width: 900px) { .share-panel { grid-template-columns: minmax(0, 300px) minmax(0, 1fr); align-items: start; } }
 
-/* The canvas is drawn at post size and shown small; the frame is the image's own dark ground. */
+/* The canvas is drawn at post size and shown small. The frame carries the image's own deepest
+   ground, so the swap between formats never flashes the page colour through. */
 .share-preview { min-width: 0; }
 .share-preview__canvas {
   display: block; width: 100%; max-width: 300px; margin-inline: auto;
-  border-radius: var(--r-card); background: var(--night); box-shadow: var(--shadow-lift);
+  border-radius: var(--r-card); background: var(--night);
+  box-shadow: var(--shadow-lift), inset 0 0 0 1px var(--line-dark);
   transition: aspect-ratio var(--calm) var(--ease);
 }
 

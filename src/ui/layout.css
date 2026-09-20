@@ -8,15 +8,20 @@
 .section { padding-block: var(--section); position: relative; }
 .section--tight { padding-block: clamp(32px, 4vw, 56px); }
 .section--flush-top { padding-top: 0; }
-.section--card { background: var(--card); }
-.section--gravel { background: var(--gravel); }
-.section--dark { background: var(--pine-2); }
+.section--card, .section--surface { background: var(--surface); }
+.section--quiet { background: var(--surface-2); }
+.section--dark { background: var(--graphite); }
 .section--night { background: var(--night); }
+/* A section that carries the measurement grid behind it. */
+.section--grid { background-image: var(--grid); background-size: 28px 28px; }
 .section--line-top { border-top: var(--border); }
 .section--line-bottom { border-bottom: var(--border); }
 
 /* Stacks and clusters: vertical rhythm and wrapped rows without a margin on each child. */
 .stack { display: grid; gap: var(--s-4); align-content: start; min-width: 0; }
+/* A grid stretches its children, which would turn a button into a full-width bar. Buttons and
+   other self-sized controls sit at the start of the line unless they ask to fill it. */
+.stack > .btn:not(.btn--block), .stack > .badge, .stack > .eyebrow, .stack > .waypoint, .stack > .back { justify-self: start; }
 .stack--tight { gap: var(--s-2); }
 .stack--loose { gap: var(--s-8); }
 .cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); min-width: 0; }
@@ -46,7 +51,7 @@
 .grid--head { grid-template-columns: minmax(0, 1fr) minmax(0, .8fr); gap: clamp(20px, 4vw, 56px); align-items: end; }
 .grid--tight { gap: var(--s-3); }
 .grid--flush { gap: 1px; background: var(--line); border: var(--border); border-radius: var(--r-card); overflow: hidden; }
-.grid--flush > * { background: var(--card); }
+.grid--flush > * { background: var(--surface); }
 
 @media (max-width: 899px) {
   .grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }

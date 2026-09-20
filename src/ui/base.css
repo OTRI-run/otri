@@ -1,4 +1,5 @@
-/* OTRI base: a small reset of our own, the type, and the defaults every element starts from. */
+/* OTRI base: our own reset, the type scale, and the rule that makes one component work on both
+   the light reading surfaces and the dark instrument chrome. */
 
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -12,8 +13,8 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--paper);
-  color: var(--pine);
+  background: var(--bg);
+  color: var(--text);
   font-family: var(--font-body);
   font-size: var(--text-body);
   line-height: var(--leading-body);
@@ -39,76 +40,74 @@ textarea { resize: vertical; }
 [hidden] { display: none !important; }
 strong, b { font-weight: 600; }
 small { font-size: var(--text-tiny); }
-code, kbd, samp, pre { font-family: var(--font-mono); font-size: .92em; }
+code, kbd, samp, pre { font-family: var(--font-mono); font-size: .9em; }
 abbr[title] { text-decoration: underline dotted; text-underline-offset: 2px; }
 
-::selection { background: var(--blaze-pale); color: var(--pine); }
-::placeholder { color: var(--stone-2); opacity: 1; }
+::selection { background: var(--volt); color: var(--ink); }
+::placeholder { color: var(--text-faint); opacity: 1; }
 
 /* One visible focus for keyboards everywhere; the mouse gets none. */
 :focus { outline: none; }
-:focus-visible { outline: 2px solid var(--moss); outline-offset: 3px; border-radius: 2px; }
+:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; border-radius: 2px; }
 
-/* Headings: the condensed display face, tight, with a little negative tracking. */
+/* Headings: Space Grotesk, tight, with a little negative tracking. */
 h1, h2, h3, h4, .display-1, .display-2, .h-1, .h-2, .h-3 {
   font-family: var(--font-display);
-  font-weight: 800;
+  font-weight: 700;
   line-height: var(--leading-tight);
-  letter-spacing: -.015em;
+  letter-spacing: -.025em;
   text-wrap: balance;
   overflow-wrap: anywhere;
-  color: var(--pine);
+  color: var(--text);
 }
-h1, .display-1 { font-size: clamp(42px, 6vw, 80px); line-height: 1; letter-spacing: -.02em; }
-.display-2 { font-size: clamp(36px, 4.6vw, 60px); line-height: 1.02; letter-spacing: -.02em; }
-h2, .h-1 { font-size: clamp(30px, 3.4vw, 44px); }
-h3, .h-2 { font-size: clamp(24px, 2.4vw, 30px); }
-h4, .h-3 { font-size: 21px; font-weight: 700; }
-.h-4 { font-family: var(--font-body); font-size: 18px; font-weight: 600; line-height: 1.35; letter-spacing: 0; }
+h1, .display-1 { font-size: clamp(38px, 5.4vw, 72px); line-height: 1.02; letter-spacing: -.035em; }
+.display-2 { font-size: clamp(31px, 4vw, 52px); line-height: 1.05; letter-spacing: -.032em; }
+h2, .h-1 { font-size: clamp(27px, 3vw, 38px); letter-spacing: -.03em; }
+h3, .h-2 { font-size: clamp(22px, 2.1vw, 27px); }
+h4, .h-3 { font-size: 20px; }
+.h-4 { font-family: var(--font-body); font-size: 17px; font-weight: 600; line-height: 1.35; letter-spacing: -.005em; }
 .display-1, .display-2, .h-1, .h-2, .h-3, .h-4 { display: block; }
 
-/* Text sizes. `body` is the default; nothing readable is set below `tiny`. */
-.lead { font-size: var(--text-lead); line-height: 1.55; color: var(--stone); max-width: 62ch; text-wrap: pretty; }
+/* Text sizes. `body` is the default; nothing meant to be read is set below `tiny`. */
+.lead { font-size: var(--text-lead); line-height: 1.55; color: var(--text-muted); max-width: 62ch; text-wrap: pretty; }
 .small { font-size: var(--text-small); line-height: 1.55; }
 .tiny { font-size: var(--text-tiny); line-height: 1.5; }
-.muted { color: var(--stone); }
-.ink { color: var(--pine); }
+.muted { color: var(--text-muted); }
+.ink { color: var(--text); }
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-.num { font-family: var(--font-display); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.num { font-family: var(--font-mono); font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.readout { font-family: var(--font-display); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
 .measure { max-width: 68ch; text-wrap: pretty; }
 .balance { text-wrap: balance; }
 .center { text-align: center; }
 .right { text-align: right; }
-.upper { text-transform: uppercase; letter-spacing: .06em; }
+.upper { text-transform: uppercase; letter-spacing: var(--track-mono); }
 .nowrap { white-space: nowrap; }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .break { overflow-wrap: anywhere; }
 
-/* The accent word in a heading: the blaze, dark enough to read at heading size. */
-.accent { color: var(--blaze-deep); }
-.on-dark .accent, .section--dark .accent, .panel .accent { color: var(--sun); }
+/* The accent word in a heading: teal on light, volt on dark. */
+.accent { color: var(--accent-text); }
 em.accent, .accent em { font-style: normal; }
 
 /* Links inside prose and text blocks. */
 .link, .prose a {
-  color: var(--moss-deep);
-  font-weight: 600;
+  color: var(--accent-text);
+  font-weight: 500;
   text-decoration: underline;
-  text-decoration-color: rgba(47, 107, 79, .35);
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
   text-decoration-thickness: 1.5px;
   text-underline-offset: 3px;
   transition: color var(--quick) var(--ease), text-decoration-color var(--quick) var(--ease);
 }
-.link:hover, .prose a:hover { color: var(--blaze-deep); text-decoration-color: currentColor; }
+.link:hover, .prose a:hover { color: var(--text); text-decoration-color: currentColor; }
 .link--quiet { text-decoration: none; }
 .link--quiet:hover { text-decoration: underline; }
-.link--arrow { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+.link--arrow { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-weight: 600; }
 .link--arrow:hover { text-decoration: none; }
 .link--arrow .icon { transition: transform var(--quick) var(--ease); }
 .link--arrow:hover .icon { transform: translateX(3px); }
 .link--arrow.link--up:hover .icon { transform: translate(2px, -2px); }
-.on-dark .link, .section--dark .link, .panel .link { color: var(--fern); text-decoration-color: rgba(167, 215, 160, .4); }
-.on-dark .link:hover, .section--dark .link:hover, .panel .link:hover { color: var(--sun); }
 
 /* Long-form text: the FAQ, methodology notes, help. */
 .prose { max-width: 68ch; text-wrap: pretty; }
@@ -118,44 +117,49 @@ em.accent, .accent em { font-style: normal; }
 .prose ul { list-style: disc; }
 .prose ol { list-style: decimal; }
 .prose li + li { margin-top: .35em; }
-.prose li::marker { color: var(--moss); font-weight: 600; }
-.prose code { background: var(--gravel); padding: .1em .4em; border-radius: 4px; }
-.prose pre { background: var(--ink); color: var(--chalk); padding: var(--s-4) var(--s-5); border-radius: var(--r-card); overflow-x: auto; }
+.prose li::marker { color: var(--accent-text); font-weight: 600; }
+.prose code { background: var(--surface-2); padding: .1em .4em; border-radius: 3px; }
+.prose pre { background: var(--graphite); color: var(--chalk); padding: var(--s-4) var(--s-5); border-radius: var(--r-card); overflow-x: auto; }
 .prose pre code { background: none; padding: 0; color: inherit; }
-.prose blockquote { border-left: 3px solid var(--blaze); padding-left: var(--s-4); color: var(--stone); }
+.prose blockquote { border-left: 2px solid var(--volt); padding-left: var(--s-4); color: var(--text-muted); }
 .prose table { width: 100%; font-size: var(--text-small); }
 .prose th, .prose td { text-align: left; padding: 8px 12px; border-bottom: var(--border); vertical-align: top; }
-.prose th { font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--stone); }
+.prose th { font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: var(--track-mono); color: var(--text-muted); }
 
-/* Dark surfaces: text colours flip once, here, and every component reads them. */
-.on-dark, .section--dark, .section--night, .panel {
-  color: var(--on-dark);
-  --pine: var(--paper);
-  --stone: var(--on-dark-muted);
-  --line: var(--on-dark-line);
-  --line-strong: rgba(243, 239, 230, .28);
-  --gravel: rgba(243, 239, 230, .08);
-  --gravel-2: rgba(243, 239, 230, .14);
-  --moss-deep: var(--fern);
-  --blaze-deep: var(--sun);
+/* ------------------------------------------------------------------ the two grounds
+   A dark section re-points the flipping tokens once, and every component inside it follows.
+   A light surface nested in a dark section (a card, a menu, a notice) points them back. */
+.on-dark, .section--dark, .section--night, .panel, .card--dark, .card--night,
+.site-header, .site-subnav, .site-footer, .hero {
+  --bg: var(--graphite);
+  --surface: var(--slate);
+  --surface-2: var(--fill-dark);
+  --surface-3: var(--fill-dark-2);
+  --line: var(--line-dark);
+  --line-strong: var(--line-dark-strong);
+  --text: var(--chalk);
+  --text-muted: var(--chalk-muted);
+  --text-faint: var(--chalk-muted);
+  --accent-text: var(--volt);
+  color: var(--text);
 }
-.on-dark h1, .on-dark h2, .on-dark h3, .on-dark h4,
-.section--dark h1, .section--dark h2, .section--dark h3, .section--dark h4,
-.panel h1, .panel h2, .panel h3, .panel h4 { color: var(--paper); }
-.on-dark ::selection, .section--dark ::selection, .panel ::selection { background: var(--moss); color: var(--paper); }
-.on-dark :focus-visible, .section--dark :focus-visible, .panel :focus-visible { outline-color: var(--fern); }
+.on-dark ::selection, .section--dark ::selection, .panel ::selection { background: var(--volt); color: var(--ink); }
+.on-dark :focus-visible, .section--dark :focus-visible, .panel :focus-visible { outline-color: var(--volt); }
 
-/* Light surfaces inside a dark section (a card, a menu, a notice) take the light tokens back. */
-.on-light, .card:not(.card--dark):not(.card--night), .menu, .popover, .listbox, .notice, .empty, .table-wrap, .dropzone, .input {
-  color: var(--ink);
-  --pine: var(--ink);
-  --stone: var(--stone-fixed);
-  --line: var(--line-fixed);
-  --line-strong: var(--line-strong-fixed);
-  --gravel: var(--gravel-fixed);
-  --gravel-2: var(--gravel-2-fixed);
-  --moss-deep: var(--moss-deep-fixed);
-  --blaze-deep: var(--blaze-deep-fixed);
+.on-light,
+.card:not(.card--dark):not(.card--night),
+.menu, .popover, .listbox, .notice, .empty, .table-wrap, .dropzone {
+  --bg: #f1f5f7;
+  --surface: #ffffff;
+  --surface-2: #e8eef2;
+  --surface-3: #dce5eb;
+  --line: #d6dfe6;
+  --line-strong: #aebdc7;
+  --text: var(--ink);
+  --text-muted: #4e5f69;
+  --text-faint: #7a8b95;
+  --accent-text: var(--cyan-deep);
+  color: var(--text);
 }
 
 /* Assistive text. */

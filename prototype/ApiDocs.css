@@ -11,5 +11,5 @@
 /* The fact sheet: terms and their values, kept in view while the samples scroll by. */
 .api-aside dd { margin-top: var(--s-1); }
 .api-aside dd + dt { margin-top: var(--s-5); }
-.api-aside code { background: var(--gravel); padding: .1em .4em; border-radius: 4px; }
+.api-aside code { background: var(--surface-2); padding: .1em .4em; border-radius: 4px; }
 @media (min-width: 900px) { .api-aside { position: sticky; top: calc(var(--header-h) + var(--s-6)); } }

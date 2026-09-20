@@ -2,7 +2,7 @@
 
 /* An event card: the date with its small calendar, and the race count as a mono fact. */
 .events-card__date { display: inline-flex; align-items: center; gap: 6px; }
-.events-card__races { font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .02em; font-weight: 600; color: var(--moss-deep); }
+.events-card__races { font-family: var(--font-mono); font-size: 12.5px; letter-spacing: .02em; font-weight: 600; color: var(--accent-text); }
 
 /* A race row on the event page: name and facts on the left, status and the way on to the right. */
 .events-race { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); }

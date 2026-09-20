@@ -105,8 +105,11 @@ function Spinner({ className = '' }) {
 }
 
 // ----------------------------------------------------------------------------- the score card
-// The dark "index engine" panel from the landing page, now showing a live number. It is rendered
-// in every state — empty, calculating, live — so the hero never jumps when a course arrives.
+// The readout: the dark instrument panel of the site, reporting a live number. A mono label rail
+// across the top says what is being measured and whether it is live; the score sits under it in
+// the display face, very large and volt, with the derived figures in mono below and the three
+// fixed inputs on hairlines under those. It is rendered in every state — empty, calculating,
+// live — so the hero never jumps when a course arrives.
 
 function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel }) {
   const units = useUnits()
@@ -131,11 +134,11 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
       role="status"
       aria-live="polite"
       aria-busy={scoring}
-      className="panel calc-panel"
+      className="panel panel--bracket calc-panel"
     >
-      <div className="cluster cluster--between panel__label">
-        <span>OTRI / SCORE</span>
-        <span className="calc-panel__status">
+      <div className="calc-panel__head">
+        <span className="panel__label calc-panel__tag">OTRI / SCORE</span>
+        <span className="panel__label calc-panel__tag calc-panel__status">
           <i className={`calc-panel__dot ${scoring ? 'is-busy' : ''}`} />
           {status}
         </span>
@@ -144,14 +147,14 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
       <div className="calc-panel__body">
         {estimate ? (
           <>
-            <small className="panel__label">YOUR PROJECTED SCORE</small>
+            <small className="panel__label calc-panel__tag">YOUR PROJECTED SCORE</small>
             <strong className={`panel__number calc-panel__score ${scoring ? 'is-stale' : ''}`}>
               {estimate.predicted_score}
             </strong>
             {pct != null ? (
               <>
                 <span className={`calc-panel__share ${pct > 100 ? 'accent' : ''}`}>
-                  {pct}% of world-record speed for a course like this
+                  <b>{pct}%</b> of world-record speed for a course like this
                 </span>
                 {b?.world_best_time_seconds > 0 && (
                   <span className="calc-panel__note">
@@ -173,7 +176,7 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
               <span className="calc-panel__time">{formatHms(targetSeconds)}</span>
             )}
             {scoring && (
-              <span className="calc-panel__updating panel__label">
+              <span className="calc-panel__updating panel__label calc-panel__tag">
                 <Spinner /> UPDATING
               </span>
             )}
@@ -188,7 +191,7 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
           </>
         ) : (
           <>
-            <small className="panel__label">WHY THIS SCORE?</small>
+            <small className="panel__label calc-panel__tag">WHY THIS SCORE?</small>
             <strong className="h-1 block mt-2">
               Pick a course.
             </strong>
@@ -197,7 +200,7 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
         )}
       </div>
 
-      <div>
+      <div className="calc-panel__rows">
         {rows.map(([Icon, title, desc]) => (
           <div key={title} className="calc-panel__row">
             <Icon size={16} />
@@ -206,9 +209,9 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
           </div>
         ))}
       </div>
-      <div className="calc-panel__foot panel__label">
-        <b>OTRI INDEX</b>
-        <span>COURSE + TIME + VERSION = SCORE</span>
+      <div className="calc-panel__foot">
+        <b className="panel__label calc-panel__tag">OTRI INDEX</b>
+        <span className="panel__label calc-panel__tag">COURSE + TIME + VERSION = SCORE</span>
       </div>
     </div>
   )
@@ -301,7 +304,7 @@ function ScoreExplanation({ estimate, features, targetSeconds }) {
               falls as courses get longer. A long mountain race is never scored worse than a short one for being long.
             </p>
             <div className="cluster cluster--tight mono small muted mt-6">
-              <GitBranch size={16} className="icon--moss" />
+              <GitBranch size={16} className="icon--accent" />
               same course + same time + same version <b className="ink">=</b> same score
             </div>
             <MeasurementTrust estimate={estimate} />
@@ -649,7 +652,7 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
           <p className="lead">Choose your course, then enter your finish time.</p>
           <ol aria-label="Calculation steps" className="steps calc-picker__steps">
             <li aria-current="step" className="steps__item" data-state="current">
-              <span className="waypoint waypoint--sm waypoint--blaze">1</span>
+              <span className="waypoint waypoint--sm waypoint--volt">1</span>
               <span className="steps__label">Choose course</span>
             </li>
             <li className="steps__item" data-state="todo">
@@ -666,7 +669,7 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
         <div className="mt-4">
           <div id="course-source-race" hidden={source !== 'race'} className="card">
             <div className="cluster cluster--tight">
-              <Search size={18} className="icon--moss" />
+              <Search size={18} className="icon--accent" />
               <h3 className="h-3">Pick a race</h3>
             </div>
             <p className="small muted mt-1">Search below and select your race.</p>
@@ -734,7 +737,7 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
 
           <div id="course-source-upload" hidden={source !== 'upload'} className="card">
             <div className="cluster cluster--tight">
-              <Upload size={18} className="icon--moss" />
+              <Upload size={18} className="icon--accent" />
               <h3 className="h-3">Upload your course</h3>
             </div>
             <p className="small muted mt-1">Choose a GPX route file from your watch or race organizer.</p>
@@ -767,7 +770,7 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
         </div>
         {loadingCourse && <p role="status" className="loading mt-4"><Spinner /> Loading your course…</p>}
         {(refused || loadError) && <p className="notice notice--error notice--plain mt-4" role="alert">{refused || loadError}</p>}
-        <section className="card card--gravel mt-8">
+        <section className="card card--quiet mt-8">
           <h3 className="h-4">What is a GPX, and where do I get one?</h3>
           <div className="stack stack--tight small muted measure mt-3">
             <p>
@@ -819,7 +822,7 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
           <h2 className="otri-fit" style={{ fontSize: fitFontSize(courseLabel.name, { min: 26, vw: 4, max: 44 }) }}>{courseLabel.name}</h2>
           <p className="small muted">
             {courseLabel.meta ? `${courseLabel.meta} · ` : ''}
-            <span className={courseLabel.verified ? 'badge badge--moss' : 'badge badge--ochre'}>
+            <span className={courseLabel.verified ? 'badge badge--mint' : 'badge badge--amber'}>
               {courseLabel.verified ? 'Race course' : courseLabel.meta === 'Shared course' ? 'Shared course' : 'Your upload'}
             </span>
             {courseLabel.sourceUrl && (
@@ -852,7 +855,7 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
         </div>
       </div>
 
-      <dl className="kv card card--gravel mt-6">
+      <dl className="kv card card--quiet mt-6">
         {stats.map(([label, value]) => (
           <div key={label}>
             <dt>{label}</dt>
@@ -969,7 +972,7 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
   const fill = range.max > range.min ? `${Math.min(100, Math.max(0, ((targetSeconds - range.min) / (range.max - range.min)) * 100))}%` : '0%'
 
   return (
-    <div className="card card--white mt-6">
+    <div className="card card--surface mt-6">
       <p className="h-4">2 · Enter your finish time</p>
       <div className="calc-time__row mt-3">
         <div className="calc-time__parts" role="group" aria-label="Target finish time">
@@ -979,7 +982,7 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
           <span className="calc-time__colon">:</span>
           <TimePart id="calc-seconds" label="SEC" value={seconds} max={59} onCommit={(s) => set(hours, minutes, s)} />
         </div>
-        <p className="mono small muted">{formatPace(targetSeconds, distanceKm, units)}</p>
+        <p className="mono small muted calc-time__pace">{formatPace(targetSeconds, distanceKm, units)}</p>
         <div className="cluster cluster--tight">
           {NUDGES.map((delta) => (
             <button key={delta} type="button" onClick={() => onChange(targetSeconds + delta)} className="chip">
@@ -1013,7 +1016,7 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
               type="button"
               onClick={() => onChange(timeFor(target))}
               title={`${formatHms(timeFor(target))} scores ${target} on this course`}
-              className={`chip ${score === target ? 'is-active' : ''}`}
+              className={`chip calc-time__jump ${score === target ? 'is-active' : ''}`}
             >
               {target}
             </button>
@@ -1310,7 +1313,7 @@ export default function ScoreCalculator({ embedded = false }) {
       )}
 
       {hasCourse && estimate && (
-        <section className="section section--gravel section--line-top">
+        <section className="section section--quiet section--line-top">
           <div className="wrap">
             <h3 className="h-3">How is my score calculated?</h3>
             <ScoreExplanation

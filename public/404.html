@@ -4,15 +4,27 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="robots" content="noindex" />
-<meta name="theme-color" content="#17261f" />
+<meta name="theme-color" content="#0b131a" />
 <title>Page not found</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;min-height:100svh;display:grid;place-items:center;padding:24px;background:#f3efe6;color:#17261f;font-family:Barlow,"Segoe UI",Roboto,system-ui,sans-serif;text-align:center}
-h1{margin:0;font-size:clamp(30px,5vw,50px);font-weight:700;letter-spacing:-.05em;line-height:1.1}
+body{margin:0;min-height:100vh;min-height:100svh;display:grid;place-items:center;padding:24px;background:#0b131a;color:#e9f2f7;
+font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;text-align:center;
+background-image:linear-gradient(rgba(233,242,247,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(233,242,247,.05) 1px,transparent 1px);background-size:28px 28px}
+main{display:grid;gap:18px;justify-items:center}
+svg{width:56px;height:56px}
+p{margin:0;font:600 11px "IBM Plex Mono",ui-monospace,Consolas,monospace;letter-spacing:.16em;text-transform:uppercase;color:#93a7b4}
+h1{margin:0;font-family:"Space Grotesk",system-ui,sans-serif;font-size:clamp(30px,5vw,50px);font-weight:700;letter-spacing:-.035em;line-height:1.05}
+a{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:4px;background:#cbf53f;color:#0b1319;
+font-size:15px;font-weight:600;text-decoration:none}
 </style>
 </head>
 <body>
-<main><h1>That page is not here.</h1></main>
+<main>
+<svg viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="24" r="19" stroke="#e9f2f7" stroke-width="3.1"/><path d="M13 31.4 20 20.6 24.6 26.1 29.6 17.6 35 31.4" stroke="#e9f2f7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="29.6" cy="17.6" r="2.7" fill="#cbf53f"/></svg>
+<p>404 · Not found</p>
+<h1>That page is not here.</h1>
+<a href="/prototype/">Back to OTRI</a>
+</main>
 </body>
 </html>
