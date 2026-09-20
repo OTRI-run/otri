@@ -1,3 +1,4 @@
+import s from './Logo.module.css'
 import React from 'react'
 
 export function BrandElevation({ className }) {
@@ -13,10 +14,10 @@ export function BrandElevation({ className }) {
 // Keep all four letters together: the terrain motif must never replace the O.
 export default function Logo({ dark = false, href = '#top' }) {
   return (
-    <a href={href} className="group flex min-w-0 shrink-0 items-center no-underline" aria-label="OTRI home">
-      <span className={`otri-wordmark ${dark ? 'text-white' : 'text-[#0b1220]'}`}>
+    <a href={href} className={`${s.logo} ${dark ? s.dark : ''}`} aria-label="OTRI home">
+      <span className={s.wordmark}>
         OTRI
-        <BrandElevation className="otri-wordmark-terrain" />
+        <BrandElevation className={s.terrain} />
       </span>
     </a>
   )

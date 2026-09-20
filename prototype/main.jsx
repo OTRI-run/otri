@@ -1,3 +1,4 @@
+import shell from './Shell.module.css'
 import RankBadge from '../src/components/RankBadge'
 import { fitFontSize } from '../src/lib/fitText'
 import React, { useEffect, useMemo, useState } from 'react'
@@ -105,83 +106,39 @@ const NAV = [
   { id: 'faq', label: 'FAQ', href: '#faq' },
 ]
 
-function NavLink({ item, active, className = '', short = false }) {
-  return (
-    <a
-      href={item.href}
-      aria-current={active ? 'page' : undefined}
-      className={`text-[13px] font-medium no-underline ${active ? 'text-[#0b1220]' : 'text-slate-500 hover:text-slate-950'} ${className}`}
-    >
-      {short ? item.short ?? item.label : item.label}
-    </a>
-  )
+function NavLink({ item, active, short = false }) {
+  return <a href={item.href} aria-current={active ? 'page' : undefined} className={shell.navLink}>{short ? item.short ?? item.label : item.label}</a>
 }
 
 function Header({ tab }) {
-  return (
-    <>
-      <header className={`otri-main-header ${tab === 'home' ? 'is-home' : ''} sticky top-0 z-50 h-[68px] border-b border-slate-200/90 bg-white/95 backdrop-blur`}>
-        <div className="mx-auto flex h-full min-w-0 w-[min(1120px,calc(100%-28px))] items-center">
-          <Logo href="#home" />
-          <nav className="ml-auto hidden shrink-0 items-center gap-5 lg:flex lg:gap-7">
-            {NAV.map((item) => (
-              <NavLink key={item.id} item={item} active={tab === item.id} />
-            ))}
-            <UnitsMenu compact />
-            <a href="organizer/" className="otri-organizer-link inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-300 px-3 text-[13px] font-semibold text-[#0b1220] no-underline hover:border-blue-300">
-              For organizers <ArrowUpRight size={13} />
-            </a>
-          </nav>
-          <a
-            className="otri-organizer-link ml-auto flex shrink-0 items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white no-underline lg:hidden"
-            href="organizer/"
-          >
-            Organizers <ArrowUpRight size={13} />
-          </a>
-        </div>
-      </header>
-      {/* Small screens: the section links live in their own row under the header. */}
-      <div className={`otri-mobile-nav ${tab === 'home' ? 'is-home' : ''} border-b border-slate-200 bg-white lg:hidden`}>
-        <div className="mx-auto flex w-[min(1120px,calc(100%-28px))] items-center gap-4 overflow-x-auto">
-          {NAV.map((item) => (
-            <NavLink
-              key={item.id}
-              item={item}
-              active={tab === item.id}
-              short
-              className={`whitespace-nowrap border-b-2 py-3 ${tab === item.id ? 'border-blue-600' : 'border-transparent'}`}
-            />
-          ))}
-          <div className="ml-auto py-1.5">
-            <UnitsMenu compact />
-          </div>
-        </div>
+  return <>
+    <header className={shell.header}>
+      <div className={shell.headerInner}>
+        <Logo href="#home" />
+        <nav className={shell.desktopNav} aria-label="Main navigation">
+          {NAV.map(item=><NavLink key={item.id} item={item} active={tab===item.id}/>)}
+          <UnitsMenu compact />
+          <a href="organizer/" className={shell.organizer}>For organizers <ArrowUpRight size={14}/></a>
+        </nav>
+        <a className={`${shell.organizer} ${shell.mobileOrganizer}`} href="organizer/">Organizers <ArrowUpRight size={14}/></a>
       </div>
-    </>
-  )
+    </header>
+    <nav className={shell.mobileNav} aria-label="Mobile navigation"><div className={shell.mobileInner}>
+      {NAV.map(item=><NavLink key={item.id} item={item} active={tab===item.id} short/>)}
+      <div className={shell.units}><UnitsMenu compact/></div>
+    </div></nav>
+  </>
 }
 
 function Footer() {
-  return (
-    <footer className="border-t border-slate-200 bg-white py-6">
-      <div className="mx-auto flex w-[min(1120px,calc(100%-28px))] flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-        <Logo href="../" />
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <a href="#api" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">API and embed</a>
-          <a href={GITHUB_URL} className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">GitHub</a>
-          <a href="#contribute" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Contribute</a>
-          <a href="#faq" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">FAQ</a>
-          <a href="#media" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Media and logo</a>
-          <a href="https://github.com/OTRI-run/otri/blob/main/PRIVACY.md" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Privacy</a>
-          <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">
-            <Mail size={14} />
-            hello@otri.run
-          </a>
-        </div>
-        <span className="font-mono text-[8px] tracking-[.08em] text-slate-500">OPEN · TRANSPARENT · REPRODUCIBLE · INDEPENDENT</span>
-      </div>
-    </footer>
-  )
+  return <footer className={shell.footer}><div className={shell.footerInner}>
+    <Logo href="../"/>
+    <nav aria-label="Footer navigation">
+      {[["#api","API and embed"],[GITHUB_URL,"GitHub"],["#contribute","Contribute"],["#faq","FAQ"],["#media","Media and logo"],[`${GITHUB_URL}/blob/main/PRIVACY.md`,"Privacy"]].map(([href,label])=><a key={label} href={href}>{label}</a>)}
+      <a href="mailto:hello@otri.run"><Mail size={14}/>hello@otri.run</a>
+    </nav>
+    <p>OPEN · TRANSPARENT · REPRODUCIBLE · INDEPENDENT</p>
+  </div></footer>
 }
 
 // ------------------------------------------------------------------------------------- races
