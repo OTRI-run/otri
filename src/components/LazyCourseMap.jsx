@@ -4,7 +4,7 @@ import { lazy, Suspense } from 'preact/compat'
 const CourseMap = lazy(() => import('./CourseMap'))
 
 export default function LazyCourseMap(props) {
-  return <Suspense fallback={<div role="status" style={{ minHeight: 320, display: 'grid', placeItems: 'center', color: '#70695d' }}>Loading course map…</div>}>
+  return <Suspense fallback={<div role="status" className="loading" style={{ minHeight: 320, justifyContent: 'center' }}><span className="spinner" /> Loading the course map…</div>}>
     <CourseMap {...props} />
   </Suspense>
 }

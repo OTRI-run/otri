@@ -1,4 +1,3 @@
-import './Flag.css'
 import countries from 'i18n-iso-countries'
 import 'flag-icons/css/flag-icons.min.css'
 
@@ -40,9 +39,9 @@ export default function Flag({ code, showCode = true, className = '' }) {
   const alpha2 = alpha2For(code)
   const upper = String(code).trim().toUpperCase()
   return (
-    <span className={`src-components-flag-flag-span-1 ${className}`} title={countryName(upper)}>
-      {alpha2 && <span className={`fi fi-${alpha2} src-components-flag-flag-span-2`} aria-hidden="true" />}
-      {showCode && <span className="src-components-flag-flag-span-3">{upper}</span>}
+    <span className={`flag ${className}`} title={countryName(upper)}>
+      {alpha2 && <span className={`fi fi-${alpha2}`} aria-hidden="true" />}
+      {showCode && <span className="flag__code">{upper}</span>}
     </span>
   )
 }

@@ -3,7 +3,7 @@ import RankBadge from '../src/components/RankBadge'
 import { fitFontSize } from '../src/lib/fitText'
 import { useEffect, useMemo, useState } from 'preact/compat'
 import { useDocumentTitle } from '../src/lib/title'
-import { ArrowLeft, ArrowUpRight, Check, Image as ImageIcon, Link2 } from 'lucide-react'
+import { ArrowLeft, Check, Image as ImageIcon, Info, Link as LinkIcon } from '../src/ui/icons'
 import { ShareRunner } from './SharePanel'
 import { revealElement } from '../src/lib/comfort'
 import NextSteps from './NextSteps'
@@ -18,7 +18,6 @@ import NotFound from '../src/components/NotFound'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import Flag from '../src/components/Flag'
 
-const CONTAINER = "prototype-runners-container-style-1"
 const METHOD_URL = 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/runner-index/RUNNER-INDEX-v1.md'
 
 function formatHms(totalSeconds) {
@@ -34,38 +33,34 @@ function runnerName(runner) {
 }
 
 function IndexBadge({ index, provisional, size = 'sm' }) {
-  if (index == null) return <span className="prototype-runners-index-badge-span-2">—</span>
+  if (index == null) return <span className="muted">—</span>
   return (
-    <span className={`prototype-runners-index-badge-span-3 ${size === 'lg' ? "prototype-runners-index-badge-span-4" : "prototype-runners-index-badge-span-5"}`}>
+    <span className={`score ${size === 'lg' ? 'runners-index-badge--lg' : ''}`}>
       {index}
-      {size === 'lg' && provisional && <span className="prototype-runners-index-badge-span-6">PROV.</span>}
+      {size === 'lg' && provisional && <span className="badge badge--ochre">PROV.</span>}
     </span>
   )
 }
 
 function RunnerRow({ runner, rank }) {
   return (
-    <a
-      href={`#runners/${encodeURIComponent(runner.runner_id)}`}
-      className="prototype-runners-runner-row-a-7 otri-group"
-    >
-      <span className="prototype-runners-index-badge-span-2">{rank}</span>
-      <span className="prototype-runners-runner-row-span-8">
-        <span className="prototype-runners-runner-row-span-9">{runnerName(runner)}</span>
-        <span className="prototype-runners-runner-row-span-10">
+    <tr>
+      <td className="num muted">{rank}</td>
+      <td>
+        <a href={`#runners/${encodeURIComponent(runner.runner_id)}`}>{runnerName(runner)}</a>
+        <span className="cluster cluster--tight tiny muted mt-1">
           {runner.nationality && <Flag code={runner.nationality} />}
-          <span>{[runner.gender, runner.age_category].filter(Boolean).join(' · ')}</span>
+          <span className="mono">{[runner.gender, runner.age_category].filter(Boolean).join(' · ')}</span>
         </span>
-      </span>
-      <span className="prototype-runners-runner-row-span-11">
+      </td>
+      <td className="hide-sm num right">
         {runner.result_count} result{runner.result_count === 1 ? '' : 's'}
-      </span>
-      <span className="prototype-runners-runner-row-span-11">{runner.last_race_date ?? ''}</span>
-      <span className="prototype-runners-runner-row-span-12">
+      </td>
+      <td className="hide-sm num right">{runner.last_race_date ?? ''}</td>
+      <td className="right">
         <IndexBadge index={runner.index} provisional={runner.provisional} />
-        <ArrowUpRight size={14} className="prototype-runners-runner-row-arrow-up-right-13" />
-      </span>
-    </a>
+      </td>
+    </tr>
   )
 }
 
@@ -97,31 +92,30 @@ export function RunnersPage({ initialQuery = '' }) {
   const shown = useMemo(() => (runners ?? []).filter((r) => gender === 'all' || r.gender === gender), [runners, gender])
 
   return (
-    <section className="prototype-runners-runners-page-section-14">
-      <div className={CONTAINER}>
-        <div className="prototype-runners-runners-page-div-15">
-          <div className="prototype-runners-runners-page-div-16">02</div>
-          <div className="prototype-runners-runner-row-span-8">
-            <p className="prototype-runners-runners-page-p-17">RUNNERS</p>
-            <h1 className="prototype-runners-runners-page-h1-18">
+    <section className="section">
+      <div className="wrap">
+        <div className="grid grid--head">
+          <div className="stack">
+            <p className="eyebrow">Runners</p>
+            <h1 className="display-2">
               Every runner.
               <br />
-              <span className="prototype-runners-runners-page-span-19">One honest number.</span>
+              <span className="accent">One honest number.</span>
             </h1>
           </div>
-          <p className="prototype-runners-runners-page-p-20">
+          <p className="lead">
             A runner's index is the recency-weighted mean of their best three race scores from the last 24 months, built
             only from results organizers have published. Fewer than three results gives a provisional index.{' '}
-            <a href={METHOD_URL} className="prototype-runners-runners-page-a-21">
+            <a href={METHOD_URL} className="link">
               How it is calculated
             </a>
             .
           </p>
         </div>
 
-        <div className="prototype-runners-runners-page-div-22">
+        <div className="toolbar mt-8">
           <SearchSuggest
-            className="prototype-runners-runners-page-search-suggest-23"
+            className="grow"
             value={query}
             onChange={setQuery}
             placeholder="Search a runner by name…"
@@ -137,65 +131,61 @@ export function RunnersPage({ initialQuery = '' }) {
               ...knownButNotHere(RUNNER_NAMES, query, shown.map((runner) => `${runner.first_name} ${runner.family_name}`), 3).map((name) => ({ key: `known-${name}`, label: name, detail: 'no results on OTRI yet' })),
             ]}
           />
-          <div className="prototype-runners-runners-page-div-24">
+          <div className="seg" role="group" aria-label="Gender">
             {[
               ['all', 'All'],
               ['F', 'Women'],
               ['M', 'Men'],
             ].map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setGender(value)}
-                aria-pressed={gender === value}
-                className={`prototype-runners-runners-page-button-25 ${gender === value ? "prototype-runners-runners-page-button-26" : "prototype-runners-runners-page-button-27"}`}
-              >
+              <button key={value} type="button" onClick={() => setGender(value)} aria-pressed={gender === value}>
                 {label}
               </button>
             ))}
           </div>
         </div>
-        <p className="prototype-runners-runners-page-p-28">
+        <p className="tiny muted mono mt-3" aria-live="polite">
           {query ? 'SEARCH RESULTS' : 'ALL RUNNERS WITH PUBLISHED RESULTS · BY INDEX'}
           {runners ? ` · ${shown.length}` : ''}
         </p>
 
-        {error && <p className="prototype-runners-runners-page-p-29">{error}</p>}
-        {runners === null && !error && <p className="prototype-runners-runners-page-p-30">Loading…</p>}
+        {error && <p className="notice notice--warning notice--plain mt-6">{error}</p>}
+        {runners === null && !error && <p className="loading mt-6"><span className="spinner" /> Loading…</p>}
         {runners && shown.length === 0 && (
-          <div className="prototype-runners-runners-page-div-31">
-            <p className="prototype-runners-runners-page-p-32">{query.trim() ? `No published results for “${query.trim()}” on OTRI yet.` : 'No runners yet.'}</p>
-            <p className="prototype-runners-runners-page-p-33">
+          <div className="empty mt-6">
+            <p className="empty__title">{query.trim() ? `No published results for “${query.trim()}” on OTRI yet.` : 'No runners yet.'}</p>
+            <p className="empty__text">
               A runner appears here when an organizer publishes a race they finished; OTRI keeps no list of every runner. Looking for your own
-              score? <a href="#calculator" className="prototype-runners-runners-page-a-21">Work out what your time was worth</a> with the course as a GPX.
+              score? <a href="#calculator" className="link">Work out what your time was worth</a> with the course as a GPX.
             </p>
           </div>
         )}
-        <div className="prototype-runners-runners-page-div-34">
-          <div className="prototype-runners-runners-page-div-35">
-            <span>#</span>
-            <span>Runner</span>
-            <span className="prototype-runners-runners-page-span-36">Results</span>
-            <span className="prototype-runners-runners-page-span-36">Last race</span>
-            <span className="prototype-runners-runners-page-span-36">Index</span>
-          </div>
-          <div className="prototype-runners-runners-page-div-37">
-            {shown.slice(0, visible).map((runner, index) => (
-              <RunnerRow key={runner.runner_id} runner={runner} rank={index + 1} />
-            ))}
-          </div>
-        </div>
         {shown.length > 0 && (
-          <div className="prototype-runners-runners-page-div-38">
-            <p className="prototype-runners-runners-page-p-39">
+          <div className="table-wrap mt-5">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th className="num">#</th>
+                  <th>Runner</th>
+                  <th className="hide-sm right">Results</th>
+                  <th className="hide-sm right">Last race</th>
+                  <th className="right">Index</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shown.slice(0, visible).map((runner, index) => (
+                  <RunnerRow key={runner.runner_id} runner={runner} rank={index + 1} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {shown.length > 0 && (
+          <div className="cluster cluster--between mt-5">
+            <p className="tiny muted mono">
               Showing {Math.min(visible, shown.length)} of {shown.length}
             </p>
             {shown.length > visible && (
-              <button
-                type="button"
-                onClick={() => setVisible((n) => n + PAGE_SIZE)}
-                className="prototype-runners-runners-page-button-40"
-              >
+              <button type="button" onClick={() => setVisible((n) => n + PAGE_SIZE)} className="btn btn--secondary">
                 Show {Math.min(PAGE_SIZE, shown.length - visible)} more
               </button>
             )}
@@ -215,37 +205,38 @@ export function RunnersPage({ initialQuery = '' }) {
 }
 
 function ResultRow({ result, units }) {
-  const tone = result.status === 'counting' ? "otri-state-6" : result.status === 'expired' ? "otri-state-7" : "otri-state-8"
   return (
-    <tr className={`prototype-runners-result-row-tr-41 ${result.status === 'expired' ? "prototype-runners-result-row-tr-42" : ''}`}>
-      <td className="prototype-runners-result-row-td-43">{result.event_date}</td>
-      <td className={`prototype-runners-result-row-td-44 ${tone}`}>
-        <a href={`#races/${encodeURIComponent(result.race_id)}`} className="prototype-runners-result-row-a-45">
+    <tr className={result.status === 'expired' ? 'is-muted' : ''}>
+      <td className="hide-md num">{result.event_date}</td>
+      <td className={result.status === 'eligible' ? 'muted' : ''}>
+        <a href={`#races/${encodeURIComponent(result.race_id)}`}>
           {result.event_name}
         </a>
-        <span className="prototype-runners-result-row-span-46">
+        <span className="block tiny muted mono">
           {result.course_name} · {formatDistance(result.distance_km, units)} · {formatElevation(result.elevation_gain_m, units, { sign: '+' })}
           {result.is_demo ? ' · demo' : ''}{modelShort(result.scoring_version) !== '0.1.0' ? ` · ${modelShort(result.scoring_version)}` : ''}
         </span>
-        <span className="prototype-runners-result-row-span-47">
+        <span className="block tiny muted mono only-md mt-1">
           {result.event_date} ·{' '}
           {result.status === 'counting' ? `counts ${Math.round(result.weight * 100)}%` : result.status === 'eligible' ? 'eligible' : 'expired'}
         </span>
       </td>
-      <td className="prototype-runners-result-row-td-48">
+      <td className="num">
         <RankBadge rank={result.rank} />
-        <span className="prototype-runners-result-row-span-49"> · {formatHms(result.finish_time_seconds)}</span>
+        <span className="muted"> · {formatHms(result.finish_time_seconds)}</span>
       </td>
-      <td className={`prototype-runners-result-row-td-50 ${result.status === 'counting' ? "prototype-runners-result-row-td-51" : "prototype-runners-result-row-td-52"}`}>{result.otri_score}</td>
-      <td className="prototype-runners-result-row-td-53">
+      <td className="right">
+        <span className={`score ${result.status === 'counting' ? '' : 'runners-score--out'}`}>{result.otri_score}</span>
+      </td>
+      <td className="hide-md tiny">
         {result.status === 'counting' && (
-          <span className="prototype-runners-result-row-span-54">
+          <span className="badge badge--solid-moss">
             counts · {Math.round(result.weight * 100)}%
           </span>
         )}
-        {result.status === 'eligible' && <span className="prototype-runners-result-row-span-55">eligible · {Math.round(result.weight * 100)}%</span>}
-        {result.status === 'expired' && <span className="prototype-runners-result-row-span-56">expired</span>}
-        <span className="prototype-runners-result-row-span-57">
+        {result.status === 'eligible' && <span className="badge">eligible · {Math.round(result.weight * 100)}%</span>}
+        {result.status === 'expired' && <span className="badge">expired</span>}
+        <span className="block muted mono mt-1">
           {result.status === 'expired' ? `expired ${result.expires_on}` : `full until ${result.full_until} · expires ${result.expires_on}`}
         </span>
       </td>
@@ -277,30 +268,30 @@ export function RunnerProfilePage({ runnerId, onBack }) {
   const details = profile?.index_details
 
   return (
-    <section className="prototype-runners-runners-page-section-14">
-      <div className={CONTAINER}>
-        <button onClick={onBack} className="prototype-runners-runner-profile-page-button-58">
-          <ArrowLeft size={13} /> All runners
+    <section className="section">
+      <div className="wrap">
+        <button onClick={onBack} className="back">
+          <ArrowLeft size={16} /> All runners
         </button>
         {error && error.status === 404 && (
           <NotFound eyebrow="RUNNER NOT FOUND" title="No runner with that id." where={runnerId} home="#runners" homeLabel="All runners" note="Runners appear here once an organizer publishes results that include them; profiles are removed on request." />
         )}
-        {error && error.status !== 404 && <p className="prototype-runners-runners-page-p-29">{error.message}</p>}
-        {!profile && !error && <p className="prototype-runners-runners-page-p-30">Loading…</p>}
+        {error && error.status !== 404 && <p className="notice notice--warning notice--plain mt-6">{error.message}</p>}
+        {!profile && !error && <p className="loading mt-6"><span className="spinner" /> Loading…</p>}
         {profile && (
           <>
-            <div className="prototype-runners-runner-profile-page-div-59">
-              <div className="prototype-runners-runner-row-span-8">
-                <p className="prototype-runners-runner-profile-page-p-60">
+            <div className="page-head page-head--split mt-6">
+              <div className="page-head__text">
+                <p className="eyebrow">
                   {profile.nationality && <Flag code={profile.nationality} />}
                   <span>{[profile.gender === 'F' ? 'WOMAN' : profile.gender === 'M' ? 'MAN' : 'RUNNER', profile.age_category].filter(Boolean).join(' · ')}</span>
                 </p>
-                <h1 className="prototype-runners-runner-profile-page-h1-61 otri-fit" style={{ fontSize: fitFontSize(runnerName(profile), { min: 28, vw: 4.5, max: 52 }) }}>{runnerName(profile)}</h1>
-                <p className="prototype-runners-runner-profile-page-p-62">
+                <h1 className="otri-fit" style={{ fontSize: fitFontSize(runnerName(profile), { min: 28, vw: 4.5, max: 52 }) }}>{runnerName(profile)}</h1>
+                <p className="lead">
                   {profile.result_count} published result{profile.result_count === 1 ? '' : 's'}
                   {profile.last_race_date ? ` · last race ${profile.last_race_date}` : ''}
                 </p>
-                <div className="prototype-runners-runner-profile-page-div-63">
+                <div className="cluster cluster--tight">
                   <button
                     type="button"
                     onClick={() => {
@@ -308,9 +299,9 @@ export function RunnerProfilePage({ runnerId, onBack }) {
                       if (!shareOpen) revealElement('runner-share')
                     }}
                     aria-expanded={shareOpen}
-                    className="prototype-runners-runner-profile-page-button-64"
+                    className="btn btn--secondary"
                   >
-                    <ImageIcon size={15} /> {shareOpen ? 'Hide the image' : 'Share as an image'}
+                    <ImageIcon size={16} /> {shareOpen ? 'Hide the image' : 'Share as an image'}
                   </button>
                   <button
                     type="button"
@@ -320,39 +311,47 @@ export function RunnerProfilePage({ runnerId, onBack }) {
                         setTimeout(() => setLinkCopied(false), 2000)
                       })
                     }}
-                    className="prototype-runners-runner-profile-page-button-65"
+                    className="btn btn--ghost"
                   >
-                    {linkCopied ? <Check size={15} className="prototype-runners-runner-profile-page-check-66" /> : <Link2 size={15} />} {linkCopied ? 'Link copied' : 'Copy the link'}
+                    {linkCopied ? <Check size={16} className="icon--moss" /> : <LinkIcon size={16} />} {linkCopied ? 'Link copied' : 'Copy the link'}
                   </button>
                 </div>
               </div>
-              <div className="prototype-runners-runner-profile-page-div-67">
-                <div className="prototype-runners-runner-profile-page-div-68">
+              <div className="panel stack">
+                <div className="cluster cluster--between panel__label">
                   <span>OTRI / RUNNER INDEX</span>
                   <span>{details?.version?.toUpperCase()}</span>
                 </div>
-                <div className="prototype-runners-runner-profile-page-div-69">
-                  <small className="prototype-runners-runner-profile-page-small-70">{profile.provisional ? 'PROVISIONAL INDEX' : 'INDEX'}</small>
-                  <strong className="prototype-runners-runner-profile-page-strong-71">
-                    {profile.index ?? '—'}
-                  </strong>
-                  <span className="prototype-runners-runner-profile-page-span-72">
+                <div className="stat stat--lg runners-index">
+                  <span className="stat__label">{profile.provisional ? 'PROVISIONAL INDEX' : 'INDEX'}</span>
+                  <span className="stat__value">{profile.index ?? '—'}</span>
+                  <span className="tiny mono muted mt-2">
                     {details?.counted ?? 0} of {3} results counting · last {details?.window_months} months · as of {details?.as_of}
                   </span>
                 </div>
-                <p className="prototype-runners-runner-profile-page-p-73">
-                  {profile.provisional
-                    ? `Fewer than three results in the window. The index is the weighted mean of what is there; it firms up at three.`
-                    : `Weighted mean of the best three results. Results count fully for 12 months, then fade to nothing at 24.`}
-                </p>
+                {!profile.provisional && (
+                  <p className="small muted panel__rule runners-index__note">
+                    Weighted mean of the best three results. Results count fully for 12 months, then fade to nothing at 24.
+                  </p>
+                )}
               </div>
             </div>
 
+            {profile.provisional && (
+              <div className="notice notice--info mt-6">
+                <Info size={18} />
+                <div className="notice__body">
+                  <p className="notice__title">Provisional index</p>
+                  <p>Fewer than three results in the window. The index is the weighted mean of what is there; it firms up at three.</p>
+                </div>
+              </div>
+            )}
+
             {shareOpen && (
-              <div id="runner-share" className="prototype-runners-runner-profile-page-div-74">
-                <p className="prototype-runners-runner-profile-page-p-75">SHARE THIS PROFILE</p>
-                <h2 className="prototype-runners-runner-profile-page-h2-76">An image and a post, ready for your feed</h2>
-                <p className="prototype-runners-runner-profile-page-p-77">
+              <div id="runner-share" className="card card--pad-lg mt-8 runners-share">
+                <p className="eyebrow">SHARE THIS PROFILE</p>
+                <h2 className="h-2 mt-2">An image and a post, ready for your feed</h2>
+                <p className="muted measure mt-2 mb-5">
                   The index and the best three races as a picture, with a post written to go with it. Pick a format, change the words if you like,
                   then download the image or send both to an app. Nothing is posted or stored by OTRI.
                 </p>
@@ -367,15 +366,15 @@ export function RunnerProfilePage({ runnerId, onBack }) {
               </div>
             )}
 
-            <div className="prototype-runners-runner-profile-page-div-78">
-              <table className="prototype-runners-runner-profile-page-table-79">
+            <div className="table-wrap mt-8">
+              <table className="table">
                 <thead>
-                  <tr className="prototype-runners-runner-profile-page-tr-80">
-                    <th className="prototype-runners-runner-profile-page-th-81">Date</th>
-                    <th className="prototype-runners-result-row-td-44">Race</th>
-                    <th className="prototype-runners-result-row-td-44">Rank · time</th>
-                    <th className="prototype-runners-result-row-td-44">Score</th>
-                    <th className="prototype-runners-runner-profile-page-th-81">In the index</th>
+                  <tr>
+                    <th className="hide-md">Date</th>
+                    <th>Race</th>
+                    <th>Rank · time</th>
+                    <th className="right">Score</th>
+                    <th className="hide-md">In the index</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -384,7 +383,7 @@ export function RunnerProfilePage({ runnerId, onBack }) {
                   ))}
                   {profile.results.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="prototype-runners-runner-profile-page-td-82">
+                      <td colSpan={5} className="table__empty">
                         No scored results yet.
                       </td>
                     </tr>
@@ -393,7 +392,7 @@ export function RunnerProfilePage({ runnerId, onBack }) {
               </table>
             </div>
             {profile.results.some((r) => r.is_demo) && (
-              <p className="prototype-runners-runner-profile-page-p-83">
+              <p className="cluster cluster--tight small muted mt-3">
                 <DemoBadge /> Some of these results are synthetic demo data.
               </p>
             )}

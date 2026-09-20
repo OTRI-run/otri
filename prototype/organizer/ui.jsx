@@ -1,53 +1,56 @@
-import './ui.css'
 import { fitFontSize } from '../../src/lib/fitText'
 import { useState } from 'preact/compat'
 import useFileDrop from '../../src/lib/useFileDrop'
-import { AlertTriangle, ArrowLeft, Check, CheckCircle2, Info, Upload, XCircle } from 'lucide-react'
+import { Alert, ArrowLeft, ArrowRight, Check, CheckCircle, Info, Upload, XCircle } from '../../src/ui/icons'
 import { Link } from './router'
 
-export const INK = '#23231f'
-export const CONTAINER = "prototype-organizer-ui-container-style-1"
+// The organizer app's small kit, on top of the design system in src/ui. Pages compose these and
+// the system's classes; a page adds its own stylesheet only for what is truly its own.
+
+export const INK = '#17261f'
+export const CONTAINER = 'wrap'
 
 export function Eyebrow({ children, className = '' }) {
-  return <p className={`prototype-organizer-ui-eyebrow-p-2 ${className}`}>{children}</p>
+  return <p className={`eyebrow ${className}`}>{children}</p>
 }
 
+/** The orange word in a heading. */
 export function Gradient({ children }) {
-  return <span className="prototype-organizer-ui-gradient-span-3">{children}</span>
+  return <span className="accent">{children}</span>
 }
 
 /**
- * A page in the landing design: eyebrow, large heading, intro. With `aside`, the heading sits
- * on the left and the aside (usually a form card) on the right, like the landing's 04 section.
+ * A page: eyebrow, large heading, intro. With `aside`, the heading sits on the left and the aside
+ * (usually a form card) on the right on wide screens.
  */
 export function Page({ title, eyebrow, intro, back, children, aside, headline }) {
   const heading = (
-    <div className="prototype-organizer-ui-page-div-4">
+    <div className="page-head__text">
       {back && (
-        <Link to={back.to} className="prototype-organizer-ui-page-link-5">
-          <ArrowLeft size={13} /> {back.label}
+        <Link to={back.to} className="back">
+          <ArrowLeft size={16} /> {back.label}
         </Link>
       )}
-      {eyebrow && <Eyebrow className={back ? "prototype-organizer-ui-page-eyebrow-6" : ''}>{eyebrow}</Eyebrow>}
+      {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
       {(headline || title) && (
         // A `title` is a name someone typed (an event, a distance): it is sized by its length. A
         // `headline` is written for the page and keeps the designed size.
-        <h1 className="prototype-organizer-ui-page-h1-7 otri-fit" style={{ fontSize: headline ? 'clamp(32px, 4.5vw, 52px)' : fitFontSize(title, { min: 28, vw: 4.5, max: 52 }) }}>{headline ?? title}</h1>
+        <h1 className="otri-fit" style={{ fontSize: headline ? 'clamp(36px, 4.8vw, 60px)' : fitFontSize(title, { min: 30, vw: 4.8, max: 60 }) }}>{headline ?? title}</h1>
       )}
-      {intro && <p className="prototype-organizer-ui-page-p-8">{intro}</p>}
+      {intro && <p className="lead">{intro}</p>}
     </div>
   )
 
   return (
-    <section className="prototype-organizer-ui-page-section-9">
+    <section className="section">
       <div className={CONTAINER}>
         {aside ? (
-          <div className="prototype-organizer-ui-page-div-10">
+          <div className="page-head page-head--split">
             {heading}
-            <div className="prototype-organizer-ui-page-div-4">{aside}</div>
+            <div className="min0">{aside}</div>
           </div>
         ) : (
-          heading
+          <div className="page-head">{heading}</div>
         )}
         {children}
       </div>
@@ -56,36 +59,35 @@ export function Page({ title, eyebrow, intro, back, children, aside, headline })
 }
 
 export function Card({ children, className = '' }) {
-  return <div className={`prototype-organizer-ui-card-div-11 ${className}`}>{children}</div>
+  return <div className={`card ${className}`}>{children}</div>
 }
 
 export function Field({ label, hint, error, children, htmlFor }) {
   return (
-    <div>
-      <label htmlFor={htmlFor} className="prototype-organizer-ui-field-label-12">
+    <div className="field">
+      <label htmlFor={htmlFor} className="field__label">
         {label}
       </label>
-      {hint && <p className="prototype-organizer-ui-field-p-13">{hint}</p>}
-      <div className="prototype-organizer-ui-field-div-14">{children}</div>
-      {error && <p className="prototype-organizer-ui-field-p-15">{error}</p>}
+      {hint && <p className="field__hint">{hint}</p>}
+      <div>{children}</div>
+      {error && <p className="field__error">{error}</p>}
     </div>
   )
 }
 
-export const inputClass =
-  "prototype-organizer-ui-input-class-style-16"
+export const inputClass = 'input'
 
 export function Button({ variant = 'primary', busy = false, disabled, className = '', children, ...rest }) {
-  const base = "prototype-organizer-ui-button-style-17"
   const styles = {
-    primary: "prototype-organizer-ui-button-style-18",
-    secondary: "prototype-organizer-ui-button-style-19",
-    danger: "prototype-organizer-ui-button-style-20",
-    ghost: "prototype-organizer-ui-button-style-21",
+    primary: 'btn btn--primary',
+    dark: 'btn btn--dark',
+    secondary: 'btn btn--secondary',
+    danger: 'btn btn--danger',
+    ghost: 'btn btn--ghost',
   }
   return (
-    <button disabled={disabled || busy} className={`${base} ${styles[variant]} ${className}`} {...rest}>
-      {busy && <span aria-hidden="true" className="prototype-organizer-ui-button-span-22" />}
+    <button disabled={disabled || busy} aria-busy={busy || undefined} className={`${styles[variant] ?? styles.primary} ${className}`} {...rest}>
+      {busy && <span aria-hidden="true" className="spinner" />}
       {children}
     </button>
   )
@@ -93,18 +95,18 @@ export function Button({ variant = 'primary', busy = false, disabled, className 
 
 export function Notice({ kind = 'info', title, children }) {
   const styles = {
-    info: ["prototype-organizer-ui-notice-style-23", Info],
-    success: ["prototype-organizer-ui-notice-style-24", CheckCircle2],
-    warning: ["prototype-organizer-ui-notice-style-25", AlertTriangle],
-    error: ["prototype-organizer-ui-notice-style-26", XCircle],
+    info: ['notice--info', Info],
+    success: ['notice--success', CheckCircle],
+    warning: ['notice--warning', Alert],
+    error: ['notice--error', XCircle],
   }
   const [cls, Icon] = styles[kind]
   return (
-    <div role={kind === 'error' ? 'alert' : 'status'} className={`prototype-organizer-ui-notice-div-27 ${cls}`}>
-      <Icon size={16} className="prototype-organizer-ui-notice-icon-28" />
-      <div className="prototype-organizer-ui-page-div-4">
-        {title && <p className="prototype-organizer-ui-notice-p-29">{title}</p>}
-        <div className={title ? "prototype-organizer-ui-notice-div-30" : ''}>{children}</div>
+    <div role={kind === 'error' ? 'alert' : 'status'} className={`notice ${cls}`}>
+      <Icon size={18} />
+      <div className="notice__body">
+        {title && <p className="notice__title">{title}</p>}
+        <div>{children}</div>
       </div>
     </div>
   )
@@ -112,15 +114,15 @@ export function Notice({ kind = 'info', title, children }) {
 
 export function EmptyState({ title, children, action }) {
   return (
-    <div className="prototype-organizer-ui-empty-state-div-31">
-      <p className="prototype-organizer-ui-empty-state-p-32">{title}</p>
-      {children && <p className="prototype-organizer-ui-empty-state-p-33">{children}</p>}
-      {action && <div className="prototype-organizer-ui-empty-state-div-34">{action}</div>}
+    <div className="empty">
+      <p className="empty__title">{title}</p>
+      {children && <p className="empty__text">{children}</p>}
+      {action && <div className="empty__action">{action}</div>}
     </div>
   )
 }
 
-/** File drop area in the calculator's style. */
+/** File drop area, the same on every upload. */
 export function Dropzone({ id, accept, onChange, busy = false, busyLabel = 'Working…', label, hint, fileName, buttonLabel = 'Choose file' }) {
   const [refused, setRefused] = useState(null)
   // A dropped file goes the same way as a chosen one: the caller reads event.target.files.
@@ -135,40 +137,34 @@ export function Dropzone({ id, accept, onChange, busy = false, busyLabel = 'Work
   })
   return (
     <>
-    <label
-      htmlFor={id}
-      {...dropProps}
-      className={`prototype-organizer-ui-dropzone-label-35 ${dragging ? "prototype-organizer-ui-dropzone-label-36" : "prototype-organizer-ui-dropzone-label-37"}`}
-    >
-      {busy ? (
-        <>
-          <span aria-hidden="true" className="prototype-organizer-ui-dropzone-span-38" />
-          <span className="prototype-organizer-ui-dropzone-span-39">{busyLabel}</span>
-        </>
-      ) : (
-        <>
-          <Upload size={22} className="prototype-organizer-ui-dropzone-upload-40" />
-          <span className="prototype-organizer-ui-dropzone-span-39">{fileName ?? label}</span>
-          {hint && <span className="prototype-organizer-ui-dropzone-span-41">{hint}</span>}
-          <span className="prototype-organizer-ui-dropzone-span-42">
-            {fileName ? 'Choose another file' : buttonLabel}
-          </span>
-        </>
-      )}
-      <input id={id} type="file" accept={accept} onChange={(event) => { setRefused(null); onChange(event) }} disabled={busy} className="prototype-organizer-ui-dropzone-input-43" />
-    </label>
-    {refused && <p className="prototype-organizer-ui-dropzone-p-44" role="alert">{refused}</p>}
+      <label htmlFor={id} {...dropProps} className={`dropzone ${dragging ? 'is-dragging' : ''}`}>
+        {busy ? (
+          <>
+            <span aria-hidden="true" className="spinner spinner--lg" />
+            <span className="dropzone__title">{busyLabel}</span>
+          </>
+        ) : (
+          <>
+            <Upload size={26} />
+            <span className="dropzone__title">{fileName ?? label}</span>
+            {hint && <span className="dropzone__hint">{hint}</span>}
+            <span className="btn btn--primary btn--sm mt-1">{fileName ? 'Choose another file' : buttonLabel}</span>
+          </>
+        )}
+        <input id={id} type="file" accept={accept} onChange={(event) => { setRefused(null); onChange(event) }} disabled={busy} />
+      </label>
+      {refused && <p className="field__error mt-2" role="alert">{refused}</p>}
     </>
   )
 }
 
 // Race lifecycle, derived from what exists rather than stored: no GPX -> Draft; GPX -> Course ready;
-// scored results -> Results scored. Publishing a public race page is a later phase.
+// scored results -> Results scored; published -> Published.
 export const RACE_STATUS = {
-  draft: { label: 'Draft', cls: "prototype-organizer-ui-race-status-style-45" },
-  course: { label: 'Course ready', cls: "prototype-organizer-ui-race-status-style-46" },
-  scored: { label: 'Results scored', cls: "prototype-organizer-ui-race-status-style-47" },
-  published: { label: 'Published', cls: "prototype-organizer-ui-race-status-style-48" },
+  draft: { label: 'Draft', cls: 'badge' },
+  course: { label: 'Course ready', cls: 'badge badge--sky' },
+  scored: { label: 'Results scored', cls: 'badge badge--moss' },
+  published: { label: 'Published', cls: 'badge badge--solid-moss' },
 }
 
 export function raceStatus(race, hasResults) {
@@ -180,41 +176,26 @@ export function raceStatus(race, hasResults) {
 
 export function StatusChip({ status }) {
   const s = RACE_STATUS[status] ?? RACE_STATUS.draft
-  return <span className={`prototype-organizer-ui-status-chip-span-49 ${s.cls}`}>{s.label}</span>
+  return <span className={s.cls}>{s.label}</span>
 }
 
-/** The race wizard's steps, in the landing's numbered-row style. */
+/** The race wizard's steps: waypoints on a route, the current one lit. */
 export function Stepper({ steps, current }) {
   return (
-    <ol className="prototype-organizer-ui-stepper-ol-50">
+    <ol className="steps">
       {steps.map((step, index) => {
         const state = index < current ? 'done' : index === current ? 'current' : 'todo'
-        const top = state === 'done' ? "otri-state-13" : state === 'current' ? "otri-state-14" : "otri-state-15"
         const inner = (
           <>
-            <span className="prototype-organizer-ui-stepper-span-51">
-              <span
-                className={`prototype-organizer-ui-stepper-span-52 ${
-                  state === 'done' ? "prototype-organizer-ui-stepper-span-53" : state === 'current' ? "prototype-organizer-ui-race-status-style-48" : "prototype-organizer-ui-stepper-span-54"
-                }`}
-              >
-                {state === 'done' ? <Check size={12} /> : index + 1}
-              </span>
-              <span className={`prototype-organizer-ui-stepper-span-55 ${state === 'current' ? "prototype-organizer-ui-stepper-span-56" : state === 'done' ? "prototype-organizer-ui-dropzone-span-39" : "prototype-organizer-ui-stepper-span-57"}`}>
-                {step.label}
-              </span>
+            <span className={`waypoint waypoint--sm ${state === 'done' ? 'waypoint--done' : state === 'current' ? 'waypoint--blaze' : 'waypoint--todo'}`}>
+              {state === 'done' ? <Check size={13} strokeWidth={2.5} /> : index + 1}
             </span>
+            <span className="steps__label">{step.label}</span>
           </>
         )
         return (
-          <li key={step.label} className={`prototype-organizer-ui-stepper-li-58 ${top}`}>
-            {step.to && state !== 'current' ? (
-              <Link to={step.to} className="prototype-organizer-ui-stepper-link-59">
-                {inner}
-              </Link>
-            ) : (
-              inner
-            )}
+          <li key={step.label} className="steps__item" data-state={state} aria-current={state === 'current' ? 'step' : undefined}>
+            {step.to && state !== 'current' ? <Link to={step.to}>{inner}</Link> : inner}
           </li>
         )
       })}
@@ -224,15 +205,15 @@ export function Stepper({ steps, current }) {
 
 export function ChecklistRow({ ok, label, detail, fixTo, fixLabel = 'Fix' }) {
   return (
-    <li className="prototype-organizer-ui-checklist-row-li-60">
-      {ok ? <CheckCircle2 size={18} className="prototype-organizer-ui-checklist-row-check-circle2-61" /> : <XCircle size={18} className="prototype-organizer-ui-checklist-row-xcircle-62" />}
-      <div className="prototype-organizer-ui-checklist-row-div-63">
-        <p className="prototype-organizer-ui-checklist-row-p-64">{label}</p>
-        {detail && <p className="prototype-organizer-ui-checklist-row-p-65">{detail}</p>}
+    <li className={`checklist__row ${ok ? 'is-ok' : 'is-todo'}`}>
+      {ok ? <CheckCircle size={20} /> : <XCircle size={20} />}
+      <div className="grow">
+        <p className="small" style={{ fontWeight: 600 }}>{label}</p>
+        {detail && <p className="tiny muted">{detail}</p>}
       </div>
       {!ok && fixTo && (
-        <Link to={fixTo} className="prototype-organizer-ui-checklist-row-link-66">
-          {fixLabel} →
+        <Link to={fixTo} className="link link--arrow small">
+          {fixLabel} <ArrowRight size={14} />
         </Link>
       )}
     </li>
@@ -252,17 +233,13 @@ export function formatDate(iso) {
 export function PasswordInput({ className = '', ...props }) {
   const [shown, setShown] = useState(false)
   return (
-    <span className="prototype-organizer-ui-password-input-span-67">
-      <input {...props} type={shown ? 'text' : 'password'} className={`${className} prototype-organizer-ui-password-input-input-68`} />
-      <button
-        type="button"
-        onClick={() => setShown((value) => !value)}
-        aria-pressed={shown}
-        aria-label={shown ? 'Hide the password' : 'Show the password'}
-        className="prototype-organizer-ui-password-input-button-69"
-      >
-        {shown ? 'Hide' : 'Show'}
-      </button>
+    <span className="input-wrap">
+      <input {...props} type={shown ? 'text' : 'password'} className={`${className} input`} style={{ paddingRight: 76 }} />
+      <span className="input-wrap__end">
+        <button type="button" onClick={() => setShown((value) => !value)} aria-pressed={shown} aria-label={shown ? 'Hide the password' : 'Show the password'} className="btn btn--ghost btn--sm mono" style={{ minHeight: 32, fontSize: 12, letterSpacing: '.06em', textTransform: 'uppercase' }}>
+          {shown ? 'Hide' : 'Show'}
+        </button>
+      </span>
     </span>
   )
 }

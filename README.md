@@ -81,7 +81,7 @@ A major planned capability is the **GPX Target Performance Predictor**: upload a
 
 ## Frontend
 
-The website uses Preact, Vite, custom component CSS, Lucide icons and a self-hosted Outfit variable font. GitHub Actions builds and deploys the site to GitHub Pages.
+The website uses Preact and Vite with a design system, icon set and logo of its own (`src/ui`, see `docs/FRONTEND-STYLING.md`) and self-hosted open fonts. GitHub Actions builds and deploys the site to GitHub Pages.
 
 ## Independence
 

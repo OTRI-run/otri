@@ -1,19 +1,2 @@
-@import '@fontsource-variable/outfit/index.css';
-@import './foundation.css';
-@import './tokens.css';
-
-html{scroll-behavior:smooth}
-body{margin:0;font-synthesis:none;text-rendering:optimizeLegibility}
-*{box-sizing:border-box}
-
-/* Home card: scores scrolling by. The list is rendered twice so the loop is seamless. */
-@keyframes otri-ticker{from{transform:translateY(0)}to{transform:translateY(-50%)}}
-.otri-ticker{animation:otri-ticker 28s linear infinite}
-.otri-ticker:hover{animation-play-state:paused}
-@media (prefers-reduced-motion:reduce){.otri-ticker{animation:none}}
-/* Headlines that show a name someone typed: lines of even length, and a word is only broken when it
-   alone is wider than the column. */
-.otri-fit{text-wrap:balance;overflow-wrap:anywhere}
-/* Gradient text over several lines: each line gets the whole gradient, and descenders are not cut off
-   by the tight line height. */
-.otri-gradient-text{-webkit-box-decoration-break:clone;box-decoration-break:clone;padding-bottom:.12em}
+/* Every app entry imports this once. The design system lives in src/ui; nothing else is global. */
+@import './ui/index.css';

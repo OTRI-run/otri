@@ -1,10 +1,10 @@
+import '../src/styles.css'
 import './main.css'
-import shell from './Shell.module.css'
 import RankBadge from '../src/components/RankBadge'
 import { fitFontSize } from '../src/lib/fitText'
 import React, { useEffect, useMemo, useState, lazy, Suspense } from 'preact/compat'
 import { createRoot } from 'preact/compat/client'
-import { ArrowLeft, ArrowUpRight, Mail, Download, Upload, Play, ArrowRight, Calculator as CalculatorIcon } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ArrowUpRight, Calculator, Download, Mail, Play, Upload } from '../src/ui/icons'
 import { countryName } from '../src/components/CountrySelect'
 import Logo from '../src/components/Logo'
 import UnitsMenu from '../src/components/UnitsMenu'
@@ -18,8 +18,8 @@ const ScoreRace = lazy(() => import('./ScoreRace'))
 const ApiDocs = lazy(() => import('./ApiDocs'))
 const Media = lazy(() => import('./Media'))
 const FaqPage = lazy(() => import('./Faq'))
-const RunnersPage = lazy(() => import('./Runners').then(m => ({ default: m.RunnersPage })))
-const RunnerProfilePage = lazy(() => import('./Runners').then(m => ({ default: m.RunnerProfilePage })))
+const RunnersPage = lazy(() => import('./Runners').then((m) => ({ default: m.RunnersPage })))
+const RunnerProfilePage = lazy(() => import('./Runners').then((m) => ({ default: m.RunnerProfilePage })))
 import CourseMap from '../src/components/LazyCourseMap'
 import ReportForm from './ReportForm'
 import { ShareResults } from './SharePanel'
@@ -29,8 +29,18 @@ import { RACE_NAMES } from '../src/lib/raceNames'
 import { knownButNotHere } from '../src/lib/suggest'
 import { initMonitoring } from '../src/lib/monitoring'
 import { useDocumentTitle } from '../src/lib/title'
+import { fetchRaceGpxFile, getRace, getRaceMeasurement, getRaceResults, listRaces, raceGpxDownloadUrl } from './apiClient'
+import BuildBanner from '../src/components/BuildBanner'
+import ErrorBoundary from '../src/components/ErrorBoundary'
+import NotFound from '../src/components/NotFound'
+import { modelLabel, notScoredReason } from '../src/lib/model'
+import BackToTop from '../src/components/BackToTop'
+import { installDropGuard, installScrollMemory, installSearchShortcut, willNavigate } from '../src/lib/comfort'
 
 initMonitoring()
+installScrollMemory()
+installDropGuard()
+installSearchShortcut()
 
 const PAGE_TITLES = {
   home: 'OTRI — Open Trail Running Index',
@@ -43,18 +53,6 @@ const PAGE_TITLES = {
   media: 'Media and brand · OTRI',
   notfound: 'Page not found · OTRI',
 }
-import { fetchRaceGpxFile, getRace, getRaceMeasurement, getRaceResults, listRaces, raceGpxDownloadUrl } from './apiClient'
-import BuildBanner from '../src/components/BuildBanner'
-import ErrorBoundary from '../src/components/ErrorBoundary'
-import NotFound from '../src/components/NotFound'
-import { modelLabel, notScoredReason } from '../src/lib/model'
-import BackToTop from '../src/components/BackToTop'
-import { installDropGuard, installScrollMemory, installSearchShortcut, willNavigate } from '../src/lib/comfort'
-import '../src/styles.css'
-
-installScrollMemory()
-installDropGuard()
-installSearchShortcut()
 
 const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 
@@ -98,8 +96,7 @@ function navigate(hash) {
 
 // ------------------------------------------------------------------------------------- shell
 
-// The header carries what a visitor came to do; the API page and GitHub are in the footer (GitHub
-// also sits in the home page's opening, next to what OTRI is).
+// The header carries what a visitor came to do; the API page and GitHub are in the footer.
 const NAV = [
   { id: 'calculator', label: 'Calculator', href: '#calculator' },
   { id: 'score', label: 'Score a race', short: 'Score', href: '#score' },
@@ -109,38 +106,88 @@ const NAV = [
 ]
 
 function NavLink({ item, active, short = false }) {
-  return <a href={item.href} aria-current={active ? 'page' : undefined} className={shell.navLink}>{short ? item.short ?? item.label : item.label}</a>
+  return (
+    <a href={item.href} aria-current={active ? 'page' : undefined} className="site-nav__link">
+      {short ? item.short ?? item.label : item.label}
+    </a>
+  )
 }
 
 function Header({ tab }) {
-  return <>
-    <header className={shell.header} data-home={tab === 'home' || undefined}>
-      <div className={shell.headerInner}>
-        <Logo href="#home" />
-        <nav className={shell.desktopNav} aria-label="Main navigation">
-          {NAV.map(item=><NavLink key={item.id} item={item} active={tab===item.id}/>)}
-          <UnitsMenu compact />
-          <a href="organizer/" className={shell.organizer}>For organizers <ArrowUpRight size={14}/></a>
-        </nav>
-        <a className={`${shell.organizer} ${shell.mobileOrganizer}`} href="organizer/">Organizers <ArrowUpRight size={14}/></a>
-      </div>
-    </header>
-    <nav className={shell.mobileNav} aria-label="Mobile navigation"><div className={shell.mobileInner}>
-      {NAV.map(item=><NavLink key={item.id} item={item} active={tab===item.id} short/>)}
-      <div className={shell.units}><UnitsMenu compact/></div>
-    </div></nav>
-  </>
+  return (
+    <>
+      <header className="site-header">
+        <div className="wrap site-header__inner">
+          <Logo href="#home" />
+          <nav className="site-nav" aria-label="Main">
+            {NAV.map((item) => (
+              <NavLink key={item.id} item={item} active={tab === item.id} />
+            ))}
+            <span className="site-nav__sep" aria-hidden="true" />
+            <UnitsMenu compact />
+            <a href="organizer/" className="btn btn--secondary btn--sm" style={{ marginLeft: 8 }}>
+              For organizers <ArrowUpRight size={15} />
+            </a>
+          </nav>
+          <div className="site-header__mobile">
+            <a className="btn btn--secondary btn--sm" href="organizer/">
+              Organizers <ArrowUpRight size={14} />
+            </a>
+          </div>
+        </div>
+      </header>
+      <nav className="site-subnav" aria-label="Pages">
+        <div className="wrap site-subnav__inner">
+          {NAV.map((item) => (
+            <NavLink key={item.id} item={item} active={tab === item.id} short />
+          ))}
+          <div className="push">
+            <UnitsMenu compact />
+          </div>
+        </div>
+      </nav>
+    </>
+  )
 }
 
 function Footer() {
-  return <footer className={shell.footer}><div className={shell.footerInner}>
-    <Logo href="#home"/>
-    <nav aria-label="Footer navigation">
-      {[["#api","API and embed"],[GITHUB_URL,"GitHub"],["#contribute","Contribute"],["#faq","FAQ"],["#media","Media and logo"],[`${GITHUB_URL}/blob/main/PRIVACY.md`,"Privacy"]].map(([href,label])=><a key={label} href={href}>{label}</a>)}
-      <a href="mailto:hello@otri.run"><Mail size={14}/>hello@otri.run</a>
-    </nav>
-    <p>OPEN · TRANSPARENT · REPRODUCIBLE · INDEPENDENT</p>
-  </div></footer>
+  return (
+    <footer className="site-footer">
+      <div className="wrap site-footer__inner">
+        <div>
+          <Logo href="#home" dark />
+          <p className="site-footer__tag">One open, versioned score for a finish time on any trail course. A calculator, not a governing body: free, no account, nobody's approval.</p>
+        </div>
+        <div className="site-footer__col">
+          <h4>Use OTRI</h4>
+          <ul>
+            <li><a href="#calculator">Calculator</a></li>
+            <li><a href="#score">Score a race</a></li>
+            <li><a href="#races">Scored races</a></li>
+            <li><a href="#runners">Runners</a></li>
+            <li><a href="#api">API and embed</a></li>
+            <li><a href="organizer/">For organizers <ArrowUpRight size={13} /></a></li>
+          </ul>
+        </div>
+        <div className="site-footer__col">
+          <h4>The project</h4>
+          <ul>
+            <li><a href={GITHUB_URL}>Source on GitHub <ArrowUpRight size={13} /></a></li>
+            <li><a href={`${GITHUB_URL}/blob/main/docs/methodology/0.1.0/HOW-OTRI-SCORES.md`}>How a score is made <ArrowUpRight size={13} /></a></li>
+            <li><a href="#contribute">Contribute</a></li>
+            <li><a href="#faq">FAQ</a></li>
+            <li><a href="#media">Media and logo</a></li>
+            <li><a href={`${GITHUB_URL}/blob/main/PRIVACY.md`}>Privacy <ArrowUpRight size={13} /></a></li>
+            <li><a href="mailto:hello@otri.run"><Mail size={14} /> hello@otri.run</a></li>
+          </ul>
+        </div>
+      </div>
+      <div className="wrap site-footer__bottom">
+        <span>Open · Transparent · Reproducible · Independent</span>
+        <a href="https://otri.run">otri.run</a>
+      </div>
+    </footer>
+  )
 }
 
 // ------------------------------------------------------------------------------------- races
@@ -194,55 +241,56 @@ function Leaderboard({ raceId, onBack }) {
 
   return (
     <div>
-      <button onClick={onBack} className="prototype-main-leaderboard-button-1">
-        <ArrowLeft size={13} /> All races
+      <button onClick={onBack} className="back">
+        <ArrowLeft size={16} /> All races
       </button>
       {error && error.status === 404 && (
-        <NotFound eyebrow="RACE NOT FOUND" title="No race with that id." where={raceId} home="#races" homeLabel="All races" note="It may have been unpublished by its organizer or removed after a report." />
+        <NotFound eyebrow="Race not found" title="No race with that id." where={raceId} home="#races" homeLabel="All races" note="It may have been unpublished by its organizer or removed after a report." />
       )}
-      {error && error.status !== 404 && <p className="prototype-main-leaderboard-p-2">{error.message}</p>}
-      {!race && !error && <p className="prototype-main-leaderboard-p-3">Loading…</p>}
+      {error && error.status !== 404 && <p className="notice notice--warning notice--plain mt-6">{error.message}</p>}
+      {!race && !error && <p className="loading mt-6"><span className="spinner" /> Loading the race…</p>}
       {race && (
         <>
-          <p className="prototype-main-leaderboard-p-4">
+          <div className="facts mt-6">
             <span>{race.event_date}</span>
             {(race.event_location || race.event_country) && (
-              <span className="prototype-main-leaderboard-span-5">
+              <span className="ink">
                 {race.event_country && <Flag code={race.event_country} showCode={false} />}
-                {[race.event_location, race.event_country].filter(Boolean).join(' · ').toUpperCase()}
+                {[race.event_location, race.event_country].filter(Boolean).join(' · ')}
               </span>
             )}
+          </div>
+          <div className="cluster cluster--tight mt-3">
             <ListingBadge status={race.listing_status} />
             {race.is_vertical && <VerticalBadge />}
             {race.is_demo && <DemoBadge />}
-          </p>
-          <h2 className="prototype-main-leaderboard-h2-6 otri-fit" style={{ fontSize: fitFontSize(race.event_name, { min: 28, vw: 4.5, max: 52 }) }}>{race.event_name}</h2>
-          <p className="prototype-main-leaderboard-p-7">
+            {race.has_gpx && <span className="badge badge--moss">Measured course</span>}
+          </div>
+          <h1 className="otri-fit mt-3" style={{ fontSize: fitFontSize(race.event_name, { min: 34, vw: 5.5, max: 72 }) }}>{race.event_name}</h1>
+          <p className="lead mt-3">
             {race.course_name} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
-            {race.has_gpx ? ' · Measured from the course file' : ' · Official figures, no course file'}
+            {race.has_gpx ? '. Measured from the course file.' : '. Official figures, no course file.'}
           </p>
           {race.organizer_display && (
-            <p className="prototype-main-leaderboard-p-8">
+            <p className="small muted mt-2">
               Organized by{' '}
               {race.organizer_website ? (
-                <a href={race.organizer_website} target="_blank" rel="noreferrer" className="prototype-main-leaderboard-a-9">
+                <a href={race.organizer_website} target="_blank" rel="noreferrer" className="link">
                   {race.organizer_display} ↗
                 </a>
               ) : (
-                <span className="prototype-main-leaderboard-span-10">{race.organizer_display}</span>
+                <span className="ink" style={{ fontWeight: 600 }}>{race.organizer_display}</span>
               )}
             </p>
           )}
-          {race.is_demo && (
-            <p className="prototype-main-leaderboard-p-8">Demo data: synthetic runners and results, here to show what a scored race looks like.</p>
-          )}
+          {race.is_demo && <p className="small muted mt-2">Demo data: synthetic runners and results, here to show what a scored race looks like.</p>}
           {course && (
-            <div className="prototype-main-leaderboard-div-11">
-              <CourseMap gpxText={course.gpxText} measurement={course.measurement} className="prototype-main-leaderboard-course-map-12" />
-              <div className="prototype-main-leaderboard-div-13">
-                <p className="prototype-main-leaderboard-p-14">The course as a GPX file for your watch or app: the track and its elevations, nothing else from the original file.</p>
-                <a href={raceGpxDownloadUrl(race.race_id)} className="prototype-main-leaderboard-a-15">
-                  <Download size={14} /> Download the GPX
+            <div className="card card--flush mt-8">
+              <CourseMap gpxText={course.gpxText} measurement={course.measurement} className="card__body" />
+              <div className="card__foot">
+                <p className="small muted min0">The course as a GPX file for your watch or app: the track and its elevations, nothing else from the original file.</p>
+                <a href={raceGpxDownloadUrl(race.race_id)} className="btn btn--secondary btn--sm">
+                  <Download size={15} /> Download the GPX
                 </a>
               </div>
             </div>
@@ -250,73 +298,74 @@ function Leaderboard({ raceId, onBack }) {
           {!race.is_published && <RaceListing race={race} />}
           {race.is_published && (
             <>
-            {notScoredReason(results) && (
-              <p className="prototype-main-leaderboard-p-16">
-                <strong className="prototype-main-leaderboard-strong-17">Finish times only.</strong> {notScoredReason(results)}
-              </p>
-            )}
-            <div className="prototype-main-leaderboard-div-18">
-              <table className="prototype-main-leaderboard-table-19">
-                <thead>
-                  <tr className="prototype-main-leaderboard-tr-20">
-                    <th className="prototype-main-leaderboard-th-21">Rank</th>
-                    <th className="prototype-main-leaderboard-th-21">Runner</th>
-                    <th className="prototype-main-leaderboard-th-22">Country</th>
-                    <th className="prototype-main-leaderboard-th-22">Gender</th>
-                    <th className="prototype-main-leaderboard-th-21">Time</th>
-                    <th className="prototype-main-leaderboard-th-21">OTRI score</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(results ?? []).map((row) => (
-                    <tr key={`${row.rank}-${row.bib_number ?? row.family_name}-${row.first_name}`} className={`prototype-main-leaderboard-tr-23 ${row.status !== 'finisher' ? "prototype-main-leaderboard-tr-24" : "prototype-main-leaderboard-tr-25"}`}>
-                      <td className="prototype-main-leaderboard-td-26"><RankBadge rank={row.rank} /></td>
-                      <td className="prototype-main-leaderboard-td-27">
-                        {row.runner_id ? (
-                          <a href={`#runners/${encodeURIComponent(row.runner_id)}`} className="prototype-main-leaderboard-a-28">
-                            {row.first_name} {row.family_name}
-                          </a>
-                        ) : (
-                          <>
-                            {row.first_name} {row.family_name}
-                          </>
-                        )}
-                        <span className="prototype-main-leaderboard-span-29">
-                          {row.nationality && <Flag code={row.nationality} />}
-                          {row.gender && <span>{row.gender}</span>}
-                        </span>
-                      </td>
-                      <td className="prototype-main-leaderboard-th-22">{row.nationality ? <Flag code={row.nationality} /> : <span className="prototype-main-leaderboard-span-30">—</span>}</td>
-                      <td className="prototype-main-leaderboard-td-31">{row.gender ?? '—'}</td>
-                      <td className="prototype-main-leaderboard-td-26">{formatHms(row.finish_time_seconds)}</td>
-                      <td className="prototype-main-leaderboard-td-32">{row.otri_score ?? <span className="prototype-main-leaderboard-span-30">—</span>}</td>
-                    </tr>
-                  ))}
-                  {results?.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="prototype-main-leaderboard-td-33">
-                        No results published yet.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <p className="prototype-main-leaderboard-p-34">
-              {modelLabel(race.scoring_version)} · depends only on the course and each runner's own finish time, never the field
-            </p>
-            {results?.some((row) => row.status === 'finisher') && (
-              <div className="prototype-main-leaderboard-div-35">
-                <button type="button" onClick={() => setSharing((open) => !open)} aria-expanded={sharing} className="prototype-main-leaderboard-button-36">
-                  {sharing ? 'Close sharing' : 'Share these results: image and post text'}
-                </button>
-                {sharing && (
-                  <div className="prototype-main-leaderboard-div-37">
-                    <ShareResults raceName={`${race.event_name} ${race.course_name}`} distanceKm={race.distance_km} elevationGainM={race.elevation_gain_m} scores={results} url={window.location.href} />
+              {notScoredReason(results) && (
+                <div className="notice notice--info notice--plain mt-8">
+                  <div className="notice__body">
+                    <p className="notice__title">Finish times only.</p>
+                    <p>{notScoredReason(results)}</p>
                   </div>
-                )}
+                </div>
+              )}
+              <div className="table-wrap mt-8">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Runner</th>
+                      <th className="hide-sm">Country</th>
+                      <th className="hide-sm">Gender</th>
+                      <th className="num">Time</th>
+                      <th className="num right">OTRI score</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(results ?? []).map((row) => (
+                      <tr key={`${row.rank}-${row.bib_number ?? row.family_name}-${row.first_name}`} className={row.status !== 'finisher' ? 'is-muted' : ''}>
+                        <td className="num"><RankBadge rank={row.rank} /></td>
+                        <td>
+                          {row.runner_id ? (
+                            <a href={`#runners/${encodeURIComponent(row.runner_id)}`}>
+                              {row.first_name} {row.family_name}
+                            </a>
+                          ) : (
+                            <span style={{ fontWeight: 600 }}>
+                              {row.first_name} {row.family_name}
+                            </span>
+                          )}
+                          <span className="cluster cluster--tight tiny muted only-sm mt-1">
+                            {row.nationality && <Flag code={row.nationality} />}
+                            {row.gender && <span className="mono">{row.gender}</span>}
+                          </span>
+                        </td>
+                        <td className="hide-sm">{row.nationality ? <Flag code={row.nationality} /> : <span className="muted">—</span>}</td>
+                        <td className="hide-sm mono">{row.gender ?? '—'}</td>
+                        <td className="num">{formatHms(row.finish_time_seconds)}</td>
+                        <td className="right"><span className="score">{row.otri_score ?? <span className="muted">—</span>}</span></td>
+                      </tr>
+                    ))}
+                    {results?.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="table__empty">No results published yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
-            )}
+              <p className="tiny muted mono mt-3">
+                {modelLabel(race.scoring_version)} · depends only on the course and each runner's own finish time, never the field
+              </p>
+              {results?.some((row) => row.status === 'finisher') && (
+                <div className="mt-6">
+                  <button type="button" onClick={() => setSharing((open) => !open)} aria-expanded={sharing} className="btn btn--secondary">
+                    {sharing ? 'Close sharing' : 'Share these results: image and post text'}
+                  </button>
+                  {sharing && (
+                    <div className="card mt-3">
+                      <ShareResults raceName={`${race.event_name} ${race.course_name}`} distanceKm={race.distance_km} elevationGainM={race.elevation_gain_m} scores={results} url={window.location.href} />
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
           <ReportForm kind="race" subjectId={race.race_id} subjectLabel={`${race.event_name} · ${race.course_name}`} prompt={race.is_published ? 'Wrong result, wrong course, or your name should not be here?' : 'Wrong details, or should this race not be listed?'} />
@@ -368,6 +417,7 @@ const RACE_SORTS = {
   climb: { label: 'Most climb', by: (a, b) => (b.elevation_gain_m ?? 0) - (a.elevation_gain_m ?? 0) },
   name: { label: 'Name A–Z', by: (a, b) => `${a.event_name} ${a.course_name}`.localeCompare(`${b.event_name} ${b.course_name}`) },
 }
+
 // The races page before anyone has published: not an empty room, but what fills it and what a
 // visitor can do meanwhile. Races come from their organizers, so the first thing offered is a way
 // to ask one.
@@ -384,31 +434,28 @@ function NoRacesYet() {
     [Mail, 'Ask your organizer', 'Races appear here when their organizers publish results. A prepared email explains what OTRI is and that it is free.', mail, 'Write to them'],
     [Upload, 'Have the results yourself?', 'A course file and a results file are enough: every finisher scored in a minute, no account, and one click to publish.', '#score', 'Score a race'],
     [Play, 'See what a scored race looks like', 'The example race: its course on the map, the elevation profile and 100 finishers with their scores.', '#score?example=1', 'Open the example'],
-    [CalculatorIcon, 'Just curious about a time?', 'Pick a course or upload a GPX and see what a finish time is worth, before or after race day.', '#calculator', 'Open the calculator'],
+    [Calculator, 'Just curious about a time?', 'Pick a course or upload a GPX and see what a finish time is worth, before or after race day.', '#calculator', 'Open the calculator'],
   ]
   return (
-    <div className="prototype-main-no-races-yet-div-38">
-      <div className="prototype-main-no-races-yet-div-39">
-        <p className="prototype-main-no-races-yet-p-40">NO RACES PUBLISHED YET</p>
-        <h2 className="prototype-main-no-races-yet-h2-41">The first race here could be yours.</h2>
-        <p className="prototype-main-no-races-yet-p-42">
-          OTRI keeps no list of every race: a race appears when its organizer publishes the results, free and without anyone's approval. Until then, here is
-          what you can do.
+    <div className="card card--flush mt-8">
+      <div className="card__body topo--faint stack">
+        <p className="eyebrow">No races published yet</p>
+        <h2 className="h-1">The first race here could be yours.</h2>
+        <p className="muted measure">
+          OTRI keeps no list of every race: a race appears when its organizer publishes the results, free and without anyone's approval. Until then, here is what you can do.
         </p>
       </div>
-      <div className="prototype-main-no-races-yet-div-43">
-        {ways.map(([Icon, title, text, href, action]) => (
-          <a key={title} href={href} className="prototype-main-no-races-yet-a-44 otri-group">
-            <span className="prototype-main-no-races-yet-span-45">
-              <Icon size={17} />
-            </span>
-            <span className="prototype-main-no-races-yet-span-46">
-              <b className="prototype-main-no-races-yet-b-47">{title}</b>
-              <span className="prototype-main-no-races-yet-span-48">{text}</span>
-              <span className="prototype-main-no-races-yet-span-49">
-                {action} <ArrowRight size={14} className="prototype-main-no-races-yet-arrow-right-50" />
+      <div className="grid grid--2 grid--flush" style={{ borderRadius: 0, borderInline: 0, borderBottom: 0 }}>
+        {ways.map(([IconC, title, text, href, action]) => (
+          <a key={title} href={href} className="card card--link" style={{ border: 0, borderRadius: 0 }}>
+            <div className="cluster cluster--top" style={{ flexWrap: 'nowrap' }}>
+              <span className="icon-box"><IconC size={20} /></span>
+              <span className="min0 stack stack--tight">
+                <b className="h-4">{title}</b>
+                <span className="small muted">{text}</span>
+                <span className="link link--arrow small mt-1">{action} <ArrowRight size={15} /></span>
               </span>
-            </span>
+            </div>
           </a>
         ))}
       </div>
@@ -416,7 +463,7 @@ function NoRacesYet() {
   )
 }
 
-const normalise = (text) => String(text ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+const normalise = (text) => String(text ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 
 // The races page's state as it appears in the address, defaults left out.
 const RACES_DEFAULTS = { q: '', distance: 'all', country: 'all', status: 'all', sort: 'featured' }
@@ -497,35 +544,34 @@ function RacesPage({ raceId }) {
   const hasDemo = races?.some((race) => race.is_demo)
 
   return (
-    <section className="prototype-main-races-page-section-51">
-      <div className="prototype-main-races-page-div-52">
+    <section className="section">
+      <div className="wrap">
         {raceId ? (
           <Leaderboard raceId={raceId} onBack={() => navigate(address)} />
         ) : (
           <>
-            <div className="prototype-main-races-page-div-53">
-              <div className="prototype-main-no-races-yet-span-46">
-                <p className="prototype-main-races-page-p-54">RACES</p>
-                <h1 className="prototype-main-races-page-h1-55">
+            <div className="grid grid--head">
+              <div className="stack">
+                <p className="eyebrow">Races</p>
+                <h1 className="display-2">
                   Scored races.
                   <br />
-                  <span className="prototype-main-races-page-span-56">Every number explained.</span>
+                  <span className="accent">Every number explained.</span>
                 </h1>
               </div>
-              <p className="prototype-main-races-page-p-57">
-                Races their organizers have published, all scored with the same open model. Each score depends only on the
-                course and the runner's own finish time — never on who else raced.
-                {hasListings ? ' Races marked UPCOMING or AWAITING RESULTS are listed by their organizer ahead of the results: open one to try a target time on its course.' : ''}
-                {hasDemo ? ' Races marked DEMO DATA are synthetic examples.' : ''}
+              <p className="lead">
+                Races their organizers have published, all scored with the same open model. Each score depends only on the course and the runner's own finish time, never on who else raced.
+                {hasListings ? ' Races marked upcoming or awaiting results are listed by their organizer ahead of the results: open one to try a target time on its course.' : ''}
+                {hasDemo ? ' Races marked demo data are synthetic examples.' : ''}
               </p>
             </div>
-            {error && <p className="prototype-main-races-page-p-58">{error}</p>}
-            {races === null && !error && <p className="prototype-main-races-page-p-59">Loading races…</p>}
+            {error && <p className="notice notice--warning notice--plain mt-8">{error}</p>}
+            {races === null && !error && <p className="loading mt-8"><span className="spinner" /> Loading races…</p>}
             {races?.length === 0 && <NoRacesYet />}
             {races?.length > 0 && (
-              <div className="prototype-main-races-page-div-60">
+              <div className="toolbar mt-8">
                 <SearchSuggest
-                  className="prototype-main-races-page-search-suggest-61"
+                  className="grow"
                   value={query}
                   onChange={setQuery}
                   placeholder="Search by race, place or year…"
@@ -541,75 +587,62 @@ function RacesPage({ raceId }) {
                     ...knownButNotHere(RACE_NAMES, query, races.map((race) => race.event_name), 3).map((name) => ({ key: `known-${name}`, label: name, detail: 'not on OTRI yet' })),
                   ]}
                 />
-                <div className="prototype-main-races-page-div-62">
-                  <div className="prototype-main-races-page-div-63" role="group" aria-label="Distance">
-                    {DISTANCE_BUCKETS.map((b) => (
-                      <button
-                        key={b.id}
-                        type="button"
-                        onClick={() => setBucket(b.id)}
-                        aria-pressed={bucket === b.id}
-                        className={`prototype-main-races-page-button-64 ${bucket === b.id ? "prototype-main-races-page-button-65" : "prototype-main-races-page-button-66"}`}
-                      >
-                        {b.label}
-                      </button>
-                    ))}
-                  </div>
-                  {countryOptions.length > 1 && (
-                    <select value={country} onChange={(event) => setCountry(event.target.value)} aria-label="Country" className="prototype-main-races-page-select-67">
-                      <option value="all">All countries</option>
-                      {countryOptions.map((option) => (
-                        <option key={option.code} value={option.code}>{option.name}</option>
-                      ))}
-                    </select>
-                  )}
-                  {hasListings && (
-                    <select value={status} onChange={(event) => setStatus(event.target.value)} aria-label="Status" className="prototype-main-races-page-select-67">
-                      {RACE_STATUSES.map(([id, label]) => (
-                        <option key={id} value={id}>{label}</option>
-                      ))}
-                    </select>
-                  )}
-                  <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort races" className="prototype-main-races-page-select-67">
-                    {Object.entries(RACE_SORTS).map(([id, option]) => (
-                      <option key={id} value={id}>{option.label}</option>
+                <div className="seg" role="group" aria-label="Distance">
+                  {DISTANCE_BUCKETS.map((b) => (
+                    <button key={b.id} type="button" onClick={() => setBucket(b.id)} aria-pressed={bucket === b.id}>
+                      {b.label}
+                    </button>
+                  ))}
+                </div>
+                {countryOptions.length > 1 && (
+                  <select value={country} onChange={(event) => setCountry(event.target.value)} aria-label="Country" className="input input--sm" style={{ width: 'auto' }}>
+                    <option value="all">All countries</option>
+                    {countryOptions.map((option) => (
+                      <option key={option.code} value={option.code}>{option.name}</option>
                     ))}
                   </select>
-                </div>
+                )}
+                {hasListings && (
+                  <select value={status} onChange={(event) => setStatus(event.target.value)} aria-label="Status" className="input input--sm" style={{ width: 'auto' }}>
+                    {RACE_STATUSES.map(([id, label]) => (
+                      <option key={id} value={id}>{label}</option>
+                    ))}
+                  </select>
+                )}
+                <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort races" className="input input--sm" style={{ width: 'auto' }}>
+                  {Object.entries(RACE_SORTS).map(([id, option]) => (
+                    <option key={id} value={id}>{option.label}</option>
+                  ))}
+                </select>
               </div>
             )}
             {races?.length > 0 && (
-              <p className="prototype-main-races-page-p-68" aria-live="polite">
+              <p className="tiny muted mono mt-3" aria-live="polite">
                 {shown.length === races.length ? `${races.length} races` : `${shown.length} of ${races.length} races match`}
               </p>
             )}
             {races?.length > 0 && shown.length === 0 && (
-              <div className="prototype-main-races-page-div-69">
-                <p className="prototype-main-leaderboard-span-10">{query.trim() ? `“${query.trim()}” is not on OTRI yet.` : 'No race matches.'}</p>
-                <p className="prototype-main-races-page-p-70">
+              <div className="empty mt-6">
+                <p className="empty__title">{query.trim() ? `“${query.trim()}” is not on OTRI yet.` : 'No race matches.'}</p>
+                <p className="empty__text">
                   OTRI shows the races their organizers have published here; it keeps no list of every race. Try fewer words, another distance, or{' '}
-                  <button type="button" onClick={() => { setQuery(''); setBucket('all'); setCountry('all'); setStatus('all') }} className="prototype-main-races-page-button-71">clear the filters</button>.
+                  <button type="button" onClick={() => { setQuery(''); setBucket('all'); setCountry('all'); setStatus('all') }} className="link">clear the filters</button>.
                 </p>
-                <p className="prototype-main-races-page-p-72">
-                  Have its course as a GPX? <a href="#calculator" className="prototype-main-leaderboard-a-9">Work out what a time there is worth</a>.
-                  Have the results too? <a href="#score" className="prototype-main-leaderboard-a-9">Score the whole race</a>, free and without an account.
+                <p className="empty__text mt-3">
+                  Have its course as a GPX? <a href="#calculator" className="link">Work out what a time there is worth</a>. Have the results too? <a href="#score" className="link">Score the whole race</a>, free and without an account.
                 </p>
               </div>
             )}
-            <div className="prototype-main-races-page-div-73">
+            <div className="grid grid--3 mt-5">
               {shown.slice(0, visible).map((race) => (
                 <RaceCard key={race.race_id} race={race} />
               ))}
             </div>
             {shown.length > 0 && (
-              <div className="prototype-main-races-page-div-74">
-                <p className="prototype-main-races-page-p-75">Showing {Math.min(visible, shown.length)} of {shown.length}</p>
+              <div className="cluster cluster--between mt-5">
+                <p className="tiny muted mono">Showing {Math.min(visible, shown.length)} of {shown.length}</p>
                 {shown.length > visible && (
-                  <button
-                    type="button"
-                    onClick={() => setVisible((n) => n + RACE_PAGE_SIZE)}
-                    className="prototype-main-races-page-button-76"
-                  >
+                  <button type="button" onClick={() => setVisible((n) => n + RACE_PAGE_SIZE)} className="btn btn--secondary">
                     Show {Math.min(RACE_PAGE_SIZE, shown.length - visible)} more
                   </button>
                 )}
@@ -640,25 +673,39 @@ function redirectAuthLinks() {
 }
 redirectAuthLinks()
 
+function RouteLoading() {
+  return (
+    <div role="status" className="loading" style={{ minHeight: '50vh', justifyContent: 'center' }}>
+      <span className="spinner spinner--lg" /> Loading…
+    </div>
+  )
+}
+
 function App() {
   const route = useRoute()
   // Race and runner pages set a more specific title once their data has loaded.
   useDocumentTitle(route.raceId || route.runnerId ? null : PAGE_TITLES[route.tab] ?? PAGE_TITLES.home)
 
   return (
-    <div id="top" className="prototype-main-app-div-77">
+    <div id="top" className="site">
       <Header tab={route.tab} />
-      <main><Suspense fallback={<div role="status" className={shell.routeLoading}>Loading…</div>}>
-        {route.tab === 'home' && <Home />}
-        {route.tab === 'races' && <RacesPage raceId={route.raceId} />}
-        {route.tab === 'runners' && (route.runnerId ? <RunnerProfilePage runnerId={route.runnerId} onBack={() => navigate('#runners')} /> : <RunnersPage />)}
-        {route.tab === 'calculator' && <ScoreCalculator />}
-        {route.tab === 'score' && <ScoreRace />}
-        {route.tab === 'api' && <ApiDocs />}
-        {route.tab === 'media' && <Media />}
-        {route.tab === 'faq' && <FaqPage initialQuery={route.faqQuery} />}
-        {route.tab === 'notfound' && <NotFound where={window.location.hash} home="#home" />}
-      </Suspense></main>
+      <main>
+        <Suspense fallback={<RouteLoading />}>
+          {route.tab === 'home' && <Home />}
+          {route.tab === 'races' && <RacesPage raceId={route.raceId} />}
+          {route.tab === 'runners' && (route.runnerId ? <RunnerProfilePage runnerId={route.runnerId} onBack={() => navigate('#runners')} /> : <RunnersPage />)}
+          {route.tab === 'calculator' && <ScoreCalculator />}
+          {route.tab === 'score' && <ScoreRace />}
+          {route.tab === 'api' && <ApiDocs />}
+          {route.tab === 'media' && <Media />}
+          {route.tab === 'faq' && <FaqPage initialQuery={route.faqQuery} />}
+          {route.tab === 'notfound' && (
+            <div className="wrap">
+              <NotFound where={window.location.hash} home="#home" />
+            </div>
+          )}
+        </Suspense>
+      </main>
       <Footer />
       <BackToTop />
       <BuildBanner />

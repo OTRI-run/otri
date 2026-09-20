@@ -1,4 +1,3 @@
-import './PasswordStrength.css'
 // A password meter that mirrors the server's policy (api/security.py): length first, a short
 // common-password check, and "not built from your email". The server has the final word.
 const COMMON = new Set(['password', 'password1', 'password123', 'passw0rd', 'p@ssw0rd', '123456', '12345678', '123456789', '1234567890', 'qwerty', 'qwertyuiop', 'qwerty123', 'abc123', 'letmein', 'welcome', 'welcome1', 'admin', 'iloveyou', 'monkey', 'dragon', 'football', 'sunshine', 'princess', 'trustno1', 'changeme', 'test1234', 'trailrunning', 'trailrun', 'running', 'marathon', 'otri', 'otrirun'])
@@ -32,20 +31,20 @@ export function assessPassword(password, email) {
 export default function PasswordStrength({ password, email }) {
   const { score, label, problems } = assessPassword(password, email)
   if (!password) {
-    return <p className="src-components-password-strength-password-strength-p-1">At least {PASSWORD_MIN} characters. A few unrelated words beat a short jumble; length is what counts.</p>
+    return <p className="field__hint">At least {PASSWORD_MIN} characters. A few unrelated words beat a short jumble; length is what counts.</p>
   }
-  const colors = ["otri-state-1", "otri-state-2", "otri-state-3", "otri-state-4", "otri-state-5"]
+  const colors = ['', 'var(--berry)', 'var(--ochre)', 'var(--sky)', 'var(--moss)']
   return (
-    <div className="src-components-password-strength-password-strength-div-2" aria-live="polite">
-      <div className="src-components-password-strength-password-strength-div-3" aria-hidden="true">
+    <div className="stack stack--tight mt-1" aria-live="polite">
+      <div className="meter meter--bands meter--thin" aria-hidden="true">
         {[1, 2, 3, 4].map((step) => (
-          <span key={step} className={`src-components-password-strength-password-strength-span-4 ${step <= score ? colors[score] : "src-components-password-strength-password-strength-span-5"}`} />
+          <span key={step} className={step <= score ? 'is-on' : ''} style={step <= score ? { background: colors[score] } : undefined} />
         ))}
       </div>
-      <p className="src-components-password-strength-password-strength-p-6">
-        <span className="src-components-password-strength-password-strength-span-7">{label}</span>
-        {problems.length > 0 && <span className="src-components-password-strength-password-strength-span-8"> · {problems[0]}</span>}
-        {problems.length === 0 && score < 3 && <span className="src-components-password-strength-password-strength-span-8"> · longer is stronger</span>}
+      <p className="tiny">
+        <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{label}</span>
+        {problems.length > 0 && <span className="muted"> · {problems[0]}</span>}
+        {problems.length === 0 && score < 3 && <span className="muted"> · longer is stronger</span>}
       </p>
     </div>
   )

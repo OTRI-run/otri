@@ -1,11 +1,9 @@
-import { FieldHeading } from '../src/field'
-import tool from './ToolPage.module.css'
 import './ScoreCalculator.css'
 import ScoreScale from '../src/components/ScoreScale'
 import { exponentOf } from '../src/lib/scoreLevels'
 import { fitFontSize } from '../src/lib/fitText'
 import { useEffect, useMemo, useRef, useState } from 'preact/compat'
-import { ArrowUpRight, Check, Copy, GitBranch, Link2, Mountain, RefreshCw, Search, Share2, Timer, Upload, Image as ImageIcon, Download } from 'lucide-react'
+import { ArrowUpRight, Check, Copy, Download, GitBranch, Image as ImageIcon, Link, Mountain, Refresh, Search, Share, Timer, Upload } from '../src/ui/icons'
 import CourseMap from '../src/components/LazyCourseMap'
 import { analyzeGpx, fetchRaceGpxFile, fetchSharedGpxFile, getRace, listRaces, shareGpx, raceGpxDownloadUrl } from './apiClient'
 import { ShareTarget } from './SharePanel'
@@ -98,19 +96,12 @@ function shortVersion(scoringVersion) {
   return `model ${modelShort(scoringVersion)}`
 }
 
-const CONTAINER = "prototype-score-calculator-container-style-1"
-
 function Eyebrow({ children, className = '' }) {
-  return <p className={`prototype-score-calculator-eyebrow-p-2 ${className}`}>{children}</p>
+  return <p className={`eyebrow ${className}`}>{children}</p>
 }
 
 function Spinner({ className = '' }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={`prototype-score-calculator-spinner-span-3 ${className}`}
-    />
-  )
+  return <span aria-hidden="true" className={`spinner ${className}`} />
 }
 
 // ----------------------------------------------------------------------------- the score card
@@ -140,32 +131,30 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
       role="status"
       aria-live="polite"
       aria-busy={scoring}
-      className="prototype-score-calculator-score-panel-div-4"
+      className="panel calc-panel"
     >
-      <div className="prototype-score-calculator-score-panel-div-5">
+      <div className="cluster cluster--between panel__label">
         <span>OTRI / SCORE</span>
-        <span className="prototype-score-calculator-score-panel-span-6">
-          <i className={`prototype-score-calculator-score-panel-i-7 ${scoring ? "prototype-score-calculator-score-panel-i-9" : "prototype-score-calculator-score-panel-i-10"} prototype-score-calculator-score-panel-i-8`} />
+        <span className="calc-panel__status">
+          <i className={`calc-panel__dot ${scoring ? 'is-busy' : ''}`} />
           {status}
         </span>
       </div>
 
-      <div className="prototype-score-calculator-score-panel-div-11">
+      <div className="calc-panel__body">
         {estimate ? (
           <>
-            <small className="prototype-score-calculator-score-panel-small-12">YOUR PROJECTED SCORE</small>
-            <strong
-              className={`prototype-score-calculator-score-panel-strong-13 ${scoring ? "prototype-score-calculator-score-panel-strong-14" : ''}`}
-            >
+            <small className="panel__label">YOUR PROJECTED SCORE</small>
+            <strong className={`panel__number calc-panel__score ${scoring ? 'is-stale' : ''}`}>
               {estimate.predicted_score}
             </strong>
             {pct != null ? (
               <>
-                <span className={`prototype-score-calculator-score-panel-span-15 ${pct > 100 ? "prototype-score-calculator-score-panel-span-16" : "prototype-score-calculator-score-panel-span-17"}`}>
+                <span className={`calc-panel__share ${pct > 100 ? 'accent' : ''}`}>
                   {pct}% of world-record speed for a course like this
                 </span>
                 {b?.world_best_time_seconds > 0 && (
-                  <span className="prototype-score-calculator-score-panel-span-18">
+                  <span className="calc-panel__note">
                     {pct > 100
                       ? `A world-record-level run here would take about ${formatHms(Math.round(b.world_best_time_seconds))} and score 1000. Your target is faster than that, so it scores above 1000.`
                       : `A world-record-level run here would take about ${formatHms(Math.round(b.world_best_time_seconds))} and score 1000.`}
@@ -181,45 +170,45 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
                 />
               </>
             ) : (
-              <span className="prototype-score-calculator-score-panel-span-19">{formatHms(targetSeconds)}</span>
+              <span className="calc-panel__time">{formatHms(targetSeconds)}</span>
             )}
             {scoring && (
-              <span className="prototype-score-calculator-score-panel-span-20">
-                <Spinner className="prototype-score-calculator-score-panel-spinner-21" /> UPDATING
+              <span className="calc-panel__updating panel__label">
+                <Spinner /> UPDATING
               </span>
             )}
           </>
         ) : scoring ? (
           <>
-            <Spinner className="prototype-score-calculator-score-panel-spinner-22" />
-            <strong className="prototype-score-calculator-score-panel-strong-23">Calculating your score…</strong>
-            <span className="prototype-score-calculator-score-panel-span-24">
+            <Spinner className="spinner--lg calc-panel__spinner" />
+            <strong className="h-3 block mt-4">Calculating your score…</strong>
+            <span className="small muted block mt-2">
               Every 50 m of the course is measured and costed. Long, hilly courses take a few seconds.
             </span>
           </>
         ) : (
           <>
-            <small className="prototype-score-calculator-score-panel-small-12">WHY THIS SCORE?</small>
-            <strong className="prototype-score-calculator-score-panel-strong-25">
+            <small className="panel__label">WHY THIS SCORE?</small>
+            <strong className="h-1 block mt-2">
               Pick a course.
             </strong>
-            <span className="prototype-score-calculator-score-panel-span-24">Then set a finish time. The score updates live.</span>
+            <span className="small muted block mt-2">Then set a finish time. The score updates live.</span>
           </>
         )}
       </div>
 
       <div>
         {rows.map(([Icon, title, desc]) => (
-          <div key={title} className="prototype-score-calculator-score-panel-div-26">
-            <Icon size={16} className="prototype-score-calculator-score-panel-icon-27" />
-            <span className="prototype-score-calculator-score-panel-span-28">{title}</span>
-            <small className="prototype-score-calculator-score-panel-small-29">{desc}</small>
+          <div key={title} className="calc-panel__row">
+            <Icon size={16} />
+            <span>{title}</span>
+            <small>{desc}</small>
           </div>
         ))}
       </div>
-      <div className="prototype-score-calculator-score-panel-div-30">
+      <div className="calc-panel__foot panel__label">
         <b>OTRI INDEX</b>
-        <span className="prototype-score-calculator-score-panel-span-31">COURSE + TIME + VERSION = SCORE</span>
+        <span>COURSE + TIME + VERSION = SCORE</span>
       </div>
     </div>
   )
@@ -232,8 +221,8 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
 function Stat({ label, value, mono = true }) {
   return (
     <div>
-      <dt className="prototype-score-calculator-stat-dt-32">{label}</dt>
-      <dd className={`prototype-score-calculator-stat-dd-33 ${mono ? "prototype-score-calculator-stat-dd-34" : ''}`}>{value}</dd>
+      <dt>{label}</dt>
+      <dd className={mono ? 'mono' : ''}>{value}</dd>
     </div>
   )
 }
@@ -249,21 +238,23 @@ function MeasurementTrust({ estimate }) {
   ].filter(Boolean)
   if (notes.length === 0) return null
   return (
-    <div className="prototype-score-calculator-measurement-trust-div-35">
-      {notes.map((note) => (
-        <p key={note}>{note}</p>
-      ))}
+    <div className="notice notice--warning notice--plain mt-6">
+      <div className="notice__body">
+        {notes.map((note) => (
+          <p key={note}>{note}</p>
+        ))}
+      </div>
     </div>
   )
 }
 
 function ExplanationStep({ n, title, children }) {
   return (
-    <div className="prototype-score-calculator-explanation-step-div-36">
-      <b className="prototype-score-calculator-explanation-step-b-37">{n}</b>
-      <div className="prototype-score-calculator-explanation-step-div-38">
-        <strong className="prototype-score-calculator-explanation-step-strong-39">{title}</strong>
-        <div className="prototype-score-calculator-explanation-step-div-40">{children}</div>
+    <div className="calc-step">
+      <b className="waypoint">{n}</b>
+      <div className="min0">
+        <strong className="h-4">{title}</strong>
+        <div className="calc-step__body">{children}</div>
       </div>
     </div>
   )
@@ -285,38 +276,38 @@ function ScoreExplanation({ estimate, features, targetSeconds }) {
   const bestFlatPace = b?.world_best_time_seconds ? formatPace(b.world_best_time_seconds, b.adjusted_demand_km, units) : null
 
   return (
-    <section className="prototype-score-calculator-score-explanation-section-41">
-      <div className={CONTAINER}>
-        <div className="prototype-score-calculator-score-explanation-div-42">
+    <div className="mt-6">
+      <div>
+        <div className="cluster cluster--between">
           <Eyebrow>02 / WHY THIS SCORE</Eyebrow>
-          <a href={METHODOLOGY_URL} className="prototype-score-calculator-score-explanation-a-43">
+          <a href={METHODOLOGY_URL} className="link link--arrow link--up small">
             Open methodology <ArrowUpRight size={14} />
           </a>
         </div>
-        <div className="prototype-score-calculator-score-explanation-div-44">
-          <div className="prototype-score-calculator-explanation-step-div-38">
-            <h2 className="prototype-score-calculator-score-explanation-h2-45">
+        <div className="grid grid--aside mt-6">
+          <div className="min0">
+            <h2 className="display-2">
               Open method.
               <br />
-              <span className="prototype-score-calculator-score-explanation-span-46">Your number.</span>
+              <span className="accent">Your number.</span>
             </h2>
-            <p className="prototype-score-calculator-score-explanation-p-47">
+            <p className="muted measure mt-5">
               Two things go in: the course and your time. Not who else raced, not the weather, not your age. The course is
               converted into the flat road distance it costs to run, and your speed over that is compared with the fastest
               a human has ever sustained over the same amount of ground.
             </p>
-            <p className="prototype-score-calculator-score-explanation-p-48">
+            <p className="muted measure mt-3">
               That yardstick already allows for distance: nobody holds their 5 km pace for 20 hours, so the best-ever rate
               falls as courses get longer. A long mountain race is never scored worse than a short one for being long.
             </p>
-            <div className="prototype-score-calculator-score-explanation-div-49">
-              <GitBranch size={16} className="prototype-score-calculator-score-explanation-git-branch-50" />
-              same course + same time + same version <b className="prototype-score-calculator-score-explanation-git-branch-50">=</b> same score
+            <div className="cluster cluster--tight mono small muted mt-6">
+              <GitBranch size={16} className="icon--moss" />
+              same course + same time + same version <b className="ink">=</b> same score
             </div>
             <MeasurementTrust estimate={estimate} />
           </div>
 
-          <div className="prototype-score-calculator-score-explanation-div-51">
+          <div className="calc-steps">
             {b ? (
               <>
                 <ExplanationStep n="01" title="How hard is the course?">
@@ -360,10 +351,10 @@ function ScoreExplanation({ estimate, features, targetSeconds }) {
                         On the published curve that scores <strong>{estimate.predicted_score}</strong>.
                       </>
                     )}
-                    <div className="prototype-score-calculator-score-explanation-div-52" aria-hidden="true">
-                      <div className="prototype-score-calculator-score-explanation-div-53" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
+                    <div className="meter mt-3" aria-hidden="true">
+                      <span style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
                     </div>
-                    <p className="prototype-score-calculator-score-explanation-p-54">
+                    <p className="cluster cluster--between mono tiny muted mt-1">
                       <span>0</span>
                       <span>{pct}% · score {estimate.predicted_score}</span>
                       <span>100% = 1000</span>
@@ -383,13 +374,13 @@ function ScoreExplanation({ estimate, features, targetSeconds }) {
           </div>
         </div>
 
-        <section className="prototype-score-calculator-score-explanation-section-55 otri-group">
-          <h3 className="prototype-score-calculator-score-explanation-h3-56">
-            The maths
-          </h3>
-          <div className="prototype-score-calculator-score-explanation-div-57">
+        <section className="card card--flush mt-10">
+          <div className="card__head">
+            <h3 className="h-4">The maths</h3>
+          </div>
+          <div className="card__body">
             {b && (
-              <pre className="prototype-score-calculator-score-explanation-pre-58">
+              <pre className="code-block">
 {`demand   = Σ segment_km × Minetti(grade)      = ${b.course_demand_km} demand-km
 terrain  = 1 + 0.5951·steep + 0.07·alt/1000    = ${b.terrain_factor}   (steep ${(b.steep_distance_fraction * 100).toFixed(1)}%, alt +${Math.round(b.altitude_excess_m)} m)
 D        = demand × terrain                    = ${b.adjusted_demand_km} demand-km
@@ -408,7 +399,7 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
               </pre>
             )}
 
-            <dl className="prototype-score-calculator-score-explanation-dl-59">
+            <dl className="kv mt-6">
               <Stat label="Physical distance" value={`${b?.physical_distance_km ?? features.distance_km} km`} />
               <Stat label="Course demand (gradient integral)" value={`${b?.course_demand_km ?? estimate.equivalent_distance_km} demand-km`} />
               {b && <Stat label="Terrain factor" value={`× ${b.terrain_factor}`} />}
@@ -421,7 +412,7 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
               <Stat label="Model" value={modelLabel(estimate.scoring_version)} />
             </dl>
 
-            <p className="prototype-score-calculator-score-explanation-p-60">
+            <p className="small muted measure mt-6">
               One published curve, no anchor table: score = 1000 × (fraction of the human-ceiling rate)^0.85, with Q_1000
               = {ANCHOR_1000.q.toFixed(3)} demand-km/h at the reference course size. "demand-km" is a kilometre of flat
               road at Minetti's metabolic cost — the unit called "flat km" above.
@@ -430,7 +421,7 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
           </div>
         </section>
 
-        <p className="prototype-score-calculator-score-explanation-p-61">Model-based projection · {estimate.disclaimer}</p>
+        <p className="tiny muted mt-6">Model-based projection · {estimate.disclaimer}</p>
         <NextSteps
           items={[
             ['See how others scored', 'Leaderboards for races scored under the same model.', 'Browse scored races', '#races'],
@@ -439,7 +430,7 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
           ]}
         />
       </div>
-    </section>
+    </div>
   )
 }
 
@@ -520,17 +511,17 @@ function ShareBox({ courseLabel, courseFile, targetSeconds, shareId, onShared, i
   }
 
   return (
-    <div className="prototype-score-calculator-share-box-div-62">
-      <div className="prototype-score-calculator-share-box-div-63">
+    <div className="card stack mt-4">
+      <div className="cluster">
         <button
           type="button"
           onClick={share}
           disabled={state === 'sharing'}
-          className="prototype-score-calculator-share-box-button-64"
+          className="btn btn--primary"
         >
           {state === 'sharing' ? (
             <>
-              <span aria-hidden="true" className="prototype-score-calculator-share-box-span-65" /> Creating link…
+              <span aria-hidden="true" className="spinner" /> Creating link…
             </>
           ) : state === 'copied' ? (
             <>
@@ -538,7 +529,7 @@ function ShareBox({ courseLabel, courseFile, targetSeconds, shareId, onShared, i
             </>
           ) : (
             <>
-              <Share2 size={16} /> Share this score
+              <Share size={16} /> Share this score
             </>
           )}
         </button>
@@ -547,31 +538,33 @@ function ShareBox({ courseLabel, courseFile, targetSeconds, shareId, onShared, i
             type="button"
             onClick={onToggleImage}
             aria-expanded={imageOpen}
-            className="prototype-score-calculator-share-box-button-66"
+            className="btn btn--secondary"
           >
-            <ImageIcon size={16} className="prototype-score-calculator-score-explanation-git-branch-50" /> {imageOpen ? 'Hide image and post' : 'Image and post text'}
+            <ImageIcon size={16} /> {imageOpen ? 'Hide image and post' : 'Image and post text'}
           </button>
         )}
         {url && canNativeShare && (
           <button
             type="button"
             onClick={nativeShare}
-            className="prototype-score-calculator-share-box-button-66"
+            className="btn btn--ghost"
           >
             Send… <ArrowUpRight size={14} />
           </button>
         )}
       </div>
       {url ? (
-        <div className="prototype-score-calculator-share-box-div-67">
-          <Link2 size={14} className="prototype-score-calculator-share-box-link2-68" />
-          <input readOnly value={url} onFocus={(event) => event.target.select()} aria-label="Share link" className="prototype-score-calculator-share-box-input-69" />
-          <button type="button" onClick={() => copy(url)} className="prototype-score-calculator-share-box-button-70" aria-label="Copy link">
-            <Copy size={16} />
-          </button>
+        <div className="input-wrap calc-share__link">
+          <Link size={16} />
+          <input readOnly value={url} onFocus={(event) => event.target.select()} aria-label="Share link" className="input input--sm input--mono" />
+          <span className="input-wrap__end">
+            <button type="button" onClick={() => copy(url)} className="btn btn--ghost btn--sm btn--icon" aria-label="Copy link">
+              <Copy size={16} />
+            </button>
+          </span>
         </div>
       ) : null}
-      <p className="prototype-score-calculator-share-box-p-71">
+      <p className="small muted">
         {raceId
           ? 'The link opens this race with your target time. Change the time and the link updates.'
           : shareId
@@ -579,7 +572,7 @@ function ShareBox({ courseLabel, courseFile, targetSeconds, shareId, onShared, i
             : 'Sharing stores your course file on OTRI so the link works for anyone; the target time travels in the link itself.'}
         {onToggleImage ? ' For Facebook, Instagram or WhatsApp, make an image with a post written for it.' : ''}
       </p>
-      {error && <p className="prototype-score-calculator-share-box-p-72">{error}</p>}
+      {error && <p className="notice notice--error notice--plain">{error}</p>}
     </div>
   )
 }
@@ -596,36 +589,37 @@ function NoCourseHelp({ name, onClose }) {
     'Thank you!',
   ].join('\n\n')
   const mail = `mailto:?subject=${encodeURIComponent(`${name} on OTRI`)}&body=${encodeURIComponent(body)}`
-  const button = "prototype-score-calculator-no-course-help-style-73"
   return (
-    <div className="prototype-score-calculator-no-course-help-div-74" role="status">
-      <p className="prototype-score-calculator-stat-dd-33">No course for &ldquo;{name}&rdquo; here yet.</p>
-      <p className="prototype-score-calculator-no-course-help-p-75">
-        Most organizers put the route on their own website: look for Course, Route, Parcours, Strecke or a GPX download. Save the file and
-        upload it here, and you get the score straight away.
-      </p>
-      <div className="prototype-score-calculator-no-course-help-div-76">
-        <a href={search} target="_blank" rel="noreferrer" className={`${button} prototype-score-calculator-no-course-help-a-77`}>
-          <Search size={13} /> Search the web for the GPX
-        </a>
-        <label htmlFor="calc-gpx-input" className={`${button} prototype-score-calculator-no-course-help-label-78`}>
-          <Upload size={13} /> Upload a GPX
-        </label>
+    <div className="notice notice--warning notice--plain mt-4" role="status">
+      <div className="notice__body">
+        <p className="notice__title">No course for &ldquo;{name}&rdquo; here yet.</p>
+        <p>
+          Most organizers put the route on their own website: look for Course, Route, Parcours, Strecke or a GPX download. Save the file and
+          upload it here, and you get the score straight away.
+        </p>
+        <div className="cluster cluster--tight mt-3">
+          <a href={search} target="_blank" rel="noreferrer" className="btn btn--secondary btn--sm">
+            <Search size={14} /> Search the web for the GPX
+          </a>
+          <label htmlFor="calc-gpx-input" className="btn btn--secondary btn--sm">
+            <Upload size={14} /> Upload a GPX
+          </label>
+        </div>
+        <p className="mt-3">
+          Know the organizer? Listing a race on OTRI is free and needs no approval.{' '}
+          <a href={mail} className="link">
+            Write to them
+          </a>
+          {onClose && (
+            <>
+              {' · '}
+              <button type="button" onClick={onClose} className="link">
+                Close
+              </button>
+            </>
+          )}
+        </p>
       </div>
-      <p className="prototype-score-calculator-no-course-help-p-79">
-        Know the organizer? Listing a race on OTRI is free and needs no approval.{' '}
-        <a href={mail} className="prototype-score-calculator-no-course-help-a-80">
-          Write to them
-        </a>
-        {onClose && (
-          <>
-            {' · '}
-            <button type="button" onClick={onClose} className="prototype-score-calculator-no-course-help-button-81">
-              Close
-            </button>
-          </>
-        )}
-      </p>
     </div>
   )
 }
@@ -647,28 +641,35 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
     onReject: (message) => setRefused(`${message} Export the course as GPX and drop that.`),
   })
   return (
-    <section className={tool.workbench} data-tool-page="calculator">
-      <div className={CONTAINER}>
-        <div className={tool.container}>
-          <FieldHeading number="01" label="FOR RUNNERS / INDIVIDUAL PERFORMANCE" title="Calculate my score" description="Choose your course, then enter your finish time.">
-<ol aria-label="Calculation steps" className="prototype-score-calculator-course-picker-ol-87">
-              <li aria-current="step" className="prototype-score-calculator-course-picker-li-88">1. Choose course</li>
-              <li className="prototype-score-calculator-course-picker-li-89">2. Enter time</li>
-            </ol>
-
-</FieldHeading>
-          <div role="group" aria-label="Course source" className={tool.switcher}>
-            {[['race', 'Find a race'], ['upload', 'Upload my course']].map(([value, label]) => (
-              <button key={value} type="button" aria-pressed={source === value} aria-controls={`course-source-${value}`} onClick={() => setSource(value)} className={`prototype-score-calculator-course-picker-button-91 ${source === value ? "prototype-score-calculator-course-picker-button-92" : "prototype-score-calculator-course-picker-button-93"}`}>{label}</button>
-            ))}
-          </div>
-        <div className="prototype-score-calculator-course-picker-div-94">
-          <div id="course-source-race" hidden={source !== 'race'} className={tool.panel}>
-            <div className="prototype-score-calculator-course-picker-div-96">
-              <Search size={16} className="prototype-score-calculator-score-explanation-git-branch-50" />
-              <h3 className="prototype-score-calculator-course-picker-h3-97">Pick a race</h3>
+    <section className="section" data-tool-page="calculator">
+      <div className="wrap">
+        <div className="page-head">
+          <p className="eyebrow">FOR RUNNERS / INDIVIDUAL PERFORMANCE</p>
+          <h1 className="display-2">Calculate my score</h1>
+          <p className="lead">Choose your course, then enter your finish time.</p>
+          <ol aria-label="Calculation steps" className="steps calc-picker__steps">
+            <li aria-current="step" className="steps__item" data-state="current">
+              <span className="waypoint waypoint--sm waypoint--blaze">1</span>
+              <span className="steps__label">Choose course</span>
+            </li>
+            <li className="steps__item" data-state="todo">
+              <span className="waypoint waypoint--sm waypoint--todo">2</span>
+              <span className="steps__label">Enter time</span>
+            </li>
+          </ol>
+        </div>
+        <div role="group" aria-label="Course source" className="seg mt-8">
+          {[['race', 'Find a race'], ['upload', 'Upload my course']].map(([value, label]) => (
+            <button key={value} type="button" aria-pressed={source === value} aria-controls={`course-source-${value}`} onClick={() => setSource(value)}>{label}</button>
+          ))}
+        </div>
+        <div className="mt-4">
+          <div id="course-source-race" hidden={source !== 'race'} className="card">
+            <div className="cluster cluster--tight">
+              <Search size={18} className="icon--moss" />
+              <h3 className="h-3">Pick a race</h3>
             </div>
-            <p className="prototype-score-calculator-course-picker-p-98">Search below and select your race.</p>
+            <p className="small muted mt-1">Search below and select your race.</p>
             <input
               type="text"
               value={query}
@@ -679,50 +680,50 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
               placeholder="Search by race name…"
               aria-label="Search races"
               autoComplete="off"
-              className="prototype-score-calculator-course-picker-input-99"
+              className="input mt-4"
             />
             {racesLoading && (
-              <p className="prototype-score-calculator-course-picker-p-100">
+              <p className="loading mt-4">
                 <Spinner /> Loading races…
               </p>
             )}
-            {racesError && <p className="prototype-score-calculator-course-picker-p-101">{racesError}</p>}
+            {racesError && <p className="notice notice--error notice--plain mt-4">{racesError}</p>}
             {!racesLoading && !racesError && races.length === 0 && query.trim().length < 2 && (
-              <p className="prototype-score-calculator-course-picker-p-102">No races with a course yet. Upload a GPX to start.</p>
+              <p className="small muted mt-4">No races with a course yet. Upload a GPX to start.</p>
             )}
-            <div className="prototype-score-calculator-course-picker-div-103">
+            <div className="calc-races mt-4">
               {races.map((race) => (
                 <button
                   key={race.race_id}
                   onClick={() => onChooseRace(race)}
                   disabled={loadingCourse}
-                  className="prototype-score-calculator-course-picker-button-104"
+                  className="calc-race"
                 >
-                  <span className="prototype-score-calculator-explanation-step-div-38">
-                    <span className="prototype-score-calculator-course-picker-span-105">
+                  <span className="min0">
+                    <span className="calc-race__name">
                       {race.event_name} · {race.course_name}
                     </span>
-                    <span className="prototype-score-calculator-course-picker-span-106">
+                    <span className="calc-race__meta">
                       {race.calculator_only ? [race.event_location, race.event_country].filter(Boolean).join(', ') || 'course' : race.event_date} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
                     </span>
                   </span>
-                  <ArrowUpRight size={14} className="prototype-score-calculator-course-picker-arrow-up-right-107" />
+                  <ArrowUpRight size={16} className="calc-race__arrow" />
                 </button>
               ))}
             </div>
             {known.length > 0 && !missing && (
-              <div className="prototype-score-calculator-course-picker-div-94">
-                <p className="prototype-score-calculator-course-picker-p-108">WELL-KNOWN RACES · NO COURSE HERE YET</p>
-                <div className="prototype-score-calculator-course-picker-div-109">
+              <div className="mt-6">
+                <p className="eyebrow eyebrow--plain eyebrow--sm">WELL-KNOWN RACES · NO COURSE HERE YET</p>
+                <div className="calc-races mt-2">
                   {known.map((name) => (
                     <button
                       key={name}
                       type="button"
                       onClick={() => setMissing(name)}
-                      className="prototype-score-calculator-course-picker-button-110"
+                      className="calc-race calc-race--quiet"
                     >
-                      <span className="prototype-score-calculator-course-picker-span-111">{name}</span>
-                      <span className="prototype-score-calculator-course-picker-span-112">HOW TO GET THE GPX</span>
+                      <span className="calc-race__name">{name}</span>
+                      <span className="calc-race__hint">HOW TO GET THE GPX</span>
                     </button>
                   ))}
                 </div>
@@ -731,68 +732,65 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
             {missing ? <NoCourseHelp name={missing} onClose={() => setMissing(null)} /> : nothingFound && known.length === 0 && <NoCourseHelp name={query.trim()} />}
           </div>
 
-          <div id="course-source-upload" hidden={source !== 'upload'} className={tool.panel}>
-            <div className="prototype-score-calculator-course-picker-div-96">
-              <Upload size={16} className="prototype-score-calculator-score-explanation-git-branch-50" />
-              <h3 className="prototype-score-calculator-course-picker-h3-97">Upload your course</h3>
+          <div id="course-source-upload" hidden={source !== 'upload'} className="card">
+            <div className="cluster cluster--tight">
+              <Upload size={18} className="icon--moss" />
+              <h3 className="h-3">Upload your course</h3>
             </div>
-            <p className="prototype-score-calculator-course-picker-p-113">Choose a GPX route file from your watch or race organizer.</p>
+            <p className="small muted mt-1">Choose a GPX route file from your watch or race organizer.</p>
             <label
               htmlFor="calc-gpx-input"
               {...dropProps}
-              className={`prototype-score-calculator-course-picker-label-114 ${dragging ? "prototype-score-calculator-course-picker-label-115" : "prototype-score-calculator-course-picker-label-116"}`}
+              className={`dropzone mt-4 ${dragging ? 'is-dragging' : ''}`}
             >
               {loadingCourse ? (
                 <>
-                  <Spinner className="prototype-score-calculator-course-picker-spinner-117" />
-                  <span className="prototype-score-calculator-stat-dd-33">Reading course…</span>
-                  <span className="prototype-score-calculator-course-picker-span-118">This may take a few seconds.</span>
+                  <Spinner className="spinner--lg" />
+                  <span className="dropzone__title">Reading course…</span>
+                  <span className="dropzone__hint">This may take a few seconds.</span>
                 </>
               ) : (
                 <>
-                  <Upload size={22} className="prototype-score-calculator-score-explanation-git-branch-50" />
-                  <span className="prototype-score-calculator-stat-dd-33">Drop a .gpx file here, or browse</span>
-                  <span className="prototype-score-calculator-course-picker-span-119">
+                  <Upload size={26} />
+                  <span className="dropzone__title">Drop a .gpx file here, or browse</span>
+                  <span className="dropzone__hint">
                     Your file stays private unless you create a share link.
                   </span>
-                  <span className="prototype-score-calculator-course-picker-span-120">
+                  <span className="btn btn--primary btn--sm mt-1">
                     Choose file
                   </span>
                 </>
               )}
-              <input id="calc-gpx-input" type="file" accept=".gpx" onChange={onUpload} disabled={loadingCourse} className="prototype-score-calculator-course-picker-input-121" />
+              <input id="calc-gpx-input" type="file" accept=".gpx" onChange={onUpload} disabled={loadingCourse} />
             </label>
           </div>
         </div>
-        {loadingCourse && <p role="status" className="prototype-score-calculator-course-picker-p-122">Loading your course…</p>}
-        {(refused || loadError) && <p className="prototype-score-calculator-course-picker-p-123" role="alert">{refused || loadError}</p>}
-            <section className="prototype-score-calculator-course-picker-section-124 otri-group">
-              <h3 className="prototype-score-calculator-stat-dd-33">
-                <span className="prototype-score-calculator-score-explanation-git-branch-50">What is a GPX, and where do I get one?</span>
-              </h3>
-              <div className="prototype-score-calculator-course-picker-div-125">
-                <p>
-                  A GPX file is the route as a list of GPS points, the format every watch, phone app and route planner can export. It weighs
-                  a megabyte or two and holds nothing about you unless you exported a recording with timestamps.
-                </p>
-                <p>
-                  <span className="prototype-score-calculator-stat-dd-33">Before a race:</span> most organizers publish the course GPX on the race
-                  website's course or route page weeks ahead, often per distance; look for "Download GPX", "Track" or "Trace", or check
-                  the final participant email.{' '}
-                  <span className="prototype-score-calculator-stat-dd-33">After a race:</span> export your own recording (Garmin Connect, Strava,
-                  Coros, Suunto, Polar all have "Export GPX"); it will be slightly longer than the official course.
-                </p>
-                <p>
-                  A file with a point at least every 30 m scores at High confidence; a heavily simplified file still scores, labelled Low.
-                  Uploads are measured and forgotten unless you share the score.{' '}
-                  <a href="https://github.com/OTRI-run/otri/blob/main/docs/WHAT-IS-A-GPX.md" target="_blank" rel="noreferrer" className="prototype-score-calculator-course-picker-a-126">
-                    Full guide ↗
-                  </a>
-                </p>
-              </div>
-            </section>
-        <WhatWeScore className="prototype-score-calculator-course-picker-what-we-score-127" />
-        </div>
+        {loadingCourse && <p role="status" className="loading mt-4"><Spinner /> Loading your course…</p>}
+        {(refused || loadError) && <p className="notice notice--error notice--plain mt-4" role="alert">{refused || loadError}</p>}
+        <section className="card card--gravel mt-8">
+          <h3 className="h-4">What is a GPX, and where do I get one?</h3>
+          <div className="stack stack--tight small muted measure mt-3">
+            <p>
+              A GPX file is the route as a list of GPS points, the format every watch, phone app and route planner can export. It weighs
+              a megabyte or two and holds nothing about you unless you exported a recording with timestamps.
+            </p>
+            <p>
+              <b className="ink">Before a race:</b> most organizers publish the course GPX on the race
+              website's course or route page weeks ahead, often per distance; look for "Download GPX", "Track" or "Trace", or check
+              the final participant email.{' '}
+              <b className="ink">After a race:</b> export your own recording (Garmin Connect, Strava,
+              Coros, Suunto, Polar all have "Export GPX"); it will be slightly longer than the official course.
+            </p>
+            <p>
+              A file with a point at least every 30 m scores at High confidence; a heavily simplified file still scores, labelled Low.
+              Uploads are measured and forgotten unless you share the score.{' '}
+              <a href="https://github.com/OTRI-run/otri/blob/main/docs/WHAT-IS-A-GPX.md" target="_blank" rel="noreferrer" className="link">
+                Full guide ↗
+              </a>
+            </p>
+          </div>
+        </section>
+        <WhatWeScore className="mt-4" />
       </div>
     </section>
   )
@@ -814,74 +812,72 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
   ]
 
   return (
-    <section className="prototype-score-calculator-course-details-section-128">
-      <div className={CONTAINER}>
-        <div className="prototype-score-calculator-course-details-div-129">
-          <div className="prototype-score-calculator-explanation-step-div-38">
-            <Eyebrow>01 / COURSE</Eyebrow>
-            <h2 className="prototype-score-calculator-course-details-h2-130 otri-fit" style={{ fontSize: fitFontSize(courseLabel.name, { min: 26, vw: 4, max: 44 }) }}>{courseLabel.name}</h2>
-            <p className="prototype-score-calculator-course-details-p-131">
-              {courseLabel.meta ? `${courseLabel.meta} · ` : ''}
-              <span className={courseLabel.verified ? "prototype-score-calculator-course-picker-a-126" : "prototype-score-calculator-course-details-span-132"}>
-                {courseLabel.verified ? 'Race course' : courseLabel.meta === 'Shared course' ? 'Shared course' : 'Your upload'}
-              </span>
-              {courseLabel.sourceUrl && (
-                <>
-                  {' · course file from '}
-                  <a href={courseLabel.sourceUrl} target="_blank" rel="noreferrer" className="prototype-score-calculator-no-course-help-a-80">
-                    {courseLabel.sourceUrl.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}
-                  </a>
-                </>
-              )}
-            </p>
-          </div>
-          <div className="prototype-score-calculator-course-details-div-133">
-            {/* A race's course can be taken along; the visitor's own upload they already have. */}
-            {courseLabel.raceId && (
-              <a
-                href={raceGpxDownloadUrl(courseLabel.raceId)}
-                title="The track and its elevations, nothing else from the original file"
-                className="prototype-score-calculator-course-details-a-134"
-              >
-                <Download size={14} /> Download the GPX
-              </a>
+    <div className="mt-6">
+      <div className="cluster cluster--between cluster--top">
+        <div className="min0 stack stack--tight">
+          <Eyebrow>01 / COURSE</Eyebrow>
+          <h2 className="otri-fit" style={{ fontSize: fitFontSize(courseLabel.name, { min: 26, vw: 4, max: 44 }) }}>{courseLabel.name}</h2>
+          <p className="small muted">
+            {courseLabel.meta ? `${courseLabel.meta} · ` : ''}
+            <span className={courseLabel.verified ? 'badge badge--moss' : 'badge badge--ochre'}>
+              {courseLabel.verified ? 'Race course' : courseLabel.meta === 'Shared course' ? 'Shared course' : 'Your upload'}
+            </span>
+            {courseLabel.sourceUrl && (
+              <>
+                {' · course file from '}
+                <a href={courseLabel.sourceUrl} target="_blank" rel="noreferrer" className="link">
+                  {courseLabel.sourceUrl.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}
+                </a>
+              </>
             )}
-            <button
-              onClick={onChangeCourse}
-              className="prototype-score-calculator-course-details-button-135"
-            >
-              <RefreshCw size={14} /> Change course
-            </button>
-          </div>
-        </div>
-
-        <div className="prototype-score-calculator-course-details-div-136">
-          {stats.map(([label, value], index) => (
-            <div key={label} className={`prototype-score-calculator-course-details-div-137 ${index > 0 ? "prototype-score-calculator-course-details-div-138" : ''} ${index % 2 === 1 ? "prototype-score-calculator-course-details-div-139" : ''}`}>
-              <small className="prototype-score-calculator-course-details-small-140">{label}</small>
-              <b className="prototype-score-calculator-course-details-b-141">{value}</b>
-            </div>
-          ))}
-        </div>
-
-        {gpxText && (
-          <div className="prototype-score-calculator-course-details-div-142">
-            <CourseMap gpxText={gpxText} measurement={measurement} className="prototype-score-calculator-course-details-course-map-143" />
-          </div>
-        )}
-
-        {courseLabel.meta === 'Shared course' && shareId && (
-          <ReportForm kind="shared_course" subjectId={shareId} subjectLabel={courseLabel.name} prompt="Is this course file yours, or wrong?" />
-        )}
-        {tooSparse && (
-          <p className="prototype-score-calculator-course-details-p-144">
-            This track has a point only every {measurement.median_edge_m} m. Sparse recordings cut switchbacks short, so
-            the course measures shorter and easier than it is. For a trustworthy score, upload a track recorded at
-            least every 30 m (1–5 s on most watches).
           </p>
-        )}
+        </div>
+        <div className="cluster cluster--tight">
+          {/* A race's course can be taken along; the visitor's own upload they already have. */}
+          {courseLabel.raceId && (
+            <a
+              href={raceGpxDownloadUrl(courseLabel.raceId)}
+              title="The track and its elevations, nothing else from the original file"
+              className="btn btn--secondary btn--sm"
+            >
+              <Download size={15} /> Download the GPX
+            </a>
+          )}
+          <button
+            onClick={onChangeCourse}
+            className="btn btn--ghost btn--sm"
+          >
+            <Refresh size={15} /> Change course
+          </button>
+        </div>
       </div>
-    </section>
+
+      <dl className="kv card card--gravel mt-6">
+        {stats.map(([label, value]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      {gpxText && (
+        <div className="card card--flush mt-6">
+          <CourseMap gpxText={gpxText} measurement={measurement} className="card__body" />
+        </div>
+      )}
+
+      {courseLabel.meta === 'Shared course' && shareId && (
+        <ReportForm kind="shared_course" subjectId={shareId} subjectLabel={courseLabel.name} prompt="Is this course file yours, or wrong?" />
+      )}
+      {tooSparse && (
+        <p className="notice notice--warning notice--plain mt-6">
+          This track has a point only every {measurement.median_edge_m} m. Sparse recordings cut switchbacks short, so
+          the course measures shorter and easier than it is. For a trustworthy score, upload a track recorded at
+          least every 30 m (1–5 s on most watches).
+        </p>
+      )}
+    </div>
   )
 }
 
@@ -923,7 +919,7 @@ function TimePart({ id, label, value, max, onCommit, nextId, wide = false }) {
   }
 
   return (
-    <label className="prototype-score-calculator-time-part-label-145">
+    <label className="calc-time__part">
       <input
         id={id}
         type="text"
@@ -949,10 +945,10 @@ function TimePart({ id, label, value, max, onCommit, nextId, wide = false }) {
             commit(shown, true)
           }
         }}
-        className={`${wide ? "prototype-score-calculator-time-part-input-147" : "prototype-score-calculator-time-part-input-147"} prototype-score-calculator-time-part-input-146`}
+        className="calc-time__input"
         style={{ width: `${Math.max(shown.length, wide ? 1 : 2) + 0.35}ch` }}
       />
-      <span className="prototype-score-calculator-time-part-span-148">{label}</span>
+      <span className="calc-time__unit">{label}</span>
     </label>
   )
 }
@@ -969,23 +965,24 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
   const set = (h, m, s) => onChange(h * 3600 + m * 60 + s)
   // The time that scores `target` here, from the model's ceiling for this course.
   const timeFor = (target) => (ceilingSeconds ? Math.round(ceilingSeconds / Math.pow(target / 1000, 1 / POWER_EXPONENT)) : null)
-  const chip = "prototype-score-calculator-target-time-controls-style-149"
+  // How far along the slider's track the time sits, for the filled part of the track.
+  const fill = range.max > range.min ? `${Math.min(100, Math.max(0, ((targetSeconds - range.min) / (range.max - range.min)) * 100))}%` : '0%'
 
   return (
-    <div className="prototype-score-calculator-target-time-controls-div-150">
-      <p className="prototype-score-calculator-target-time-controls-p-151">2 · Enter your finish time</p>
-      <div className="prototype-score-calculator-target-time-controls-div-152">
-        <div className="prototype-score-calculator-target-time-controls-div-153" role="group" aria-label="Target finish time">
+    <div className="card card--white mt-6">
+      <p className="h-4">2 · Enter your finish time</p>
+      <div className="calc-time__row mt-3">
+        <div className="calc-time__parts" role="group" aria-label="Target finish time">
           <TimePart id="calc-hours" label="HOURS" value={hours} max={199} wide onCommit={(h) => set(h, minutes, seconds)} nextId="calc-minutes" />
-          <span className="prototype-score-calculator-target-time-controls-span-154">:</span>
+          <span className="calc-time__colon">:</span>
           <TimePart id="calc-minutes" label="MIN" value={minutes} max={59} onCommit={(m) => set(hours, m, seconds)} nextId="calc-seconds" />
-          <span className="prototype-score-calculator-target-time-controls-span-154">:</span>
+          <span className="calc-time__colon">:</span>
           <TimePart id="calc-seconds" label="SEC" value={seconds} max={59} onCommit={(s) => set(hours, minutes, s)} />
         </div>
-        <p className="prototype-score-calculator-target-time-controls-p-155">{formatPace(targetSeconds, distanceKm, units)}</p>
-        <div className="prototype-score-calculator-target-time-controls-div-156">
+        <p className="mono small muted">{formatPace(targetSeconds, distanceKm, units)}</p>
+        <div className="cluster cluster--tight">
           {NUDGES.map((delta) => (
-            <button key={delta} type="button" onClick={() => onChange(targetSeconds + delta)} className={`${chip} prototype-score-calculator-target-time-controls-button-157`}>
+            <button key={delta} type="button" onClick={() => onChange(targetSeconds + delta)} className="chip">
               {delta > 0 ? '+' : '−'}{Math.abs(delta) / 60} min
             </button>
           ))}
@@ -999,23 +996,24 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
         value={targetSeconds}
         onChange={(event) => onChange(Number(event.target.value))}
         aria-label="Target finish time"
-        className="prototype-score-calculator-target-time-controls-input-158"
+        className="range mt-5"
+        style={{ '--range-fill': fill }}
       />
-      <div className="prototype-score-calculator-target-time-controls-div-159">
-        <span>{range.known ? `${formatHms(range.min)} · SCORE ${SLIDER_MAX_SCORE}` : formatHms(range.min)}{range.known && <span className="prototype-score-calculator-target-time-controls-span-160"> · 1000 = WORLD-RECORD LEVEL, {formatHms(ceilingSeconds)}</span>}</span>
+      <div className="calc-time__ends">
+        <span>{range.known ? `${formatHms(range.min)} · SCORE ${SLIDER_MAX_SCORE}` : formatHms(range.min)}{range.known && <span className="hide-sm"> · 1000 = WORLD-RECORD LEVEL, {formatHms(ceilingSeconds)}</span>}</span>
         <span>{range.known ? `${formatHms(range.max)} · SCORE ${SLIDER_MIN_SCORE}` : formatHms(range.max)}</span>
       </div>
       {range.known && (
-        <section className="prototype-score-calculator-target-time-controls-section-161">
-          <h3 className="prototype-score-calculator-target-time-controls-h3-162">Find a time for a target score</h3>
-          <div className="prototype-score-calculator-target-time-controls-div-163">
+        <section className="mt-6">
+          <h3 className="h-4">Find a time for a target score</h3>
+          <div className="cluster cluster--tight mt-3">
           {SCORE_JUMPS.map((target) => (
             <button
               key={target}
               type="button"
               onClick={() => onChange(timeFor(target))}
               title={`${formatHms(timeFor(target))} scores ${target} on this course`}
-              className={`${chip} ${score === target ? "prototype-score-calculator-target-time-controls-button-164" : "prototype-score-calculator-target-time-controls-button-157"}`}
+              className={`chip ${score === target ? 'is-active' : ''}`}
             >
               {target}
             </button>
@@ -1023,7 +1021,7 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
           </div>
         </section>
       )}
-      {analysisError && <p className="prototype-score-calculator-share-box-p-72">{analysisError}</p>}
+      {analysisError && <p className="notice notice--error notice--plain mt-4">{analysisError}</p>}
     </div>
   )
 }
@@ -1227,7 +1225,7 @@ export default function ScoreCalculator({ embedded = false }) {
   // Before a course is chosen the picker is the first thing on the page, so a visitor starts at
   // once; with a course, the score comes first and the course's details follow it.
   const course = (
-    <div id="calculator-course" className="prototype-score-calculator-score-calculator-div-165">
+    <div id="calculator-course" className="min0">
       {hasCourse ? (
         <CourseDetails gpxText={gpxText} measurement={measurement} features={features} courseLabel={courseLabel} onChangeCourse={startOver} shareId={shareId} />
       ) : (
@@ -1251,20 +1249,20 @@ export default function ScoreCalculator({ embedded = false }) {
     <>
       {!hasCourse && course}
       {hasCourse && (
-      <section className="prototype-score-calculator-score-calculator-section-166">
-        <div className={`${CONTAINER} prototype-score-calculator-score-calculator-div-167`}>
-          <div className="prototype-score-calculator-explanation-step-div-38">
-            <div className="prototype-score-calculator-score-calculator-div-168">
-              OPEN TRAIL RUNNING INDEX <span className="prototype-score-calculator-score-panel-span-17">·</span> SCORE CALCULATOR
-            </div>
-                <h1 className="prototype-score-calculator-score-calculator-h1-169 otri-fit" style={{ fontSize: fitFontSize(courseLabel.name, { min: 30, vw: 5, max: 56 }) }}>
+      <section className="section section--tight section--line-bottom topo">
+        <div className="wrap calc-hero">
+          <div className="min0">
+            <p className="eyebrow">
+              OPEN TRAIL RUNNING INDEX <span className="sep">·</span> SCORE CALCULATOR
+            </p>
+                <h1 className="otri-fit mt-4" style={{ fontSize: fitFontSize(courseLabel.name, { min: 30, vw: 5, max: 56 }) }}>
                   Your course:{' '}
-                  <em className="prototype-score-calculator-score-calculator-em-170 otri-gradient-text">{courseLabel.name}</em>
+                  <em className="accent">{courseLabel.name}</em>
                 </h1>
-                <p className="prototype-score-calculator-score-calculator-p-171">
+                <p className="lead mt-4">
                   Replace the suggested time with your own. Your score updates automatically.
                 </p>
-                <button type="button" onClick={startOver} className="prototype-score-calculator-score-calculator-button-172">Change course</button>
+                <button type="button" onClick={startOver} className="btn btn--ghost mt-3">Change course</button>
                 <TargetTimeControls
                   targetSeconds={targetSeconds}
                   onChange={updateTargetSeconds}
@@ -1280,18 +1278,20 @@ export default function ScoreCalculator({ embedded = false }) {
       )}
 
       {!embedded && hasCourse && estimate && (
-        <section className={`${CONTAINER} prototype-score-calculator-score-calculator-section-173`}>
-          <h3 className="prototype-score-calculator-score-calculator-h3-174">Share my score</h3>
-          <ShareBox courseLabel={courseLabel} courseFile={courseFile} targetSeconds={targetSeconds} shareId={shareId} onShared={setShareId} imageOpen={shareImageOpen} onToggleImage={estimate ? () => setShareImageOpen((open) => !open) : null} />
+        <section className="section section--tight">
+          <div className="wrap">
+            <h3 className="h-3">Share my score</h3>
+            <ShareBox courseLabel={courseLabel} courseFile={courseFile} targetSeconds={targetSeconds} shareId={shareId} onShared={setShareId} imageOpen={shareImageOpen} onToggleImage={estimate ? () => setShareImageOpen((open) => !open) : null} />
+          </div>
         </section>
       )}
 
       {!embedded && hasCourse && estimate && shareImageOpen && (
-        <section id="calculator-share" className="prototype-score-calculator-score-calculator-section-175">
-          <div className={CONTAINER}>
-            <p className="prototype-score-calculator-score-calculator-p-176">SHARE YOUR TARGET</p>
-            <h2 className="prototype-score-calculator-score-calculator-h2-177">An image and a post, ready for your feed</h2>
-            <p className="prototype-score-calculator-score-calculator-p-178">
+        <section id="calculator-share" className="section section--tight section--card section--line-top section--line-bottom calc-share-image">
+          <div className="wrap">
+            <p className="eyebrow">SHARE YOUR TARGET</p>
+            <h2 className="h-1 mt-3">An image and a post, ready for your feed</h2>
+            <p className="lead mt-3 mb-8">
               Pick a format, change the words if you like, then download the image or send both to an app.
               {shareUrl ? ' The post carries your link, so friends open this course with your time and try their own.' : ' Press “Share this score” first if you want the post to carry a link to this course.'}
             </p>
@@ -1301,20 +1301,24 @@ export default function ScoreCalculator({ embedded = false }) {
       )}
 
       {hasCourse && (
-        <section className="prototype-score-calculator-score-calculator-section-179">
-          <h3 className={`${CONTAINER} prototype-score-calculator-score-calculator-h3-180`}>Course map and details</h3>
-          {course}
+        <section className="section section--tight section--line-top">
+          <div className="wrap">
+            <h3 className="h-3">Course map and details</h3>
+            {course}
+          </div>
         </section>
       )}
 
       {hasCourse && estimate && (
-        <section>
-          <h3 className={`${CONTAINER} prototype-score-calculator-score-calculator-h3-180`}>How is my score calculated?</h3>
-        <ScoreExplanation
-          estimate={estimate}
-          features={features}
-          targetSeconds={targetSeconds}
-        />
+        <section className="section section--gravel section--line-top">
+          <div className="wrap">
+            <h3 className="h-3">How is my score calculated?</h3>
+            <ScoreExplanation
+              estimate={estimate}
+              features={features}
+              targetSeconds={targetSeconds}
+            />
+          </div>
         </section>
       )}
     </>

@@ -1,6 +1,6 @@
 import './SharePanel.css'
 import { useEffect, useMemo, useRef, useState } from 'preact/compat'
-import { Check, Copy, Download, Share2 } from 'lucide-react'
+import { Check, Copy, Download, Share } from '../src/ui/icons'
 import { FORMATS, canvasToBlob, drawLeaderboard, drawRunnerCard, drawScoreCard } from './shareImage'
 
 // Sharing, for the two people who have something to show: an organizer with scored results (a
@@ -16,18 +16,19 @@ function formatHms(totalSeconds) {
 // A race name as a hashtag, when it makes a usable one: long names and names that are mostly
 // digits read as noise, and a post is better without them.
 function hashtag(text) {
-  const tag = `#${String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\b(19|20)\d\d\b/g, '').replace(/[^A-Za-z0-9]+/g, '')}`
+  const tag = `#${String(text).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\b(19|20)\d\d\b/g, '').replace(/[^A-Za-z0-9]+/g, '')}`
   return tag.length > 2 && tag.length <= 28 && (tag.match(/[0-9]/g) ?? []).length <= 6 ? tag : ''
 }
 const slug = (text) => String(text).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'otri'
 
+// A small choice: a label over a segmented control, one option pressed.
 function Choice({ label, options, value, onChange }) {
   return (
-    <div className="prototype-share-panel-choice-div-1">
-      <p className="prototype-share-panel-choice-p-2">{label}</p>
-      <div className="prototype-share-panel-choice-div-3">
+    <div className="share-choice">
+      <p className="eyebrow eyebrow--plain eyebrow--sm">{label}</p>
+      <div className="seg seg--sm mt-2">
         {options.map(([id, text, title]) => (
-          <button key={id} type="button" title={title} onClick={() => onChange(id)} aria-pressed={value === id} className={`prototype-share-panel-choice-button-4 ${value === id ? "prototype-share-panel-choice-button-5" : "prototype-share-panel-choice-button-6"}`}>
+          <button key={id} type="button" title={title} onClick={() => onChange(id)} aria-pressed={value === id}>
             {text}
           </button>
         ))}
@@ -86,46 +87,48 @@ function Panel({ draw, fileName, suggestedText, url, children }) {
 
   const ratio = FORMATS[format].width / FORMATS[format].height
   return (
-    <div className="prototype-share-panel-panel-div-7">
-      <div className="prototype-share-panel-choice-div-1">
-        <canvas ref={canvasRef} aria-label="Preview of the share image" className="prototype-share-panel-panel-canvas-8" style={{ aspectRatio: String(ratio) }} />
-        <p className="prototype-share-panel-panel-p-9">{FORMATS[format].width} × {FORMATS[format].height} · {FORMATS[format].hint}</p>
+    <div className="share-panel">
+      <div className="share-preview">
+        <canvas ref={canvasRef} aria-label="Preview of the share image" className="share-preview__canvas" style={{ aspectRatio: String(ratio) }} />
+        <p className="tiny muted mono center mt-2">{FORMATS[format].width} × {FORMATS[format].height} · {FORMATS[format].hint}</p>
       </div>
-      <div className="prototype-share-panel-choice-div-1">
-        <div className="prototype-share-panel-panel-div-10">
+      <div className="stack min0">
+        <div className="cluster cluster--loose cluster--top">
           {children}
           <Choice label="FORMAT" value={format} onChange={setFormat} options={Object.entries(FORMATS).map(([id, f]) => [id, f.label, f.hint])} />
         </div>
-        <label className="prototype-share-panel-panel-label-11">
-          TEXT FOR YOUR POST · EDIT IT FREELY
-          <textarea value={text} onChange={(event) => { setText(event.target.value); setEdited(true) }} rows={9} className="prototype-share-panel-panel-textarea-12" />
+        <label className="field">
+          <span className="field__label">Text for your post <span className="optional">· edit it freely</span></span>
+          <textarea value={text} onChange={(event) => { setText(event.target.value); setEdited(true) }} rows={9} className="input share-text" />
         </label>
         {edited && (
-          <button type="button" onClick={() => setEdited(false)} className="prototype-share-panel-panel-button-13">Write it again from the selection</button>
+          <p>
+            <button type="button" onClick={() => setEdited(false)} className="link small">Write it again from the selection</button>
+          </p>
         )}
-        <div className="prototype-share-panel-panel-div-14">
-          <button type="button" onClick={download} className="prototype-share-panel-panel-button-15">
-            <Download size={14} /> Download image
+        <div className="cluster cluster--tight">
+          <button type="button" onClick={download} className="btn btn--dark btn--sm">
+            <Download size={15} /> Download image
           </button>
-          <button type="button" onClick={copy} className="prototype-share-panel-panel-button-16">
-            {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Text copied' : 'Copy text'}
+          <button type="button" onClick={copy} className="btn btn--secondary btn--sm">
+            {copied ? <Check size={15} /> : <Copy size={15} />} {copied ? 'Text copied' : 'Copy text'}
           </button>
           {(canShareFiles || typeof navigator?.share === 'function') && (
-            <button type="button" onClick={share} className="prototype-share-panel-panel-button-16">
-              <Share2 size={14} /> Share…
+            <button type="button" onClick={share} className="btn btn--secondary btn--sm">
+              <Share size={15} /> Share…
             </button>
           )}
         </div>
         {url && (
-          <p className="prototype-share-panel-panel-p-17">
+          <p className="cluster cluster--tight small muted">
             Or post the link:
-            <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`} target="_blank" rel="noreferrer" className="prototype-share-panel-panel-a-18">Facebook</a>
-            <a href={`https://wa.me/?text=${encodeURIComponent(`${text}`)}`} target="_blank" rel="noreferrer" className="prototype-share-panel-panel-a-18">WhatsApp</a>
-            <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(text.slice(0, 240))}`} target="_blank" rel="noreferrer" className="prototype-share-panel-panel-a-18">X</a>
+            <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`} target="_blank" rel="noreferrer" className="link link--quiet">Facebook</a>
+            <a href={`https://wa.me/?text=${encodeURIComponent(`${text}`)}`} target="_blank" rel="noreferrer" className="link link--quiet">WhatsApp</a>
+            <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(text.slice(0, 240))}`} target="_blank" rel="noreferrer" className="link link--quiet">X</a>
           </p>
         )}
-        {error && <p className="prototype-share-panel-panel-p-19">{error}</p>}
-        <p className="prototype-share-panel-panel-p-20">Facebook and Instagram take the image as an attachment: download it, then paste the text. On a phone, Share… hands both to the app.</p>
+        {error && <p className="notice notice--warning notice--plain">{error}</p>}
+        <p className="tiny muted">Facebook and Instagram take the image as an attachment: download it, then paste the text. On a phone, Share… hands both to the app.</p>
       </div>
     </div>
   )

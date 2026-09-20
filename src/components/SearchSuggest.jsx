@@ -1,6 +1,5 @@
-import './SearchSuggest.css'
 import { useId, useRef, useState } from 'preact/compat'
-import { Search } from 'lucide-react'
+import { Search } from '../ui/icons'
 import { willNavigate } from '../lib/comfort'
 
 /**
@@ -43,8 +42,8 @@ export default function SearchSuggest({ value, onChange, suggestions, placeholde
   }
 
   return (
-    <div ref={rootRef} className={`src-components-search-suggest-search-suggest-div-1 ${className}`} onBlur={(event) => { if (!rootRef.current?.contains(event.relatedTarget)) setOpen(false) }}>
-      <Search size={16} className="src-components-search-suggest-search-suggest-search-2" />
+    <div ref={rootRef} className={`input-wrap ${className}`} onBlur={(event) => { if (!rootRef.current?.contains(event.relatedTarget)) setOpen(false) }}>
+      <Search size={18} />
       <input
         type="search"
         role="combobox"
@@ -59,10 +58,10 @@ export default function SearchSuggest({ value, onChange, suggestions, placeholde
         onChange={(event) => { onChange(event.target.value); setOpen(true); setActive(-1) }}
         onFocus={() => setOpen(true)}
         onKeyDown={onKeyDown}
-        className="src-components-search-suggest-search-suggest-input-3"
+        className="input"
       />
       {shown && (
-        <ul id={listId} role="listbox" className="src-components-search-suggest-search-suggest-ul-4">
+        <ul id={listId} role="listbox" className="listbox">
           {suggestions.map((suggestion, index) => (
             <li
               key={suggestion.key}
@@ -72,13 +71,13 @@ export default function SearchSuggest({ value, onChange, suggestions, placeholde
               tabIndex={-1}
               onMouseDown={(event) => { event.preventDefault(); go(suggestion) }}
               onMouseEnter={() => setActive(index)}
-              className={`src-components-search-suggest-search-suggest-li-5 ${index === active ? "src-components-search-suggest-search-suggest-li-6" : ''}`}
+              className={`listbox__item ${suggestion.href ? '' : 'is-quiet'}`}
             >
-              <span className={`src-components-search-suggest-search-suggest-span-7 ${suggestion.href ? "src-components-search-suggest-search-suggest-span-8" : "src-components-search-suggest-search-suggest-span-9"}`}>{suggestion.label}</span>
-              <span className="src-components-search-suggest-search-suggest-span-10">{suggestion.detail}</span>
+              <span className="truncate" style={{ fontWeight: 600 }}>{suggestion.label}</span>
+              <span className="listbox__meta">{suggestion.detail}</span>
             </li>
           ))}
-          <li className="src-components-search-suggest-search-suggest-li-11" aria-hidden="true">↑ ↓ TO CHOOSE · ENTER TO OPEN</li>
+          <li className="listbox__hint" aria-hidden="true">↑ ↓ TO CHOOSE · ENTER TO OPEN</li>
         </ul>
       )}
     </div>

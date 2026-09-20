@@ -1,6 +1,6 @@
 # OTRI Prototype
 
-A separate, working demonstration of the full pipeline built so far — kept apart from the production marketing site (`index.html`) so that finished design never gets disturbed by in-progress feature work, while reusing the same visual design system (colors, type, Tailwind classes).
+A separate, working demonstration of the full pipeline built so far — kept apart from the production marketing site (`index.html`) so that finished design never gets disturbed by in-progress feature work, while reusing the same visual design system (`src/ui`, see `docs/FRONTEND-STYLING.md`).
 
 ## What it wires together
 

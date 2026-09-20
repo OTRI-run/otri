@@ -1,5 +1,4 @@
-import './RaceListing.css'
-import { ArrowRight, ExternalLink } from 'lucide-react'
+import { ArrowRight, External } from '../src/ui/icons'
 
 // A race its organizer has shown before it has results: say so, and send the runner to what they
 // can do with it today, which is to try a target time on the course.
@@ -19,33 +18,29 @@ function countdown(iso, now = new Date()) {
 
 export function ListingBadge({ status, className = '' }) {
   if (status !== 'upcoming' && status !== 'awaiting_results') return null
-  return (
-    <span className={`prototype-race-listing-listing-badge-span-1 ${className}`}>
-      {status === 'upcoming' ? 'UPCOMING' : 'AWAITING RESULTS'}
-    </span>
-  )
+  return <span className={`badge ${className}`}>{status === 'upcoming' ? 'Upcoming' : 'Awaiting results'}</span>
 }
 
 export default function RaceListing({ race }) {
   const upcoming = race.listing_status === 'upcoming'
 
   return (
-    <div className="prototype-race-listing-race-listing-div-2">
-      <p className="prototype-race-listing-race-listing-p-3">{upcoming ? 'UPCOMING · NO RESULTS YET' : 'NO RESULTS ON OTRI YET'}</p>
-      <h3 className="prototype-race-listing-race-listing-h3-4">{upcoming ? `Race day is ${countdown(race.event_date) ?? 'soon'}. Scores appear here afterwards.` : 'The organizer has not published the results yet.'}</h3>
-      <p className="prototype-race-listing-race-listing-p-5">
+    <div className="card card--pad-lg topo--faint mt-6 stack">
+      <p className="eyebrow">{upcoming ? 'Upcoming · no results yet' : 'No results on OTRI yet'}</p>
+      <h3 className="h-2">{upcoming ? `Race day is ${countdown(race.event_date) ?? 'soon'}. Scores appear here afterwards.` : 'The organizer has not published the results yet.'}</h3>
+      <p className="muted measure">
         Scores come from the official results, which the race's organizer uploads and publishes.
         {race.has_gpx ? ' The course is already here, so you can see what a finish time would be worth.' : ''}
       </p>
-      <div className="prototype-race-listing-race-listing-div-6">
+      <div className="cluster cluster--loose mt-2">
         {race.has_gpx && (
-          <a href={`#calculator?race=${encodeURIComponent(race.race_id)}`} className="prototype-race-listing-race-listing-a-7">
-            Try a target time on this course <ArrowRight size={15} />
+          <a href={`#calculator?race=${encodeURIComponent(race.race_id)}`} className="btn btn--primary">
+            Try a target time on this course <ArrowRight size={16} />
           </a>
         )}
         {race.organizer_website && (
-          <a href={race.organizer_website} target="_blank" rel="noreferrer nofollow" className="prototype-race-listing-race-listing-a-8">
-            Organizer's website <ExternalLink size={12} />
+          <a href={race.organizer_website} target="_blank" rel="noreferrer nofollow" className="link link--arrow link--up small">
+            Organizer's website <External size={14} />
           </a>
         )}
       </div>

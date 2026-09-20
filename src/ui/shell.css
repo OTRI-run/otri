@@ -1,0 +1,66 @@
+/* The shell shared by the public site and the organizer app: header, navigation, footer, build strip. */
+
+.site-header {
+  position: sticky; top: 0; z-index: 50; height: var(--header-h);
+  background: rgba(243, 239, 230, .92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border-bottom: var(--border);
+}
+.site-header__inner { height: 100%; display: flex; align-items: center; gap: var(--s-5); min-width: 0; }
+.site-header__brand { display: flex; align-items: center; gap: var(--s-4); min-width: 0; }
+.site-nav { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.site-nav__link {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border-radius: 6px;
+  font-size: var(--text-small); font-weight: 600; color: var(--stone); text-decoration: none; white-space: nowrap;
+  transition: color var(--quick) var(--ease), background var(--quick) var(--ease);
+}
+.site-nav__link:hover { color: var(--pine); background: var(--gravel); }
+.site-nav__link[aria-current='page'] { color: var(--pine); box-shadow: inset 0 -3px 0 var(--blaze); border-radius: 6px 6px 0 0; }
+.site-nav__sep { width: 1px; height: 24px; background: var(--line-strong); margin: 0 8px; }
+.site-header .btn { min-height: 40px; }
+
+/* On phones the pages sit in a scrolling row under the header. */
+.site-subnav { display: none; border-bottom: var(--border); background: var(--paper); }
+.site-subnav__inner { display: flex; align-items: center; gap: var(--s-2); overflow-x: auto; scrollbar-width: none; }
+.site-subnav__inner::-webkit-scrollbar { display: none; }
+.site-subnav .site-nav__link { min-height: 46px; padding: 0 10px; border-radius: 0; }
+.site-subnav .site-nav__link[aria-current='page'] { box-shadow: inset 0 -3px 0 var(--blaze); border-radius: 0; }
+@media (max-width: 899px) {
+  .site-nav { display: none; }
+  .site-subnav { display: block; }
+  .site-header__mobile { margin-left: auto; display: flex; align-items: center; gap: var(--s-2); }
+}
+@media (min-width: 900px) { .site-header__mobile { display: none; } }
+
+/* A line under the header for something that needs saying before anything else. */
+.site-bar { border-bottom: var(--border); background: var(--ochre-pale); }
+.site-bar__inner { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); padding-block: 10px; font-size: var(--text-small); color: var(--pine); }
+.site-bar__inner .icon { color: var(--ochre); }
+.site-bar button { font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+
+.site-footer { background: var(--pine); color: var(--paper); padding-block: clamp(40px, 5vw, 64px) var(--s-6); position: relative; overflow: hidden; }
+.site-footer::before { content: ''; position: absolute; inset: 0; background: var(--topo-dark); background-size: 520px 520px; opacity: .45; pointer-events: none; }
+.site-footer__inner { position: relative; display: grid; grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(0, .8fr)); gap: var(--s-8) var(--s-6); }
+.site-footer__tag { margin-top: var(--s-4); max-width: 38ch; color: var(--on-dark-muted); font-size: var(--text-small); line-height: 1.55; }
+.site-footer__col h4 { font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--on-dark-muted); margin-bottom: var(--s-3); }
+.site-footer__col a { display: inline-flex; align-items: center; gap: 6px; padding: 5px 0; font-size: var(--text-small); color: var(--paper); text-decoration: none; }
+.site-footer__col a:hover { color: var(--sun); }
+.site-footer__col ul { display: grid; }
+.site-footer__bottom { position: relative; margin-top: var(--s-10); padding-top: var(--s-5); border-top: 1px solid var(--on-dark-line); display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s-3); font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--on-dark-muted); }
+.site-footer__bottom a { color: inherit; text-decoration: none; }
+.site-footer__bottom a:hover { color: var(--sun); }
+@media (max-width: 899px) { .site-footer__inner { grid-template-columns: repeat(2, minmax(0, 1fr)); } .site-footer__inner > :first-child { grid-column: 1 / -1; } }
+@media (max-width: 479px) { .site-footer__inner { grid-template-columns: minmax(0, 1fr); } }
+
+/* The build strip: which commit this is. */
+.build-strip { background: var(--night); color: var(--on-dark-muted); text-align: center; padding: 6px var(--s-4); font-family: var(--font-mono); font-size: 11px; letter-spacing: .04em; }
+.build-strip a { color: var(--paper); text-decoration: underline; text-underline-offset: 2px; }
+
+/* The logo lockup. */
+.logo { display: inline-flex; align-items: center; gap: 14px; text-decoration: none; color: var(--pine); flex: none; min-width: 0; }
+.logo__mark { width: 40px; height: 40px; flex: none; }
+.logo__word { height: 30px; width: auto; flex: none; }
+.logo__name { padding-left: 14px; border-left: 1.5px solid var(--blaze); font-family: var(--font-mono); font-size: 10px; font-weight: 600; line-height: 1.45; letter-spacing: .12em; text-transform: uppercase; color: var(--stone); white-space: nowrap; }
+.logo--dark { color: var(--paper); }
+.logo--dark .logo__name { color: var(--on-dark-muted); }
+.logo--compact .logo__name { display: none; }
+@media (max-width: 639px) { .logo { gap: 10px; } .logo__mark { width: 34px; height: 34px; } .logo__word { height: 25px; } .logo__name { display: none; } }

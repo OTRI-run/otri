@@ -1,4 +1,3 @@
-import './WhatWeScore.css'
 // What OTRI can score, and how far to trust it: one table, shown wherever someone is about to bring
 // a race (the calculator, Score my race, the FAQ). It states the model's limits as they are in the
 // code (scoring/course_standard.py: the confidence rules); when those change, change this.
@@ -16,27 +15,27 @@ export const NOT_MEASURED =
   'What a score does not see: how technical the ground is, mud, snow, heat or darkness. Two courses with the same profile count the same. Altitude above 1,500 m is counted.'
 
 const MARK = {
-  yes: ['Yes', "src-components-what-we-score-mark-style-1"],
-  provisional: ['Provisional', "src-components-what-we-score-mark-style-2"],
-  no: ['No', "src-components-what-we-score-mark-style-3"],
+  yes: ['Yes', 'badge badge--moss'],
+  provisional: ['Provisional', 'badge badge--ochre'],
+  no: ['No', 'badge'],
 }
 
 export function WhatWeScoreTable({ className = '' }) {
   return (
     <div className={className}>
-      <ul className="src-components-what-we-score-what-we-score-table-ul-4">
+      <ul className="stack stack--tight">
         {WHAT_WE_SCORE.map(([state, kind, note]) => (
-          <li key={kind} className="src-components-what-we-score-what-we-score-table-li-5">
+          <li key={kind} className="cluster cluster--top" style={{ gap: 12, paddingBlock: 6, borderBottom: 'var(--border)' }}>
             <span>
-              <span className={`src-components-what-we-score-what-we-score-table-span-6 ${MARK[state][1]}`}>{MARK[state][0]}</span>
+              <span className={MARK[state][1]} style={{ minWidth: 96, justifyContent: 'center' }}>{MARK[state][0]}</span>
             </span>
-            <span className="src-components-what-we-score-what-we-score-table-span-7">
-              <b className="src-components-what-we-score-what-we-score-table-b-8">{kind}.</b> {note}
+            <span className="small muted grow">
+              <b className="ink">{kind}.</b> {note}
             </span>
           </li>
         ))}
       </ul>
-      <p className="src-components-what-we-score-what-we-score-table-p-9">{NOT_MEASURED}</p>
+      <p className="tiny muted mt-3">{NOT_MEASURED}</p>
     </div>
   )
 }
@@ -44,11 +43,11 @@ export function WhatWeScoreTable({ className = '' }) {
 /** The table folded behind one line, for a page where it is a side question. */
 export default function WhatWeScore({ className = '' }) {
   return (
-    <details className={`src-components-what-we-score-what-we-score-details-10 otri-group ${className}`}>
-      <summary className="src-components-what-we-score-what-we-score-summary-11">
-        <span className="src-components-what-we-score-what-we-score-span-12">Which races can OTRI score? Trail, road, vertical…</span>
+    <details className={`details ${className}`}>
+      <summary>
+        <span>Which races can OTRI score? Trail, road, vertical…</span>
       </summary>
-      <WhatWeScoreTable className="src-components-what-we-score-what-we-score-what-we-score-table-13" />
+      <WhatWeScoreTable className="details__body" />
     </details>
   )
 }

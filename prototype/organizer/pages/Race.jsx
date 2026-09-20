@@ -22,7 +22,7 @@ import {
   unpublishRace,
 } from '../../apiClient'
 import { Link, navigate } from '../router'
-import { ArrowRight, Eye, EyeOff } from 'lucide-react'
+import { ArrowRight, Eye, EyeOff } from '../../../src/ui/icons'
 import { Button, Card, ChecklistRow, Dropzone, Eyebrow, Field, Gradient, Notice, Page, StatusChip, Stepper, formatDate, inputClass, raceStatus } from '../ui'
 
 function raceSteps(raceId) {
@@ -46,10 +46,10 @@ function RaceShell({ race, step, children }) {
       eyebrow={`${STEP_EYEBROW[step]} · ${race.event_name.toUpperCase()} · ${formatDate(race.event_date).toUpperCase()}`}
       title={race.course_name}
     >
-      <div className="prototype-organizer-pages-race-race-shell-div-1">
+      <div className="mt-8">
         <Stepper steps={raceSteps(race.race_id)} current={step} />
       </div>
-      <div className="prototype-organizer-pages-race-race-shell-div-1">{children}</div>
+      <div className="mt-8">{children}</div>
     </Page>
   )
 }
@@ -105,12 +105,12 @@ export function NewRace({ session, eventId }) {
       intro="One race per distance. Enter your official figures now; OTRI measures the course from the GPX in the next step and shows you how they compare."
       aside={
       <Card>
-        <form onSubmit={submit} className="prototype-organizer-pages-race-new-race-form-2" noValidate>
+        <form onSubmit={submit} className="stack" noValidate>
           <Field label="Race name" htmlFor="rc-name" hint="How this distance is listed — “50K”, “100 mile”, “Vertical”.">
             <input id="rc-name" autoFocus={autoFocusOnDesktop} required value={form.course_name} onChange={(e) => setForm((f) => ({ ...f, course_name: e.target.value }))} list={DISTANCE_NAME_LIST} autoComplete="off" className={inputClass} placeholder="50K" />
             <DistanceNameList />
           </Field>
-          <div className="prototype-organizer-pages-race-new-race-div-3">
+          <div className="grid grid--2">
             <Field label="Official distance (km)" htmlFor="rc-dist">
               <input id="rc-dist" required type="number" min="0.1" step="0.1" value={form.distance_km} onChange={(e) => setForm((f) => ({ ...f, distance_km: e.target.value }))} className={inputClass} placeholder="51.4" />
             </Field>
@@ -119,7 +119,7 @@ export function NewRace({ session, eventId }) {
             </Field>
           </div>
           {error && <Notice kind="error">{error}</Notice>}
-          <div className="prototype-organizer-pages-race-new-race-div-4">
+          <div className="cluster">
             <Button type="submit" busy={busy} disabled={!form.course_name.trim() || !form.distance_km || form.elevation_gain_m === ''}>
               Save and add the course <ArrowRight size={15} />
             </Button>
@@ -128,7 +128,7 @@ export function NewRace({ session, eventId }) {
             </Button>
           </div>
           {!busy && (!form.course_name.trim() || !form.distance_km || form.elevation_gain_m === '') && (
-            <p className="prototype-organizer-pages-race-new-race-p-5">Enter the name, official distance and climb to continue.</p>
+            <p className="tiny muted">Enter the name, official distance and climb to continue.</p>
           )}
         </form>
       </Card>
@@ -152,19 +152,19 @@ function CourseFacts({ measurement, features, entered }) {
   const dGain = pct(features.elevation_gain_m, entered.elevation_gain_m)
   const big = (v) => v != null && Math.abs(v) >= 5
   return (
-    <div className="prototype-organizer-pages-race-course-facts-div-6">
-      <dl className="prototype-organizer-pages-race-course-facts-dl-7">
+    <div className="stack">
+      <dl className="kv race-step-facts">
         {[
           ['Measured distance', formatDistance(features.distance_km, units), entered.distance_km ? `you entered ${formatDistance(entered.distance_km, units)}` : null, dDist],
           ['Measured climb', formatElevation(features.elevation_gain_m, units, { sign: '+' }), entered.elevation_gain_m ? `you entered ${formatElevation(entered.elevation_gain_m, units, { sign: '+' })}` : null, dGain],
           ['Descent', features.elevation_loss_m != null ? formatElevation(features.elevation_loss_m, units, { sign: '-' }) : '—', null, null],
           ['Elevation source', dem ? 'Terrain model' : 'Your GPX file', dem ? measurement.source.dataset : 'not independently verified', null],
         ].map(([label, value, sub, delta]) => (
-          <div key={label} className="prototype-organizer-pages-race-course-facts-div-8">
-            <dt className="prototype-organizer-pages-race-course-facts-dt-9">{label}</dt>
-            <dd className="prototype-organizer-pages-race-course-facts-dd-10">{value}</dd>
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
             {sub && (
-              <dd className={`prototype-organizer-pages-race-course-facts-dd-11 ${big(delta) ? "prototype-organizer-pages-race-course-facts-dd-12" : "prototype-organizer-pages-race-course-facts-dd-13"}`}>
+              <dd className={`race-step-facts__sub ${big(delta) ? 'is-off' : ''}`}>
                 {sub}
                 {delta != null ? ` (${delta > 0 ? '+' : ''}${delta.toFixed(0)}%)` : ''}
               </dd>
@@ -244,20 +244,20 @@ export function CourseStep({ session, raceId }) {
     }
   }
 
-  if (loadError) return <Page title="Race"><div className="prototype-organizer-pages-race-course-step-div-14"><Notice kind="error">{loadError}</Notice></div></Page>
+  if (loadError) return <Page title="Race"><div className="mt-4"><Notice kind="error">{loadError}</Notice></div></Page>
   if (!race) return <Page title="Loading…" />
 
   const entered = { distance_km: race.distance_km, elevation_gain_m: race.elevation_gain_m }
 
   return (
     <RaceShell race={race} step={1}>
-      <div className="prototype-organizer-pages-race-new-race-form-2">
+      <div className="stack">
         {race.has_gpx && !analysis && (
           <Card>
-            <div className="prototype-organizer-pages-race-course-step-div-15">
+            <div className="cluster cluster--between">
               <div>
                 <Eyebrow>COURSE ON FILE</Eyebrow>
-                <p className="prototype-organizer-pages-race-course-step-p-16">
+                <p className="small muted mt-1">
                   {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })} · measurement{' '}
                   {race.measurement_version ?? '—'}
                   {race.measurement_status === 'needs_review' ? ' · flagged for review' : ''}
@@ -267,9 +267,9 @@ export function CourseStep({ session, raceId }) {
                 Continue to results <ArrowRight size={15} />
               </Button>
             </div>
-            {existing?.gpxText && <CourseMap gpxText={existing.gpxText} measurement={existing.measurement} className="prototype-organizer-pages-race-course-step-div-14" />}
+            {existing?.gpxText && <CourseMap gpxText={existing.gpxText} measurement={existing.measurement} className="mt-4" />}
             {existing?.measurement?.quality_flags?.includes('sparse_geometry_median_over_30m') && (
-              <div className="prototype-organizer-pages-race-course-step-div-14">
+              <div className="mt-4">
                 <Notice kind="warning" title="This course was recorded too sparsely.">
                   Upload a denser export below to replace it — the score's trust label depends on it.
                 </Notice>
@@ -280,10 +280,10 @@ export function CourseStep({ session, raceId }) {
 
         <Card>
           <Eyebrow>{race.has_gpx ? 'REPLACE THE COURSE' : 'UPLOAD THE COURSE'}</Eyebrow>
-          <p className="prototype-organizer-pages-race-course-step-p-16">
+          <p className="small muted mt-1">
             Upload the official route as a GPX. OTRI measures it — every 10 m, elevation from verified terrain data where available — and shows how it compares with the figures you entered before anything is saved.
           </p>
-          <div className="prototype-organizer-pages-race-course-step-div-14">
+          <div className="mt-4">
             <Dropzone
               id="course-file"
               accept=".gpx"
@@ -295,24 +295,24 @@ export function CourseStep({ session, raceId }) {
               fileName={file?.name}
             />
           </div>
-          {error && <div className="prototype-organizer-pages-race-course-step-div-17"><Notice kind="error">{error}</Notice></div>}
+          {error && <div className="mt-3"><Notice kind="error">{error}</Notice></div>}
         </Card>
 
         {analysis && (
           <Card>
             <Eyebrow>MEASURED COURSE</Eyebrow>
-            <CourseMap gpxText={gpxText} measurement={analysis.measurement} className="prototype-organizer-pages-race-course-step-div-17" />
-            <div className="prototype-organizer-pages-race-course-step-div-14">
+            <CourseMap gpxText={gpxText} measurement={analysis.measurement} className="mt-3" />
+            <div className="mt-4">
               <CourseFacts measurement={analysis.measurement} features={analysis.features} entered={entered} />
             </div>
-            <div className="prototype-organizer-pages-race-course-step-div-18">
+            <div className="cluster mt-5">
               <Button busy={busy === 'attaching'} onClick={useCourse}>
                 Use this course <ArrowRight size={15} />
               </Button>
               <Button variant="secondary" onClick={() => { setAnalysis(null); setFile(null) }}>
                 Choose another file
               </Button>
-              <p className="prototype-organizer-pages-race-new-race-p-5">Saving replaces the race's distance and climb with the measured values.</p>
+              <p className="tiny muted">Saving replaces the race's distance and climb with the measured values.</p>
             </div>
           </Card>
         )}
@@ -359,34 +359,34 @@ const EXAMPLE_ROWS = [
 function ExampleFile({ onUse, busy }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="prototype-organizer-pages-race-example-file-div-19">
-      <div className="prototype-organizer-pages-race-example-file-div-20">
+    <div className="card card--flush race-step-example mt-4">
+      <div className="race-step-example__head">
         <div>
-          <p className="prototype-organizer-pages-race-example-file-p-21">EXAMPLE FILE</p>
-          <p className="prototype-organizer-pages-race-example-file-p-22">Six rows: four finishers, a DNF, a DNS. Any file laid out like this passes.</p>
+          <p className="eyebrow eyebrow--plain">EXAMPLE FILE</p>
+          <p className="tiny muted mt-1">Six rows: four finishers, a DNF, a DNS. Any file laid out like this passes.</p>
         </div>
-        <div className="prototype-organizer-pages-race-example-file-div-23">
-          <a href={EXAMPLE_FILES.csv} download="otri-results-example.csv" className="prototype-organizer-pages-race-example-file-a-24">
+        <div className="cluster cluster--tight">
+          <a href={EXAMPLE_FILES.csv} download="otri-results-example.csv" className="btn btn--secondary btn--sm">
             Download CSV
           </a>
-          <a href={EXAMPLE_FILES.xlsx} download="otri-results-example.xlsx" className="prototype-organizer-pages-race-example-file-a-24">
+          <a href={EXAMPLE_FILES.xlsx} download="otri-results-example.xlsx" className="btn btn--secondary btn--sm">
             Download XLSX
           </a>
-          <Button type="button" variant="secondary" className="prototype-organizer-pages-race-example-file-button-25" busy={busy} onClick={onUse}>
+          <Button type="button" variant="secondary" className="btn--sm" busy={busy} onClick={onUse}>
             Use the example file
           </Button>
-          <button type="button" onClick={() => setOpen((v) => !v)} className="prototype-organizer-pages-race-example-file-button-26">
+          <button type="button" onClick={() => setOpen((v) => !v)} className="btn btn--ghost btn--sm">
             {open ? 'Hide' : 'Show'} rows
           </button>
         </div>
       </div>
       {open && (
-        <div className="prototype-organizer-pages-race-example-file-div-27">
-          <table className="prototype-organizer-pages-race-example-file-table-28">
+        <div className="race-step-example__scroll">
+          <table className="table table--tight race-step-example__table">
             <thead>
-              <tr className="prototype-organizer-pages-race-example-file-tr-29">
+              <tr>
                 {EXAMPLE_HEADER.map((h) => (
-                  <th key={h} className="prototype-organizer-pages-race-example-file-th-30">
+                  <th key={h}>
                     {h}
                   </th>
                 ))}
@@ -394,10 +394,10 @@ function ExampleFile({ onUse, busy }) {
             </thead>
             <tbody>
               {EXAMPLE_ROWS.map((row, i) => (
-                <tr key={i} className="prototype-organizer-pages-race-example-file-tr-31">
+                <tr key={i}>
                   {row.map((cell, j) => (
-                    <td key={j} className="prototype-organizer-pages-race-example-file-td-32">
-                      {cell === '' ? <span className="prototype-organizer-pages-race-example-file-span-33">·</span> : cell}
+                    <td key={j}>
+                      {cell === '' ? <span className="muted">·</span> : cell}
                     </td>
                   ))}
                 </tr>
@@ -430,11 +430,11 @@ function humanise(text) {
 
 function IssueList({ issues, kind }) {
   return (
-    <ul className="prototype-organizer-pages-race-issue-list-ul-34">
+    <ul className={`race-step-issues race-step-issues--${kind}`}>
       {issues.map((issue, index) => (
-        <li key={index} className={kind === 'error' ? "prototype-organizer-pages-race-issue-list-li-35" : "prototype-organizer-pages-race-issue-list-li-36"}>
-          {issue.row != null && <span className="prototype-organizer-pages-race-issue-list-span-37">Row {issue.row}</span>}
-          {issue.field && <span className="prototype-organizer-pages-race-issue-list-span-37">{issue.row != null ? ' · ' : ''}{FIELD_LABELS[issue.field] ?? issue.field}</span>}
+        <li key={index}>
+          {issue.row != null && <span className="mono tiny">Row {issue.row}</span>}
+          {issue.field && <span className="mono tiny">{issue.row != null ? ' · ' : ''}{FIELD_LABELS[issue.field] ?? issue.field}</span>}
           {issue.row != null || issue.field ? ': ' : ''}
           {humanise(issue.message)}
         </li>
@@ -446,28 +446,28 @@ function IssueList({ issues, kind }) {
 export function ScoresTable({ rows, limit, compact = false }) {
   const shown = limit ? rows.slice(0, limit) : rows
   return (
-    <div className="prototype-organizer-pages-race-scores-table-div-38">
-      <table className={`prototype-organizer-pages-race-scores-table-table-39 ${compact ? '' : "prototype-organizer-pages-race-scores-table-table-40"}`}>
+    <div className="table-wrap">
+      <table className={`table ${compact ? '' : 'race-step-scores'}`}>
         <thead>
-          <tr className="prototype-organizer-pages-race-scores-table-tr-41">
-            <th className="prototype-organizer-pages-race-scores-table-th-42">Rank</th>
-            <th className="prototype-organizer-pages-race-scores-table-th-42">Runner</th>
-            {!compact && <th className="prototype-organizer-pages-race-scores-table-th-42">Bib</th>}
-            <th className="prototype-organizer-pages-race-scores-table-th-43">OTRI</th>
+          <tr>
+            <th>Rank</th>
+            <th>Runner</th>
+            {!compact && <th>Bib</th>}
+            <th className="right">OTRI</th>
           </tr>
         </thead>
         <tbody>
           {shown.map((row) => (
-            <tr key={`${row.rank}-${row.bib_number ?? row.family_name}`} className="prototype-organizer-pages-race-scores-table-tr-44">
-              <td className="prototype-organizer-pages-race-scores-table-td-45"><RankBadge rank={row.rank} /></td>
-              <td className="prototype-organizer-pages-race-scores-table-td-46">{row.first_name} {row.family_name}</td>
-              {!compact && <td className="prototype-organizer-pages-race-scores-table-td-45">{row.bib_number ?? '—'}</td>}
-              <td className="prototype-organizer-pages-race-scores-table-td-47">{row.otri_score ?? <span className="prototype-organizer-pages-race-scores-table-span-48">{row.status === 'finisher' ? 'not scored' : row.status}</span>}</td>
+            <tr key={`${row.rank}-${row.bib_number ?? row.family_name}`}>
+              <td className="num"><RankBadge rank={row.rank} /></td>
+              <td className="race-step-name">{row.first_name} {row.family_name}</td>
+              {!compact && <td className="num">{row.bib_number ?? '—'}</td>}
+              <td className="right">{row.otri_score != null ? <span className="score">{row.otri_score}</span> : <span className="tiny muted">{row.status === 'finisher' ? 'not scored' : row.status}</span>}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      {limit && rows.length > limit && <p className="prototype-organizer-pages-race-scores-table-p-49">…and {rows.length - limit} more</p>}
+      {limit && rows.length > limit && <p className="tiny muted race-step-more">…and {rows.length - limit} more</p>}
     </div>
   )
 }
@@ -518,23 +518,23 @@ export function ResultsStep({ session, raceId }) {
     }
   }
 
-  if (loadError) return <Page title="Race"><div className="prototype-organizer-pages-race-course-step-div-14"><Notice kind="error">{loadError}</Notice></div></Page>
+  if (loadError) return <Page title="Race"><div className="mt-4"><Notice kind="error">{loadError}</Notice></div></Page>
   if (!race) return <Page title="Loading…" />
 
   return (
     <RaceShell race={race} step={2}>
-      <div className="prototype-organizer-pages-race-new-race-form-2">
+      <div className="stack">
         {!race.has_gpx && (
           <Notice kind="warning" title="No course yet.">
-            Results can be uploaded, but scores need the course. <Link to={`/races/${encodeURIComponent(raceId)}/course`} className="prototype-organizer-pages-race-results-step-link-50">Add the GPX first</Link> for the best result.
+            Results can be uploaded, but scores need the course. <Link to={`/races/${encodeURIComponent(raceId)}/course`} className="link">Add the GPX first</Link> for the best result.
           </Notice>
         )}
         {existing?.length > 0 && !submission && (
           <Card>
-            <div className="prototype-organizer-pages-race-course-step-div-15">
+            <div className="cluster cluster--between">
               <div>
                 <Eyebrow>RESULTS ON FILE</Eyebrow>
-                <p className="prototype-organizer-pages-race-course-step-p-16">{existing.length} finishers scored. Uploading a new file replaces them.</p>
+                <p className="small muted mt-1">{existing.length} finishers scored. Uploading a new file replaces them.</p>
               </div>
               <Button onClick={() => navigate(`/races/${encodeURIComponent(raceId)}/review`)}>
                 Continue to review <ArrowRight size={15} />
@@ -545,47 +545,47 @@ export function ResultsStep({ session, raceId }) {
 
         <Card>
           <Eyebrow>{existing?.length ? 'REPLACE RESULTS' : 'UPLOAD RESULTS'}</Eyebrow>
-          <p className="prototype-organizer-pages-race-course-step-p-16">
+          <p className="small muted mt-1">
             Upload the export you already have: from your timing company, or the sheet you send to ITRA or UTMB.
             One file per race distance, CSV or Excel, one row per participant. It needs a finish time and a name;
             positions, gender, nationality and the rest are read where the file has them, under whatever the columns
             are called, and you are shown how it was read before anything counts.
           </p>
           <ExampleFile onUse={useExample} busy={loadingExample} />
-          <div className="prototype-organizer-pages-race-course-step-div-17">
-            <button type="button" onClick={() => setShowGuide((v) => !v)} className="prototype-organizer-pages-race-example-file-button-26">
+          <div className="mt-3">
+            <button type="button" onClick={() => setShowGuide((v) => !v)} className="btn btn--ghost btn--sm">
               {showGuide ? 'Hide' : 'Show'} the accepted columns
             </button>
           </div>
           {showGuide && (
-            <div className="prototype-organizer-pages-race-results-step-div-51">
-              <table className="prototype-organizer-pages-race-results-step-table-52">
+            <div className="table-wrap mt-3">
+              <table className="table table--tight race-step-columns">
                 <thead>
-                  <tr className="prototype-organizer-pages-race-results-step-tr-53">
-                    <th className="prototype-organizer-pages-race-scores-table-th-42">Column</th>
-                    <th className="prototype-organizer-pages-race-scores-table-th-42">Needed</th>
-                    <th className="prototype-organizer-pages-race-scores-table-th-42">Values</th>
-                    <th className="prototype-organizer-pages-race-scores-table-th-42">Also accepted as</th>
+                  <tr>
+                    <th>Column</th>
+                    <th>Needed</th>
+                    <th>Values</th>
+                    <th>Also accepted as</th>
                   </tr>
                 </thead>
                 <tbody>
                   {COLUMNS.map(([name, need, note, aliases]) => (
-                    <tr key={name} className="prototype-organizer-pages-race-scores-table-tr-44">
-                      <td className="prototype-organizer-pages-race-results-step-td-54">{name}</td>
-                      <td className="prototype-organizer-pages-race-results-step-td-55">{need}</td>
-                      <td className="prototype-organizer-pages-race-results-step-td-55">{note}</td>
-                      <td className="prototype-organizer-pages-race-results-step-td-55">{aliases}</td>
+                    <tr key={name}>
+                      <td className="mono race-step-name">{name}</td>
+                      <td className="muted">{need}</td>
+                      <td className="muted">{note}</td>
+                      <td className="muted">{aliases}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <p className="prototype-organizer-pages-race-results-step-p-56">
+              <p className="tiny muted race-step-more">
                 Files that mix several distances are rejected with the distances found: each race distance has its own
                 course, so each gets its own upload.
               </p>
             </div>
           )}
-          <div className="prototype-organizer-pages-race-course-step-div-14">
+          <div className="mt-4">
             <Dropzone
               id="results-file"
               accept=".csv,.tsv,.txt,.xlsx,.xlsm"
@@ -595,20 +595,20 @@ export function ResultsStep({ session, raceId }) {
               fileName={file?.name}
             />
           </div>
-          <div className="prototype-organizer-pages-race-results-step-div-57">
+          <div className="cluster mt-4">
             <Button busy={busy} disabled={!file} onClick={submit}>
               Validate and score <ArrowRight size={15} />
             </Button>
-            {!file && <span className="prototype-organizer-pages-race-new-race-p-5">Choose a file first.</span>}
+            {!file && <span className="tiny muted">Choose a file first.</span>}
           </div>
-          {error && <div id="results-error" className="prototype-organizer-pages-race-results-step-div-58"><Notice kind="error">{error}</Notice></div>}
+          {error && <div id="results-error" className="race-step-anchor mt-3"><Notice kind="error">{error}</Notice></div>}
         </Card>
 
-        <div id="results-outcome" className="prototype-organizer-pages-race-results-step-div-59" aria-live="polite">
+        <div id="results-outcome" className="race-step-anchor" aria-live="polite">
         {submission && !submission.is_valid && (
           <Notice kind="error" title={`The file has ${submission.errors.length} error${submission.errors.length === 1 ? '' : 's'} — fix them and upload again.`}>
             <IssueList issues={submission.errors} kind="error" />
-            <ColumnsRead columns={submission.columns} ignored={submission.ignored_columns} className="prototype-organizer-pages-race-course-step-div-17" />
+            <ColumnsRead columns={submission.columns} ignored={submission.ignored_columns} className="mt-3" />
           </Notice>
         )}
         {submission?.is_valid && (
@@ -617,16 +617,18 @@ export function ResultsStep({ session, raceId }) {
               {submission.warnings.length > 0 ? `${submission.warnings.length} warning${submission.warnings.length === 1 ? '' : 's'} to review — none block submission.` : 'No warnings.'}
             </Notice>
             {submission.warnings.length > 0 && (
-              <details className="prototype-organizer-pages-race-results-step-details-60">
-                <summary className="prototype-organizer-pages-race-results-step-summary-61">Warnings</summary>
-                <IssueList issues={submission.warnings} kind="warning" />
+              <details className="details race-step-warnings mt-3">
+                <summary>Warnings</summary>
+                <div className="details__body">
+                  <IssueList issues={submission.warnings} kind="warning" />
+                </div>
               </details>
             )}
-            <div className="prototype-organizer-pages-race-course-step-div-14">
-              <ColumnsRead columns={submission.columns} ignored={submission.ignored_columns} className="prototype-organizer-pages-race-results-step-columns-read-62" />
+            <div className="mt-4">
+              <ColumnsRead columns={submission.columns} ignored={submission.ignored_columns} className="mb-3" />
               <ScoresTable rows={submission.scores} limit={8} />
             </div>
-            <Button className="prototype-organizer-pages-race-course-step-div-14" onClick={() => navigate(`/races/${encodeURIComponent(raceId)}/review`)}>
+            <Button className="mt-4" onClick={() => navigate(`/races/${encodeURIComponent(raceId)}/review`)}>
               Continue to review <ArrowRight size={15} />
             </Button>
           </Card>
@@ -691,7 +693,7 @@ export function ReviewStep({ session, raceId }) {
     }
   }
 
-  if (loadError) return <Page title="Race"><div className="prototype-organizer-pages-race-course-step-div-14"><Notice kind="error">{loadError}</Notice></div></Page>
+  if (loadError) return <Page title="Race"><div className="mt-4"><Notice kind="error">{loadError}</Notice></div></Page>
   if (!race || results === null) return <Page title="Loading…" />
 
   const base = `/races/${encodeURIComponent(raceId)}`
@@ -704,13 +706,13 @@ export function ReviewStep({ session, raceId }) {
 
   return (
     <RaceShell race={race} step={3}>
-      <div className="prototype-organizer-pages-race-review-step-div-63">
+      <div className="grid grid--aside-narrow">
         <Card>
-          <div className="prototype-organizer-pages-race-review-step-div-64">
+          <div className="cluster cluster--between">
             <Eyebrow>PRE-FLIGHT CHECK</Eyebrow>
             <StatusChip status={status} />
           </div>
-          <ul className="prototype-organizer-pages-race-review-step-ul-65">
+          <ul className="checklist mt-2">
             <ChecklistRow ok label="Event" detail={`${race.event_name} · ${formatDate(race.event_date)}`} />
             <ChecklistRow ok label="Race" detail={`${race.course_name} · ${formatDistance(race.distance_km, units)} · ${formatElevation(race.elevation_gain_m, units, { sign: '+' })}`} />
             <ChecklistRow
@@ -734,11 +736,11 @@ export function ReviewStep({ session, raceId }) {
               detail={race.is_published ? `On the public races page since ${formatDate(String(race.published_at).slice(0, 10))}.` : race.is_listed ? 'Listed on the public races page without results.' : 'Not on the public site yet.'}
             />
           </ul>
-          <div className="prototype-organizer-pages-race-review-step-div-66">
+          <div className="mt-5">
             {race.is_published ? (
               <Notice kind="success" title="Published.">
                 This race is on the public races page{race.has_gpx ? ' and its course is offered in the score calculator' : ''}.{' '}
-                <a href={`../#races/${encodeURIComponent(raceId)}`} className="prototype-organizer-pages-race-results-step-link-50">
+                <a href={`../#races/${encodeURIComponent(raceId)}`} className="link">
                   View the public page
                 </a>
                 . Unpublish at any time to take it down.
@@ -757,11 +759,11 @@ export function ReviewStep({ session, raceId }) {
               <Notice kind="info">Finish the items marked above, then publish.</Notice>
             )}
             {!race.is_published && (
-              <p className="prototype-organizer-pages-race-review-step-p-67">
+              <p className="tiny muted mt-3">
                 {race.is_listed ? (
                   <>
                     Listed: runners can find this race, see its course and ask for scores.{' '}
-                    <a href={`../#races/${encodeURIComponent(raceId)}`} className="prototype-organizer-pages-race-review-step-a-68">View the listing</a>. Results stay private until you publish.
+                    <a href={`../#races/${encodeURIComponent(raceId)}`} className="link">View the listing</a>. Results stay private until you publish.
                   </>
                 ) : (
                   'Race day still ahead, or results not ready? List the race now: runners can find it, see the course and try target times, and results stay private until you publish.'
@@ -769,8 +771,8 @@ export function ReviewStep({ session, raceId }) {
               </p>
             )}
           </div>
-          {error && <div className="prototype-organizer-pages-race-course-step-div-17"><Notice kind="error">{error}</Notice></div>}
-          <div className="prototype-organizer-pages-race-review-step-div-69">
+          {error && <div className="mt-3"><Notice kind="error">{error}</Notice></div>}
+          <div className="cluster mt-5">
             {race.is_published ? (
               <Button variant="secondary" busy={publishing} onClick={() => togglePublish(false)}>
                 <EyeOff size={15} /> Unpublish
@@ -796,11 +798,11 @@ export function ReviewStep({ session, raceId }) {
         <Card>
           <Eyebrow>LEADERBOARD</Eyebrow>
           {hasResults ? (
-            <div className="prototype-organizer-pages-race-course-step-div-17">
+            <div className="mt-3">
               <ScoresTable rows={results} limit={12} compact />
             </div>
           ) : (
-            <p className="prototype-organizer-pages-race-review-step-p-70">Appears once results are scored.</p>
+            <p className="small muted mt-3">Appears once results are scored.</p>
           )}
         </Card>
       </div>
