@@ -2,14 +2,14 @@
 
 /* The big figure sits in the middle of the dark panel; the label is set in fern so it reads as the panel's title. */
 .runners-index { justify-items: center; text-align: center; padding-block: var(--s-4) var(--s-2); }
-.runners-index .stat__label { color: var(--fern); }
+.runners-index .stat__label { color: var(--mint); }
 .runners-index__note { padding-top: var(--s-3); }
 
 /* A large index badge (the profile share) carries its provisional tag beside the number. */
 .runners-index-badge--lg { display: inline-flex; align-items: baseline; gap: var(--s-2); font-size: 40px; }
 
 /* Expired and merely eligible scores step back; the counting ones keep the score colour. */
-.table-wrap .table .runners-score--out { color: var(--stone); }
+.table-wrap .table .runners-score--out { color: var(--text-muted); }
 
 /* The share block opens below the fold and is scrolled to; leave room for the sticky header. */
 .runners-share { scroll-margin-top: calc(var(--header-h) + var(--s-6)); }

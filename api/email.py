@@ -39,16 +39,16 @@ else:
 
 # ----------------------------------------------------------------------------- layout
 
-_FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
-_MONO = "ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
+_FONT = "'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
+_MONO = "'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
 
 
 def _button(label: str, url: str) -> str:
     return (
         '<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:28px 0 8px">'
-        "<tr><td style=\"border-radius:8px;background:#ee6b3b\">"
+        "<tr><td style=\"border-radius:4px;background:#cbf53f\">"
         f'<a href="{escape(url, quote=True)}" style="display:inline-block;padding:13px 26px;font-family:{_FONT};font-size:16px;'
-        'font-weight:700;color:#17261f;text-decoration:none;border-radius:8px">'
+        'font-weight:600;color:#0b1319;text-decoration:none;border-radius:4px">'
         f"{escape(label)}</a></td></tr></table>"
     )
 
@@ -65,23 +65,23 @@ def _render(
 ) -> tuple[str, str]:
     """Return (html, text) for one message. ``paragraphs`` and ``after`` are plain sentences and
     are escaped here; ``cta`` is (label, url)."""
-    body = [f'<p style="margin:0 0 16px;font-size:16px;line-height:24px;color:#17261f">{escape(p)}</p>' for p in paragraphs]
+    body = [f'<p style="margin:0 0 16px;font-size:16px;line-height:24px;color:#0b1319">{escape(p)}</p>' for p in paragraphs]
     text = [heading, ""] + list(paragraphs)
     if code:
         body.append(
-            '<p style="margin:24px 0;padding:18px 24px;border-radius:10px;background:#ebe6da;text-align:center;'
-            f'font-family:{_MONO};font-size:32px;letter-spacing:8px;font-weight:700;color:#17261f">{escape(code)}</p>'
+            '<p style="margin:24px 0;padding:18px 24px;border-radius:4px;background:#e8eef2;text-align:center;'
+            f'font-family:{_MONO};font-size:32px;letter-spacing:8px;font-weight:700;color:#0b1319">{escape(code)}</p>'
         )
         text += ["", f"    {code}", ""]
     if cta:
         label, url = cta
         body.append(_button(label, url))
         body.append(
-            '<p style="margin:0 0 20px;font-size:13px;line-height:20px;color:#586057">Or copy this link into your browser:<br>'
-            f'<a href="{escape(url, quote=True)}" style="font-family:{_MONO};font-size:12px;color:#245640;word-break:break-all">{escape(url)}</a></p>'
+            '<p style="margin:0 0 20px;font-size:13px;line-height:20px;color:#4e5f69">Or copy this link into your browser:<br>'
+            f'<a href="{escape(url, quote=True)}" style="font-family:{_MONO};font-size:12px;color:#086a7c;word-break:break-all">{escape(url)}</a></p>'
         )
         text += ["", f"{label}: {url}", ""]
-    body += [f'<p style="margin:0 0 12px;font-size:14px;line-height:22px;color:#586057">{escape(p)}</p>' for p in after]
+    body += [f'<p style="margin:0 0 12px;font-size:14px;line-height:22px;color:#4e5f69">{escape(p)}</p>' for p in after]
     text += list(after)
 
     html = f"""<!doctype html>
@@ -92,26 +92,26 @@ def _render(
 <meta name="color-scheme" content="light">
 <title>{escape(heading)}</title>
 </head>
-<body style="margin:0;padding:0;background:#f3efe6">
+<body style="margin:0;padding:0;background:#f1f5f7">
 <span style="display:none!important;visibility:hidden;opacity:0;color:transparent;height:0;width:0;overflow:hidden">{escape(preheader)}</span>
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f3efe6">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f1f5f7">
 <tr><td align="center" style="padding:32px 16px">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px">
 <tr><td style="padding:0 4px 18px">
   <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>
     <td style="vertical-align:middle;padding-right:10px"><img src="{escape(LOGO_URL, quote=True)}" width="36" height="36" alt="OTRI" style="display:block;border:0"></td>
-    <td style="vertical-align:middle;padding-right:12px;font-family:{_FONT};font-size:22px;font-weight:800;letter-spacing:-1px;color:#17261f">OTRI</td>
-    <td style="vertical-align:middle;padding-right:12px"><div style="width:1px;height:26px;background:#ee6b3b;font-size:0;line-height:0">&nbsp;</div></td>
-    <td style="vertical-align:middle;font-family:{_MONO};font-size:10px;letter-spacing:1.5px;line-height:14px;color:#245640">OPEN TRAIL<br>RUNNING INDEX</td>
+    <td style="vertical-align:middle;padding-right:12px;font-family:{_FONT};font-size:22px;font-weight:800;letter-spacing:-1px;color:#0b1319">OTRI</td>
+    <td style="vertical-align:middle;padding-right:12px"><div style="width:1px;height:26px;background:#cbf53f;font-size:0;line-height:0">&nbsp;</div></td>
+    <td style="vertical-align:middle;font-family:{_MONO};font-size:10px;letter-spacing:1.5px;line-height:14px;color:#086a7c">OPEN TRAIL<br>RUNNING INDEX</td>
   </tr></table>
 </td></tr>
-<tr><td style="background:#ffffff;border:1px solid #d9d3c6;border-radius:14px;padding:36px 36px 28px;font-family:{_FONT}">
-  <h1 style="margin:0 0 18px;font-size:24px;line-height:30px;font-weight:700;letter-spacing:-.5px;color:#17261f">{escape(heading)}</h1>
+<tr><td style="background:#ffffff;border:1px solid #d6dfe6;border-radius:6px;padding:36px 36px 28px;font-family:{_FONT}">
+  <h1 style="margin:0 0 18px;font-size:24px;line-height:30px;font-weight:700;letter-spacing:-.5px;color:#0b1319">{escape(heading)}</h1>
   {''.join(body)}
 </td></tr>
-<tr><td style="padding:22px 8px 0;font-family:{_FONT};font-size:12px;line-height:18px;color:#586057">
+<tr><td style="padding:22px 8px 0;font-family:{_FONT};font-size:12px;line-height:18px;color:#4e5f69">
   <p style="margin:0 0 8px">{escape(reason)}</p>
-  <p style="margin:0">OTRI · Open Trail Running Index · <a href="{escape(SITE_URL, quote=True)}" style="color:#586057">otri.run</a> · <a href="mailto:{escape(EMAIL_REPLY_TO, quote=True)}" style="color:#586057">{escape(EMAIL_REPLY_TO)}</a></p>
+  <p style="margin:0">OTRI · Open Trail Running Index · <a href="{escape(SITE_URL, quote=True)}" style="color:#4e5f69">otri.run</a> · <a href="mailto:{escape(EMAIL_REPLY_TO, quote=True)}" style="color:#4e5f69">{escape(EMAIL_REPLY_TO)}</a></p>
 </td></tr>
 </table>
 </td></tr>

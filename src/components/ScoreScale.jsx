@@ -9,8 +9,8 @@ const AXIS_FROM = 200 // everything below is one band anyway; starting here give
 const AXIS_TO = 1100 // room to show a score above 1000 as what it is
 const position = (score) => `${((Math.min(AXIS_TO, Math.max(AXIS_FROM, score)) - AXIS_FROM) / (AXIS_TO - AXIS_FROM)) * 100}%`
 
-// The bands run pale moss to deep moss, left to right; the band above the record is the blaze.
-// The fill is drawn by the stylesheet from each band's index (`--i`), see ScoreScale.css.
+// The bands are a calibrated ramp, left to right: deep ice cyan up to volt at the record end. The
+// fill is drawn by the stylesheet from each band's index (`--i`), see ScoreScale.css.
 const bandIndex = (band) => LEVELS.length - 1 - LEVELS.indexOf(band)
 
 function hms(totalSeconds) {
@@ -33,13 +33,13 @@ export default function ScoreScale({ score, share, exponent, targetSeconds, time
 
   return (
     <div className="score-scale">
-      <div className="cluster cluster--between cluster--baseline">
+      <div className="cluster cluster--between cluster--baseline score-scale__head">
         <span className="score-scale__level">{level.name}</span>
-        <span className="mono tiny muted">
+        <span className="mono score-scale__range">
           {level.from >= 1000 ? 'ABOVE 1000' : level.from === 0 ? 'BELOW 300' : `${level.from} TO ${level.from + 99}`}
         </span>
       </div>
-      <p className="small muted mt-1">{level.blurb}</p>
+      <p className="small muted mt-2 score-scale__blurb">{level.blurb}</p>
 
       <div
         className="score-scale__axis"

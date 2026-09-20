@@ -7,13 +7,13 @@
 .admin-gauges { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-3); }
 .admin-stat__sub { line-height: 1.4; margin-top: 4px; }
 .admin-meter { margin-top: var(--s-3); }
-.admin-meter--warn > span { background: var(--ochre); }
-.admin-meter--bad > span { background: var(--berry); }
-.admin-meter--alt > span { background: var(--sky); }
+.admin-meter--warn > span { background: var(--amber-deep); }
+.admin-meter--bad > span { background: var(--rose-deep); }
+.admin-meter--alt > span { background: var(--cyan-deep); }
 
 /* Counts above a list, side by side. */
 .admin-stats { display: flex; flex-wrap: wrap; gap: var(--s-4) var(--s-10); }
-.admin-inline-count { font-size: 20px; color: var(--moss-deep); }
+.admin-inline-count { font-size: 20px; color: var(--accent-text); }
 
 /* The card label: the mono eyebrow with an icon before it. */
 .admin-card__label { gap: 8px; }
@@ -23,10 +23,10 @@
 .admin-kv > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: var(--s-4); align-items: baseline; padding: 8px 0; }
 .admin-kv dt { line-height: 1.5; }
 .admin-kv dd { text-align: left; font-family: var(--font-mono); font-weight: 500; font-size: var(--text-tiny); line-height: 1.5; }
-.admin-tone-ok { color: var(--moss-deep); }
-.admin-tone-bad { color: var(--berry); }
-.admin-tone-warn { color: var(--ochre); }
-.admin-error { font-size: var(--text-tiny); font-weight: 600; color: var(--berry); line-height: 1.5; }
+.admin-tone-ok { color: var(--accent-text); }
+.admin-tone-bad { color: var(--rose-deep); }
+.admin-tone-warn { color: var(--amber-deep); }
+.admin-error { font-size: var(--text-tiny); font-weight: 600; color: var(--rose-deep); line-height: 1.5; }
 
 /* Two-column rows: a name and its figure, one hairline apart. */
 .admin-rows > li { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); padding: 8px 0; border-bottom: var(--border); min-width: 0; }
@@ -35,7 +35,7 @@
 .admin-rows--dense > li { padding: 5px 0; }
 .admin-list > li { padding: 8px 0; border-bottom: var(--border); }
 .admin-list > li:last-child { border-bottom: 0; }
-.admin-admins { border-color: rgba(143, 92, 16, .35); background: var(--ochre-pale); }
+.admin-admins { border-color: rgba(143, 92, 16, .35); background: var(--amber-pale); }
 
 /* Row actions, right-aligned and never wrapping inside a button. */
 .admin-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: var(--s-2); }
@@ -47,8 +47,8 @@
 /* The reports queue: the report on the left, what to do about it on the right. An open report
    carries a caution edge; a resolved one steps back. */
 .admin-report { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-4) var(--s-6); align-items: start; }
-.admin-report--open { border-left: 4px solid var(--ochre); }
-.admin-report--resolved { background: var(--gravel); color: var(--stone); }
+.admin-report--open { border-left: 4px solid var(--amber-deep); }
+.admin-report--resolved { background: var(--surface-2); color: var(--text-muted); }
 .admin-report__body { min-width: 0; }
 .admin-report__subject { font-size: var(--text-body); }
 .admin-report__message { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 72ch; }
@@ -65,16 +65,16 @@
 
 /* Requests per hour: one bar an hour, the busiest hour full height. */
 .admin-chart { display: flex; align-items: flex-end; gap: 3px; height: 64px; }
-.admin-chart__bar { flex: 1; min-width: 2px; border-radius: 2px 2px 0 0; background: var(--moss); opacity: .85; }
+.admin-chart__bar { flex: 1; min-width: 2px; border-radius: 2px 2px 0 0; background: var(--cyan-deep); opacity: .85; }
 .admin-chart__axis { display: flex; justify-content: space-between; }
 
 /* Service state as a dot before the unit name. */
 .admin-services { display: grid; gap: 6px; }
 .admin-services > li { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .admin-services--line { padding-top: var(--s-3); border-top: var(--border); }
-.admin-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--stone-2); flex: none; align-self: center; }
-.admin-dot--ok { background: var(--moss); }
-.admin-dot--bad { background: var(--berry); }
+.admin-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--text-faint); flex: none; align-self: center; }
+.admin-dot--ok { background: var(--cyan-deep); }
+.admin-dot--bad { background: var(--rose-deep); }
 .admin-dot--unknown { background: var(--line-strong); }
 
 @media (max-width: 899px) {

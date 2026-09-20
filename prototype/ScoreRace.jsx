@@ -129,7 +129,7 @@ function Scored({ result, fileStem, gpxText, children }) {
       <div className="cluster cluster--between cluster--top">
         <div className="min0 stack stack--tight">
           <p>
-            <span className="badge badge--moss badge--lg">
+            <span className="badge badge--mint badge--lg">
               <CheckCircle size={13} /> Valid · {summary.finishers} finisher{summary.finishers === 1 ? '' : 's'} scored
             </span>
           </p>
@@ -386,7 +386,7 @@ function PublishInvite({ result, files }) {
               [Code, 'The calculator on your own website, one line of HTML'],
             ].map(([Icon, text]) => (
               <li key={text}>
-                <span className="icon-box icon-box--gravel icon-box--sm"><Icon size={16} /></span> {text}
+                <span className="icon-box icon-box--quiet icon-box--sm"><Icon size={16} /></span> {text}
               </li>
             ))}
           </ul>
@@ -486,7 +486,7 @@ export default function ScoreRace() {
       <section className="section topo" data-tool-page="score">
         <div className={CONTAINER}>
           <div className="section-head">
-            <span className="waypoint waypoint--blaze section-head__no">02</span>
+            <span className="waypoint waypoint--volt section-head__no">02</span>
             <div className="stack">
               <p className="eyebrow">For organizers / every finisher</p>
               <h1 className="display-2">Score all finishers</h1>

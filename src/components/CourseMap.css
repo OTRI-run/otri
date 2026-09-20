@@ -1,7 +1,8 @@
-/* The course map: the map in its frame with the view toggles over it, the elevation profile
-   beneath, the steepness bar with its facts and legend, and the caption. MapLibre's own controls
-   (zoom, fullscreen, scale bar, attribution) are dressed here too, in paper and pine, so nothing on
-   the map looks borrowed. Colours are tokens only; the map's paint colours live in CourseMap.jsx. */
+/* The course map: the map in its frame with the view toggles over it, the elevation profile beneath
+   it as a plot on an instrument, the steepness bar with its facts and legend, and the caption.
+   MapLibre's own controls (zoom, fullscreen, scale bar, attribution) are dressed here too — surface,
+   hairline, ink — so nothing on the map looks borrowed. Colours are tokens only; the paint colours
+   the map itself needs as literals live in CourseMap.jsx. */
 
 .course-map { position: relative; min-width: 0; }
 
@@ -9,7 +10,7 @@
 .course-map__frame { position: relative; }
 .course-map__canvas {
   width: 100%; height: 360px; overflow: hidden;
-  border: var(--border); border-radius: var(--r-card); background: var(--gravel);
+  border: var(--border); border-radius: var(--r-card); background: var(--surface-2);
 }
 @media (min-width: 640px) { .course-map__canvas { height: 460px; } }
 .course-map .course-map__canvas { font-family: var(--font-body); }
@@ -18,93 +19,111 @@
 .course-map__canvas .maplibregl-canvas:focus-visible { outline-offset: -3px; }
 
 /* The view toggles (steepness, 3D, satellite): a small segmented control in the top right corner. */
-.course-map__views { position: absolute; top: var(--s-3); right: var(--s-3); z-index: 2; box-shadow: var(--shadow-lift); }
+.course-map__views { position: absolute; top: var(--s-3); right: var(--s-3); z-index: 2; background: var(--surface); box-shadow: var(--shadow-lift); }
 
 /* ------------------------------------------------------------------ MapLibre's controls */
 .course-map__canvas .maplibregl-ctrl-top-left .maplibregl-ctrl { margin: var(--s-3) 0 0 var(--s-3); }
 .course-map__canvas .maplibregl-ctrl-bottom-left .maplibregl-ctrl { margin: 0 0 var(--s-3) var(--s-3); }
 
-/* Zoom and fullscreen: one paper frame, pine buttons, the same radius as every other control. */
-.course-map__canvas .maplibregl-ctrl-group { padding: 2px; background: var(--card); border: 1.5px solid var(--line-strong); border-radius: var(--r-control); }
+/* Zoom and fullscreen: one surface panel on a hairline, ink icons, the control radius the rest of
+   the site uses. Nothing rounder or softer than a readout. */
+.course-map__canvas .maplibregl-ctrl-group { padding: 2px; background: var(--surface); border: var(--border); border-radius: var(--r-control); }
 .course-map__canvas .maplibregl-ctrl-group:not(:empty) { box-shadow: var(--shadow-lift); }
-.course-map__canvas .maplibregl-ctrl-group button { width: 34px; height: 34px; border-radius: 4px; color: var(--pine); transition: background var(--quick) var(--ease); }
+.course-map__canvas .maplibregl-ctrl-group button { width: 32px; height: 32px; border-radius: 2px; color: var(--text); transition: background var(--quick) var(--ease); }
 .course-map__canvas .maplibregl-ctrl-group button + button { border-top: 0; margin-top: 2px; }
-.course-map__canvas .maplibregl-ctrl button:not(:disabled):hover { background-color: var(--gravel); }
+.course-map__canvas .maplibregl-ctrl button:not(:disabled):hover { background-color: var(--surface-2); }
+.course-map__canvas .maplibregl-ctrl button:disabled { color: var(--text-faint); }
 .course-map__canvas .maplibregl-ctrl-group button:focus { box-shadow: none; }
 .course-map__canvas .maplibregl-ctrl-group button:focus:focus-visible { box-shadow: var(--focus); }
 .course-map__canvas .maplibregl-ctrl-group button:focus:first-child,
 .course-map__canvas .maplibregl-ctrl-group button:focus:last-child,
-.course-map__canvas .maplibregl-ctrl-group button:focus:only-child { border-radius: 4px; }
+.course-map__canvas .maplibregl-ctrl-group button:focus:only-child { border-radius: 2px; }
 
 /* The control icons, redrawn on the site's 24-unit grid and cut out with a mask, so their colour is
-   the button's own (pine) rather than the grey baked into MapLibre's images. */
+   the button's own ink rather than the grey baked into MapLibre's images. */
 .course-map__canvas .maplibregl-ctrl button.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon,
 .course-map__canvas .maplibregl-ctrl button.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon,
 .course-map__canvas .maplibregl-ctrl button.maplibregl-ctrl-fullscreen .maplibregl-ctrl-icon,
 .course-map__canvas .maplibregl-ctrl button.maplibregl-ctrl-shrink .maplibregl-ctrl-icon {
   background-image: none; background-color: currentColor;
-  -webkit-mask: var(--course-map-icon) center / 18px 18px no-repeat;
-  mask: var(--course-map-icon) center / 18px 18px no-repeat;
+  -webkit-mask: var(--course-map-icon) center / 17px 17px no-repeat;
+  mask: var(--course-map-icon) center / 17px 17px no-repeat;
 }
 .course-map__canvas .maplibregl-ctrl button.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon {
-  --course-map-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E");
+  --course-map-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E");
 }
 .course-map__canvas .maplibregl-ctrl button.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon {
-  --course-map-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E");
+  --course-map-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14'/%3E%3C/svg%3E");
 }
 .course-map__canvas .maplibregl-ctrl button.maplibregl-ctrl-fullscreen .maplibregl-ctrl-icon {
-  --course-map-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5'/%3E%3C/svg%3E");
+  --course-map-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5'/%3E%3C/svg%3E");
 }
 .course-map__canvas .maplibregl-ctrl button.maplibregl-ctrl-shrink .maplibregl-ctrl-icon {
-  --course-map-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 4v5H4M15 4v5h5M15 20v-5h5M9 20v-5H4'/%3E%3C/svg%3E");
+  --course-map-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 4v5H4M15 4v5h5M15 20v-5h5M9 20v-5H4'/%3E%3C/svg%3E");
 }
 
-/* The scale bar: a pine rule on a translucent paper slip, figures in mono. */
+/* The scale bar: a measuring bracket, hairline on a surface slip, its figure in mono. */
 .course-map__canvas .maplibregl-ctrl-scale {
-  padding: 0 6px; background: color-mix(in srgb, var(--card) 88%, transparent);
-  border: 2px solid var(--pine); border-top: 0; color: var(--pine);
-  font-family: var(--font-mono); font-size: var(--text-tiny); line-height: 1.5;
+  padding: 1px 6px; background: color-mix(in srgb, var(--surface) 90%, transparent);
+  border: 1px solid var(--line-strong); border-top: 0; border-radius: 0 0 var(--r-control) var(--r-control); color: var(--text);
+  font-family: var(--font-mono); font-size: var(--text-tiny); letter-spacing: .02em; line-height: 1.5;
+  font-variant-numeric: tabular-nums;
 }
 
-/* Attribution: quiet, stone on paper, its links in the site's link green. */
+/* Attribution: quiet, muted on surface, its links in the accent. */
 .course-map__canvas .maplibregl-ctrl.maplibregl-ctrl-attrib {
-  padding: 2px 8px; background: color-mix(in srgb, var(--card) 88%, transparent); color: var(--stone);
+  padding: 2px 8px; background: color-mix(in srgb, var(--surface) 90%, transparent); color: var(--text-muted);
   font-family: var(--font-body); font-size: 12px; line-height: 1.5; border-radius: var(--r-control) 0 0 0;
 }
-.course-map__canvas .maplibregl-ctrl-attrib.maplibregl-compact { margin: 0 var(--s-2) var(--s-2) 0; background: var(--card); border: var(--border); border-radius: var(--r-control); }
-.course-map__canvas .maplibregl-ctrl-attrib a { color: var(--moss-deep); font-weight: 600; }
-.course-map__canvas .maplibregl-ctrl-attrib a:hover { color: var(--blaze-deep); text-decoration: underline; }
+.course-map__canvas .maplibregl-ctrl-attrib.maplibregl-compact { margin: 0 var(--s-2) var(--s-2) 0; background: var(--surface); border: var(--border); border-radius: var(--r-control); }
+.course-map__canvas .maplibregl-ctrl-attrib a { color: var(--accent-text); font-weight: 600; }
+.course-map__canvas .maplibregl-ctrl-attrib a:hover { color: var(--accent-text); text-decoration: underline; }
 .course-map .course-map__canvas .maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button {
-  background-image: none; background-color: var(--pine); border-radius: 4px;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 11v5M12 8h.01'/%3E%3C/svg%3E") center / 18px 18px no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 11v5M12 8h.01'/%3E%3C/svg%3E") center / 18px 18px no-repeat;
+  background-image: none; background-color: var(--text); border-radius: 2px;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 11v5M12 8h.01'/%3E%3C/svg%3E") center / 17px 17px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 11v5M12 8h.01'/%3E%3C/svg%3E") center / 17px 17px no-repeat;
 }
 
-/* ------------------------------------------------------------------ the elevation profile */
-.course-map__profile { position: relative; margin-top: var(--s-3); overflow: hidden; border: var(--border); border-radius: var(--r-card); background: var(--card); }
+/* ------------------------------------------------------------------ the elevation profile
+   A plot on an instrument: a ruled ground, a cyan trace over it, figures in mono. The plot colour is
+   named once here so the SVG can ask for it, and points at the cyan that carries on each ground. */
+.course-map__profile {
+  --course-map-plot: var(--cyan-deep);
+  position: relative; margin-top: var(--s-3); overflow: hidden;
+  border: var(--border); border-radius: var(--r-card); background: var(--surface);
+}
+.on-dark .course-map__profile, .section--dark .course-map__profile, .panel .course-map__profile { --course-map-plot: var(--cyan); }
 .course-map__chart { display: block; width: 100%; -webkit-user-select: none; user-select: none; touch-action: pan-y; }
-.course-map__chart text { font-family: var(--font-mono); font-size: 11px; fill: var(--stone); font-variant-numeric: tabular-nums; }
-.course-map__chart .course-map__peak { fill: var(--pine); font-weight: 600; }
-.course-map__empty { display: grid; place-items: center; font-size: var(--text-small); color: var(--stone); }
+.course-map__chart text { font-family: var(--font-mono); font-size: 11.5px; fill: var(--text-muted); letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+.course-map__chart .course-map__peak { fill: var(--text); font-weight: 600; }
+
+/* Three weights of ruling, all hairlines: the mesh between the ticks, the ticks that carry a figure,
+   and the two axes. Kept crisp rather than antialiased, the way a printed chart is. */
+.course-map__grid line, .course-map__rule line, .course-map__axis line { stroke-width: 1; shape-rendering: crispEdges; }
+.course-map__grid line { stroke: var(--line); opacity: .5; }
+.course-map__rule line { stroke: var(--line); }
+.course-map__axis line { stroke: var(--line-strong); }
+
+.course-map__empty { display: grid; place-items: center; font-size: var(--text-small); color: var(--text-muted); }
 
 /* The hover reading: the system tooltip, pinned to the top of the frame, following the cursor. */
 .course-map__tip { top: var(--s-2); }
 .course-map__tip b { display: block; font-weight: 600; }
-.course-map__tip span { color: var(--on-dark-muted); }
+.course-map__tip span { color: var(--chalk-muted); }
 .course-map__tip em { font-style: normal; }
-.course-map__tip .is-up { color: var(--sun); }
-.course-map__tip .is-down { color: var(--fern); }
+.course-map__tip .is-up { color: var(--volt); }
+.course-map__tip .is-down { color: var(--cyan); }
 
 /* ------------------------------------------------------------------ steepness figures */
 .course-map__figures { display: grid; gap: var(--s-4); margin-top: var(--s-4); }
 
-/* The whole course as one bar, coloured by class. */
-.course-map__bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--gravel-2); }
+/* The whole course as one bar, coloured by class: the ramp read end to end. */
+.course-map__bar { display: flex; height: 8px; border-radius: 2px; overflow: hidden; background: var(--surface-3); }
 .course-map__bar > span { display: block; height: 100%; }
 
 /* What the colours mean: swatch and range, in mono like the rest of the figures. */
-.course-map__legend { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4); font-family: var(--font-mono); font-size: var(--text-tiny); letter-spacing: .02em; color: var(--stone); }
+.course-map__legend { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4); font-family: var(--font-mono); font-size: var(--text-tiny); letter-spacing: .02em; color: var(--text-muted); }
 .course-map__legend li { display: inline-flex; align-items: center; gap: 6px; }
-.course-map__swatch { width: 12px; height: 12px; border-radius: 3px; box-shadow: inset 0 0 0 1px var(--line); flex: none; }
+.course-map__swatch { width: 12px; height: 12px; border-radius: 2px; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 16%, transparent); flex: none; }
 
 .course-map__caption { margin-top: var(--s-3); }

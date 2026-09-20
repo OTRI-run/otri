@@ -7,14 +7,14 @@ import { Link } from './router'
 // The organizer app's small kit, on top of the design system in src/ui. Pages compose these and
 // the system's classes; a page adds its own stylesheet only for what is truly its own.
 
-export const INK = '#17261f'
+export const INK = '#0b1319'
 export const CONTAINER = 'wrap'
 
 export function Eyebrow({ children, className = '' }) {
   return <p className={`eyebrow ${className}`}>{children}</p>
 }
 
-/** The orange word in a heading. */
+/** The accent word in a heading: teal on light, volt on dark. */
 export function Gradient({ children }) {
   return <span className="accent">{children}</span>
 }
@@ -162,9 +162,9 @@ export function Dropzone({ id, accept, onChange, busy = false, busyLabel = 'Work
 // scored results -> Results scored; published -> Published.
 export const RACE_STATUS = {
   draft: { label: 'Draft', cls: 'badge' },
-  course: { label: 'Course ready', cls: 'badge badge--sky' },
-  scored: { label: 'Results scored', cls: 'badge badge--moss' },
-  published: { label: 'Published', cls: 'badge badge--solid-moss' },
+  course: { label: 'Course ready', cls: 'badge badge--cyan' },
+  scored: { label: 'Results scored', cls: 'badge badge--mint' },
+  published: { label: 'Published', cls: 'badge badge--volt' },
 }
 
 export function raceStatus(race, hasResults) {
@@ -187,7 +187,7 @@ export function Stepper({ steps, current }) {
         const state = index < current ? 'done' : index === current ? 'current' : 'todo'
         const inner = (
           <>
-            <span className={`waypoint waypoint--sm ${state === 'done' ? 'waypoint--done' : state === 'current' ? 'waypoint--blaze' : 'waypoint--todo'}`}>
+            <span className={`waypoint waypoint--sm ${state === 'done' ? 'waypoint--done' : state === 'current' ? 'waypoint--volt' : 'waypoint--todo'}`}>
               {state === 'done' ? <Check size={13} strokeWidth={2.5} /> : index + 1}
             </span>
             <span className="steps__label">{step.label}</span>

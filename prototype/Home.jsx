@@ -16,60 +16,87 @@ const DOCS = {
   contributing: `${REPO}/blob/main/CONTRIBUTING.md`,
 }
 
-// The hero's drawing: an imaginary ridge with a trail over it, and the three waypoints a score is
-// made of. Drawn by hand, no race data in it.
-function TrailArt() {
+// The ground the hero draws. Invented terrain, plotted by hand: sixteen stations across a 40 km
+// axis, read against an altitude axis that tops out at 2000 m. There is no race in it.
+const PROFILE = 'M64 300 100 288 132 256 164 270 196 220 228 240 256 186 288 204 316 140 344 172 372 96 400 150 436 206 468 182 500 244 528 290'
+const GRID_X = [64, 180, 296, 412, 528]   // every 10 km
+const GRID_Y = [48, 116, 184, 252, 320]   // every 500 m, 0 m on the baseline
+
+// The hero's artwork: a course profile drawn the way the rest of the site draws data. A night
+// readout panel, a fine measurement grid, the terrain section filled in cyan, mono axes, corner
+// brackets, and a crosshair parked on the summit with its readout. Decorative, so it is hidden
+// from assistive technology, and every colour in it is a token.
+function ProfileReadout() {
   return (
-    <svg className="home-art" viewBox="0 0 560 420" fill="none" aria-hidden="true" focusable="false">
+    <svg className="home-readout" viewBox="0 0 560 360" width="100%" fill="none" aria-hidden="true" focusable="false">
       <defs>
-        <linearGradient id="home-ridge-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="var(--moss)" stopOpacity=".22" />
-          <stop offset="1" stopColor="var(--moss)" stopOpacity="0" />
+        <linearGradient id="home-readout-fill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="var(--cyan)" stopOpacity=".42" />
+          <stop offset="1" stopColor="var(--cyan)" stopOpacity=".02" />
         </linearGradient>
-        <clipPath id="home-art-clip"><rect x="0" y="0" width="560" height="420" rx="18" /></clipPath>
+        <pattern id="home-readout-grid" width="29" height="34" patternUnits="userSpaceOnUse">
+          <path d="M29 0H0v34" stroke="var(--fill-dark)" strokeWidth="1" />
+        </pattern>
+        <clipPath id="home-readout-clip"><rect x="1" y="1" width="558" height="358" rx="8" /></clipPath>
       </defs>
-      <g clipPath="url(#home-art-clip)">
-        <rect width="560" height="420" fill="var(--card)" />
-        <g stroke="var(--pine)" strokeOpacity=".12" strokeWidth="1.2">
-          <path d="M-20 300c70-60 120-150 210-160s120 90 200 60 110-120 190-100" />
-          <path d="M-20 330c80-60 130-160 220-170s130 100 210 70 110-130 190-110" />
-          <path d="M-20 360c80-50 140-170 230-180s140 110 220 80 110-140 190-120" />
-          <path d="M-20 390c90-50 150-180 240-190s150 120 230 90 110-150 190-130" />
-          <path d="M40 80c50-40 120-50 170-10s70 120 140 110 90-100 180-90" />
-          <path d="M10 120c60-50 140-80 200-20s70 130 150 120 100-110 190-100" />
-          <path d="M-20 160c70-60 160-110 230-40s70 150 170 140 120-120 200-110" />
+
+      <g clipPath="url(#home-readout-clip)">
+        <rect width="560" height="360" fill="var(--night)" />
+
+        {/* the plot: fine grid, then the lines that carry a label */}
+        <rect x="64" y="48" width="464" height="272" fill="url(#home-readout-grid)" />
+        <g stroke="var(--line-dark)" strokeWidth="1">
+          {GRID_Y.map((y) => <path key={`y${y}`} d={`M64 ${y}H528`} />)}
+          {GRID_X.map((x) => <path key={`x${x}`} d={`M${x} 48V320`} />)}
         </g>
-        <path d="M0 262 60 222l40 20 56-58 44 30 52-74 48 46 40-28 60 66 48-38 52 44v170H0z" fill="url(#home-ridge-fill)" />
-        <path d="M0 262 60 222l40 20 56-58 44 30 52-74 48 46 40-28 60 66 48-38 52 44" stroke="var(--pine)" strokeWidth="2.2" strokeLinejoin="round" />
-        <path d="M242 156l10-16 6 12 6-8 8 14" stroke="var(--pine)" strokeWidth="1.6" strokeLinejoin="round" />
-        <path d="M0 420V330c50-10 90-40 140-38s80 40 130 30 90-50 150-40 90 30 140 20v118z" fill="var(--paper)" />
-        <path d="M0 330c50-10 90-40 140-38s80 40 130 30 90-50 150-40 90 30 140 20" stroke="var(--pine)" strokeOpacity=".5" strokeWidth="1.6" />
-        <path className="home-art__trail" d="M58 372c30-10 44-38 74-40s40 30 72 22 36-46 70-52 46 24 74 8 38-52 62-72 30-40 40-60" stroke="var(--blaze)" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="7 7" />
-        <g transform="translate(58 372)">
-          <circle r="7" fill="var(--paper)" stroke="var(--pine)" strokeWidth="2" />
-          <path d="M0 -6v-26M0 -32h16l-5 6 5 6H0" fill="var(--blaze)" stroke="var(--pine)" strokeWidth="1.8" strokeLinejoin="round" />
+
+        {/* the terrain section */}
+        <path d={`${PROFILE} 528 320 64 320Z`} fill="url(#home-readout-fill)" />
+        <path className="home-readout__line" d={PROFILE} stroke="var(--cyan)" strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />
+        <circle cx="64" cy="300" r="3.5" fill="var(--night)" stroke="var(--cyan)" strokeWidth="1.6" />
+        <circle cx="528" cy="290" r="3.5" fill="var(--night)" stroke="var(--cyan)" strokeWidth="1.6" />
+
+        {/* the crosshair, on the summit, and what it reads */}
+        <g stroke="var(--cyan)" strokeWidth="1" strokeDasharray="3 5" strokeOpacity=".5">
+          <path d="M372 48V320" />
+          <path d="M64 96H528" />
         </g>
-        <circle cx="450" cy="178" r="7" fill="var(--blaze)" stroke="var(--pine)" strokeWidth="2" />
-        <g transform="translate(150 300)">
-          <rect x="-8" y="-30" width="118" height="42" rx="8" fill="var(--pine)" />
-          <circle cx="12" cy="-9" r="8" fill="var(--blaze)" />
-          <text x="12" y="-5.5" textAnchor="middle" fill="var(--pine)" fontFamily="var(--font-mono)" fontSize="10" fontWeight="700">1</text>
-          <text x="30" y="-5" fill="var(--paper)" fontFamily="var(--font-display)" fontWeight="700" fontSize="17">COURSE</text>
+        <circle cx="372" cy="96" r="11" stroke="var(--volt)" strokeWidth="1.2" strokeOpacity=".55" />
+        <circle cx="372" cy="96" r="4.5" fill="var(--volt)" />
+        <g className="home-readout__chip">
+          <rect x="216" y="56" width="142" height="30" rx="4" fill="var(--slate)" stroke="var(--line-dark-strong)" strokeWidth="1" />
+          <text x="229" y="76" fill="var(--chalk)">26.6 KM</text>
+          <text x="345" y="76" textAnchor="end" fill="var(--cyan)">1 650 M</text>
         </g>
-        <g transform="translate(286 236)">
-          <rect x="-8" y="-30" width="96" height="42" rx="8" fill="var(--pine)" />
-          <circle cx="12" cy="-9" r="8" fill="var(--blaze)" />
-          <text x="12" y="-5.5" textAnchor="middle" fill="var(--pine)" fontFamily="var(--font-mono)" fontSize="10" fontWeight="700">2</text>
-          <text x="30" y="-5" fill="var(--paper)" fontFamily="var(--font-display)" fontWeight="700" fontSize="17">TIME</text>
+
+        {/* the axes */}
+        <g stroke="var(--line-dark-strong)" strokeWidth="1.2">
+          <path d="M64 48V320H528" />
+          {GRID_X.map((x) => <path key={`t${x}`} d={`M${x} 320v6`} />)}
         </g>
-        <g transform="translate(420 140)">
-          <rect x="-8" y="-30" width="104" height="42" rx="8" fill="var(--blaze)" />
-          <circle cx="12" cy="-9" r="8" fill="var(--pine)" />
-          <text x="12" y="-5.5" textAnchor="middle" fill="var(--paper)" fontFamily="var(--font-mono)" fontSize="10" fontWeight="700">3</text>
-          <text x="30" y="-5" fill="var(--pine)" fontFamily="var(--font-display)" fontWeight="700" fontSize="17">SCORE</text>
+        <g className="home-readout__label" fill="var(--chalk-muted)">
+          <text x="64" y="341" textAnchor="middle">0</text>
+          <text x="180" y="341" textAnchor="middle">10</text>
+          <text x="296" y="341" textAnchor="middle">20</text>
+          <text x="412" y="341" textAnchor="middle">30</text>
+          <text x="528" y="341" textAnchor="end">40 KM</text>
+          <text x="52" y="34" textAnchor="end">M</text>
+          {[['2000', 48], ['1500', 116], ['1000', 184], ['500', 252], ['0', 320]].map(([label, y]) => (
+            <text key={label} x="52" y={y + 4} textAnchor="end">{label}</text>
+          ))}
+          <text x="36" y="26">COURSE PROFILE</text>
+          <text x="524" y="26" textAnchor="end">SAMPLE</text>
         </g>
-        <rect x=".75" y=".75" width="558.5" height="418.5" rx="18" stroke="var(--line)" />
+
+        {/* corner brackets */}
+        <g stroke="var(--volt)" strokeWidth="1.5" strokeOpacity=".55">
+          <path d="M12 28V12h16" />
+          <path d="M532 12h16v16" />
+          <path d="M548 332v16h-16" />
+          <path d="M28 348H12v-16" />
+        </g>
       </g>
+      <rect x=".75" y=".75" width="558.5" height="358.5" rx="8" stroke="var(--line-dark-strong)" />
     </svg>
   )
 }
@@ -85,7 +112,7 @@ function ScoreTicker({ entries }) {
         {rows.map((entry, index) => (
           <li key={`${entry.runner_id ?? entry.name}-${index}`} className="ticker__row">
             <a href={entry.runner_id ? `#runners/${encodeURIComponent(entry.runner_id)}` : `#races/${encodeURIComponent(entry.race_id)}`}>
-              {entry.name} <span style={{ opacity: .6 }}>· {entry.race}</span>
+              {entry.name} <span className="home-ticker__race">· {entry.race}</span>
             </a>
             <b>{entry.score}</b>
           </li>
@@ -95,24 +122,23 @@ function ScoreTicker({ entries }) {
   )
 }
 
-// The bands a score falls in, as a scale: what the number means before anyone reads the method.
+// The bands a score falls in, read as a scale: each band a row on a readout, its track filled to
+// the share of 1000 it starts at. What the number means, before anyone reads the method.
 function LevelScale() {
   const bands = [...LEVELS].reverse().filter((band) => band.from >= 300 && band.from < 1000)
   return (
     <div className="home-scale" role="img" aria-label="Score bands from 300, recreational, to 1000, world class.">
-      <div className="home-scale__bar">
-        {bands.map((band, index) => (
-          <span key={band.id} style={{ '--i': index }} title={band.name} />
-        ))}
-      </div>
-      <div className="home-scale__ticks">
-        {bands.map((band) => (
-          <span key={band.id}>
-            <b>{band.from}</b>
-            {band.short}
-          </span>
-        ))}
-        <span><b>1000</b>Record</span>
+      {bands.map((band) => (
+        <div key={band.id} className="home-scale__row" style={{ '--home-fill': `${band.from / 10}%` }} title={band.name}>
+          <b>{band.from}</b>
+          <span className="home-scale__track" />
+          <span className="home-scale__name">{band.short}</span>
+        </div>
+      ))}
+      <div className="home-scale__row home-scale__row--top" style={{ '--home-fill': '100%' }}>
+        <b>1000</b>
+        <span className="home-scale__track" />
+        <span className="home-scale__name">Record</span>
       </div>
     </div>
   )
@@ -164,8 +190,8 @@ export default function Home() {
 
   return (
     <>
-      {/* Hero */}
-      <section className="hero">
+      {/* Hero — the dark chrome: the claim, the two choices, and the readout */}
+      <section className="hero on-dark">
         <div className="wrap hero__inner">
           <div className="min0">
             <p className="eyebrow">Open Trail Running Index</p>
@@ -184,7 +210,7 @@ export default function Home() {
                 </span>
                 <ArrowRight size={22} />
               </a>
-              <a href="#score" className="signpost__arm signpost__arm--blaze" data-audience="organizer">
+              <a href="#score" className="signpost__arm signpost__arm--primary" data-audience="organizer">
                 <span className="signpost__no">02 · I organize a race</span>
                 <span className="signpost__label">
                   Score my whole race
@@ -201,17 +227,17 @@ export default function Home() {
             </div>
           </div>
           <div className="hero__art">
-            <TrailArt />
+            <ProfileReadout />
             <a href="#score?example=1" className="home-example">
-              <span className="icon-box icon-box--blaze icon-box--sm"><Play size={14} /></span>
+              <span className="icon-box icon-box--volt icon-box--sm"><Play size={14} /></span>
               <span className="min0"><b>See a race scored, live.</b> <span className="muted">The course on the map and 100 finishers, in one click.</span></span>
-              <ArrowRight size={18} className="icon--blaze" />
+              <ArrowRight size={18} className="icon--volt" />
             </a>
           </div>
         </div>
       </section>
 
-      {/* 1 · How a score is made */}
+      {/* 1 · How a score is made — a light reading surface */}
       <section className="section section--card section--line-bottom">
         <div className="wrap">
           <div className="section-head">
@@ -239,8 +265,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 2 · For runners */}
-      <section className="section topo">
+      {/* 2 · For runners — the quiet surface, over the measurement grid */}
+      <section className="section section--quiet section--grid">
         <div className="wrap grid grid--split">
           <div className="stack">
             <span className="waypoint">2</span>
@@ -253,38 +279,38 @@ export default function Home() {
             </div>
           </div>
           <div className="card card--pad-lg">
-            <p className="eyebrow eyebrow--plain">What the number means</p>
+            <div className="rule"><span>What the number means</span></div>
             <LevelScale />
             <p className="small muted mt-5">The names are a reading aid; the numbers are exact. A score is a share of the fastest pace a human has held on a course this demanding, so 700 is the pace of a three-hour road marathon and 900 is the best in the world.</p>
           </div>
         </div>
       </section>
 
-      {/* 3 · For organizers */}
-      <section className="section section--dark ridge-after ridge-after--card">
+      {/* 3 · For organizers — a dark instrument band */}
+      <section className="section section--dark home-band">
         <div className="wrap grid grid--split">
           <div className="card card--night home-flow">
             <p className="panel__label">Two files in</p>
             <ol className="home-flow__list mt-4">
-              <li><span className="waypoint waypoint--blaze">1</span><span><b>The course</b><small>A GPX of the route: the ground your runners covered.</small></span></li>
-              <li><span className="waypoint waypoint--blaze">2</span><span><b>The results</b><small>CSV or Excel, as your timing system exports it. Column names in several languages are understood.</small></span></li>
+              <li><span className="waypoint waypoint--volt">1</span><span><b>The course</b><small>A GPX of the route: the ground your runners covered.</small></span></li>
+              <li><span className="waypoint waypoint--volt">2</span><span><b>The results</b><small>CSV or Excel, as your timing system exports it. Column names in several languages are understood.</small></span></li>
             </ol>
             <div className="home-flow__out mt-5">
-              <Users size={22} />
+              <Users size={22} className="icon--volt" />
               <span><b>Every finisher scored.</b> A leaderboard, podium images and a post to share, a race page if you want one.</span>
             </div>
             <a href="#score?example=1" className="link link--arrow mt-5">See the example race <ArrowRight size={15} /></a>
           </div>
           <div className="stack">
-            <span className="waypoint waypoint--blaze">3</span>
+            <span className="waypoint waypoint--volt">3</span>
             <p className="eyebrow">For organizers</p>
             <h2 className="display-2">Score your race. <span className="accent">Then show it off.</span></h2>
             <p className="lead">No sign-up to see your scores. Keep them as a file, share the podium, or turn the race into a public page with one click: free, and nobody has to approve you. Made for the local race as much as the famous one.</p>
             <div className="cluster mt-2">
               <a href="#score" className="btn btn--primary btn--lg">Score my race <Upload size={18} /></a>
-              <a href="organizer/" className="btn btn--on-dark">For organizers <ArrowUpRight size={16} /></a>
+              <a href="organizer/" className="btn btn--secondary">For organizers <ArrowUpRight size={16} /></a>
             </div>
-            <div className="facts mt-4" style={{ color: 'var(--on-dark-muted)' }}>
+            <div className="facts mt-4">
               <span>Checked row by row</span>
               <span>Nothing kept unless you publish</span>
             </div>
@@ -312,19 +338,22 @@ export default function Home() {
                   <RaceCard key={race.race_id} race={race} />
                 ))}
               </div>
-              <div className="panel stack">
+              <div className="panel panel--bracket stack">
                 <div className="cluster cluster--between">
                   <span className="panel__label">Latest scores</span>
-                  <span className="badge badge--live" style={{ color: 'var(--fern)', borderColor: 'transparent', background: 'transparent' }}>Live</span>
+                  <span className="badge badge--live">Live</span>
                 </div>
                 <div className="home-counts">
+                  <div className="home-counts__main">
+                    <span className="panel__label">Results</span>
+                    <span className="panel__number">{resultCount.toLocaleString()}</span>
+                  </div>
                   <div className="stat"><span className="stat__value">{races.length}</span><span className="stat__label">Races</span></div>
-                  <div className="stat"><span className="stat__value">{resultCount.toLocaleString()}</span><span className="stat__label">Results</span></div>
                 </div>
                 <ScoreTicker entries={ticker} />
-                <div className="cluster cluster--between panel__rule" style={{ paddingTop: 12 }}>
+                <div className="cluster cluster--between panel__rule home-panel__foot">
                   <a href="#races" className="link link--arrow small">All races <ArrowRight size={14} /></a>
-                  <span className="tiny mono" style={{ color: 'var(--on-dark-muted)' }}>{scoringVersion ? modelLabel(scoringVersion) : 'Versioned · reproducible'}</span>
+                  <span className="tiny mono muted">{scoringVersion ? modelLabel(scoringVersion) : 'Versioned · reproducible'}</span>
                 </div>
               </div>
             </div>
@@ -332,7 +361,7 @@ export default function Home() {
         </section>
       )}
 
-      {/* 5 · Built in the open */}
+      {/* 5 · Built in the open — the deepest band */}
       <section className="section section--night topo--dark">
         <div className="wrap">
           <div className="section-head">
@@ -351,7 +380,7 @@ export default function Home() {
               [Database, 'Source code', 'Scoring, course measurement, the API and this site, all public.', REPO],
             ].map(([IconC, title, text, href]) => (
               <a key={title} href={href} className="card card--dark card--link stack stack--tight">
-                <IconC size={22} style={{ color: 'var(--fern)' }} />
+                <IconC size={22} className="home-doc__icon" />
                 <b className="h-4 mt-2">{title}</b>
                 <span className="small muted">{text}</span>
                 <span className="link link--arrow link--up small mt-2">Read <ArrowUpRight size={14} /></span>
@@ -359,13 +388,13 @@ export default function Home() {
             ))}
           </div>
 
-          <div id="contribute" className="card card--dark card--pad-lg mt-8 home-contribute">
+          <div id="contribute" className="card card--dark card--pad-lg mt-8">
             <div className="grid grid--aside">
               <div className="stack">
                 <p className="eyebrow">Contribute</p>
                 <h3 className="h-1">Help improve the model and the course measurement.</h3>
                 <p className="muted">OTRI belongs to nobody's federation. The model has known limits, written down where everyone can read them, and it gets better the way open software does: someone shows where it is wrong, with a course or a paper, and the fix becomes a new version.</p>
-                <a href={DOCS.contributing} className="btn btn--paper mt-2"><GitBranch size={16} /> How to contribute <ArrowUpRight size={15} /></a>
+                <a href={DOCS.contributing} className="btn btn--chalk mt-2"><GitBranch size={16} /> How to contribute <ArrowUpRight size={15} /></a>
               </div>
               <div className="grid grid--2 grid--tight">
                 {[
@@ -386,7 +415,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Closing */}
+      {/* Closing — the signal strip */}
       <section className="section section--tight home-close">
         <div className="wrap cluster cluster--between cluster--loose">
           <div className="stack stack--tight">

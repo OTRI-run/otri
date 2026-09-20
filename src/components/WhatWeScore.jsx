@@ -15,8 +15,8 @@ export const NOT_MEASURED =
   'What a score does not see: how technical the ground is, mud, snow, heat or darkness. Two courses with the same profile count the same. Altitude above 1,500 m is counted.'
 
 const MARK = {
-  yes: ['Yes', 'badge badge--moss'],
-  provisional: ['Provisional', 'badge badge--ochre'],
+  yes: ['Yes', 'badge badge--mint'],
+  provisional: ['Provisional', 'badge badge--amber'],
   no: ['No', 'badge'],
 }
 

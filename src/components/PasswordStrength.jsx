@@ -33,7 +33,7 @@ export default function PasswordStrength({ password, email }) {
   if (!password) {
     return <p className="field__hint">At least {PASSWORD_MIN} characters. A few unrelated words beat a short jumble; length is what counts.</p>
   }
-  const colors = ['', 'var(--berry)', 'var(--ochre)', 'var(--sky)', 'var(--moss)']
+  const colors = ['', 'var(--rose-deep)', 'var(--amber-deep)', 'var(--cyan-deep)', 'var(--cyan-deep)']
   return (
     <div className="stack stack--tight mt-1" aria-live="polite">
       <div className="meter meter--bands meter--thin" aria-hidden="true">

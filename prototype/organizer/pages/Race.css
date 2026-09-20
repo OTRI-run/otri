@@ -3,9 +3,9 @@
 
 /* Measured course facts: each figure in a gravel box, the entered figure under it, marked when it
    differs by 5% or more. */
-.race-step-facts > div { padding: 10px 12px; border-radius: var(--r-control); background: var(--gravel); min-width: 0; }
-.race-step-facts dd.race-step-facts__sub { margin-top: 2px; font-size: var(--text-tiny); font-weight: 400; color: var(--stone); }
-.race-step-facts dd.race-step-facts__sub.is-off { color: var(--ochre); font-weight: 600; }
+.race-step-facts > div { padding: 10px 12px; border-radius: var(--r-control); background: var(--surface-2); min-width: 0; }
+.race-step-facts dd.race-step-facts__sub { margin-top: 2px; font-size: var(--text-tiny); font-weight: 400; color: var(--text-muted); }
+.race-step-facts dd.race-step-facts__sub.is-off { color: var(--amber-deep); font-weight: 600; }
 
 /* The example results file: a flush card with its actions on top and rows that scroll sideways. */
 .race-step-example__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-3) var(--s-4); }
@@ -14,9 +14,9 @@
 
 /* Validation issues inside a notice: a scrolling list, rows and fields in mono. */
 .race-step-issues { margin-top: var(--s-2); max-height: 256px; overflow: auto; display: grid; gap: 6px; font-size: var(--text-small); line-height: 1.45; }
-.race-step-issues--error { color: var(--berry); }
-.race-step-issues--warning { color: var(--ochre); }
-.details.race-step-warnings > summary { color: var(--ochre); }
+.race-step-issues--error { color: var(--rose-deep); }
+.race-step-issues--warning { color: var(--amber-deep); }
+.details.race-step-warnings > summary { color: var(--amber-deep); }
 
 /* The scored preview keeps its width on a phone; the review's compact one fits its column. */
 .table.race-step-scores { min-width: 480px; }

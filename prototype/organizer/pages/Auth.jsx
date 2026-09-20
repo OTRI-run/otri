@@ -110,7 +110,7 @@ export function Welcome() {
               {STEPS.map(([Icon, title, desc], index) => (
                 <li key={title}>
                   <b className="waypoint">0{index + 1}</b>
-                  <Icon size={18} className="icon--moss" />
+                  <Icon size={18} className="icon--accent" />
                   <div className="min0">
                     <strong className="h-4">{title}</strong>
                     <p className="small muted mt-1">{desc}</p>
@@ -123,7 +123,7 @@ export function Welcome() {
       </section>
 
       {/* 02 · What to have to hand. */}
-      <section className="section section--gravel section--line-top">
+      <section className="section section--quiet section--line-top">
         <div className={CONTAINER}>
           <div className="section-head">
             <span className="waypoint section-head__no">02</span>
@@ -179,12 +179,12 @@ export function Welcome() {
           <div className="cluster mt-2">
             <button
               onClick={() => navigate('/register')}
-              className="btn btn--paper btn--lg"
+              className="btn btn--chalk btn--lg"
             >
               Create organizer account <ArrowRight size={15} />
             </button>
             <a
-              className="btn btn--on-dark btn--lg"
+              className="btn btn--secondary btn--lg"
               href="../#score"
             >
               Score your race first, no account <ArrowUpRight size={15} />
@@ -280,7 +280,7 @@ export function Register({ onSignedIn }) {
         <Field label="Confirm password" htmlFor="reg-pw2" error={mismatch ? 'Passwords do not match.' : null}>
           <PasswordInput id="reg-pw2" required autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inputClass} />
         </Field>
-        <div className="card card--gravel card--pad-sm stack stack--tight">
+        <div className="card card--quiet card--pad-sm stack stack--tight">
           <label className="check">
             <input id="reg-terms" type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} />
             <span>

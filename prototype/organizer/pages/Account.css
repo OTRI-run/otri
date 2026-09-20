@@ -10,12 +10,12 @@
 .account-fieldset { display: contents; border: 0; padding: 0; margin: 0; min-width: 0; }
 
 /* A setting: a sentence about it and its button, in a quiet box; an open one grows a form below. */
-.account-box { padding: var(--s-3) var(--s-4); border-radius: var(--r-control); background: var(--gravel); min-width: 0; }
+.account-box { padding: var(--s-3) var(--s-4); border-radius: var(--r-control); background: var(--surface-2); min-width: 0; }
 .account-box__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); }
 .account-box__head > p { flex: 1 1 260px; min-width: 0; }
-.account-box--danger { background: var(--berry-pale); }
-.account-danger { color: var(--berry); }
-.account-status-on { color: var(--moss-deep); font-weight: 600; }
+.account-box--danger { background: var(--rose-pale); }
+.account-danger { color: var(--rose-deep); }
+.account-status-on { color: var(--accent-text); font-weight: 600; }
 .account-narrow { max-width: 420px; }
 
 /* Recovery codes: a dark block, the codes in columns. */
@@ -24,7 +24,7 @@
 
 /* Authenticator setup: the QR code beside the instructions. */
 .account-totp { display: grid; gap: var(--s-4); }
-.account-totp__qr { padding: var(--s-2); background: var(--white); border: var(--border); border-radius: var(--r-card); align-self: start; }
+.account-totp__qr { padding: var(--s-2); background: var(--surface); border: var(--border); border-radius: var(--r-card); align-self: start; }
 .account-totp__qr svg { width: 100%; height: auto; }
 @media (min-width: 640px) { .account-totp { grid-template-columns: 200px minmax(0, 1fr); align-items: start; } }
 

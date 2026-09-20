@@ -1,101 +1,99 @@
-/* OTRI design tokens. Everything on the site reads from here; no colour or size is written twice.
+/* OTRI design tokens. Every colour, size and duration on the site is named here once.
 
-   The palette comes from a day on a trail: chalk paper and gravel for the ground, pine ink for
-   the text, moss for the brand, and the blaze orange of a painted trail marker for the one thing
-   on a screen you are meant to press. Every text/background pair below was measured:
-   pine on paper 13.7:1, stone on paper 5.7:1, moss-deep on paper 7.4:1, pine on blaze 5.1:1. */
+   The idea: an instrument for the mountains. Dark graphite chrome and data panels, cool near-white
+   reading surfaces, one volt-lime signal for the thing you are meant to press, ice cyan for data
+   and links. Sharp corners, fine rules, measured type.
+
+   Two families of token:
+   - the flipping set (--bg, --surface, --text, --line …) changes inside a dark section, so a
+     component written once reads correctly on both grounds (see base.css);
+   - the fixed set (--ink, --chalk, --volt, --graphite …) never changes, for anything drawn on its
+     own background: a button, a badge, a panel, a chart.
+
+   Measured contrast (WCAG): text on bg 17.1:1 · muted on bg 6.1:1 · accent text on bg 5.7:1 ·
+   ink on volt 14.9:1 · chalk on graphite 16.5:1 · chalk-muted on slate 6.6:1 · cyan on graphite
+   11.3:1 · every status colour at or above 5:1 on its own pale fill. */
 
 :root {
-  /* ground */
-  --paper: #f3efe6;          /* page */
-  --card: #fbf9f4;           /* raised surfaces */
-  --white: #fffefb;          /* inputs, the brightest surface */
-  --gravel: #ebe6da;         /* subtle fills: table heads, tracks, hover */
-  --gravel-2: #e2dccd;       /* pressed fills */
-  --line: #d9d3c6;           /* hairlines */
-  --line-strong: #b5ae9f;    /* input borders, emphasised rules */
+  /* ---------------------------------------------------------------- fixed inks and grounds */
+  --ink: #0b1319;           /* the darkest text, and the ink of a button */
+  --ink-2: #16222b;
+  --graphite: #0b131a;      /* chrome: header, footer, dark sections */
+  --slate: #15202a;         /* dark card and panel */
+  --slate-2: #1d2a36;       /* raised on dark */
+  --night: #05090d;         /* deepest: the build strip, chart grounds */
+  --chalk: #e9f2f7;         /* text on any dark ground */
+  --chalk-muted: #93a7b4;   /* secondary text on dark */
+  --line-dark: rgba(233, 242, 247, .13);
+  --line-dark-strong: rgba(233, 242, 247, .28);
+  --fill-dark: rgba(233, 242, 247, .06);
+  --fill-dark-2: rgba(233, 242, 247, .12);
 
-  /* ink */
-  --pine: #17261f;           /* text, dark surfaces */
-  --pine-2: #1e3328;         /* dark surface, one step lighter */
-  --night: #0f1a15;          /* the darkest surface */
-  --stone: #586057;          /* secondary text (5.7:1 on paper) */
-  --stone-2: #7d847c;        /* decorative only: placeholders, rules, disabled */
+  /* ---------------------------------------------------------------- signal and data */
+  --volt: #cbf53f;          /* the action colour: fills only, always with --ink on it */
+  --volt-hot: #d9f86a;      /* its hover */
+  --volt-dim: #9dbf2e;      /* volt on a light ground, for a rule or a chart line */
+  --volt-pale: #eef9d2;
+  --cyan: #46dcea;          /* data and accents on dark */
+  --cyan-deep: #086a7c;     /* links and accents on light */
+  --cyan-pale: #dff4f8;
+  --mint: #6fe8a8;   --mint-deep: #0f7350;   --mint-pale: #ddf5e8;   /* positive */
+  --amber: #ffb347; --amber-deep: #7e5200;  --amber-pale: #fbeed8;  /* caution */
+  --rose: #ff7484;  --rose-deep: #b82636;   --rose-pale: #fbe3e6;   /* error, danger */
+  --gold: #e0ae37; --silver: #9fb0bb; --bronze: #bd8148;            /* podium, graphics only */
 
-  /* brand */
-  --moss: #2f6b4f;           /* the brand green: icons, active states, focus */
-  --moss-deep: #245640;      /* link text, hover */
-  --moss-pale: #e3efe4;      /* success fills */
-  --fern: #a7d7a0;           /* accent on dark surfaces (9.7:1 on pine) */
-  --blaze: #ee6b3b;          /* trail-marker orange: the primary action (pine on it 5.1:1) */
-  --blaze-deep: #d4562a;     /* headings' accent word, hover fill */
-  --blaze-pale: #fbe4d8;
-  --sun: #f2c14e;            /* highlights on dark, medals */
+  /* ---------------------------------------------------------------- flipping set (light default) */
+  --bg: #f1f5f7;            /* the page */
+  --surface: #ffffff;       /* cards, inputs, menus */
+  --surface-2: #e8eef2;     /* subtle fill: table heads, tracks, hover */
+  --surface-3: #dce5eb;     /* pressed */
+  --line: #d6dfe6;
+  --line-strong: #aebdc7;
+  --text: #0b1319;
+  --text-muted: #4e5f69;
+  --text-faint: #7a8b95;    /* decorative only: placeholders, disabled */
+  --accent-text: #086a7c;   /* links and the accent word in a heading */
 
-  /* status */
-  --sky: #2f6883;  --sky-pale: #e2edf3;      /* information */
-  --ochre: #8f5c10; --ochre-pale: #f8ecd2;   /* caution, provisional */
-  --berry: #a9333a; --berry-pale: #f8e3e3;   /* errors, danger */
-  --gold: #d4a017; --silver: #8a94a6; --bronze: #b0713b; /* podium, graphics only */
-
-  /* Fixed inks: the same on every surface. The tokens above flip inside dark sections (see base.css);
-     anything drawn on its own fixed background (a dark button, a waypoint, a pressed chip) reads these. */
-  --ink: #17261f;
-  --ink-2: #1e3328;
-  --ink-3: #0f1a15;
-  --chalk: #f3efe6;
-  --stone-fixed: #586057;
-  --line-fixed: #d9d3c6;
-  --line-strong-fixed: #b5ae9f;
-  --gravel-fixed: #ebe6da;
-  --gravel-2-fixed: #e2dccd;
-  --moss-deep-fixed: #245640;
-  --blaze-deep-fixed: #d4562a;
-
-  /* text on dark surfaces */
-  --on-dark: var(--paper);
-  --on-dark-muted: #b9c9b3;  /* 9:1 on pine */
-  --on-dark-line: rgba(243, 239, 230, .14);
-
-  /* type */
-  --font-body: 'Barlow', 'Segoe UI', Roboto, system-ui, sans-serif;
-  --font-display: 'Barlow Condensed', 'Barlow', 'Arial Narrow', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Menlo, Consolas, monospace;
+  /* ---------------------------------------------------------------- type */
+  --font-display: 'Space Grotesk', 'IBM Plex Sans', system-ui, sans-serif;
+  --font-body: 'IBM Plex Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
 
   --text-tiny: 13px;
   --text-small: 15px;
   --text-body: 17px;
-  --text-lead: clamp(18px, 1.2vw + 12px, 20px);
+  --text-lead: clamp(18px, 1.1vw + 13px, 20px);
   --leading-body: 1.6;
-  --leading-tight: 1.15;
+  --leading-tight: 1.12;
+  --track-mono: .08em;      /* mono labels are always tracked out */
 
-  /* rhythm */
+  /* ---------------------------------------------------------------- rhythm */
   --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px;
   --s-8: 32px; --s-10: 40px; --s-12: 48px; --s-16: 64px;
-  --wrap: 1160px;
-  --wrap-narrow: 760px;
+  --wrap: 1200px;
+  --wrap-narrow: 780px;
   --gutter: clamp(16px, 4vw, 40px);
   --section: clamp(48px, 7vw, 96px);
 
-  /* shape */
-  --r-control: 6px;
-  --r-card: 12px;
-  --r-panel: 16px;
+  /* ---------------------------------------------------------------- shape: sharp, like a readout */
+  --r-control: 4px;
+  --r-card: 6px;
+  --r-panel: 8px;
   --r-pill: 999px;
   --border: 1px solid var(--line);
-  --shadow-lift: 0 1px 0 rgba(23, 38, 31, .05), 0 12px 28px -14px rgba(23, 38, 31, .28);
-  --shadow-menu: 0 2px 0 rgba(23, 38, 31, .04), 0 18px 40px -16px rgba(23, 38, 31, .35);
-  --focus: 0 0 0 3px rgba(47, 107, 79, .28);
+  --shadow-lift: 0 1px 0 rgba(11, 19, 25, .04), 0 14px 30px -18px rgba(11, 19, 25, .35);
+  --shadow-menu: 0 2px 0 rgba(11, 19, 25, .04), 0 22px 44px -20px rgba(11, 19, 25, .45);
+  --focus: 0 0 0 3px rgba(8, 106, 124, .3);
+  --focus-dark: 0 0 0 3px rgba(203, 245, 63, .35);
 
-  /* motion */
-  --ease: cubic-bezier(.3, .7, .2, 1);
-  --quick: 140ms;
+  /* ---------------------------------------------------------------- motion */
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --quick: 130ms;
   --calm: 260ms;
 
-  /* the shell */
-  --header-h: 72px;
+  --header-h: 68px;
 }
 
 @media (max-width: 639px) {
-  :root { --text-body: 16px; --header-h: 64px; }
+  :root { --text-body: 16px; --header-h: 60px; }
 }

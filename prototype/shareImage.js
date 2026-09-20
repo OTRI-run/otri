@@ -1,8 +1,9 @@
 import identity from '../src/brand/identity.json'
 // Share images, drawn in the browser on a <canvas>: a race's top finishers for the organizer, a
 // target time for the runner. Nothing is uploaded to make them; the PNG exists only where it is
-// drawn. They wear the site's identity: night-to-pine ground with faint contours, paper text,
-// the numbers in sun, the trail in blaze, and the OTRI mark in the corner.
+// drawn. They wear the site's identity: a night-to-graphite ground with the measurement grid and
+// faint cyan contour rings behind it, chalk text, the big numbers in volt, mono labels in cyan,
+// and the OTRI lockup — the ring, the ridge, the volt summit, then all four letters — at the foot.
 
 export const FORMATS = {
   post: { label: 'Post 4:5', width: 1080, height: 1350, hint: 'Facebook and Instagram feed' },
@@ -10,26 +11,30 @@ export const FORMATS = {
   story: { label: 'Story 9:16', width: 1080, height: 1920, hint: 'Stories, Reels, WhatsApp status' },
 }
 
-// Brand colours come from identity.json; the rest mirror src/ui/tokens.css (--sun, --gold, --silver, --bronze).
-const { night: NIGHT, pine: PINE, paper: PAPER, blaze: BLAZE, fern: FERN } = identity.colours
-const SUN = '#f2c14e'
-const MEDALS = ['#d4a017', '#8a94a6', '#b0713b']
+// The brand colours come from identity.json. The three podium metals have no place in the
+// interface, so they live only in the tokens; these mirror src/ui/tokens.css (--gold, --silver,
+// --bronze).
+const { night: NIGHT, graphite: GRAPHITE, ink: DARK_INK, chalk: CHALK, chalkMuted: CHALK_MUTED, volt: VOLT, cyan: CYAN } = identity.colours
+const GOLD = '#e0ae37'
+const SILVER = '#9fb0bb'
+const BRONZE = '#bd8148'
+const MEDALS = [GOLD, SILVER, BRONZE]
 
-// A hex colour with an alpha, for the soft text and hairlines.
+// A hex colour with an alpha, for the hairlines and the quiet fills.
 function alpha(hex, a) {
   const n = parseInt(hex.slice(1), 16)
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`
 }
-const INK = PAPER
-const SOFT = alpha(PAPER, 0.72)
-const FAINT = alpha(PAPER, 0.16)
-const ACCENT = SUN
-const LABEL = FERN
+const TEXT = CHALK // everything meant to be read
+const SOFT = CHALK_MUTED // the second line: facts, times, the footer note
+const FAINT = alpha(CHALK, 0.14) // hairlines, mirroring --line-dark
+const ACCENT = VOLT // the number the image is about
+const LABEL = CYAN // mono labels, as on the dark panels
 
 // The same three faces as the site (src/ui/fonts.css), with the system fallbacks behind them.
-const DISPLAY = "'Barlow Condensed', 'Barlow', 'Arial Narrow', system-ui, sans-serif"
-const SANS = "'Barlow', 'Segoe UI', Roboto, system-ui, sans-serif"
-const MONO = "'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace"
+const DISPLAY = "'Space Grotesk', 'IBM Plex Sans', system-ui, sans-serif"
+const SANS = "'IBM Plex Sans', 'Segoe UI', Roboto, system-ui, sans-serif"
+const MONO = "'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace"
 
 // The canvas takes whatever face is loaded when it draws: ask for ours first. The first paint uses
 // what is there; when the faces arrive the latest drawing of each canvas is painted again.
@@ -40,11 +45,11 @@ const fontsReady = (() => {
     return Promise.resolve()
   }
   return Promise.all([
-    document.fonts.load("800 76px 'Barlow Condensed'"),
-    document.fonts.load("700 32px 'Barlow'"),
-    document.fonts.load("500 32px 'Barlow'"),
-    document.fonts.load("600 26px 'JetBrains Mono'"),
-    document.fonts.load("400 26px 'JetBrains Mono'"),
+    document.fonts.load("700 76px 'Space Grotesk'"),
+    document.fonts.load("600 32px 'IBM Plex Sans'"),
+    document.fonts.load("400 32px 'IBM Plex Sans'"),
+    document.fonts.load("600 26px 'IBM Plex Mono'"),
+    document.fonts.load("400 26px 'IBM Plex Mono'"),
   ])
     .catch(() => {})
     .then(() => {
@@ -61,19 +66,41 @@ function withFonts(canvas, paint) {
   })
 }
 
-// The site's contour tile (src/ui/patterns.css, --topo-dark): nine bezier strokes on a 520 square,
-// tiled down the image. Built on first use, so importing this file needs no canvas.
-const CONTOUR_TILE = 520
+// The measurement grid, as --grid-dark in src/ui/patterns.css: a fine chalk mesh with every fourth
+// line a little brighter. 54 image pixels is the site's 28 CSS px at this scale.
+const GRID = 54
+function grid(ctx, width, height) {
+  ctx.save()
+  ctx.lineWidth = 2
+  for (const [step, a] of [[GRID, 0.05], [GRID * 4, 0.09]]) {
+    ctx.strokeStyle = alpha(CHALK, a)
+    ctx.beginPath()
+    for (let x = step; x < width; x += step) {
+      ctx.moveTo(x, 0)
+      ctx.lineTo(x, height)
+    }
+    for (let y = step; y < height; y += step) {
+      ctx.moveTo(0, y)
+      ctx.lineTo(width, y)
+    }
+    ctx.stroke()
+  }
+  ctx.restore()
+}
+
+// The site's contour tile (src/ui/patterns.css, --topo-dark): a peak seen from above as five
+// concentric rings, with three long sweeps below it, in cyan at a tenth of its strength. Built on
+// first use, so importing this file needs no canvas.
+const CONTOUR_TILE = 560
 const CONTOUR_PATHS = [
-  'M-20 380c70-50 110-140 200-150s110 80 190 50 110-110 190-90',
-  'M-20 420c80-50 120-160 210-170s120 90 200 60 110-120 190-100',
-  'M-20 460c80-40 130-170 220-180s130 100 210 70 110-130 190-110',
-  'M-20 500c90-40 140-180 230-190s140 110 220 80 110-140 190-120',
-  'M60 70c50-40 110-50 160-10s70 110 130 100 90-90 170-80',
-  'M30 110c60-50 130-70 190-20s70 120 140 110 100-100 180-90',
-  'M0 150c70-60 140-100 210-40s70 140 160 130 110-110 190-100',
-  'M-30 190c80-70 160-120 230-50s70 150 170 140 120-120 200-110',
-  'M100 40c40-20 80-30 110-5s50 70 100 65 60-50 120-45',
+  'M280 90c86 0 156 66 156 148s-70 148-156 148-156-66-156-148S194 90 280 90Z',
+  'M280 125c69 0 125 52 125 116s-56 116-125 116-125-52-125-116 56-116 125-116Z',
+  'M283 160c53 0 96 39 96 85s-43 85-96 85-96-39-96-85 43-85 96-85Z',
+  'M286 196c37 0 67 26 67 56s-30 56-67 56-67-26-67-56 30-56 67-56Z',
+  'M289 232c21 0 38 14 38 30s-17 30-38 30-38-14-38-30 17-30 38-30Z',
+  'M-30 470c120-40 200-120 330-150s180-60 290-40',
+  'M-30 520c130-40 220-130 350-160s190-60 280-30',
+  'M-30 570c140-40 240-140 370-170s200-55 270-20',
 ]
 let contourPaths = null
 
@@ -81,7 +108,7 @@ function contours(ctx, width, height) {
   contourPaths ??= CONTOUR_PATHS.map((d) => new Path2D(d))
   const scale = width / CONTOUR_TILE
   ctx.save()
-  ctx.strokeStyle = alpha(FERN, 0.12)
+  ctx.strokeStyle = alpha(CYAN, 0.1)
   ctx.lineCap = 'round'
   for (let y = 0; y < height; y += CONTOUR_TILE * scale) {
     ctx.save()
@@ -101,9 +128,10 @@ function setup(canvas, format) {
   const ctx = canvas.getContext('2d')
   const background = ctx.createLinearGradient(0, 0, width, height)
   background.addColorStop(0, NIGHT)
-  background.addColorStop(1, PINE)
+  background.addColorStop(1, GRAPHITE)
   ctx.fillStyle = background
   ctx.fillRect(0, 0, width, height)
+  grid(ctx, width, height)
   contours(ctx, width, height)
   ctx.textBaseline = 'alphabetic'
   return { ctx, width, height, pad: 84 }
@@ -137,54 +165,49 @@ function wrap(ctx, text, maxWidth, maxLines) {
   return lines.map((entry) => fit(ctx, entry, maxWidth))
 }
 
-// The eyebrow as on the site: a painted blaze, then the label in mono.
+// The eyebrow as on the site: a volt tick, then the label in mono.
 function eyebrow(ctx, text, x, y) {
-  ctx.fillStyle = BLAZE
+  ctx.fillStyle = VOLT
   ctx.fillRect(x, y - 22, 12, 22)
   ctx.font = `600 26px ${MONO}`
   ctx.fillStyle = LABEL
-  ctx.fillText(text.toUpperCase().split('').join('\u200a'), x + 26, y)
+  ctx.fillText(text.toUpperCase().split('').join(' '), x + 26, y)
 }
 
-// The OTRI mark from identity.json: three contour rings opened where the trail climbs through
-// them, the trail in blaze, the summit dot. Drawn at `size` pixels with its top-left at (x, y).
+// The OTRI mark from identity.json: a closed ring — the letter O — with a ridge inside it and a
+// volt dot on the summit. Drawn at `size` pixels with its top-left at (x, y).
 function mark(ctx, x, y, size) {
-  const { box, rings, trail, trailWidth, trailDash, summit } = identity.mark
+  const { box, ring, ridge, ridgeWidth, summit } = identity.mark
   const scale = size / box
-  const rad = (deg) => (deg * Math.PI) / 180
   ctx.save()
   ctx.translate(x, y)
   ctx.scale(scale, scale)
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
-  ctx.strokeStyle = INK
-  for (const ring of rings) {
-    const [visible] = ring.dash.split(' ').map(Number) // pathLength 360: the dash is in degrees
-    ctx.lineWidth = ring.width
-    ctx.beginPath()
-    ctx.arc(box / 2, box / 2, ring.r, rad(ring.rotate), rad(ring.rotate + visible))
-    ctx.stroke()
-  }
-  ctx.strokeStyle = BLAZE
-  ctx.lineWidth = trailWidth
-  ctx.setLineDash(trailDash.split(' ').map(Number))
-  ctx.stroke(new Path2D(trail))
-  ctx.setLineDash([])
-  ctx.fillStyle = BLAZE
+  ctx.strokeStyle = TEXT
+  ctx.lineWidth = ring.width
+  ctx.beginPath()
+  ctx.arc(ring.cx, ring.cy, ring.r, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.lineWidth = ridgeWidth
+  ctx.stroke(new Path2D(ridge))
+  ctx.fillStyle = VOLT
   ctx.beginPath()
   ctx.arc(summit.cx, summit.cy, summit.r, 0, Math.PI * 2)
   ctx.fill()
   ctx.restore()
 }
 
-// The wordmark's letters beside the mark, from the outlines in identity.json.
-function wordmark(ctx, x, y, height) {
+// All four letters beside the mark, from the Space Grotesk Bold outlines in identity.json: the
+// wordmark is never a stand-in for a letter of the mark, and it never waits for a font. It is set
+// in the mark's own 48 box, so one size sets the whole lockup.
+function wordmark(ctx, x, y, boxSize) {
   const [boxWidth, boxHeight] = identity.wordmark.box
-  const scale = height / boxHeight
+  const scale = boxSize / boxHeight
   ctx.save()
   ctx.translate(x, y)
   ctx.scale(scale, scale)
-  ctx.fillStyle = INK
+  ctx.fillStyle = TEXT
   ctx.fill(new Path2D(identity.wordmark.path))
   ctx.restore()
   return boxWidth * scale
@@ -198,16 +221,18 @@ function footer(ctx, { width, height, pad }, text) {
   ctx.moveTo(pad, y - 66)
   ctx.lineTo(width - pad, y - 66)
   ctx.stroke()
-  const markSize = 64
-  const wordHeight = 46
-  const top = y - 40 - markSize / 2
+  // The lockup sits in the band under the rule, at the proportions in identity.json.
+  const markSize = 56
+  const gap = (identity.lockup.gap * markSize) / identity.lockup.markBox
+  const top = y - 62
   mark(ctx, pad, top, markSize)
-  const wordWidth = wordmark(ctx, pad + markSize + 12, top + (markSize - wordHeight) / 2, wordHeight)
-  const logoWidth = markSize + 12 + wordWidth
+  const wordWidth = wordmark(ctx, pad + markSize + gap, top, markSize)
+  const logoWidth = markSize + gap + wordWidth
   ctx.font = `500 25px ${SANS}`
   ctx.fillStyle = SOFT
   ctx.textAlign = 'right'
-  ctx.fillText(fit(ctx, text, width - pad * 2 - logoWidth - 40), width - pad, y - 4)
+  // the note sits on the wordmark's own baseline, 41/48 of the way down the lockup box
+  ctx.fillText(fit(ctx, text, width - pad * 2 - logoWidth - 40), width - pad, top + (identity.wordmark.baseline * markSize) / identity.mark.box)
   ctx.textAlign = 'left'
 }
 
@@ -221,13 +246,13 @@ export function drawLeaderboard(canvas, { format = 'post', raceName, facts, head
 
     eyebrow(ctx, heading, pad, y)
     y += 78
-    ctx.font = `800 76px ${DISPLAY}`
-    ctx.fillStyle = INK
+    ctx.font = `700 76px ${DISPLAY}`
+    ctx.fillStyle = TEXT
     for (const line of wrap(ctx, raceName, inner, 2)) {
       ctx.fillText(line, pad, y)
       y += 86
     }
-    ctx.font = `500 32px ${SANS}`
+    ctx.font = `400 32px ${SANS}`
     ctx.fillStyle = SOFT
     ctx.fillText(fit(ctx, facts, inner), pad, y - 8)
     y += 40
@@ -255,16 +280,16 @@ export function drawLeaderboard(canvas, { format = 'post', raceName, facts, head
       const radius = Math.min(52, rowHeight * (compact ? 0.4 : 0.24))
       ctx.beginPath()
       ctx.arc(pad + radius, middle, radius, 0, Math.PI * 2)
-      ctx.fillStyle = index < 3 ? MEDALS[index] : alpha(PAPER, 0.12)
+      ctx.fillStyle = index < 3 ? MEDALS[index] : alpha(CHALK, 0.1)
       ctx.fill()
-      ctx.font = `800 ${Math.round(radius * 0.95)}px ${DISPLAY}`
-      ctx.fillStyle = index < 3 ? PINE : INK
+      ctx.font = `700 ${Math.round(radius * 0.95)}px ${DISPLAY}`
+      ctx.fillStyle = index < 3 ? DARK_INK : TEXT
       ctx.textAlign = 'center'
       ctx.fillText(String(row.place), pad + radius, middle + radius * 0.33)
       ctx.textAlign = 'left'
 
       // score on the right, name and time between
-      ctx.font = `800 ${scoreSize}px ${DISPLAY}`
+      ctx.font = `700 ${scoreSize}px ${DISPLAY}`
       ctx.fillStyle = ACCENT
       ctx.textAlign = 'right'
       const scoreText = row.score == null ? '' : String(row.score)
@@ -281,12 +306,12 @@ export function drawLeaderboard(canvas, { format = 'post', raceName, facts, head
         ctx.fillText(row.time, width - pad - scoreWidth, middle + nameSize * 0.3)
         const timeWidth = ctx.measureText(row.time).width + 28
         ctx.textAlign = 'left'
-        ctx.font = `700 ${nameSize}px ${SANS}`
-        ctx.fillStyle = INK
+        ctx.font = `600 ${nameSize}px ${SANS}`
+        ctx.fillStyle = TEXT
         ctx.fillText(fit(ctx, row.name, textWidth - timeWidth), textX, middle + nameSize * 0.34)
       } else {
-        ctx.font = `700 ${nameSize}px ${SANS}`
-        ctx.fillStyle = INK
+        ctx.font = `600 ${nameSize}px ${SANS}`
+        ctx.fillStyle = TEXT
         ctx.fillText(fit(ctx, row.name, textWidth), textX, middle - 2)
         ctx.font = `400 ${Math.round(nameSize * 0.68)}px ${MONO}`
         ctx.fillStyle = SOFT
@@ -308,13 +333,13 @@ export function drawScoreCard(canvas, { format = 'post', heading, courseName, fa
 
     eyebrow(ctx, heading, pad, y)
     y += 78
-    ctx.font = `800 70px ${DISPLAY}`
-    ctx.fillStyle = INK
+    ctx.font = `700 70px ${DISPLAY}`
+    ctx.fillStyle = TEXT
     for (const line of wrap(ctx, courseName, inner, 2)) {
       ctx.fillText(line, pad, y)
       y += 80
     }
-    ctx.font = `500 32px ${SANS}`
+    ctx.font = `400 32px ${SANS}`
     ctx.fillStyle = SOFT
     ctx.fillText(fit(ctx, facts, inner), pad, y - 6)
 
@@ -322,20 +347,17 @@ export function drawScoreCard(canvas, { format = 'post', heading, courseName, fa
     const bottom = height - pad - 110
     const centre = y + (bottom - y) / 2
     ctx.textAlign = 'center'
-    ctx.font = `800 ${format === 'square' ? 300 : 360}px ${DISPLAY}`
-    const number = ctx.createLinearGradient(pad, 0, width - pad, 0)
-    number.addColorStop(0, PAPER)
-    number.addColorStop(1, ACCENT)
-    ctx.fillStyle = number
+    ctx.font = `700 ${format === 'square' ? 300 : 360}px ${DISPLAY}`
+    ctx.fillStyle = ACCENT
     ctx.fillText(String(score), width / 2, centre + 70)
     ctx.font = `600 30px ${MONO}`
     ctx.fillStyle = LABEL
     ctx.fillText('O T R I   S C O R E', width / 2, centre + 140)
     ctx.font = `700 64px ${DISPLAY}`
-    ctx.fillStyle = INK
+    ctx.fillStyle = TEXT
     ctx.fillText(time, width / 2, centre - (format === 'square' ? 210 : 260))
     if (detail) {
-      ctx.font = `500 32px ${SANS}`
+      ctx.font = `400 32px ${SANS}`
       ctx.fillStyle = SOFT
       ctx.fillText(fit(ctx, detail, inner), width / 2, centre + 210)
     }
@@ -355,14 +377,14 @@ export function drawRunnerCard(canvas, { format = 'post', heading, name, facts, 
 
     eyebrow(ctx, heading, pad, y)
     y += 78
-    ctx.font = `800 76px ${DISPLAY}`
-    ctx.fillStyle = INK
+    ctx.font = `700 76px ${DISPLAY}`
+    ctx.fillStyle = TEXT
     for (const line of wrap(ctx, name, inner, 2)) {
       ctx.fillText(line, pad, y)
       y += 84
     }
     if (facts) {
-      ctx.font = `500 32px ${SANS}`
+      ctx.font = `400 32px ${SANS}`
       ctx.fillStyle = SOFT
       ctx.fillText(fit(ctx, facts, inner), pad, y - 8)
     }
@@ -374,11 +396,8 @@ export function drawRunnerCard(canvas, { format = 'post', heading, name, facts, 
     const centre = y + (listTop - y) / 2
     const size = format === 'square' ? 220 : format === 'story' ? 340 : 280
     ctx.textAlign = 'center'
-    ctx.font = `800 ${size}px ${DISPLAY}`
-    const number = ctx.createLinearGradient(pad, 0, width - pad, 0)
-    number.addColorStop(0, PAPER)
-    number.addColorStop(1, ACCENT)
-    ctx.fillStyle = number
+    ctx.font = `700 ${size}px ${DISPLAY}`
+    ctx.fillStyle = ACCENT
     ctx.fillText(index == null ? '—' : String(index), width / 2, centre + size * 0.3)
     ctx.font = `600 28px ${MONO}`
     ctx.fillStyle = LABEL
@@ -389,15 +408,15 @@ export function drawRunnerCard(canvas, { format = 'post', heading, name, facts, 
       const top = listTop + position * rowHeight
       ctx.fillStyle = FAINT
       ctx.fillRect(pad, top, inner, 2)
-      ctx.font = `800 ${Math.round(rowHeight * 0.46)}px ${DISPLAY}`
+      ctx.font = `700 ${Math.round(rowHeight * 0.46)}px ${DISPLAY}`
       ctx.fillStyle = ACCENT
       ctx.textAlign = 'right'
       const score = row.score == null ? '' : String(row.score)
       ctx.fillText(score, width - pad, top + rowHeight * 0.64)
       const scoreWidth = ctx.measureText(score).width + 36
       ctx.textAlign = 'left'
-      ctx.font = `700 ${Math.round(rowHeight * 0.33)}px ${SANS}`
-      ctx.fillStyle = INK
+      ctx.font = `600 ${Math.round(rowHeight * 0.33)}px ${SANS}`
+      ctx.fillStyle = TEXT
       ctx.fillText(fit(ctx, row.race, inner - scoreWidth), pad, top + rowHeight * 0.46)
       ctx.font = `400 ${Math.round(rowHeight * 0.23)}px ${MONO}`
       ctx.fillStyle = SOFT

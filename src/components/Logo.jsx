@@ -1,38 +1,38 @@
 import identity from '../brand/identity.json'
 
-// The OTRI mark: three contour rings around a summit, opened where a trail climbs through them
-// to the top. The rings take the text colour, the trail is always the blaze orange, so the same
-// drawing works on paper and on the dark surfaces. `tone="mono"` draws everything in one colour.
-export function Mark({ size = 40, tone = 'ink', className = '', title }) {
-  const { rings, trail, trailWidth, trailDash, summit } = identity.mark
-  const blaze = tone === 'mono' ? 'currentColor' : identity.colours.blaze
+/**
+ * The OTRI mark: a closed ring — the O — with a ridge inside it and a volt dot on the summit.
+ * The ring and the ridge take the current text colour and the summit is always volt, so one
+ * drawing works on the light reading surfaces and on the graphite chrome. It is a symbol, never
+ * a letter: the wordmark beside it always spells the name in full.
+ */
+export function Mark({ size = 40, tone = 'brand', className = '', title }) {
+  const { ring, ridge, ridgeWidth, summit } = identity.mark
+  const summitFill = tone === 'mono' ? 'currentColor' : identity.colours.volt
   return (
-    <svg className={className} width={size} height={size} viewBox="0 0 48 48" role={title ? 'img' : undefined} aria-hidden={title ? undefined : 'true'} focusable="false">
+    <svg className={className} width={size} height={size} viewBox="0 0 48 48" fill="none" role={title ? 'img' : undefined} aria-hidden={title ? undefined : 'true'} focusable="false">
       {title && <title>{title}</title>}
-      {rings.map((ring) => (
-        <circle key={ring.r} cx="24" cy="24" r={ring.r} fill="none" stroke="currentColor" strokeWidth={ring.width} pathLength="360" strokeDasharray={ring.dash} transform={`rotate(${ring.rotate} 24 24)`} strokeLinecap="round" />
-      ))}
-      <path d={trail} fill="none" stroke={blaze} strokeWidth={trailWidth} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={trailDash} />
-      <circle cx={summit.cx} cy={summit.cy} r={summit.r} fill={blaze} />
+      <circle cx={ring.cx} cy={ring.cy} r={ring.r} stroke="currentColor" strokeWidth={ring.width} />
+      <path d={ridge} stroke="currentColor" strokeWidth={ridgeWidth} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={summit.cx} cy={summit.cy} r={summit.r} fill={summitFill} />
     </svg>
   )
 }
 
-// The letters "TRI", drawn as outlines from Barlow Condensed ExtraBold so the wordmark never
-// depends on a font loading. With the mark in front of them they read as OTRI.
+/** OTRI, all four letters, as outlines from Space Grotesk Bold: it never waits for a font. */
 export function Wordmark({ className = '' }) {
   const [width, height] = identity.wordmark.box
   return (
-    <svg className={className} viewBox={`0 0 ${width} ${height}`} height={height} width={width} fill="currentColor" aria-hidden="true" focusable="false">
+    <svg className={className} viewBox={`0 0 ${width} ${height}`} width={width} height={height} fill="currentColor" aria-hidden="true" focusable="false">
       <path d={identity.wordmark.path} />
     </svg>
   )
 }
 
-/** The lockup used in every header and footer: mark, wordmark, and the full name beside them. */
-export default function Logo({ dark = false, compact = false, href = '#top' }) {
+/** The lockup in every header and footer: mark, the name in full, then what the name stands for. */
+export default function Logo({ dark = false, onLight = false, compact = false, href = '#top' }) {
   return (
-    <a href={href} className={`logo ${dark ? 'logo--dark' : ''} ${compact ? 'logo--compact' : ''}`} aria-label="OTRI home">
+    <a href={href} className={`logo ${dark ? 'logo--dark' : ''} ${onLight ? 'logo--on-light' : ''} ${compact ? 'logo--compact' : ''}`} aria-label="OTRI home">
       <Mark className="logo__mark" />
       <Wordmark className="logo__word" />
       <span className="logo__name" aria-hidden="true">

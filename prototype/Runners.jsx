@@ -37,7 +37,7 @@ function IndexBadge({ index, provisional, size = 'sm' }) {
   return (
     <span className={`score ${size === 'lg' ? 'runners-index-badge--lg' : ''}`}>
       {index}
-      {size === 'lg' && provisional && <span className="badge badge--ochre">PROV.</span>}
+      {size === 'lg' && provisional && <span className="badge badge--amber">PROV.</span>}
     </span>
   )
 }
@@ -230,7 +230,7 @@ function ResultRow({ result, units }) {
       </td>
       <td className="hide-md tiny">
         {result.status === 'counting' && (
-          <span className="badge badge--solid-moss">
+          <span className="badge badge--volt">
             counts · {Math.round(result.weight * 100)}%
           </span>
         )}
@@ -313,7 +313,7 @@ export function RunnerProfilePage({ runnerId, onBack }) {
                     }}
                     className="btn btn--ghost"
                   >
-                    {linkCopied ? <Check size={16} className="icon--moss" /> : <LinkIcon size={16} />} {linkCopied ? 'Link copied' : 'Copy the link'}
+                    {linkCopied ? <Check size={16} className="icon--accent" /> : <LinkIcon size={16} />} {linkCopied ? 'Link copied' : 'Copy the link'}
                   </button>
                 </div>
               </div>

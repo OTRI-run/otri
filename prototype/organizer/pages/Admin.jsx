@@ -83,7 +83,7 @@ function Loading({ children = 'Loading…' }) {
 function CardLabel({ icon: Icon, children }) {
   return (
     <p className="eyebrow eyebrow--plain admin-card__label">
-      {Icon && <Icon size={14} className="icon--moss" />} {children}
+      {Icon && <Icon size={14} className="icon--accent" />} {children}
     </p>
   )
 }
@@ -305,7 +305,7 @@ function ReportCard({ report, token, onChanged }) {
     <li className={`card admin-report ${open ? 'admin-report--open' : 'admin-report--resolved'}`}>
       <div className="admin-report__body">
         <p className="cluster cluster--tight">
-          <span className={`badge ${open ? 'badge--ochre' : ''}`}>{KIND_LABEL[report.kind] ?? report.kind}</span>
+          <span className={`badge ${open ? 'badge--amber' : ''}`}>{KIND_LABEL[report.kind] ?? report.kind}</span>
           {report.reason && <span className="badge">{REASON_LABEL[report.reason] ?? report.reason}</span>}
           <span className="tiny muted mono">{when(report.created_at)}</span>
           {!open && <span className="tiny muted">resolved {when(report.resolved_at)} by {report.resolved_by}{report.resolution ? ` · ${report.resolution}` : ''}</span>}
@@ -367,7 +367,7 @@ function Reports({ session }) {
     <div>
       <div className="toolbar">
         <p className="eyebrow eyebrow--plain grow">
-          <FlagIcon size={14} className="icon--moss" /> {rows.length} {showAll ? 'REPORT' : 'OPEN REPORT'}{rows.length === 1 ? '' : 'S'}
+          <FlagIcon size={14} className="icon--accent" /> {rows.length} {showAll ? 'REPORT' : 'OPEN REPORT'}{rows.length === 1 ? '' : 'S'}
         </p>
         <button type="button" onClick={() => setShowAll((v) => !v)} className="chip" aria-pressed={showAll}>
           {showAll ? 'Show open only' : 'Show resolved too'}
@@ -445,7 +445,7 @@ function Accounts({ session }) {
   const subscribers = rows.filter((o) => o.marketing_opt_in && o.email_verified && !o.is_demo).length
   return (
     <div>
-      <div className="toolbar card card--pad-sm card--gravel">
+      <div className="toolbar card card--pad-sm card--quiet">
         <p className="small grow">
           <b className="num admin-inline-count">{subscribers}</b> verified {subscribers === 1 ? 'account' : 'accounts'} agreed to receive OTRI news. Only those may get marketing email; the export is the audience for a Resend broadcast.
         </p>
@@ -491,14 +491,14 @@ function Accounts({ session }) {
                 <td>
                   <span className="cluster cluster--tight admin-table__badges">
                     {o.two_factor_method && <span className="badge">2FA</span>}
-                    {o.marketing_opt_in && <span className="badge badge--sky">news</span>}
+                    {o.marketing_opt_in && <span className="badge badge--cyan">news</span>}
                     {o.email_verified ? (
-                      <span className="badge badge--moss">verified</span>
+                      <span className="badge badge--mint">verified</span>
                     ) : (
-                      <span className="badge badge--ochre">pending</span>
+                      <span className="badge badge--amber">pending</span>
                     )}
                     {o.is_admin && <span className="badge badge--solid">admin</span>}
-                    {o.is_demo && <span className="badge badge--blaze">demo</span>}
+                    {o.is_demo && <span className="badge badge--volt">demo</span>}
                   </span>
                 </td>
                 <td className="num nowrap">{when(o.created_at)}</td>
@@ -981,7 +981,7 @@ function ServerTab({ session }) {
             <CardLabel icon={ShieldCheck}>FIREWALL & FAIL2BAN</CardLabel>
             {firewall?.available ? (
               <p className="cluster cluster--tight small mt-3">
-                ufw <span className={`badge ${firewall.active ? 'badge--moss' : 'badge--berry'}`}>{firewall.active ? 'active' : 'inactive'}</span>
+                ufw <span className={`badge ${firewall.active ? 'badge--mint' : 'badge--rose'}`}>{firewall.active ? 'active' : 'inactive'}</span>
                 {firewall.rules?.length ? <span className="tiny muted mono"> · {firewall.rules.length} rules</span> : null}
               </p>
             ) : (
