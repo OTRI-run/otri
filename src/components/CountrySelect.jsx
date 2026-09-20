@@ -1,4 +1,3 @@
-import './CountrySelect.css'
 import { useEffect, useId, useMemo, useRef, useState } from 'preact/compat'
 import countries from 'i18n-iso-countries'
 import en from 'i18n-iso-countries/langs/en.json'
@@ -114,12 +113,12 @@ export default function CountrySelect({ id, value, onChange, className = '', pla
   }
 
   return (
-    <div ref={rootRef} className="src-components-country-select-country-select-div-1" onBlur={(event) => { if (!rootRef.current?.contains(event.relatedTarget)) settle() }}>
-      <div className="src-components-country-select-country-select-div-1">
+    <div ref={rootRef} className="relative" onBlur={(event) => { if (!rootRef.current?.contains(event.relatedTarget)) settle() }}>
+      <div className="relative">
         {/* The flag sits in a wrapper: flag-icons' own `.fi { position: relative }` beats an `absolute` on the same element. */}
         {selected && text === selected.name && (
-          <span className="src-components-country-select-country-select-span-2" aria-hidden="true">
-            <span className={`fi fi-${selected.alpha2} src-components-country-select-country-select-span-3`} />
+          <span aria-hidden="true" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', display: 'flex', pointerEvents: 'none' }}>
+            <span className={`fi fi-${selected.alpha2}`} style={{ borderRadius: 2 }} />
           </span>
         )}
         <input
@@ -142,8 +141,8 @@ export default function CountrySelect({ id, value, onChange, className = '', pla
         />
       </div>
       {open && (
-        <ul id={listId} role="listbox" className="src-components-country-select-country-select-ul-4">
-          {options.length === 0 && <li className="src-components-country-select-country-select-li-5">No country matches “{text}”.</li>}
+        <ul id={listId} role="listbox" className="listbox">
+          {options.length === 0 && <li className="listbox__empty">No country matches “{text}”.</li>}
           {options.map((option, index) => (
             <li
               key={option.code}
@@ -153,11 +152,11 @@ export default function CountrySelect({ id, value, onChange, className = '', pla
               tabIndex={-1}
               onMouseDown={(event) => { event.preventDefault(); choose(option) }}
               onMouseEnter={() => setActive(index)}
-              className={`src-components-country-select-country-select-li-6 ${index === active ? "src-components-country-select-country-select-li-7" : "src-components-country-select-country-select-li-8"}`}
+              className="listbox__item"
             >
-              <span className={`fi fi-${option.alpha2} src-components-country-select-country-select-span-9`} aria-hidden="true" />
-              <span className="src-components-country-select-country-select-span-10">{option.name}</span>
-              <span className="src-components-country-select-country-select-span-11">{option.code}</span>
+              <span className={`fi fi-${option.alpha2}`} style={{ borderRadius: 2, flex: 'none' }} aria-hidden="true" />
+              <span className="grow truncate">{option.name}</span>
+              <span className="listbox__meta">{option.code}</span>
             </li>
           ))}
         </ul>

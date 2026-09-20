@@ -1,6 +1,6 @@
 import './ReportForm.css'
 import { useState } from 'preact/compat'
-import { Flag as FlagIcon } from 'lucide-react'
+import { Flag as FlagIcon } from '../src/ui/icons'
 import { submitReport } from './apiClient'
 
 const REASONS = {
@@ -50,28 +50,28 @@ export default function ReportForm({ kind, subjectId, subjectLabel, prompt = 'Is
 
   if (state === 'sent') {
     return (
-      <p className="prototype-report-form-report-form-p-1">
+      <p className="notice notice--success notice--plain report-form">
         Thanks. An admin will look at it{email ? ` and reply to ${email}` : ''}. Removal requests are handled first.
       </p>
     )
   }
 
   return (
-    <div className="prototype-report-form-report-form-div-2">
-      <p className="prototype-report-form-report-form-p-3">
+    <div className="report-form">
+      <p className="tiny muted">
         Built only from races their organizers published. {prompt}{' '}
-        <button type="button" onClick={() => setOpen((v) => !v)} className="prototype-report-form-report-form-button-4">
+        <button type="button" onClick={() => setOpen((v) => !v)} className="link">
           {open ? 'Close' : 'Report a problem'}
         </button>
       </p>
       {open && (
-        <form onSubmit={submit} className="prototype-report-form-report-form-form-5">
-          <p className="prototype-report-form-report-form-p-6">
-            <FlagIcon size={14} className="prototype-report-form-report-form-flag-icon-7" /> Report: {subjectLabel}
+        <form onSubmit={submit} className="card stack report-form__form mt-4">
+          <p className="h-4 cluster cluster--tight">
+            <FlagIcon size={16} className="icon--moss" /> Report: {subjectLabel}
           </p>
-          <label className="prototype-report-form-report-form-label-8">
-            What is wrong?
-            <select value={reason} onChange={(e) => setReason(e.target.value)} className="prototype-report-form-report-form-select-9">
+          <label className="field">
+            <span className="field__label">What is wrong?</span>
+            <select value={reason} onChange={(e) => setReason(e.target.value)} className="input input--sm">
               {(REASONS[kind] ?? REASONS.runner).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -79,8 +79,8 @@ export default function ReportForm({ kind, subjectId, subjectLabel, prompt = 'Is
               ))}
             </select>
           </label>
-          <label className="prototype-report-form-report-form-label-8">
-            Details
+          <label className="field">
+            <span className="field__label">Details</span>
             <textarea
               required
               minLength={10}
@@ -89,23 +89,23 @@ export default function ReportForm({ kind, subjectId, subjectLabel, prompt = 'Is
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Which result, what should it be, or why it should be removed."
-              className="prototype-report-form-report-form-select-9"
+              className="input report-form__details"
             />
           </label>
-          <label className="prototype-report-form-report-form-label-8">
-            Your email (optional, so we can reply)
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="prototype-report-form-report-form-select-9" />
+          <label className="field">
+            <span className="field__label">Your email <span className="optional">(optional, so we can reply)</span></span>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input input--sm" />
           </label>
-          {error && <p className="prototype-report-form-report-form-p-10">{error}</p>}
-          <div className="prototype-report-form-report-form-div-11">
+          {error && <p className="field__error">{error}</p>}
+          <div className="cluster">
             <button
               type="submit"
               disabled={state === 'sending' || message.trim().length < 10}
-              className="prototype-report-form-report-form-button-12"
+              className="btn btn--dark btn--sm"
             >
               {state === 'sending' ? 'Sending…' : 'Send report'}
             </button>
-            <span className="prototype-report-form-report-form-span-13">Goes to the OTRI admins only.</span>
+            <span className="tiny muted">Goes to the OTRI admins only.</span>
           </div>
         </form>
       )}

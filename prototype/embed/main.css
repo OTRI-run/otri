@@ -1,34 +1,4 @@
-/* Component styles. Edit directly; no utility compiler is used. */
-
-.prototype-embed-main-embed-div-1 {
-  max-width: 100%;
-  overflow-x: clip;
-  background-color: #f4f1e8;
-  color: var(--field-ink);
-}
-.prototype-embed-main-embed-footer-2 {
-  border-top-style: var(--otri-border-style);
-  border-top-width: 1px;
-  border-color: var(--color-slate-200);
-  background-color: var(--color-white);
-  padding-inline: calc(var(--spacing) * 4);
-  padding-block: calc(var(--spacing) * 3);
-  text-align: center;
-  font-size: var(--text-xs);
-  line-height: var(--otri-leading, var(--text-xs--line-height));
-  color: var(--color-slate-500);
-}
-.prototype-embed-main-embed-a-3 {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--spacing) * 0.5);
-  --otri-font-weight: var(--font-weight-semibold);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-blue-600);
-  text-decoration-line: none;
-  &:hover {
-    @media (hover: hover) {
-      text-decoration-line: underline;
-    }
-  }
-}
+/* The calculator inside someone else's page: the page background and a one-line credit. */
+.embed { max-width: 100%; overflow-x: clip; background: var(--paper); color: var(--pine); }
+.embed__foot { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; padding: 12px 16px; border-top: var(--border); background: var(--card); font-size: var(--text-tiny); color: var(--stone); text-align: center; }
+.embed__foot .link { display: inline-flex; }

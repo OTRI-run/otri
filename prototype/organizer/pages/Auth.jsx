@@ -1,7 +1,7 @@
 import './Auth.css'
 import { autoFocusOnDesktop } from '../../../src/lib/comfort'
 import { useEffect, useState } from 'preact/compat'
-import { ArrowRight, ArrowUpRight, CalendarDays, FileSpreadsheet, Mountain, ShieldCheck } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Calendar, FileSheet, Mountain, ShieldCheck } from '../../../src/ui/icons'
 import { completeTwoFactor, loginOrganizer, registerOrganizer, requestPasswordReset, resendVerification, resetPassword, verifyEmail } from '../../apiClient'
 import PasswordStrength, { assessPassword } from '../../../src/components/PasswordStrength'
 import { Link, navigate } from '../router'
@@ -12,175 +12,179 @@ const DOCS = 'https://github.com/OTRI-run/otri/blob/main'
 const MIN_PASSWORD = 10
 
 const STEPS = [
-  [CalendarDays, 'EVENT', 'Name the event and its date. It holds every race distance.'],
+  [Calendar, 'EVENT', 'Name the event and its date. It holds every race distance.'],
   [Mountain, 'RACE + COURSE', 'Add each distance, then upload its GPX. OTRI measures it and compares it with your official figures.'],
-  [FileSpreadsheet, 'RESULTS', 'Upload the results file. It is validated first, then every finisher is scored.'],
+  [FileSheet, 'RESULTS', 'Upload the results file. It is validated first, then every finisher is scored.'],
   [ShieldCheck, 'REVIEW', 'Check the summary and the leaderboard before it counts.'],
 ]
 
 export function Welcome() {
   return (
     <>
-      <section className="prototype-organizer-pages-auth-welcome-section-1">
-        <div className={`${CONTAINER} prototype-organizer-pages-auth-welcome-div-2`}>
-          <div className="prototype-organizer-pages-auth-welcome-div-3">
-            <div className="prototype-organizer-pages-auth-welcome-div-4">
-              OPEN TRAIL RUNNING INDEX <span className="prototype-organizer-pages-auth-welcome-span-5">·</span> FOR ORGANIZERS
-            </div>
-            <h1 className="prototype-organizer-pages-auth-welcome-h1-6">
+      {/* The start: the pitch on the left, the route in four waypoints on the right. */}
+      <section className="section topo section--line-bottom">
+        <div className={`${CONTAINER} grid grid--split`}>
+          <div className="stack">
+            <p className="eyebrow">
+              OPEN TRAIL RUNNING INDEX <span className="sep">·</span> FOR ORGANIZERS
+            </p>
+            <h1 className="display-2">
               Start with
               <br />
-              <em className="prototype-organizer-pages-auth-welcome-em-7">official results.</em>
+              <em className="accent">official results.</em>
             </h1>
-            <p className="prototype-organizer-pages-auth-welcome-p-8">
+            <p className="lead">
               Bring your course file and your results. OTRI measures the course, validates the file and gives every finisher a
               score that depends only on the course and their own time. Free, open, and the whole method is on the record.
             </p>
-            <div className="prototype-organizer-pages-auth-welcome-div-9">
-              <Button onClick={() => navigate('/register')}>
-                Create organizer account <ArrowRight size={15} />
+            <div className="cluster mt-2">
+              <Button className="btn--lg" onClick={() => navigate('/register')}>
+                Create organizer account <ArrowRight size={18} />
               </Button>
-              <Button variant="secondary" onClick={() => navigate('/login')}>
+              <Button variant="secondary" className="btn--lg" onClick={() => navigate('/login')}>
                 Sign in
               </Button>
             </div>
-            <p className="prototype-organizer-pages-auth-welcome-p-10">
+            <p className="small muted measure">
               Rather see your scores first?{' '}
-              <a href="../#score" className="prototype-organizer-pages-auth-welcome-a-11">Score your race without an account</a>, then publish it with one click: the course and the results come along.
+              <a href="../#score" className="link">Score your race without an account</a>, then publish it with one click: the course and the results come along.
             </p>
-            <div className="prototype-organizer-pages-auth-welcome-div-12">
-              <span className="prototype-organizer-pages-auth-welcome-span-13">FREE</span>
+            <div className="facts mt-2">
+              <span>FREE</span>
               <span>OPEN SOURCE</span>
               <span>ABOUT 10 MINUTES</span>
             </div>
           </div>
 
-          <div className="prototype-organizer-pages-auth-welcome-div-14">
-            <div className="prototype-organizer-pages-auth-welcome-div-15">
-              <span>OTRI / ORGANIZERS</span>
-              <span className="prototype-organizer-pages-auth-welcome-span-16">
-                <i className="prototype-organizer-pages-auth-welcome-i-17" />
+          <div className="card card--night on-dark auth-flow">
+            <div className="auth-flow__head">
+              <span className="panel__label">OTRI / ORGANIZERS</span>
+              <span className="panel__label auth-flow__live">
+                <i aria-hidden="true" />
                 FOUR STEPS
               </span>
             </div>
-            <div className="prototype-organizer-pages-auth-welcome-div-18">
-              <small className="prototype-organizer-pages-auth-welcome-small-19">YOUR RACE, SCORED</small>
-              <strong className="prototype-organizer-pages-auth-welcome-strong-20">
+            <div className="auth-flow__intro">
+              <small className="panel__label">YOUR RACE, SCORED</small>
+              <strong className="h-2 auth-flow__title">
                 Course in. Scores out.
               </strong>
-              <span className="prototype-organizer-pages-auth-welcome-span-21">Stop at any step and come back. Everything is saved as you go.</span>
+              <span className="small muted">Stop at any step and come back. Everything is saved as you go.</span>
             </div>
-            <div>
+            <ol className="auth-flow__list">
               {STEPS.map(([Icon, title, desc], index) => (
-                <div key={title} className="prototype-organizer-pages-auth-welcome-div-22">
-                  <b className="prototype-organizer-pages-auth-welcome-b-23">0{index + 1}</b>
-                  <Icon size={15} className="prototype-organizer-pages-auth-welcome-icon-24" />
-                  <span className="prototype-organizer-pages-auth-welcome-span-25">
-                    {title} <small className="prototype-organizer-pages-auth-welcome-small-26">{desc.split('.')[0].toLowerCase()}</small>
+                <li key={title}>
+                  <b className="mono">0{index + 1}</b>
+                  <Icon size={16} />
+                  <span className="truncate">
+                    {title} <small>{desc.split('.')[0].toLowerCase()}</small>
                   </span>
-                </div>
+                </li>
               ))}
-            </div>
-            <div className="prototype-organizer-pages-auth-welcome-div-27">
+            </ol>
+            <div className="auth-flow__foot">
               <b>OTRI INDEX</b>
-              <span className="prototype-organizer-pages-auth-welcome-span-28">COURSE + TIME + VERSION = SCORE</span>
+              <span>COURSE + TIME + VERSION = SCORE</span>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="prototype-organizer-pages-auth-welcome-section-29">
+      {/* 01 · The four steps, in full. */}
+      <section className="section section--card">
         <div className={CONTAINER}>
-          <div className="prototype-organizer-pages-auth-welcome-div-30">
-            <div className="prototype-organizer-pages-auth-welcome-div-3">
+          <div className="grid grid--aside">
+            <div className="stack">
               <Eyebrow>01 / HOW IT WORKS</Eyebrow>
-              <h2 className="prototype-organizer-pages-auth-welcome-h2-31">
+              <h2 className="display-2">
                 Four steps.
                 <br />
                 <Gradient>Nothing hidden.</Gradient>
               </h2>
-              <p className="prototype-organizer-pages-auth-welcome-p-32">
+              <p className="lead">
                 Every number you see along the way is the same number the score uses: the measured course, the validation
                 report, the model version. Nothing happens behind the scenes.
               </p>
             </div>
-            <div className="prototype-organizer-pages-auth-welcome-div-33">
+            <ol className="auth-steps">
               {STEPS.map(([Icon, title, desc], index) => (
-                <div key={title} className="prototype-organizer-pages-auth-welcome-div-34">
-                  <b className="prototype-organizer-pages-auth-welcome-b-35">0{index + 1}</b>
-                  <Icon size={16} className="prototype-organizer-pages-auth-welcome-icon-36" />
-                  <div className="prototype-organizer-pages-auth-welcome-div-3">
-                    <strong className="prototype-organizer-pages-auth-welcome-strong-37">{title}</strong>
-                    <p className="prototype-organizer-pages-auth-welcome-p-38">{desc}</p>
+                <li key={title}>
+                  <b className="waypoint">0{index + 1}</b>
+                  <Icon size={18} className="icon--moss" />
+                  <div className="min0">
+                    <strong className="h-4">{title}</strong>
+                    <p className="small muted mt-1">{desc}</p>
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ol>
           </div>
         </div>
       </section>
 
-      <section className="prototype-organizer-pages-auth-welcome-section-39">
+      {/* 02 · What to have to hand. */}
+      <section className="section section--gravel section--line-top">
         <div className={CONTAINER}>
-          <div className="prototype-organizer-pages-auth-welcome-div-40">
-            <div className="prototype-organizer-pages-auth-welcome-div-41">02</div>
-            <div className="prototype-organizer-pages-auth-welcome-div-3">
-              <Eyebrow className="prototype-organizer-pages-auth-welcome-eyebrow-42">WHAT YOU NEED</Eyebrow>
-              <h2 className="prototype-organizer-pages-auth-welcome-h2-43">
+          <div className="section-head">
+            <span className="waypoint section-head__no">02</span>
+            <div className="stack">
+              <Eyebrow>WHAT YOU NEED</Eyebrow>
+              <h2 className="display-2">
                 Four things.
                 <br />
                 <Gradient>Ten minutes.</Gradient>
               </h2>
             </div>
-            <p className="prototype-organizer-pages-auth-welcome-p-44">
+            <p className="lead">
               Have these to hand and the whole flow takes about ten minutes. You can also stop after any step and finish later.
             </p>
           </div>
-          <div className="prototype-organizer-pages-auth-welcome-div-45">
+          <div className="grid grid--4 grid--flush mt-10">
             {[
               ['COURSE', 'The route as a GPX file', 'From your planner or a clean watch recording, a point at least every 30 m.'],
               ['FIGURES', 'Official distance and climb', 'OTRI shows how they compare with the measured course.'],
               ['RESULTS', 'CSV or XLSX', 'Rank, time, names, gender, bib. Dates of birth only if you may share them.'],
               ['RIGHTS', 'Permission to share', 'Your registration terms cover it; see the data policy.'],
-            ].map(([label, title, desc], index) => (
-              <div key={label} className={`prototype-organizer-pages-auth-welcome-div-46 ${index % 2 === 1 ? "prototype-organizer-pages-auth-welcome-div-47" : ''} ${index >= 2 ? "prototype-organizer-pages-auth-welcome-div-48" : ''} ${index === 2 ? "prototype-organizer-pages-auth-welcome-div-49" : ''}`}>
-                <small className="prototype-organizer-pages-auth-welcome-small-50">{label}</small>
-                <b className="prototype-organizer-pages-auth-welcome-b-51">{title}</b>
-                <span className="prototype-organizer-pages-auth-welcome-span-52">{desc}</span>
+            ].map(([label, title, desc]) => (
+              <div key={label} className="auth-need">
+                <small className="eyebrow eyebrow--sm">{label}</small>
+                <b className="h-4 block mt-2">{title}</b>
+                <span className="small muted block mt-1">{desc}</span>
               </div>
             ))}
           </div>
-          <div className="prototype-organizer-pages-auth-welcome-div-53">
-            <a className="prototype-organizer-pages-auth-welcome-a-54" href={`${DOCS}/docs/methodology/0.1.0/HOW-OTRI-SCORES.md`} target="_blank" rel="noreferrer">
-              How scores are calculated <ArrowUpRight size={12} />
+          <div className="cluster cluster--loose mt-8">
+            <a className="link link--arrow link--up small" href={`${DOCS}/docs/methodology/0.1.0/HOW-OTRI-SCORES.md`} target="_blank" rel="noreferrer">
+              How scores are calculated <ArrowUpRight size={14} />
             </a>
-            <a className="prototype-organizer-pages-auth-welcome-a-54" href={`${DOCS}/DATA_POLICY.md`} target="_blank" rel="noreferrer">
-              Data policy <ArrowUpRight size={12} />
+            <a className="link link--arrow link--up small" href={`${DOCS}/DATA_POLICY.md`} target="_blank" rel="noreferrer">
+              Data policy <ArrowUpRight size={14} />
             </a>
-            <a className="prototype-organizer-pages-auth-welcome-a-54" href={`${DOCS}/PRIVACY.md`} target="_blank" rel="noreferrer">
-              Privacy <ArrowUpRight size={12} />
+            <a className="link link--arrow link--up small" href={`${DOCS}/PRIVACY.md`} target="_blank" rel="noreferrer">
+              Privacy <ArrowUpRight size={14} />
             </a>
           </div>
         </div>
       </section>
 
-      <section className="prototype-organizer-pages-auth-welcome-section-55">
-        <div className={`${CONTAINER} prototype-organizer-pages-auth-welcome-div-56`}>
-          <p className="prototype-organizer-pages-auth-welcome-p-57">OPEN TRAIL RUNNING INDEX</p>
-          <h2 className="prototype-organizer-pages-auth-welcome-h2-58">
+      {/* Closing */}
+      <section className="section section--dark topo--dark">
+        <div className={`${CONTAINER} stack`}>
+          <p className="eyebrow">OPEN TRAIL RUNNING INDEX</p>
+          <h2 className="display-2">
             Give your finishers
             <br />
-            <span>a number that travels.</span>
+            <span className="accent">a number that travels.</span>
           </h2>
-          <div className="prototype-organizer-pages-auth-welcome-div-9">
+          <div className="cluster mt-2">
             <button
               onClick={() => navigate('/register')}
-              className="prototype-organizer-pages-auth-welcome-button-59"
+              className="btn btn--paper btn--lg"
             >
               Create organizer account <ArrowRight size={15} />
             </button>
             <a
-              className="prototype-organizer-pages-auth-welcome-a-60"
+              className="btn btn--on-dark btn--lg"
               href="../#score"
             >
               Score your race first, no account <ArrowUpRight size={15} />
@@ -201,14 +205,14 @@ function AuthCard({ title, intro, children, footer, eyebrow = 'FOR ORGANIZERS' }
       aside={
         <>
           {hasHandoff() && (
-            <div className="prototype-organizer-pages-auth-auth-card-div-61">
+            <div className="mb-4">
               <Notice kind="success" title="Your scored race is waiting.">
                 Sign in from this browser and it becomes a race page in one step, with nothing to upload again.
               </Notice>
             </div>
           )}
           <Card>{children}</Card>
-          {footer && <p className="prototype-organizer-pages-auth-auth-card-p-62">{footer}</p>}
+          {footer && <p className="small muted mt-4">{footer}</p>}
         </>
       }
     />
@@ -259,13 +263,13 @@ export function Register({ onSignedIn }) {
       footer={
         <>
           Already have an account?{' '}
-          <Link to="/login" className="prototype-organizer-pages-auth-register-link-63">
+          <Link to="/login" className="link">
             Sign in
           </Link>
         </>
       }
     >
-      <form onSubmit={submit} className="prototype-organizer-pages-auth-register-form-64" noValidate>
+      <form onSubmit={submit} className="stack" noValidate>
         <Field label="Work email" htmlFor="reg-email" hint="We send the verification link and race notifications here.">
           <input id="reg-email" autoFocus={autoFocusOnDesktop} type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
         </Field>
@@ -276,30 +280,30 @@ export function Register({ onSignedIn }) {
         <Field label="Confirm password" htmlFor="reg-pw2" error={mismatch ? 'Passwords do not match.' : null}>
           <PasswordInput id="reg-pw2" required autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inputClass} />
         </Field>
-        <div className="prototype-organizer-pages-auth-register-div-65">
-          <label className="prototype-organizer-pages-auth-register-label-66">
-            <input id="reg-terms" type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} className="prototype-organizer-pages-auth-register-input-67" />
+        <div className="card card--gravel card--pad-sm stack stack--tight">
+          <label className="check">
+            <input id="reg-terms" type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} />
             <span>
               I agree to the{' '}
-              <a className="prototype-organizer-pages-auth-register-a-68" href={`${DOCS}/TERMS.md`} target="_blank" rel="noreferrer">
+              <a className="link" href={`${DOCS}/TERMS.md`} target="_blank" rel="noreferrer">
                 terms of service
               </a>{' '}
               and the{' '}
-              <a className="prototype-organizer-pages-auth-register-a-68" href={`${DOCS}/PRIVACY.md`} target="_blank" rel="noreferrer">
+              <a className="link" href={`${DOCS}/PRIVACY.md`} target="_blank" rel="noreferrer">
                 privacy policy
               </a>
               , and I confirm I may share the race data I upload (
-              <a className="prototype-organizer-pages-auth-register-a-69" href={`${DOCS}/DATA_POLICY.md`} target="_blank" rel="noreferrer">
+              <a className="link" href={`${DOCS}/DATA_POLICY.md`} target="_blank" rel="noreferrer">
                 data policy
               </a>
-              ). <span className="prototype-organizer-pages-auth-register-span-70">Required.</span>
+              ). <span className="muted">Required.</span>
             </span>
           </label>
-          <label className="prototype-organizer-pages-auth-register-label-66">
-            <input id="reg-news" type="checkbox" checked={news} onChange={(e) => setNews(e.target.checked)} className="prototype-organizer-pages-auth-register-input-67" />
+          <label className="check">
+            <input id="reg-news" type="checkbox" checked={news} onChange={(e) => setNews(e.target.checked)} />
             <span>
               Email me OTRI news: new features, scoring-model updates, organizer tips. A few times a year, unsubscribe any time in your account settings.{' '}
-              <span className="prototype-organizer-pages-auth-register-span-70">Optional.</span>
+              <span className="muted">Optional.</span>
             </span>
           </label>
         </div>
@@ -308,7 +312,7 @@ export function Register({ onSignedIn }) {
           Create account <ArrowRight size={15} />
         </Button>
         {!busy && (!email || !password || tooShort || mismatch || !acceptTerms) && (
-          <p className="prototype-organizer-pages-auth-register-p-71">
+          <p className="tiny muted">
             {!email
               ? 'Enter your work email to continue.'
               : !password || tooShort
@@ -350,11 +354,11 @@ export function CheckEmail({ email }) {
       <Notice kind="info" title="Nothing arriving?">
         Check spam, then resend. The link is valid for a limited time.
       </Notice>
-      <div className="prototype-organizer-pages-auth-check-email-div-72">
+      <div className="cluster mt-4">
         <Button variant="secondary" busy={busy} onClick={resend} disabled={!email || sent}>
           {sent ? 'Sent again' : 'Resend link'}
         </Button>
-        <Link to="/login" className="prototype-organizer-pages-auth-check-email-link-73">
+        <Link to="/login" className="link small">
           Back to sign in
         </Link>
       </div>
@@ -385,13 +389,13 @@ export function Verify({ token }) {
         </>
       }
     >
-      {state === 'checking' && <p className="prototype-organizer-pages-auth-verify-p-74">One moment…</p>}
+      {state === 'checking' && <p className="small muted">One moment…</p>}
       {state === 'ok' && (
         <>
           <Notice kind="success" title="Your email is confirmed.">
             You can publish your races now.
           </Notice>
-          <Button className="prototype-organizer-pages-auth-verify-button-75" onClick={() => navigate('/')}>
+          <Button className="mt-4" onClick={() => navigate('/')}>
             Continue <ArrowRight size={15} />
           </Button>
         </>
@@ -402,9 +406,9 @@ export function Verify({ token }) {
           <Notice kind="error" title="This link did not work.">
             {message}
           </Notice>
-          <p className="prototype-organizer-pages-auth-verify-p-76">
+          <p className="small muted mt-3">
             Links expire.{' '}
-            <Link to="/login" className="prototype-organizer-pages-auth-register-link-63">
+            <Link to="/login" className="link">
               Sign in
             </Link>{' '}
             and request a new one.
@@ -482,15 +486,15 @@ export function Login({ onSignedIn, afterReset = false }) {
         footer={
           <>
             Lost your device? Enter one of your recovery codes instead.{' '}
-            <button type="button" onClick={() => { setChallenge(null); setCode('') }} className="prototype-organizer-pages-auth-register-link-63">
+            <button type="button" onClick={() => { setChallenge(null); setCode('') }} className="link">
               Start over
             </button>
           </>
         }
       >
-        <form onSubmit={submitCode} className="prototype-organizer-pages-auth-register-form-64" noValidate>
+        <form onSubmit={submitCode} className="stack" noValidate>
           <Field label="Code" htmlFor="login-code">
-            <input id="login-code" autoFocus inputMode="text" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} className={`${inputClass} prototype-organizer-pages-auth-login-input-77`} />
+            <input id="login-code" autoFocus inputMode="text" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} className={`${inputClass} input--mono auth-code`} />
           </Field>
           {error && <Notice kind="error">{error}</Notice>}
           <Button type="submit" busy={busy} disabled={code.trim().length < 6}>
@@ -514,13 +518,13 @@ export function Login({ onSignedIn, afterReset = false }) {
       footer={
         <>
           New to OTRI?{' '}
-          <Link to="/register" className="prototype-organizer-pages-auth-register-link-63">
+          <Link to="/register" className="link">
             Create an organizer account
           </Link>
         </>
       }
     >
-      <form onSubmit={submit} className="prototype-organizer-pages-auth-register-form-64" noValidate>
+      <form onSubmit={submit} className="stack" noValidate>
         {afterReset && <Notice kind="success" title="Your password is changed.">Sign in with it; you will be asked for your code as usual. Every other session of this account was signed out.</Notice>}
         <Field label="Email" htmlFor="login-email">
           <input id="login-email" autoFocus={autoFocusOnDesktop} type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
@@ -532,11 +536,11 @@ export function Login({ onSignedIn, afterReset = false }) {
           <Notice kind="error">
             {error}
             {needsVerification && (
-              <div className="prototype-organizer-pages-auth-login-div-78">
+              <div className="mt-2">
                 {resent ? (
                   <span>A new verification link is on its way.</span>
                 ) : (
-                  <button type="button" onClick={resend} className="prototype-organizer-pages-auth-login-button-79">
+                  <button type="button" onClick={resend} className="link">
                     Resend verification email
                   </button>
                 )}
@@ -544,14 +548,14 @@ export function Login({ onSignedIn, afterReset = false }) {
             )}
           </Notice>
         )}
-        <label className="prototype-organizer-pages-auth-login-label-80">
-          <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="prototype-organizer-pages-auth-login-input-81" />
+        <label className="check">
+          <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
           Remember me on this device for 30 days
         </label>
         <Button type="submit" busy={busy} disabled={!email || !password}>
           Sign in <ArrowRight size={15} />
         </Button>
-        <Link to="/forgot" className="prototype-organizer-pages-auth-login-link-82">
+        <Link to="/forgot" className="link small">
           Forgot your password?
         </Link>
       </form>
@@ -587,19 +591,19 @@ export function Forgot() {
       {sent ? (
         <>
           <Notice kind="success">If that email has an account, a reset link has been sent.</Notice>
-          <Link to="/login" className="prototype-organizer-pages-auth-forgot-link-83">
+          <Link to="/login" className="link small block mt-4">
             Back to sign in
           </Link>
         </>
       ) : (
-        <form onSubmit={submit} className="prototype-organizer-pages-auth-register-form-64" noValidate>
+        <form onSubmit={submit} className="stack" noValidate>
           <Field label="Email" htmlFor="forgot-email">
             <input id="forgot-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
           </Field>
           <Button type="submit" busy={busy} disabled={!email}>
             Send reset link
           </Button>
-          <Link to="/login" className="prototype-organizer-pages-auth-login-link-82">
+          <Link to="/login" className="link small">
             Back to sign in
           </Link>
         </form>
@@ -650,7 +654,7 @@ export function Reset({ token, onSignedIn }) {
       <AuthCard title={title}>
         <Notice kind="warning">
           This link is missing its token. Open the link from your email again, or{' '}
-          <Link to="/forgot" className="prototype-organizer-pages-auth-login-button-79">
+          <Link to="/forgot" className="link">
             request a new one
           </Link>
           .
@@ -660,7 +664,7 @@ export function Reset({ token, onSignedIn }) {
   }
   return (
     <AuthCard title={title}>
-      <form onSubmit={submit} className="prototype-organizer-pages-auth-register-form-64" noValidate>
+      <form onSubmit={submit} className="stack" noValidate>
         <Field label="New password" htmlFor="reset-pw">
           <PasswordInput id="reset-pw" required autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
           <PasswordStrength password={password} />

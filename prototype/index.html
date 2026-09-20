@@ -14,21 +14,20 @@
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="theme-color" content="#23231f" />
+<meta name="theme-color" content="#17261f" />
 <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
 <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png" />
 <link rel="apple-touch-icon" href="../apple-touch-icon.png" />
 <link rel="manifest" href="../site.webmanifest" />
 <title>OTRI — Prototype</title>
 <style>
-.otri-boot{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:24px;background:#f4f1e8;color:#23231f;font-family:Arial,sans-serif;text-align:center}.otri-boot-wordmark{width:144px;height:39px}.otri-boot-line{height:2px;width:100px;overflow:hidden;background:#d8d1c3}.otri-boot-line:after{content:'';display:block;width:40%;height:100%;background:#bd3924;animation:otri-progress 1.6s ease-in-out infinite}.otri-boot-title{margin:0;font:10px ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;color:#70695d}.otri-boot-hint{margin:0;max-width:420px;font-size:13px;line-height:1.6;color:#70695d;opacity:0;animation:otri-appear .4s ease-out 8s forwards}.otri-boot-hint a{color:#bd3924}@keyframes otri-progress{from{transform:translateX(-100%)}to{transform:translateX(350%)}}@keyframes otri-appear{to{opacity:1}}@media(prefers-reduced-motion:reduce){.otri-boot-line:after{animation:none;width:100%}.otri-boot-hint{animation:none;opacity:1}}
+.otri-boot{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px;background:#f3efe6;color:#17261f;font-family:Barlow,"Segoe UI",Roboto,system-ui,sans-serif;text-align:center}.otri-boot-mark{width:72px;height:72px;color:#17261f}.otri-boot-mark circle[stroke-dasharray]{animation:otri-boot-draw 1.8s ease-in-out infinite}.otri-boot-mark circle[stroke-dasharray]:nth-child(2){animation-delay:.15s}.otri-boot-mark circle[stroke-dasharray]:nth-child(3){animation-delay:.3s}.otri-boot-title{margin:0;font:600 11px ui-monospace,Consolas,monospace;letter-spacing:.14em;text-transform:uppercase;color:#586057}.otri-boot-hint{margin:0;max-width:420px;font-size:14px;line-height:1.6;color:#586057;opacity:0;animation:otri-boot-appear .4s ease-out 8s forwards}.otri-boot-hint a{color:#245640;font-weight:600}@keyframes otri-boot-draw{0%,100%{opacity:.35}50%{opacity:1}}@keyframes otri-boot-appear{to{opacity:1}}@media(prefers-reduced-motion:reduce){.otri-boot-mark circle{animation:none!important}.otri-boot-hint{animation:none;opacity:1}}
 </style>
 </head>
 <body>
 <div id="root">
 <main class="otri-boot" aria-busy="true">
-<svg class="otri-boot-wordmark" viewBox="0 0 180 48" fill="currentColor" aria-hidden="true"><path d="M24 2C10 2 1 11 1 24s9 22 23 22 23-9 23-22S38 2 24 2Zm0 10c8 0 12 5 12 12s-4 12-12 12-12-5-12-12 4-12 12-12Z" fill-rule="evenodd"/><path d="M53 3h43v10H80v32H69V13H53Z" fill-rule="evenodd"/><path d="M104 3h21c14 0 20 6 20 15 0 7-4 12-10 14l13 13h-14l-12-12h-7v12h-11V3Zm11 10v11h10c6 0 9-2 9-6s-3-5-9-5h-10Z" fill-rule="evenodd"/><path d="M159 3h11v42h-11Z" fill-rule="evenodd"/></svg>
-<div class="otri-boot-line" aria-hidden="true"></div>
+<svg class="otri-boot-mark" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="19" fill="none" stroke="currentColor" stroke-width="3.4" pathLength="360" stroke-dasharray="314 46" transform="rotate(158 24 24)" stroke-linecap="round"/><circle cx="24" cy="24" r="12.4" fill="none" stroke="currentColor" stroke-width="3.2" pathLength="360" stroke-dasharray="312 48" transform="rotate(164 24 24)" stroke-linecap="round"/><circle cx="24" cy="24" r="6.2" fill="none" stroke="currentColor" stroke-width="3" pathLength="360" stroke-dasharray="300 60" transform="rotate(170 24 24)" stroke-linecap="round"/><path class="otri-boot-trail" d="M4.5 44.5c2.6-2.4 3.2-5.2 6.4-6.8 3-1.5 4.1 0.4 6-1.8 1.7-2 0.6-4.4 3.1-6.3 1.6-1.2 3-1 4-1.6" fill="none" stroke="#ee6b3b" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="3.2 2.6"/><circle cx="24" cy="24" r="2.6" fill="#ee6b3b"/></svg>
 <p class="otri-boot-title">Loading OTRI</p>
 <p class="otri-boot-hint">Still loading? <a href="javascript:location.reload()">Reload the page</a>. If that does not help, the site may be mid-deploy; try again in a minute.</p>
 </main>

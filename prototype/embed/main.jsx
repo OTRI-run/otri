@@ -1,10 +1,11 @@
+import '../../src/styles.css'
 import './main.css'
 import React, { useEffect } from 'preact/compat'
 import { createRoot } from 'preact/compat/client'
-import { ArrowUpRight } from 'lucide-react'
+import { ArrowUpRight } from '../../src/ui/icons'
 import ScoreCalculator from '../ScoreCalculator'
 import ErrorBoundary from '../../src/components/ErrorBoundary'
-import '../../src/styles.css'
+import { Mark } from '../../src/components/Logo'
 
 // The score calculator for another website's page:
 //   <iframe src="https://otri.run/prototype/embed/?race=RACE_ID" ...>
@@ -31,14 +32,17 @@ function useReportedHeight() {
 function Embed() {
   useReportedHeight()
   return (
-    <div className="prototype-embed-main-embed-div-1">
+    <div className="embed">
       <ScoreCalculator embedded />
-      <footer className="prototype-embed-main-embed-footer-2">
-        Scored by the open{' '}
-        <a href="https://otri.run/prototype/#calculator" className="prototype-embed-main-embed-a-3">
-          OTRI model <ArrowUpRight size={12} />
-        </a>
-        . The score depends on the course and the time, never on who else races.
+      <footer className="embed__foot">
+        <Mark size={18} />
+        <span>
+          Scored by the open{' '}
+          <a href="https://otri.run/prototype/#calculator" className="link link--arrow">
+            OTRI model <ArrowUpRight size={13} />
+          </a>
+          . The score depends on the course and the time, never on who else races.
+        </span>
       </footer>
     </div>
   )

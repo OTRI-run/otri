@@ -1,12 +1,14 @@
 # OTRI brand assets
 
-Wordmark geometry and colors live in `src/brand/identity.json`. `public/brand` contains generated website downloads; this folder mirrors the current identity for repository and social use.
+The mark, the outlined wordmark and the colours live in `src/brand/identity.json`; `python scripts/build_brand_kit.py` writes `public/brand` (the website downloads) and this folder, which mirrors the current identity for repository and social use.
+
+The mark is three contour rings around a summit, opened where a trail climbs through them: the O of OTRI. Colours: pine `#17261f`, paper `#f3efe6`, blaze `#ee6b3b`, moss `#2f6b4f`, fern `#a7d7a0`, night `#0f1a15`.
 
 ## Files
 
 - `otri-logo.svg` — primary horizontal logo for light backgrounds.
 - `otri-logo-dark.svg` — primary horizontal logo for dark backgrounds.
-- `otri-mark.svg` — standalone closed-O survey mark for light backgrounds.
+- `otri-mark.svg` — the mark alone, for light backgrounds.
 - `otri-mark-dark.svg` — standalone mark for dark backgrounds.
 
 ## Size policy

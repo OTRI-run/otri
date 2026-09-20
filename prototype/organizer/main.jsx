@@ -1,10 +1,10 @@
+import '../../src/styles.css'
 import './main.css'
 import BackToTop from '../../src/components/BackToTop'
 import { installDropGuard, installScrollMemory, installSearchShortcut } from '../../src/lib/comfort'
 import { useEffect, useRef, useState } from 'preact/compat'
 import { createRoot } from 'preact/compat/client'
-import { ArrowUpRight, ChevronDown, Mail } from 'lucide-react'
-import '../../src/styles.css'
+import { ArrowUpRight, ChevronDown, LogOut, Mail } from '../../src/ui/icons'
 import Logo from '../../src/components/Logo'
 import UnitsMenu from '../../src/components/UnitsMenu'
 import { logoutOrganizer, getMe, resendVerification } from '../apiClient'
@@ -22,7 +22,6 @@ import { Dashboard, EventPage, NewEvent } from './pages/Events'
 import { CourseStep, NewRace, ResultsStep, ReviewStep } from './pages/Race'
 import { Link, match, navigate, useRoute } from './router'
 import { clearSession, readSession, writeSession } from './session'
-import { CONTAINER } from './ui'
 
 const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 
@@ -50,55 +49,31 @@ function AccountMenu({ session, onSignOut }) {
       document.removeEventListener('keydown', onKey)
     }
   }, [open])
-  const item = "prototype-organizer-main-account-menu-style-1"
   return (
-    <div ref={rootRef} className="prototype-organizer-main-account-menu-div-2">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label="Account menu"
-        className="prototype-organizer-main-account-menu-button-3"
-      >
-        <span className={`prototype-organizer-main-account-menu-span-4 ${session.isAdmin ? "prototype-organizer-main-account-menu-span-5" : "prototype-organizer-main-account-menu-span-6"}`}>
-          {initialOf(session.email)}
-        </span>
-        <ChevronDown size={13} className={`prototype-organizer-main-account-menu-chevron-down-7 ${open ? "prototype-organizer-main-account-menu-chevron-down-8" : ''}`} />
+    <div ref={rootRef} className="relative">
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-haspopup="menu" aria-expanded={open} aria-label="Account menu" className="account-trigger">
+        <span className={`avatar ${session.isAdmin ? 'avatar--admin' : ''}`}>{initialOf(session.email)}</span>
+        <ChevronDown size={14} style={{ transition: 'transform var(--quick) var(--ease)', transform: open ? 'rotate(180deg)' : 'none' }} />
       </button>
       {open && (
-        <div role="menu" className="prototype-organizer-main-account-menu-div-9">
-          <div className="prototype-organizer-main-account-menu-div-10">
-            <p className="prototype-organizer-main-account-menu-p-11" title={session.email}>
-              {session.email}
-            </p>
-            <p className="prototype-organizer-main-account-menu-p-12">
-              ORGANIZER
-              {session.isAdmin && <span className="prototype-organizer-main-account-menu-span-13">ADMIN</span>}
+        <div role="menu" className="menu menu--right" style={{ width: 272 }}>
+          <div className="menu__head">
+            <p title={session.email}>{session.email}</p>
+            <p className="cluster cluster--tight mt-1">
+              <span className="badge">Organizer</span>
+              {session.isAdmin && <span className="badge badge--ochre">Admin</span>}
             </p>
           </div>
-          <div className="prototype-organizer-main-account-menu-div-14" />
-          <Link to="/events" className={item} onClick={() => setOpen(false)}>
-            Your events
-          </Link>
-          <Link to="/account" className={item} onClick={() => setOpen(false)}>
-            Account settings
-          </Link>
+          <div className="menu__sep" />
+          <Link to="/events" className="menu__item" onClick={() => setOpen(false)}>Your events</Link>
+          <Link to="/account" className="menu__item" onClick={() => setOpen(false)}>Account settings</Link>
           {session.isAdmin && (
-            <Link to="/admin" className={item} onClick={() => setOpen(false)}>
-              Admin dashboard
-            </Link>
+            <Link to="/admin" className="menu__item" onClick={() => setOpen(false)}>Admin dashboard</Link>
           )}
-          <a href="../#home" className={item}>
-            Public site ↗
-          </a>
-          <a href={GITHUB_URL} className={item}>
-            GitHub ↗
-          </a>
-          <div className="prototype-organizer-main-account-menu-div-14" />
-          <button type="button" onClick={onSignOut} className={`${item} prototype-organizer-main-account-menu-button-15`}>
-            Sign out
-          </button>
+          <a href="../#home" className="menu__item">Public site <ArrowUpRight size={14} /></a>
+          <a href={GITHUB_URL} className="menu__item">GitHub <ArrowUpRight size={14} /></a>
+          <div className="menu__sep" />
+          <button type="button" onClick={onSignOut} className="menu__item"><LogOut size={16} /> Sign out</button>
         </div>
       )}
     </div>
@@ -108,85 +83,75 @@ function AccountMenu({ session, onSignOut }) {
 function Header({ session, onSignOut }) {
   return (
     <>
-      <header className="prototype-organizer-main-header-header-16">
-        <div className={`${CONTAINER} prototype-organizer-main-header-div-17`}>
-          <Logo href="../#home" />
-          <Link
-            to="/"
-            className="prototype-organizer-main-header-link-18"
-          >
-            <i className="prototype-organizer-main-header-i-19" />
-            FOR ORGANIZERS
-          </Link>
-          <nav className="prototype-organizer-main-header-nav-20">
-            {session && (
-              <Link to="/events" className="prototype-organizer-main-header-link-21">
-                Your events
-              </Link>
-            )}
-            {session?.isAdmin && (
-              <Link
-                to="/admin"
-                className="prototype-organizer-main-header-link-22"
-              >
-                ADMIN
-              </Link>
-            )}
-            <a href="../#home" className="prototype-organizer-main-header-a-23">
-              Public site <ArrowUpRight size={13} />
-            </a>
-            <span className="prototype-organizer-main-header-span-24">
-              <UnitsMenu compact />
-            </span>
+      <header className="site-header">
+        <div className="wrap site-header__inner">
+          <div className="site-header__brand">
+            <Logo href="../#home" compact />
+            <Link to="/" className="badge badge--solid-moss hide-sm">For organizers</Link>
+          </div>
+          <nav className="site-nav" aria-label="Organizer">
+            {session && <Link to="/events" className="site-nav__link">Your events</Link>}
+            {session?.isAdmin && <Link to="/admin" className="site-nav__link"><span className="badge badge--ochre">Admin</span></Link>}
+            <a href="../#home" className="site-nav__link">Public site <ArrowUpRight size={14} /></a>
+            <span className="site-nav__sep" aria-hidden="true" />
+            <UnitsMenu compact />
             {session ? (
               <AccountMenu session={session} onSignOut={onSignOut} />
             ) : (
-              <Link to="/login" className="prototype-organizer-main-header-link-25">
-                Sign in
-              </Link>
+              <Link to="/login" className="btn btn--dark btn--sm" style={{ marginLeft: 8 }}>Sign in</Link>
             )}
           </nav>
+          <div className="site-header__mobile">
+            {session ? <AccountMenu session={session} onSignOut={onSignOut} /> : <Link to="/login" className="btn btn--dark btn--sm">Sign in</Link>}
+          </div>
         </div>
       </header>
       {/* Small screens: the app's pages in their own row. */}
-      <div className="prototype-organizer-main-header-div-26">
-        <div className={`${CONTAINER} prototype-organizer-main-header-div-27`}>
-          {session ? (
-            <Link to="/events" className="prototype-organizer-main-header-link-28">
-              Your events
-            </Link>
-          ) : (
-            <Link to="/" className="prototype-organizer-main-header-link-28">
-              For organizers
-            </Link>
-          )}
-          {session?.isAdmin && (
-            <Link to="/admin" className="prototype-organizer-main-header-link-29">
-              ADMIN
-            </Link>
-          )}
-          <a href="../#home" className="prototype-organizer-main-header-a-30">
-            Public site
-          </a>
-          <div className="prototype-organizer-main-header-div-31">
-            <UnitsMenu />
+      <nav className="site-subnav" aria-label="Organizer pages">
+        <div className="wrap site-subnav__inner">
+          {session ? <Link to="/events" className="site-nav__link">Your events</Link> : <Link to="/" className="site-nav__link">For organizers</Link>}
+          {session?.isAdmin && <Link to="/admin" className="site-nav__link">Admin</Link>}
+          <a href="../#home" className="site-nav__link">Public site</a>
+          <div className="push">
+            <UnitsMenu compact />
           </div>
         </div>
-      </div>
+      </nav>
     </>
   )
 }
 
 function Footer() {
   return (
-    <footer className="prototype-organizer-main-footer-footer-32">
-      <div className={`${CONTAINER} prototype-organizer-main-footer-div-33`}>
-        <Logo href="../#home" />
-        <a href="mailto:hello@otri.run" className="prototype-organizer-main-footer-a-34">
-          <Mail size={14} />
-          hello@otri.run
-        </a>
-        <span className="prototype-organizer-main-footer-span-35">OPEN · TRANSPARENT · REPRODUCIBLE · INDEPENDENT</span>
+    <footer className="site-footer">
+      <div className="wrap site-footer__inner">
+        <div>
+          <Logo href="../#home" dark />
+          <p className="site-footer__tag">Your race, scored with an open method. Nothing is public until you press Publish.</p>
+        </div>
+        <div className="site-footer__col">
+          <h4>Organizers</h4>
+          <ul>
+            <li><Link to="/">Start here</Link></li>
+            <li><Link to="/events">Your events</Link></li>
+            <li><a href="../#score">Score a race without an account</a></li>
+            <li><a href={`${GITHUB_URL}/blob/main/docs/organizer-upload.md`}>Organizer documentation <ArrowUpRight size={13} /></a></li>
+          </ul>
+        </div>
+        <div className="site-footer__col">
+          <h4>OTRI</h4>
+          <ul>
+            <li><a href="../#home">Public site</a></li>
+            <li><a href="../#faq">FAQ</a></li>
+            <li><a href={GITHUB_URL}>Source on GitHub <ArrowUpRight size={13} /></a></li>
+            <li><a href={`${GITHUB_URL}/blob/main/PRIVACY.md`}>Privacy <ArrowUpRight size={13} /></a></li>
+            <li><a href="mailto:hello@otri.run"><Mail size={14} /> hello@otri.run</a></li>
+          </ul>
+        </div>
+      </div>
+      <div className="wrap site-footer__bottom">
+        <span>Open · Transparent · Reproducible · Independent</span>
+        <a href="https://otri.run">otri.run</a>
       </div>
     </footer>
   )
@@ -289,10 +254,10 @@ function App() {
   else if (!needsAuth) page = <NotFound />
 
   return (
-    <div id="top" className="prototype-organizer-main-app-div-36">
+    <div id="top" className="site">
       <Header session={session} onSignOut={signOut} />
       {unconfirmed && <ConfirmEmailBar email={session.email} />}
-      <main className="prototype-organizer-main-app-main-37">{page}</main>
+      <main>{page}</main>
       <Footer />
       <BackToTop />
       <BuildBanner />
@@ -304,18 +269,13 @@ function App() {
 function ConfirmEmailBar({ email }) {
   const [sent, setSent] = useState(false)
   return (
-    <div className="prototype-organizer-main-confirm-email-bar-div-38">
-      <div className={`${CONTAINER} prototype-organizer-main-confirm-email-bar-div-39`}>
-        <Mail size={14} className="prototype-organizer-main-confirm-email-bar-mail-40" />
-        <span className="prototype-organizer-main-confirm-email-bar-span-41">
-          Confirm your email to publish: we sent a link to <strong className="prototype-organizer-main-confirm-email-bar-strong-42">{email}</strong>. You can build your race in the meantime.
+    <div className="site-bar">
+      <div className="wrap site-bar__inner">
+        <Mail size={16} />
+        <span className="min0">
+          Confirm your email to publish: we sent a link to <strong>{email}</strong>. You can build your race in the meantime.
         </span>
-        <button
-          type="button"
-          disabled={sent}
-          onClick={() => resendVerification(email).then(() => setSent(true)).catch(() => setSent(true))}
-          className="prototype-organizer-main-confirm-email-bar-button-43"
-        >
+        <button type="button" disabled={sent} onClick={() => resendVerification(email).then(() => setSent(true)).catch(() => setSent(true))}>
           {sent ? 'Sent again' : 'Send it again'}
         </button>
       </div>
@@ -325,8 +285,8 @@ function ConfirmEmailBar({ email }) {
 
 function NotFound() {
   return (
-    <section className="prototype-organizer-main-not-found-section-44">
-      <div className={CONTAINER}>
+    <section className="section section--tight">
+      <div className="wrap">
         <SharedNotFound where={window.location.hash} home="#/" homeLabel="Back to the start" secondaryHref="../#calculator" note="Organizer pages need you to be signed in; admin pages need an admin account." />
       </div>
     </section>

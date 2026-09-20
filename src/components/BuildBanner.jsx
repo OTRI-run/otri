@@ -1,4 +1,3 @@
-import './BuildBanner.css'
 import { useEffect, useState } from 'preact/compat'
 
 // "Built from commit … · API last restarted …" — the same strip on the bottom of every page.
@@ -61,17 +60,17 @@ export default function BuildBanner() {
   }, [apiStartedAt])
 
   return (
-    <div className="src-components-build-banner-build-banner-div-1">
+    <div className="build-strip">
       Built from commit{' '}
       {COMMIT_URL ? (
-        <a href={COMMIT_URL} target="_blank" rel="noreferrer" className="src-components-build-banner-build-banner-a-2">
+        <a href={COMMIT_URL} target="_blank" rel="noreferrer">
           {COMMIT}
         </a>
       ) : (
-        <span className="src-components-build-banner-build-banner-span-3">{COMMIT}</span>
+        <b>{COMMIT}</b>
       )}
       {timeAgo ? ` · ${timeAgo}` : ''}
-      {apiStartedAt && <span className="src-components-build-banner-build-banner-span-4">{` · API last restarted ${apiTimeAgo}`}</span>}
+      {apiStartedAt && <span className="hide-sm">{` · API last restarted ${apiTimeAgo}`}</span>}
       {apiUnreachable && ' · API unreachable'}
     </div>
   )

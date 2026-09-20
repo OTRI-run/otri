@@ -1,231 +1,35 @@
-/* Component styles. Edit directly; no utility compiler is used. */
+/* Account settings. Only what is its own: the two-column layout, the quiet setting boxes, the
+   recovery-code grid, the authenticator QR layout, and the one-time code field. */
 
-.prototype-organizer-pages-account-recovery-codes-p-1 {
-  font-size: var(--text-xs);
-  line-height: var(--otri-leading, var(--text-xs--line-height));
-}
-.prototype-organizer-pages-account-recovery-codes-ul-2 {
-  margin-top: calc(var(--spacing) * 2);
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--spacing);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  line-height: var(--otri-leading, var(--text-xs--line-height));
-  @media (width >= 40rem) {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-}
-.prototype-organizer-pages-account-recovery-codes-li-3 {
-  border-radius: 0.25rem;
-  background-color: var(--color-white);
-  padding-inline: calc(var(--spacing) * 2);
-  padding-block: var(--spacing);
-  color: var(--field-ink);
-}
-.prototype-organizer-pages-account-recovery-codes-button-4 {
-  margin-top: calc(var(--spacing) * 2);
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing);
-  font-size: var(--text-xs);
-  line-height: var(--otri-leading, var(--text-xs--line-height));
-  --otri-font-weight: var(--font-weight-semibold);
-  font-weight: var(--font-weight-semibold);
-  text-decoration-line: underline;
-}
-.prototype-organizer-pages-account-profile-form-form-5 {
-  display: grid;
-  gap: calc(var(--spacing) * 4);
-}
-.prototype-organizer-pages-account-profile-form-fieldset-6 {
-  display: contents;
-}
-.prototype-organizer-pages-account-profile-form-div-7 {
-  display: grid;
-  gap: calc(var(--spacing) * 4);
-  @media (width >= 40rem) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-.prototype-organizer-pages-account-profile-form-label-8 {
-  display: flex;
-  align-items: flex-start;
-  gap: calc(var(--spacing) * 2);
-  border-radius: var(--radius-xl);
-  background-color: var(--color-slate-50);
-  padding-inline: calc(var(--spacing) * 4);
-  padding-block: calc(var(--spacing) * 3);
-  font-size: var(--text-sm);
-  line-height: var(--otri-leading, var(--text-sm--line-height));
-  color: var(--color-slate-700);
-}
-.prototype-organizer-pages-account-profile-form-input-9 {
-  margin-top: calc(var(--spacing) * 0.5);
-  height: calc(var(--spacing) * 4);
-  width: calc(var(--spacing) * 4);
-  flex-shrink: 0;
-  accent-color: var(--color-blue-600);
-}
-.prototype-organizer-pages-account-profile-form-span-10 {
-  --otri-font-weight: var(--font-weight-semibold);
-  font-weight: var(--font-weight-semibold);
-  color: var(--field-ink);
-}
-.prototype-organizer-pages-account-profile-form-span-11 {
-  display: block;
-  font-size: var(--text-xs);
-  line-height: var(--otri-leading, var(--text-xs--line-height));
-  color: var(--color-slate-500);
-}
-.prototype-organizer-pages-account-two-factor-div-12 {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(var(--spacing) * 3);
-  border-radius: var(--radius-xl);
-  background-color: var(--color-slate-50);
-  padding-inline: calc(var(--spacing) * 4);
-  padding-block: calc(var(--spacing) * 3);
-}
-.prototype-organizer-pages-account-two-factor-p-13 {
-  font-size: var(--text-sm);
-  line-height: var(--otri-leading, var(--text-sm--line-height));
-}
-.prototype-organizer-pages-account-two-factor-span-14 {
-  color: var(--color-emerald-700);
-}
-.prototype-organizer-pages-account-two-factor-span-15 {
-  color: var(--color-slate-500);
-}
-.prototype-organizer-pages-account-two-factor-span-16 {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--spacing) * 2);
-}
-.prototype-organizer-pages-account-two-factor-button-17 {
-  min-height: calc(var(--spacing) * 10);
-  font-size: var(--text-xs);
-  line-height: var(--otri-leading, var(--text-xs--line-height));
-}
-.prototype-organizer-pages-account-two-factor-form-18 {
-  margin-top: calc(var(--spacing) * 4);
-  display: grid;
-  max-width: var(--container-sm);
-  gap: calc(var(--spacing) * 3);
-}
-.prototype-organizer-pages-account-two-factor-div-19 {
-  display: grid;
-  gap: calc(var(--spacing) * 4);
-  @media (width >= 40rem) {
-    grid-template-columns: 200px 1fr;
-  }
-}
-.prototype-organizer-pages-account-two-factor-div-20 {
-  border-radius: var(--radius-xl);
-  border-style: var(--otri-border-style);
-  border-width: 1px;
-  border-color: var(--color-slate-200);
-  background-color: var(--color-white);
-  padding: calc(var(--spacing) * 2);
-}
-.prototype-organizer-pages-account-two-factor-div-21 {
-  display: grid;
-  gap: calc(var(--spacing) * 3);
-}
-.prototype-organizer-pages-account-two-factor-p-22 {
-  font-size: var(--text-sm);
-  line-height: var(--otri-leading, var(--text-sm--line-height));
-  color: var(--color-slate-600);
-}
-.prototype-organizer-pages-account-two-factor-code-23 {
-  border-radius: var(--radius-lg);
-  background-color: var(--color-slate-50);
-  padding-inline: calc(var(--spacing) * 3);
-  padding-block: calc(var(--spacing) * 2);
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  line-height: var(--otri-leading, var(--text-xs--line-height));
-  word-break: break-all;
-  -webkit-user-select: all;
-  user-select: all;
-}
-.prototype-organizer-pages-account-two-factor-input-24 {
-  font-family: var(--font-mono);
-  --otri-tracking: .3em;
-  letter-spacing: .3em;
-}
-.prototype-organizer-pages-account-two-factor-div-25 {
-  display: flex;
-  gap: calc(var(--spacing) * 2);
-}
-.prototype-organizer-pages-account-sessions-card-div-26 {
-  margin-top: calc(var(--spacing) * 4);
-  border-radius: var(--radius-xl);
-  background-color: var(--color-slate-50);
-  padding-inline: calc(var(--spacing) * 4);
-  padding-block: calc(var(--spacing) * 3);
-}
-.prototype-organizer-pages-account-sessions-card-div-27 {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(var(--spacing) * 3);
-}
-.prototype-organizer-pages-account-sessions-card-div-28 {
-  margin-top: calc(var(--spacing) * 3);
-  display: grid;
-  gap: calc(var(--spacing) * 3);
-}
-.prototype-organizer-pages-account-data-card-div-29 {
-  margin-top: calc(var(--spacing) * 3);
-  display: grid;
-  gap: calc(var(--spacing) * 4);
-}
-.prototype-organizer-pages-account-data-card-div-30 {
-  border-radius: var(--radius-xl);
-  border-style: var(--otri-border-style);
-  border-width: 1px;
-  border-color: var(--color-red-200);
-  background-color: color-mix(in srgb, oklch(97.1% 0.013 17.38) 60%, transparent);
-  @supports (color: color-mix(in lab, red, red)) {
-    background-color: color-mix(in oklab, var(--color-red-50) 60%, transparent);
-  }
-  padding-inline: calc(var(--spacing) * 4);
-  padding-block: calc(var(--spacing) * 3);
-}
-.prototype-organizer-pages-account-data-card-span-31 {
-  --otri-font-weight: var(--font-weight-semibold);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-red-700);
-}
-.prototype-organizer-pages-account-data-card-span-32 {
-  color: var(--color-slate-600);
-}
-.prototype-organizer-pages-account-account-page-div-33 {
-  margin-top: calc(var(--spacing) * 6);
-}
-.prototype-organizer-pages-account-account-page-div-34 {
-  margin-top: calc(var(--spacing) * 8);
-  display: grid;
-  gap: calc(var(--spacing) * 6);
-  @media (width >= 64rem) {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-.prototype-organizer-pages-account-account-page-div-35 {
-  margin-top: calc(var(--spacing) * 3);
-}
-.prototype-organizer-pages-account-account-page-div-36 {
-  display: grid;
-  gap: calc(var(--spacing) * 6);
-}
-.prototype-organizer-pages-account-account-page-p-37 {
-  margin-top: calc(var(--spacing) * 4);
-  font-size: 11px;
-  --otri-leading: calc(var(--spacing) * 5);
-  line-height: calc(var(--spacing) * 5);
-  color: var(--color-slate-500);
-}
+/* Two columns from a desktop width; the profile on the left, security and data on the right. */
+.account-grid { display: grid; gap: var(--s-6); }
+.account-col { display: grid; gap: var(--s-6); align-content: start; min-width: 0; }
+@media (min-width: 1024px) { .account-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } }
+
+/* A form that disables all at once until the profile has arrived. */
+.account-fieldset { display: contents; border: 0; padding: 0; margin: 0; min-width: 0; }
+
+/* A setting: a sentence about it and its button, in a quiet box; an open one grows a form below. */
+.account-box { padding: var(--s-3) var(--s-4); border-radius: var(--r-control); background: var(--gravel); min-width: 0; }
+.account-box__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); }
+.account-box__head > p { flex: 1 1 260px; min-width: 0; }
+.account-box--danger { background: var(--berry-pale); }
+.account-danger { color: var(--berry); }
+.account-status-on { color: var(--moss-deep); font-weight: 600; }
+.account-narrow { max-width: 420px; }
+
+/* Recovery codes: a dark block, the codes in columns. */
+.account-codes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-1) var(--s-4); white-space: nowrap; }
+@media (min-width: 640px) { .account-codes { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+
+/* Authenticator setup: the QR code beside the instructions. */
+.account-totp { display: grid; gap: var(--s-4); }
+.account-totp__qr { padding: var(--s-2); background: var(--white); border: var(--border); border-radius: var(--r-card); align-self: start; }
+.account-totp__qr svg { width: 100%; height: auto; }
+@media (min-width: 640px) { .account-totp { grid-template-columns: 200px minmax(0, 1fr); align-items: start; } }
+
+/* The secret key, selectable in one click and allowed to wrap. */
+.account-secret { display: block; white-space: normal; word-break: break-all; user-select: all; -webkit-user-select: all; }
+
+/* A one-time code: spaced out so six digits can be checked at a glance. */
+.account-code { letter-spacing: .3em; }

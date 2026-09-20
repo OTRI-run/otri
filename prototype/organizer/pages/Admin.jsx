@@ -1,6 +1,6 @@
 import './Admin.css'
 import { useEffect, useState } from 'preact/compat'
-import { Activity, ArrowUpRight, Check, Eye, EyeOff, Flag as FlagIcon, HardDrive, Map, Server, ShieldCheck, Trash2, UserCheck } from 'lucide-react'
+import { Activity, ArrowUpRight, Check, Eye, EyeOff, Flag as FlagIcon, HardDrive, MapIcon, Server, ShieldCheck, Trash, UserCheck } from '../../../src/ui/icons'
 import CourseMap from '../../../src/components/LazyCourseMap'
 import {
   setRaceListed,
@@ -27,7 +27,7 @@ import { modelLabel } from '../../../src/lib/model'
 import { fetchNewsletterCsv } from '../../apiClient'
 import { Link } from '../router'
 import CalculatorCourses from './CalculatorCourses'
-import { Button, Gradient, Notice, Page, StatusChip, formatDate, raceStatus } from '../ui'
+import { Button, EmptyState, Gradient, Notice, Page, StatusChip, formatDate, raceStatus } from '../ui'
 
 const TABS = [
   ['overview', 'Overview'],
@@ -69,27 +69,44 @@ function when(iso) {
   }
 }
 
+const TONE_CLASS = { ok: 'admin-tone-ok', bad: 'admin-tone-bad' }
+
+function Loading({ children = 'Loading…' }) {
+  return (
+    <p className="loading">
+      <span className="spinner" /> {children}
+    </p>
+  )
+}
+
+/** The small mono heading of an admin card, with an optional icon. */
+function CardLabel({ icon: Icon, children }) {
+  return (
+    <p className="eyebrow eyebrow--plain admin-card__label">
+      {Icon && <Icon size={14} className="icon--moss" />} {children}
+    </p>
+  )
+}
+
 function Tile({ label, value, sub }) {
   return (
-    <div className="prototype-organizer-pages-admin-tile-div-1">
-      <p className="prototype-organizer-pages-admin-tile-p-2">{label}</p>
-      <p className="prototype-organizer-pages-admin-tile-p-3">{value}</p>
-      {sub && <p className="prototype-organizer-pages-admin-tile-p-4">{sub}</p>}
+    <div className="card card--pad-sm stat">
+      <span className="stat__label">{label}</span>
+      <span className="stat__value">{value}</span>
+      {sub && <span className="tiny muted mono admin-stat__sub">{sub}</span>}
     </div>
   )
 }
 
 function KeyValues({ title, icon: Icon, rows }) {
   return (
-    <section className="prototype-organizer-pages-admin-key-values-section-5">
-      <p className="prototype-organizer-pages-admin-key-values-p-6">
-        {Icon && <Icon size={13} className="prototype-organizer-pages-admin-key-values-icon-7" />} {title}
-      </p>
-      <dl className="prototype-organizer-pages-admin-key-values-dl-8">
+    <section className="card">
+      <CardLabel icon={Icon}>{title}</CardLabel>
+      <dl className="kv kv--rows admin-kv mt-3">
         {rows.map(([k, v, tone]) => (
-          <div key={k} className="prototype-organizer-pages-admin-key-values-div-9">
-            <dt className="prototype-organizer-pages-admin-key-values-dt-10">{k}</dt>
-            <dd className={`prototype-organizer-pages-admin-key-values-dd-11 ${tone === 'bad' ? "prototype-organizer-pages-admin-key-values-dd-12" : tone === 'ok' ? "prototype-organizer-pages-admin-key-values-dd-13" : "prototype-organizer-pages-admin-key-values-dd-14"}`}>{v}</dd>
+          <div key={k}>
+            <dt>{k}</dt>
+            <dd className={TONE_CLASS[tone] ?? ''}>{v}</dd>
           </div>
         ))}
       </dl>
@@ -106,13 +123,13 @@ function Overview({ session }) {
     getAdminOverview(session.token).then(setData).catch((err) => setError(err.message))
   }, [session.token])
   if (error) return <Notice kind="error">{error}</Notice>
-  if (!data) return <p className="prototype-organizer-pages-admin-overview-p-15">Loading…</p>
+  if (!data) return <Loading />
   const { stats, api, security, recent_signups: signups, recent_races: races } = data
   const yes = (v) => (v ? ['configured', 'ok'] : ['not configured', 'bad'])
 
   return (
-    <div className="prototype-organizer-pages-admin-overview-div-16">
-      <div className="prototype-organizer-pages-admin-overview-div-17">
+    <div className="stack stack--loose">
+      <div className="admin-tiles">
         <Tile label="ACCOUNTS" value={stats.organizers} sub={`${stats.verified} verified · ${stats.unverified} pending · ${stats.newsletter ?? 0} on the newsletter`} />
         <Tile label="EVENTS" value={stats.events} sub={`${stats.orphan_events} without owner`} />
         <Tile label="RACES" value={stats.races} sub={`${stats.published_races} published · ${stats.races_with_gpx} with course`} />
@@ -126,10 +143,10 @@ function Overview({ session }) {
         </Notice>
       )}
 
-      <div className="prototype-organizer-pages-admin-overview-div-18">
+      <div className="grid grid--2">
         <KeyValues
           title="API"
-          icon={Map}
+          icon={MapIcon}
           rows={[
             ['Version', api.version],
             ['Started', when(api.started_at)],
@@ -164,52 +181,48 @@ function Overview({ session }) {
         />
       </div>
 
-      <section className="prototype-organizer-pages-admin-overview-section-19">
-        <p className="prototype-organizer-pages-admin-overview-p-20">
-          <ShieldCheck size={13} /> WHO IS ADMIN
-        </p>
-        <ul className="prototype-organizer-pages-admin-overview-ul-21">
+      <section className="card card--outline admin-admins">
+        <CardLabel icon={ShieldCheck}>WHO IS ADMIN</CardLabel>
+        <ul className="admin-rows mono small mt-3">
           {(data.admin_accounts ?? []).map((email) => (
-            <li key={email} className="prototype-organizer-pages-admin-overview-li-22">
-              {email}
-            </li>
+            <li key={email}>{email}</li>
           ))}
-          {(data.admin_accounts ?? []).length === 0 && <li className="prototype-organizer-pages-admin-overview-li-23">Nobody has signed in as admin yet.</li>}
+          {(data.admin_accounts ?? []).length === 0 && <li className="muted">Nobody has signed in as admin yet.</li>}
         </ul>
-        <p className="prototype-organizer-pages-admin-overview-p-24">
+        <p className="tiny muted mt-3">
           Granted by the server's OTRI_ADMIN_EMAILS at sign-in ({(security.admin_emails ?? []).join(', ') || 'empty'}). Remove an email there and restart to revoke.
         </p>
       </section>
 
-      <div className="prototype-organizer-pages-admin-overview-div-18">
-        <section className="prototype-organizer-pages-admin-key-values-section-5">
-          <p className="prototype-organizer-pages-admin-tile-p-2">RECENT SIGN-UPS</p>
-          <ul className="prototype-organizer-pages-admin-overview-ul-25">
+      <div className="grid grid--2">
+        <section className="card">
+          <CardLabel>RECENT SIGN-UPS</CardLabel>
+          <ul className="admin-rows small mt-3">
             {signups.map((o) => (
-              <li key={o.id} className="prototype-organizer-pages-admin-overview-li-26">
-                <span className="prototype-organizer-pages-admin-overview-span-27">{o.email}</span>
-                <span className="prototype-organizer-pages-admin-overview-span-28">
-                  {when(o.created_at)} · {o.email_verified ? 'verified' : <span className="prototype-organizer-pages-admin-overview-span-29">pending</span>}
+              <li key={o.id}>
+                <span className="truncate">{o.email}</span>
+                <span className="tiny muted mono nowrap">
+                  {when(o.created_at)} · {o.email_verified ? 'verified' : <span className="admin-tone-warn">pending</span>}
                 </span>
               </li>
             ))}
-            {signups.length === 0 && <li className="prototype-organizer-pages-admin-overview-li-30">None yet.</li>}
+            {signups.length === 0 && <li className="muted">None yet.</li>}
           </ul>
         </section>
-        <section className="prototype-organizer-pages-admin-key-values-section-5">
-          <p className="prototype-organizer-pages-admin-tile-p-2">RECENT RACES</p>
-          <ul className="prototype-organizer-pages-admin-overview-ul-25">
+        <section className="card">
+          <CardLabel>RECENT RACES</CardLabel>
+          <ul className="admin-rows small mt-3">
             {races.map((r) => (
-              <li key={r.race_id} className="prototype-organizer-pages-admin-overview-li-26">
-                <Link to={`/races/${encodeURIComponent(r.race_id)}/review`} className="prototype-organizer-pages-admin-overview-link-31">
+              <li key={r.race_id}>
+                <Link to={`/races/${encodeURIComponent(r.race_id)}/review`} className="link link--quiet truncate">
                   {r.event_name} · {r.course_name}
                 </Link>
-                <span className="prototype-organizer-pages-admin-overview-span-32">
+                <span className="nowrap">
                   <StatusChip status={raceStatus(r, (r.finisher_count ?? 0) > 0)} />
                 </span>
               </li>
             ))}
-            {races.length === 0 && <li className="prototype-organizer-pages-admin-overview-li-30">None yet.</li>}
+            {races.length === 0 && <li className="muted">None yet.</li>}
           </ul>
         </section>
       </div>
@@ -265,74 +278,74 @@ function ReportCard({ report, token, onChanged }) {
       <Button
         variant="danger"
         busy={busy}
-        className="prototype-organizer-pages-admin-report-card-button-33"
+        className="btn--sm"
         onClick={() => run(async () => { await deleteAdminRunner(report.subject_id, token); await resolveAdminReport(report.id, 'runner profile and results deleted', token) }, `Delete the runner "${report.subject_label ?? report.subject_id}" and every result attached to them? This cannot be undone.`)}
       >
-        <Trash2 size={13} /> Delete runner data
+        <Trash size={14} /> Delete runner data
       </Button>
     ),
     race: (
       <>
-        <Button variant="secondary" busy={busy} className="prototype-organizer-pages-admin-report-card-button-33" onClick={() => run(async () => { await unpublishRace(report.subject_id, token); await resolveAdminReport(report.id, 'race unpublished', token) }, `Unpublish "${report.subject_label ?? report.subject_id}"?`)}>
-          <EyeOff size={13} /> Unpublish race
+        <Button variant="secondary" busy={busy} className="btn--sm" onClick={() => run(async () => { await unpublishRace(report.subject_id, token); await resolveAdminReport(report.id, 'race unpublished', token) }, `Unpublish "${report.subject_label ?? report.subject_id}"?`)}>
+          <EyeOff size={14} /> Unpublish race
         </Button>
-        <Button variant="danger" busy={busy} className="prototype-organizer-pages-admin-report-card-button-33" onClick={() => run(async () => { await deleteRace(report.subject_id, token); await resolveAdminReport(report.id, 'race deleted', token) }, `Delete the race "${report.subject_label ?? report.subject_id}" and its results? This cannot be undone.`)}>
-          <Trash2 size={13} /> Delete race
+        <Button variant="danger" busy={busy} className="btn--sm" onClick={() => run(async () => { await deleteRace(report.subject_id, token); await resolveAdminReport(report.id, 'race deleted', token) }, `Delete the race "${report.subject_label ?? report.subject_id}" and its results? This cannot be undone.`)}>
+          <Trash size={14} /> Delete race
         </Button>
       </>
     ),
     shared_course: (
-      <Button variant="danger" busy={busy} className="prototype-organizer-pages-admin-report-card-button-33" onClick={() => run(async () => { await deleteSharedCourse(report.subject_id, token); await resolveAdminReport(report.id, 'shared course deleted', token) }, `Delete the shared course "${report.subject_label ?? report.subject_id}"? Links to it stop working.`)}>
-        <Trash2 size={13} /> Delete shared course
+      <Button variant="danger" busy={busy} className="btn--sm" onClick={() => run(async () => { await deleteSharedCourse(report.subject_id, token); await resolveAdminReport(report.id, 'shared course deleted', token) }, `Delete the shared course "${report.subject_label ?? report.subject_id}"? Links to it stop working.`)}>
+        <Trash size={14} /> Delete shared course
       </Button>
     ),
   }
 
   return (
-    <li className={`prototype-organizer-pages-admin-report-card-li-34 ${open ? "prototype-organizer-pages-admin-report-card-li-35" : "prototype-organizer-pages-admin-report-card-li-36"}`}>
-      <div className="prototype-organizer-pages-admin-report-card-div-37">
-        <div className="prototype-organizer-pages-admin-report-card-div-38">
-          <p className="prototype-organizer-pages-admin-report-card-p-39">
-            <span className="prototype-organizer-pages-admin-report-card-span-40">{KIND_LABEL[report.kind] ?? report.kind}</span>
-            {report.reason && <span className="prototype-organizer-pages-admin-report-card-span-41">{REASON_LABEL[report.reason] ?? report.reason}</span>}
-            <span className="prototype-organizer-pages-admin-report-card-span-42">{when(report.created_at)}</span>
-            {!open && <span className="prototype-organizer-pages-admin-report-card-span-43">resolved {when(report.resolved_at)} by {report.resolved_by}{report.resolution ? ` · ${report.resolution}` : ''}</span>}
-          </p>
-          <p className="prototype-organizer-pages-admin-report-card-p-44">
-            <a href={subjectLink(report)} className="prototype-organizer-pages-admin-report-card-a-45">
-              {report.subject_label ?? report.subject_id} <ArrowUpRight size={12} className="prototype-organizer-pages-admin-report-card-arrow-up-right-46" />
+    <li className={`card admin-report ${open ? 'admin-report--open' : 'admin-report--resolved'}`}>
+      <div className="admin-report__body">
+        <p className="cluster cluster--tight">
+          <span className={`badge ${open ? 'badge--ochre' : ''}`}>{KIND_LABEL[report.kind] ?? report.kind}</span>
+          {report.reason && <span className="badge">{REASON_LABEL[report.reason] ?? report.reason}</span>}
+          <span className="tiny muted mono">{when(report.created_at)}</span>
+          {!open && <span className="tiny muted">resolved {when(report.resolved_at)} by {report.resolved_by}{report.resolution ? ` · ${report.resolution}` : ''}</span>}
+        </p>
+        <p className="cluster cluster--tight cluster--baseline mt-2">
+          <a href={subjectLink(report)} className="link link--arrow admin-report__subject">
+            {report.subject_label ?? report.subject_id} <ArrowUpRight size={14} />
+          </a>
+          <span className="tiny muted mono break">{report.subject_id}</span>
+        </p>
+        <p className="small admin-report__message mt-2">{report.message}</p>
+        <p className="tiny mt-2">
+          {report.reporter_email ? (
+            <a href={`mailto:${report.reporter_email}?subject=${encodeURIComponent(`Your OTRI report about ${report.subject_label ?? report.subject_id}`)}`} className="link">
+              {report.reporter_email}
             </a>
-            <span className="prototype-organizer-pages-admin-report-card-span-47">{report.subject_id}</span>
-          </p>
-          <p className="prototype-organizer-pages-admin-report-card-p-48">{report.message}</p>
-          <p className="prototype-organizer-pages-admin-report-card-p-49">
-            {report.reporter_email ? (
-              <a href={`mailto:${report.reporter_email}?subject=${encodeURIComponent(`Your OTRI report about ${report.subject_label ?? report.subject_id}`)}`} className="prototype-organizer-pages-admin-report-card-a-50">
-                {report.reporter_email}
-              </a>
-            ) : (
-              'no email left'
-            )}
-          </p>
-          {error && <p className="prototype-organizer-pages-admin-report-card-p-51">{error}</p>}
-        </div>
-        {open && (
-          <div className="prototype-organizer-pages-admin-report-card-div-52">
-            <div className="prototype-organizer-pages-admin-report-card-div-53">{subjectActions[report.kind] ?? null}</div>
-            <div className="prototype-organizer-pages-admin-report-card-div-54">
-              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="note (optional)" className="prototype-organizer-pages-admin-report-card-input-55" />
-              <Button variant="secondary" busy={busy} className="prototype-organizer-pages-admin-report-card-button-33" onClick={() => resolve(note || null)}>
-                <Check size={13} /> Mark resolved
-              </Button>
-            </div>
+          ) : (
+            <span className="muted">no email left</span>
+          )}
+        </p>
+        {error && <p className="admin-error mt-2">{error}</p>}
+      </div>
+      {open && (
+        <div className="admin-report__actions">
+          <div className="cluster cluster--tight">{subjectActions[report.kind] ?? null}</div>
+          <div className="cluster cluster--tight">
+            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="note (optional)" className="input input--sm admin-report__note" />
+            <Button variant="secondary" busy={busy} className="btn--sm" onClick={() => resolve(note || null)}>
+              <Check size={14} /> Mark resolved
+            </Button>
           </div>
-        )}
-        {!open && (
-          <button type="button" onClick={() => run(() => deleteAdminReport(report.id, token), 'Delete this resolved report?')} className="prototype-organizer-pages-admin-report-card-button-56">
+        </div>
+      )}
+      {!open && (
+        <div className="admin-report__actions">
+          <button type="button" onClick={() => run(() => deleteAdminReport(report.id, token), 'Delete this resolved report?')} className="btn btn--danger btn--sm">
             Delete
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </li>
   )
 }
@@ -349,22 +362,26 @@ function Reports({ session }) {
   }, [session.token, showAll, version])
   const reload = () => setVersion((v) => v + 1)
   if (error && !rows) return <Notice kind="error">{error}</Notice>
-  if (!rows) return <p className="prototype-organizer-pages-admin-overview-p-15">Loading…</p>
+  if (!rows) return <Loading />
   return (
     <div>
-      <div className="prototype-organizer-pages-admin-reports-div-57">
-        <p className="prototype-organizer-pages-admin-reports-p-58">
-          <FlagIcon size={13} className="prototype-organizer-pages-admin-key-values-icon-7" /> {rows.length} {showAll ? 'REPORT' : 'OPEN REPORT'}{rows.length === 1 ? '' : 'S'}
+      <div className="toolbar">
+        <p className="eyebrow eyebrow--plain grow">
+          <FlagIcon size={14} className="icon--moss" /> {rows.length} {showAll ? 'REPORT' : 'OPEN REPORT'}{rows.length === 1 ? '' : 'S'}
         </p>
-        <button type="button" onClick={() => setShowAll((v) => !v)} className="prototype-organizer-pages-admin-reports-button-59">
+        <button type="button" onClick={() => setShowAll((v) => !v)} className="chip" aria-pressed={showAll}>
           {showAll ? 'Show open only' : 'Show resolved too'}
         </button>
       </div>
-      <ul className="prototype-organizer-pages-admin-reports-ul-60">
+      <ul className="stack mt-4">
         {rows.map((report) => (
           <ReportCard key={report.id} report={report} token={session.token} onChanged={reload} />
         ))}
-        {rows.length === 0 && <li className="prototype-organizer-pages-admin-reports-li-61">Nothing reported. The public pages have a "Report a problem" form under every runner profile, leaderboard and shared course.</li>}
+        {rows.length === 0 && (
+          <li>
+            <EmptyState title="Nothing reported.">The public pages have a "Report a problem" form under every runner profile, leaderboard and shared course.</EmptyState>
+          </li>
+        )}
       </ul>
     </div>
   )
@@ -409,7 +426,7 @@ function Accounts({ session }) {
   }
 
   if (error && !rows) return <Notice kind="error">{error}</Notice>
-  if (!rows) return <p className="prototype-organizer-pages-admin-overview-p-15">Loading…</p>
+  if (!rows) return <Loading />
   async function exportNewsletter() {
     setError(null)
     try {
@@ -428,75 +445,75 @@ function Accounts({ session }) {
   const subscribers = rows.filter((o) => o.marketing_opt_in && o.email_verified && !o.is_demo).length
   return (
     <div>
-      <div className="prototype-organizer-pages-admin-accounts-div-62">
-        <span>
-          <span className="prototype-organizer-pages-admin-accounts-span-63">{subscribers}</span> verified {subscribers === 1 ? 'account' : 'accounts'} agreed to receive OTRI news. Only those may get marketing email; the export is the audience for a Resend broadcast.
-        </span>
-        <Button variant="secondary" className="prototype-organizer-pages-admin-report-card-button-33" onClick={exportNewsletter} disabled={subscribers === 0}>
+      <div className="toolbar card card--pad-sm card--gravel">
+        <p className="small grow">
+          <b className="num admin-inline-count">{subscribers}</b> verified {subscribers === 1 ? 'account' : 'accounts'} agreed to receive OTRI news. Only those may get marketing email; the export is the audience for a Resend broadcast.
+        </p>
+        <Button variant="secondary" className="btn--sm" onClick={exportNewsletter} disabled={subscribers === 0}>
           Download newsletter list (CSV)
         </Button>
       </div>
       {error && (
-        <div className="prototype-organizer-pages-admin-accounts-div-64">
+        <div className="mt-4">
           <Notice kind="error">{error}</Notice>
         </div>
       )}
-      <div className="prototype-organizer-pages-admin-accounts-div-65">
-        <table className="prototype-organizer-pages-admin-accounts-table-66">
+      <div className="table-wrap mt-4">
+        <table className="table table--tight admin-table">
           <thead>
-            <tr className="prototype-organizer-pages-admin-accounts-tr-67">
-              <th className="prototype-organizer-pages-admin-accounts-th-68">Email</th>
-              <th className="prototype-organizer-pages-admin-accounts-th-68">Who</th>
-              <th className="prototype-organizer-pages-admin-accounts-th-68">Status</th>
-              <th className="prototype-organizer-pages-admin-accounts-th-68">Created</th>
-              <th className="prototype-organizer-pages-admin-accounts-th-68">Events</th>
-              <th className="prototype-organizer-pages-admin-accounts-th-68">Races</th>
-              <th className="prototype-organizer-pages-admin-accounts-th-69">Actions</th>
+            <tr>
+              <th>Email</th>
+              <th>Who</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th className="num right">Events</th>
+              <th className="num right">Races</th>
+              <th className="right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((o) => (
-              <tr key={o.id} className="prototype-organizer-pages-admin-accounts-tr-70">
-                <td className="prototype-organizer-pages-admin-accounts-td-71">
+              <tr key={o.id}>
+                <td className="break">
                   {o.email}
-                  {o.email === session.email && <span className="prototype-organizer-pages-admin-accounts-span-72">(you)</span>}
+                  {o.email === session.email && <span className="tiny muted"> (you)</span>}
                 </td>
-                <td className="prototype-organizer-pages-admin-accounts-td-73">
+                <td>
                   {o.display_name || o.organization ? (
                     <>
-                      <span className="prototype-organizer-pages-admin-accounts-span-63">{o.display_name ?? '—'}</span>
-                      {o.organization && <span className="prototype-organizer-pages-admin-accounts-span-74">{o.organization}</span>}
+                      <span className="admin-table__strong">{o.display_name ?? '—'}</span>
+                      {o.organization && <span className="tiny muted block">{o.organization}</span>}
                     </>
                   ) : (
-                    <span className="prototype-organizer-pages-admin-accounts-span-75">no profile yet</span>
+                    <span className="muted">no profile yet</span>
                   )}
                 </td>
-                <td className="prototype-organizer-pages-admin-accounts-th-68">
-                  <span className="prototype-organizer-pages-admin-accounts-span-76">
-                    {o.two_factor_method && <span className="prototype-organizer-pages-admin-accounts-span-77">2FA</span>}
-                    {o.marketing_opt_in && <span className="prototype-organizer-pages-admin-accounts-span-78">news</span>}
+                <td>
+                  <span className="cluster cluster--tight admin-table__badges">
+                    {o.two_factor_method && <span className="badge">2FA</span>}
+                    {o.marketing_opt_in && <span className="badge badge--sky">news</span>}
                     {o.email_verified ? (
-                      <span className="prototype-organizer-pages-admin-accounts-span-79">verified</span>
+                      <span className="badge badge--moss">verified</span>
                     ) : (
-                      <span className="prototype-organizer-pages-admin-accounts-span-80">pending</span>
+                      <span className="badge badge--ochre">pending</span>
                     )}
-                    {o.is_admin && <span className="prototype-organizer-pages-admin-accounts-span-81">admin</span>}
-                    {o.is_demo && <span className="prototype-organizer-pages-admin-report-card-span-41">demo</span>}
+                    {o.is_admin && <span className="badge badge--solid">admin</span>}
+                    {o.is_demo && <span className="badge badge--blaze">demo</span>}
                   </span>
                 </td>
-                <td className="prototype-organizer-pages-admin-accounts-td-82">{when(o.created_at)}</td>
-                <td className="prototype-organizer-pages-admin-accounts-td-82">{o.event_count}</td>
-                <td className="prototype-organizer-pages-admin-accounts-td-82">{o.race_count}</td>
-                <td className="prototype-organizer-pages-admin-accounts-th-68">
-                  <span className="prototype-organizer-pages-admin-accounts-span-83">
+                <td className="num nowrap">{when(o.created_at)}</td>
+                <td className="num right">{o.event_count}</td>
+                <td className="num right">{o.race_count}</td>
+                <td className="right">
+                  <span className="admin-actions">
                     {!o.email_verified && (
-                      <Button variant="secondary" className="prototype-organizer-pages-admin-report-card-button-33" busy={busyId === o.id} onClick={() => verify(o)}>
-                        <UserCheck size={13} /> Verify
+                      <Button variant="secondary" className="btn--sm" busy={busyId === o.id} onClick={() => verify(o)}>
+                        <UserCheck size={14} /> Verify
                       </Button>
                     )}
                     {o.email !== session.email && (
-                      <Button variant="danger" className="prototype-organizer-pages-admin-report-card-button-33" busy={busyId === o.id} onClick={() => remove(o)}>
-                        <Trash2 size={13} /> Delete
+                      <Button variant="danger" className="btn--sm" busy={busyId === o.id} onClick={() => remove(o)}>
+                        <Trash size={14} /> Delete
                       </Button>
                     )}
                   </span>
@@ -506,7 +523,7 @@ function Accounts({ session }) {
           </tbody>
         </table>
       </div>
-      <p className="prototype-organizer-pages-admin-accounts-p-84">
+      <p className="tiny muted mt-3">
         Admin rights come from the server's OTRI_ADMIN_EMAILS list and are applied at sign-in. Deleting an account removes everything it owns.
       </p>
     </div>
@@ -530,9 +547,9 @@ function CoursePreview({ raceId, token }) {
       cancelled = true
     }
   }, [raceId, token])
-  if (error) return <p className="prototype-organizer-pages-admin-course-preview-p-85">{error}</p>
-  if (!course) return <p className="prototype-organizer-pages-admin-course-preview-p-86">Loading course…</p>
-  return <CourseMap gpxText={course.gpxText} measurement={course.measurement} className="prototype-organizer-pages-admin-course-preview-course-map-87" />
+  if (error) return <p className="admin-error mt-2">{error}</p>
+  if (!course) return <p className="loading mt-2"><span className="spinner" /> Loading course…</p>
+  return <CourseMap gpxText={course.gpxText} measurement={course.measurement} className="admin-race__map" />
 }
 
 function AdminRaceRow({ race, token, onChanged }) {
@@ -557,60 +574,60 @@ function AdminRaceRow({ race, token, onChanged }) {
   }
 
   return (
-    <li className="prototype-organizer-pages-admin-admin-race-row-li-88">
-      <div className="prototype-organizer-pages-admin-reports-div-57">
-        <div className="prototype-organizer-pages-admin-report-card-div-38">
-          <p className="prototype-organizer-pages-admin-admin-race-row-p-89">{race.course_name}</p>
-          <p className="prototype-organizer-pages-admin-report-card-span-42">
+    <li className="admin-race">
+      <div className="admin-race__row">
+        <div className="min0">
+          <p className="admin-race__name">{race.course_name}</p>
+          <p className="tiny muted mono">
             {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })} · {race.finisher_count ?? 0} scored ·{' '}
             {modelLabel(race.scoring_version)}
             {race.has_gpx ? ` · ${race.measurement_version ?? 'course attached'}` : ' · no course file'}
             {race.is_listed ? ' · listed' : ''}
           </p>
-          {error && <p className="prototype-organizer-pages-admin-report-card-p-51">{error}</p>}
+          {error && <p className="admin-error mt-2">{error}</p>}
         </div>
-        <div className="prototype-organizer-pages-admin-admin-race-row-div-90">
+        <div className="admin-actions">
           <StatusChip status={status} />
-          <Link to={`/races/${encodeURIComponent(race.race_id)}/review`} className="prototype-organizer-pages-admin-admin-race-row-link-91">
+          <Link to={`/races/${encodeURIComponent(race.race_id)}/review`} className="btn btn--ghost btn--sm">
             Open
           </Link>
           {race.has_gpx && (
-            <button type="button" onClick={() => setShowCourse((v) => !v)} className="prototype-organizer-pages-admin-admin-race-row-button-92">
-              <Map size={12} /> {showCourse ? 'Hide course' : 'View course'}
+            <button type="button" onClick={() => setShowCourse((v) => !v)} className="btn btn--ghost btn--sm">
+              <MapIcon size={14} /> {showCourse ? 'Hide course' : 'View course'}
             </button>
           )}
           {!race.is_published && (
-            <Button variant="secondary" busy={busy} className="prototype-organizer-pages-admin-report-card-button-33" onClick={() => run(() => setRaceListed(race.race_id, !race.is_listed, token))}>
-              {race.is_listed ? <EyeOff size={13} /> : <Eye size={13} />} {race.is_listed ? 'Unlist' : 'List publicly'}
+            <Button variant="secondary" busy={busy} className="btn--sm" onClick={() => run(() => setRaceListed(race.race_id, !race.is_listed, token))}>
+              {race.is_listed ? <EyeOff size={14} /> : <Eye size={14} />} {race.is_listed ? 'Unlist' : 'List publicly'}
             </Button>
           )}
           {race.is_listed && !race.is_published && (
-            <a href={`../#races/${encodeURIComponent(race.race_id)}`} className="prototype-organizer-pages-admin-admin-race-row-a-93">
-              Public page <ArrowUpRight size={12} />
+            <a href={`../#races/${encodeURIComponent(race.race_id)}`} className="btn btn--ghost btn--sm">
+              Public page <ArrowUpRight size={14} />
             </a>
           )}
           {race.is_published && (
             <>
-              <a href={`../#races/${encodeURIComponent(race.race_id)}`} className="prototype-organizer-pages-admin-admin-race-row-a-93">
-                Public page <ArrowUpRight size={12} />
+              <a href={`../#races/${encodeURIComponent(race.race_id)}`} className="btn btn--ghost btn--sm">
+                Public page <ArrowUpRight size={14} />
               </a>
               <Button
                 variant="secondary"
                 busy={busy}
-                className="prototype-organizer-pages-admin-report-card-button-33"
+                className="btn--sm"
                 onClick={() => run(() => unpublishRace(race.race_id, token), `Unpublish "${race.event_name} · ${race.course_name}"?`)}
               >
-                <EyeOff size={13} /> Unpublish
+                <EyeOff size={14} /> Unpublish
               </Button>
             </>
           )}
           <Button
             variant="danger"
             busy={busy}
-            className="prototype-organizer-pages-admin-report-card-button-33"
+            className="btn--sm"
             onClick={() => run(() => deleteRace(race.race_id, token), `Delete the race "${race.event_name} · ${race.course_name}" and its ${race.finisher_count ?? 0} results? This cannot be undone.`)}
           >
-            <Trash2 size={13} /> Delete
+            <Trash size={14} /> Delete
           </Button>
         </div>
       </div>
@@ -647,7 +664,7 @@ function EventsAdmin({ session }) {
   }
 
   if (error && !events) return <Notice kind="error">{error}</Notice>
-  if (!events) return <p className="prototype-organizer-pages-admin-overview-p-15">Loading…</p>
+  if (!events) return <Loading />
   const raceCount = events.reduce((n, e) => n + e.race_count, 0)
   // Thousands of events once listings are imported: search, and draw a screenful at a time.
   const needle = query.trim().toLowerCase()
@@ -657,58 +674,69 @@ function EventsAdmin({ session }) {
   return (
     <div>
       {error && (
-        <div className="prototype-organizer-pages-admin-accounts-div-64">
+        <div className="mb-4">
           <Notice kind="error">{error}</Notice>
         </div>
       )}
-      <p className="prototype-organizer-pages-admin-events-admin-p-94">
-        {events.length} EVENT{events.length === 1 ? '' : 'S'} · {raceCount} RACE{raceCount === 1 ? '' : 'S'} · {publishedCount} PUBLISHED
-      </p>
-      <div className="prototype-organizer-pages-admin-events-admin-div-95">
+      <div className="admin-stats">
+        <div className="stat">
+          <span className="stat__value">{events.length}</span>
+          <span className="stat__label">EVENT{events.length === 1 ? '' : 'S'}</span>
+        </div>
+        <div className="stat">
+          <span className="stat__value">{raceCount}</span>
+          <span className="stat__label">RACE{raceCount === 1 ? '' : 'S'}</span>
+        </div>
+        <div className="stat">
+          <span className="stat__value">{publishedCount}</span>
+          <span className="stat__label">PUBLISHED</span>
+        </div>
+      </div>
+      <div className="toolbar mt-4">
         <input
           type="search"
           value={query}
           onChange={(e) => { setQuery(e.target.value); setVisible(EVENTS_PER_PAGE) }}
           placeholder="Find an event: name, place, country, owner or date"
           aria-label="Find an event"
-          className="prototype-organizer-pages-admin-events-admin-input-96"
+          className="input input--sm grow"
         />
-        <p className="prototype-organizer-pages-admin-report-card-span-42">
+        <p className="tiny muted mono nowrap">
           {shownEvents.length} OF {matching.length} SHOWN
         </p>
       </div>
-      <div className="prototype-organizer-pages-admin-events-admin-div-97">
+      <div className="stack mt-4">
         {shownEvents.map((event) => (
-          <section key={event.event_id} className="prototype-organizer-pages-admin-key-values-section-5">
-            <div className="prototype-organizer-pages-admin-events-admin-div-98">
-              <div className="prototype-organizer-pages-admin-report-card-div-38">
-                <p className="prototype-organizer-pages-admin-events-admin-p-99">{formatDate(event.event_date).toUpperCase()}</p>
-                <h2 className="prototype-organizer-pages-admin-events-admin-h2-100">
-                  <Link to={`/events/${encodeURIComponent(event.event_id)}`} className="prototype-organizer-pages-admin-report-card-a-45">
+          <section key={event.event_id} className="card card--flush admin-event">
+            <div className="card__head">
+              <div className="min0">
+                <p className="card__meta">{formatDate(event.event_date).toUpperCase()}</p>
+                <h2 className="card__title mt-1">
+                  <Link to={`/events/${encodeURIComponent(event.event_id)}`} className="link link--quiet">
                     {event.event_name}
                   </Link>
                 </h2>
               </div>
-              <div className="prototype-organizer-pages-admin-events-admin-div-101">
-                <p className="prototype-organizer-pages-admin-report-card-span-42">
+              <div className="cluster cluster--tight">
+                <p className="tiny muted mono">
                   {event.organizer_email ?? 'no owner'} · {event.published_count}/{event.race_count} published
                 </p>
-                <button type="button" onClick={() => removeEvent(event)} className="prototype-organizer-pages-admin-events-admin-button-102">
-                  <Trash2 size={12} /> Delete event
+                <button type="button" onClick={() => removeEvent(event)} className="btn btn--danger btn--sm">
+                  <Trash size={14} /> Delete event
                 </button>
               </div>
             </div>
-            <ul className="prototype-organizer-pages-admin-course-preview-course-map-87">
+            <ul className="admin-races">
               {event.races.map((race) => (
                 <AdminRaceRow key={race.race_id} race={race} token={session.token} onChanged={reload} />
               ))}
-              {event.races.length === 0 && <li className="prototype-organizer-pages-admin-events-admin-li-103">No races yet.</li>}
+              {event.races.length === 0 && <li className="admin-race small muted">No races yet.</li>}
             </ul>
           </section>
         ))}
       </div>
       {matching.length > shownEvents.length && (
-        <div className="prototype-organizer-pages-admin-events-admin-div-104">
+        <div className="center mt-6">
           <Button variant="secondary" onClick={() => setVisible((n) => n + EVENTS_PER_PAGE)}>
             Show {Math.min(EVENTS_PER_PAGE, matching.length - shownEvents.length)} more
           </Button>
@@ -745,46 +773,53 @@ function SharedCourses({ session }) {
   }
 
   if (error && !rows) return <Notice kind="error">{error}</Notice>
-  if (!rows) return <p className="prototype-organizer-pages-admin-overview-p-15">Loading…</p>
+  if (!rows) return <Loading />
   const total = rows.reduce((n, r) => n + (r.size_bytes ?? 0), 0)
   return (
     <div>
       {error && (
-        <div className="prototype-organizer-pages-admin-accounts-div-64">
+        <div className="mb-4">
           <Notice kind="error">{error}</Notice>
         </div>
       )}
-      <p className="prototype-organizer-pages-admin-events-admin-p-94">
-        {rows.length} SHARED COURSE{rows.length === 1 ? '' : 'S'} · {fmtBytes(total)} ON DISK (GZIP)
-      </p>
-      <div className="prototype-organizer-pages-admin-shared-courses-div-105">
-        <table className="prototype-organizer-pages-admin-shared-courses-table-106">
+      <div className="admin-stats">
+        <div className="stat">
+          <span className="stat__value">{rows.length}</span>
+          <span className="stat__label">SHARED COURSE{rows.length === 1 ? '' : 'S'}</span>
+        </div>
+        <div className="stat">
+          <span className="stat__value">{fmtBytes(total)}</span>
+          <span className="stat__label">ON DISK (GZIP)</span>
+        </div>
+      </div>
+      <div className="table-wrap mt-4">
+        <table className="table table--tight admin-table">
           <thead>
-            <tr className="prototype-organizer-pages-admin-accounts-tr-67">
-              <th className="prototype-organizer-pages-admin-accounts-th-68">Name</th>
-              <th className="prototype-organizer-pages-admin-accounts-th-68">File</th>
-              <th className="prototype-organizer-pages-admin-accounts-th-68">Shared</th>
-              <th className="prototype-organizer-pages-admin-accounts-th-68">Size</th>
-              <th className="prototype-organizer-pages-admin-accounts-th-69">Actions</th>
+            <tr>
+              <th>Name</th>
+              <th>File</th>
+              <th>Shared</th>
+              <th className="num right">Size</th>
+              <th className="right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.share_id} className="prototype-organizer-pages-admin-accounts-tr-70">
-                <td className="prototype-organizer-pages-admin-shared-courses-td-107">
-                  {row.name ?? <span className="prototype-organizer-pages-admin-accounts-span-75">untitled</span>}
-                  <span className="prototype-organizer-pages-admin-shared-courses-span-108">{row.share_id}</span>
+              <tr key={row.share_id}>
+                <td>
+                  <span className="admin-table__strong">{row.name ?? <span className="muted">untitled</span>}</span>
+                  <span className="tiny muted mono block break">{row.share_id}</span>
                 </td>
-                <td className="prototype-organizer-pages-admin-accounts-td-82">{row.filename ?? '—'}</td>
-                <td className="prototype-organizer-pages-admin-accounts-td-82">{when(row.created_at)}</td>
-                <td className="prototype-organizer-pages-admin-accounts-td-82">{fmtBytes(row.size_bytes)}</td>
-                <td className="prototype-organizer-pages-admin-accounts-th-68">
-                  <span className="prototype-organizer-pages-admin-accounts-span-83">
-                    <a href={`../#calculator?gpx=${encodeURIComponent(row.share_id)}${row.name ? `&name=${encodeURIComponent(row.name)}` : ''}`} className="prototype-organizer-pages-admin-shared-courses-a-109">
-                      Open <ArrowUpRight size={12} />
+                <td className="num break">{row.filename ?? '—'}</td>
+                <td className="num nowrap">{when(row.created_at)}</td>
+                <td className="num right">{fmtBytes(row.size_bytes)}</td>
+                <td className="right">
+                  <span className="admin-actions">
+                    <a href={`../#calculator?gpx=${encodeURIComponent(row.share_id)}${row.name ? `&name=${encodeURIComponent(row.name)}` : ''}`} className="btn btn--ghost btn--sm">
+                      Open <ArrowUpRight size={14} />
                     </a>
-                    <Button variant="danger" className="prototype-organizer-pages-admin-report-card-button-33" busy={busyId === row.share_id} onClick={() => remove(row)}>
-                      <Trash2 size={13} /> Delete
+                    <Button variant="danger" className="btn--sm" busy={busyId === row.share_id} onClick={() => remove(row)}>
+                      <Trash size={14} /> Delete
                     </Button>
                   </span>
                 </td>
@@ -792,7 +827,7 @@ function SharedCourses({ session }) {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={5} className="prototype-organizer-pages-admin-shared-courses-td-110">
+                <td colSpan={5} className="table__empty">
                   Nobody has shared a course yet.
                 </td>
               </tr>
@@ -806,12 +841,13 @@ function SharedCourses({ session }) {
 
 // ------------------------------------------------------------------------------ Server
 
+// A gauge under a figure: moss while there is room, ochre past three quarters, berry past nine tenths.
 function Bar({ value, max, tone = 'blue' }) {
   const pct = max ? Math.min(100, Math.round((value / max) * 100)) : 0
-  const color = pct > 90 ? "otri-state-9" : pct > 75 ? "otri-state-10" : tone === 'blue' ? "otri-state-11" : "otri-state-12"
+  const color = pct > 90 ? 'admin-meter--bad' : pct > 75 ? 'admin-meter--warn' : tone === 'blue' ? '' : 'admin-meter--alt'
   return (
-    <div className="prototype-organizer-pages-admin-bar-div-111" aria-hidden="true">
-      <div className={`prototype-organizer-pages-admin-bar-div-112 ${color}`} style={{ width: `${pct}%` }} />
+    <div className={`meter meter--thin admin-meter ${color}`} aria-hidden="true">
+      <span style={{ width: `${pct}%` }} />
     </div>
   )
 }
@@ -826,9 +862,20 @@ function uptime(seconds) {
 
 function Unavailable({ what, reason }) {
   return (
-    <p className="prototype-organizer-pages-admin-overview-li-23">
+    <p className="small muted">
       {what} not available on this host{reason ? ` (${reason})` : ''}.
     </p>
+  )
+}
+
+function Gauge({ label, value, sub, children }) {
+  return (
+    <div className="card card--pad-sm stat">
+      <span className="stat__label">{label}</span>
+      <span className="stat__value">{value}</span>
+      <span className="tiny muted mono admin-stat__sub">{sub}</span>
+      {children}
+    </div>
   )
 }
 
@@ -839,104 +886,83 @@ function ServerTab({ session }) {
     getAdminServer(session.token).then(setData).catch((err) => setError(err.message))
   }, [session.token])
   if (error) return <Notice kind="error">{error}</Notice>
-  if (!data) return <p className="prototype-organizer-pages-admin-overview-p-15">Reading the server…</p>
+  if (!data) return <Loading>Reading the server…</Loading>
   const { host, storage, services, watchdog, backups, firewall, fail2ban, api_usage: usage, tls } = data
   const memUsed = host.memory_total != null && host.memory_available != null ? host.memory_total - host.memory_available : null
   const maxHour = usage?.per_hour ? Math.max(1, ...usage.per_hour) : 1
-  const panel = "prototype-organizer-pages-admin-key-values-section-5"
-  const label = "prototype-organizer-pages-admin-tile-p-2"
 
   return (
-    <div className="prototype-organizer-pages-admin-overview-div-16">
-      <p className="prototype-organizer-pages-admin-events-admin-p-94">
+    <div className="stack stack--loose">
+      <p className="tiny muted mono">
         {host.hostname?.toUpperCase()} · SNAPSHOT {when(data.generated_at)} · REFRESHED EVERY 30 S
       </p>
 
-      <div className="prototype-organizer-pages-admin-server-tab-div-113">
-        <div className={panel}>
-          <p className={label}>CPU</p>
-          <p className="prototype-organizer-pages-admin-tile-p-3">{host.cpu_percent != null ? `${host.cpu_percent}%` : '—'}</p>
-          <p className="prototype-organizer-pages-admin-tile-p-4">
-            {host.cpu_count ?? '?'} core{host.cpu_count === 1 ? '' : 's'} · load {host.load_1 ?? '—'} / {host.load_5 ?? '—'} / {host.load_15 ?? '—'}
-          </p>
+      <div className="admin-gauges">
+        <Gauge label="CPU" value={host.cpu_percent != null ? `${host.cpu_percent}%` : '—'} sub={<>{host.cpu_count ?? '?'} core{host.cpu_count === 1 ? '' : 's'} · load {host.load_1 ?? '—'} / {host.load_5 ?? '—'} / {host.load_15 ?? '—'}</>}>
           {host.cpu_percent != null && <Bar value={host.cpu_percent} max={100} />}
-        </div>
-        <div className={panel}>
-          <p className={label}>MEMORY</p>
-          <p className="prototype-organizer-pages-admin-tile-p-3">{memUsed != null ? fmtBytes(memUsed) : '—'}</p>
-          <p className="prototype-organizer-pages-admin-tile-p-4">of {fmtBytes(host.memory_total)} · swap {fmtBytes(host.swap_total)}</p>
+        </Gauge>
+        <Gauge label="MEMORY" value={memUsed != null ? fmtBytes(memUsed) : '—'} sub={<>of {fmtBytes(host.memory_total)} · swap {fmtBytes(host.swap_total)}</>}>
           {memUsed != null && <Bar value={memUsed} max={host.memory_total} />}
-        </div>
-        <div className={panel}>
-          <p className={label}>DISK</p>
-          <p className="prototype-organizer-pages-admin-tile-p-3">{fmtBytes(storage.disk_used)}</p>
-          <p className="prototype-organizer-pages-admin-tile-p-4">of {fmtBytes(storage.disk_total)} · {fmtBytes(storage.disk_free)} free</p>
+        </Gauge>
+        <Gauge label="DISK" value={fmtBytes(storage.disk_used)} sub={<>of {fmtBytes(storage.disk_total)} · {fmtBytes(storage.disk_free)} free</>}>
           {storage.disk_total && <Bar value={storage.disk_used} max={storage.disk_total} />}
-        </div>
-        <div className={panel}>
-          <p className={label}>UPTIME</p>
-          <p className="prototype-organizer-pages-admin-tile-p-3">{uptime(host.uptime_seconds)}</p>
-          <p className="prototype-organizer-pages-admin-tile-p-4">
-            TLS {tls?.available ? `${tls.days_left} days left` : 'not checked'}
-          </p>
-        </div>
+        </Gauge>
+        <Gauge label="UPTIME" value={uptime(host.uptime_seconds)} sub={<>TLS {tls?.available ? `${tls.days_left} days left` : 'not checked'}</>} />
       </div>
 
-      <div className="prototype-organizer-pages-admin-overview-div-18">
-        <section className={panel}>
-          <p className={`${label} prototype-organizer-pages-admin-report-card-div-54`}>
-            <Activity size={13} className="prototype-organizer-pages-admin-key-values-icon-7" /> API USAGE · LAST {usage?.hours ?? 24} H
-          </p>
+      <div className="grid grid--2">
+        <section className="card">
+          <CardLabel icon={Activity}>API USAGE · LAST {usage?.hours ?? 24} H</CardLabel>
           {usage?.available ? (
             <>
-              <div className="prototype-organizer-pages-admin-server-tab-div-114">
-                <div>
-                  <p className={label}>REQUESTS</p>
-                  <p className="prototype-organizer-pages-admin-server-tab-p-115">{usage.total.toLocaleString()}</p>
+              <div className="grid grid--3 grid--tight mt-3">
+                <div className="stat">
+                  <span className="stat__label">REQUESTS</span>
+                  <span className="stat__value">{usage.total.toLocaleString()}</span>
                 </div>
-                <div>
-                  <p className={label}>CLIENTS</p>
-                  <p className="prototype-organizer-pages-admin-server-tab-p-115">{usage.unique_ips}</p>
+                <div className="stat">
+                  <span className="stat__label">CLIENTS</span>
+                  <span className="stat__value">{usage.unique_ips}</span>
                 </div>
-                <div>
-                  <p className={label}>5XX ERRORS</p>
-                  <p className={`prototype-organizer-pages-admin-server-tab-p-116 ${usage.errors_5xx ? "prototype-organizer-pages-admin-key-values-dd-12" : "prototype-organizer-pages-admin-key-values-dd-14"}`}>{usage.errors_5xx}</p>
+                <div className="stat">
+                  <span className="stat__label">5XX ERRORS</span>
+                  <span className={`stat__value ${usage.errors_5xx ? 'admin-tone-bad' : ''}`}>{usage.errors_5xx}</span>
                 </div>
               </div>
-              <div className="prototype-organizer-pages-admin-server-tab-div-117" aria-label="Requests per hour">
+              <div className="admin-chart mt-4" aria-label="Requests per hour">
                 {usage.per_hour.map((n, i) => (
-                  <div key={i} title={`${n} requests`} className="prototype-organizer-pages-admin-server-tab-div-118" style={{ height: `${Math.max(2, (n / maxHour) * 100)}%` }} />
+                  <div key={i} title={`${n} requests`} className="admin-chart__bar" style={{ height: `${Math.max(2, (n / maxHour) * 100)}%` }} />
                 ))}
               </div>
-              <p className="prototype-organizer-pages-admin-server-tab-p-119">
+              <p className="admin-chart__axis tiny muted mono mt-1">
                 <span>{usage.hours} h ago</span>
                 <span>now</span>
               </p>
-              <p className="prototype-organizer-pages-admin-server-tab-p-120">
+              <p className="tiny muted mono mt-3">
                 {Object.entries(usage.by_status)
                   .sort()
                   .map(([k, v]) => `${k} ${v}`)
                   .join(' · ') || 'no requests'}
               </p>
-              <div className="prototype-organizer-pages-admin-server-tab-div-121">
+              <div className="grid grid--2 grid--tight mt-4">
                 <div>
-                  <p className={label}>TOP ENDPOINTS</p>
-                  <ul className="prototype-organizer-pages-admin-server-tab-ul-122">
+                  <p className="eyebrow eyebrow--plain eyebrow--sm">TOP ENDPOINTS</p>
+                  <ul className="admin-rows admin-rows--dense mono tiny mt-1">
                     {usage.top_paths.map((row) => (
-                      <li key={row.path} className="prototype-organizer-pages-admin-server-tab-li-123">
-                        <span className="prototype-organizer-pages-admin-server-tab-span-124">{row.path}</span>
-                        <span className="prototype-organizer-pages-admin-key-values-dt-10">{row.count}</span>
+                      <li key={row.path}>
+                        <span className="truncate">{row.path}</span>
+                        <span className="muted">{row.count}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
                 <div>
-                  <p className={label}>TOP CLIENTS</p>
-                  <ul className="prototype-organizer-pages-admin-server-tab-ul-122">
+                  <p className="eyebrow eyebrow--plain eyebrow--sm">TOP CLIENTS</p>
+                  <ul className="admin-rows admin-rows--dense mono tiny mt-1">
                     {usage.top_ips.map((row) => (
-                      <li key={row.ip} className="prototype-organizer-pages-admin-server-tab-li-123">
-                        <span className="prototype-organizer-pages-admin-key-values-dd-14">{row.ip}</span>
-                        <span className="prototype-organizer-pages-admin-key-values-dt-10">{row.count}</span>
+                      <li key={row.ip}>
+                        <span>{row.ip}</span>
+                        <span className="muted">{row.count}</span>
                       </li>
                     ))}
                   </ul>
@@ -944,75 +970,71 @@ function ServerTab({ session }) {
               </div>
             </>
           ) : (
-            <div className="prototype-organizer-pages-admin-server-tab-div-125">
+            <div className="mt-2">
               <Unavailable what="Request log" reason={usage?.reason} />
             </div>
           )}
         </section>
 
-        <div className="prototype-organizer-pages-admin-server-tab-div-126">
-          <section className={panel}>
-            <p className={`${label} prototype-organizer-pages-admin-report-card-div-54`}>
-              <ShieldCheck size={13} className="prototype-organizer-pages-admin-key-values-icon-7" /> FIREWALL & FAIL2BAN
-            </p>
+        <div className="stack">
+          <section className="card">
+            <CardLabel icon={ShieldCheck}>FIREWALL & FAIL2BAN</CardLabel>
             {firewall?.available ? (
-              <p className="prototype-organizer-pages-admin-server-tab-p-127">
-                ufw <span className={firewall.active ? "prototype-organizer-pages-admin-server-tab-span-128" : "prototype-organizer-pages-admin-server-tab-span-129"}>{firewall.active ? 'active' : 'inactive'}</span>
-                {firewall.rules?.length ? <span className="prototype-organizer-pages-admin-key-values-dt-10"> · {firewall.rules.length} rules</span> : null}
+              <p className="cluster cluster--tight small mt-3">
+                ufw <span className={`badge ${firewall.active ? 'badge--moss' : 'badge--berry'}`}>{firewall.active ? 'active' : 'inactive'}</span>
+                {firewall.rules?.length ? <span className="tiny muted mono"> · {firewall.rules.length} rules</span> : null}
               </p>
             ) : (
-              <div className="prototype-organizer-pages-admin-server-tab-div-125">
+              <div className="mt-2">
                 <Unavailable what="Firewall status" />
               </div>
             )}
             {fail2ban?.available ? (
-              <ul className="prototype-organizer-pages-admin-server-tab-ul-130">
+              <ul className="admin-list mt-3">
                 {fail2ban.jails.map((jail) => (
-                  <li key={jail.name} className="prototype-organizer-pages-admin-server-tab-li-131">
-                    <p className="prototype-organizer-pages-admin-server-tab-p-132">
-                      <span className="prototype-organizer-pages-admin-server-tab-span-133">jail {jail.name}</span>
-                      <span className="prototype-organizer-pages-admin-server-tab-span-134">
+                  <li key={jail.name}>
+                    <p className="cluster cluster--tight cluster--between small">
+                      <span className="mono admin-table__strong">jail {jail.name}</span>
+                      <span className="tiny muted mono">
                         {jail.currently_banned} banned now · {jail.total_banned} total · {jail.total_failed} failed attempts
                       </span>
                     </p>
                     {jail.banned_ips.length > 0 && (
-                      <p className="prototype-organizer-pages-admin-report-card-p-49">{jail.banned_ips.slice(0, 12).join(' · ')}{jail.banned_ips.length > 12 ? ' …' : ''}</p>
+                      <p className="tiny muted mono break mt-1">{jail.banned_ips.slice(0, 12).join(' · ')}{jail.banned_ips.length > 12 ? ' …' : ''}</p>
                     )}
                   </li>
                 ))}
-                {fail2ban.jails.length === 0 && <li className="prototype-organizer-pages-admin-server-tab-li-135">fail2ban is running with no jails.</li>}
+                {fail2ban.jails.length === 0 && <li className="small muted">fail2ban is running with no jails.</li>}
               </ul>
             ) : (
-              <div className="prototype-organizer-pages-admin-server-tab-div-125">
+              <div className="mt-2">
                 <Unavailable what="fail2ban" reason={fail2ban?.reason} />
               </div>
             )}
           </section>
 
-          <section className={panel}>
-            <p className={`${label} prototype-organizer-pages-admin-report-card-div-54`}>
-              <Server size={13} className="prototype-organizer-pages-admin-key-values-icon-7" /> SERVICES
-            </p>
+          <section className="card">
+            <CardLabel icon={Server}>SERVICES</CardLabel>
             {services?.available ? (
-              <ul className="prototype-organizer-pages-admin-server-tab-ul-136">
+              <ul className="admin-services mono small mt-3">
                 {Object.entries(services.units).map(([unit, state]) => (
-                  <li key={unit} className="prototype-organizer-pages-admin-report-card-div-54">
-                    <i className={`prototype-organizer-pages-admin-server-tab-i-137 ${state === 'active' ? "prototype-organizer-pages-admin-server-tab-i-138" : "prototype-organizer-pages-admin-server-tab-i-139"}`} />
-                    {unit} <span className="prototype-organizer-pages-admin-accounts-span-75">{state}</span>
+                  <li key={unit}>
+                    <i className={`admin-dot ${state === 'active' ? 'admin-dot--ok' : 'admin-dot--bad'}`} />
+                    {unit} <span className="muted">{state}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <div className="prototype-organizer-pages-admin-server-tab-div-125">
+              <div className="mt-2">
                 <Unavailable what="Service status" />
               </div>
             )}
             {/* Both report by email or not at all: a missing email looks the same as one that never ran. */}
-            <ul className="prototype-organizer-pages-admin-server-tab-ul-140">
-              <li className="prototype-organizer-pages-admin-report-card-div-54">
-                <i className={`prototype-organizer-pages-admin-server-tab-i-141 ${watchdog?.active && watchdog.last_result === 'success' ? "prototype-organizer-pages-admin-server-tab-i-138" : watchdog?.available ? "prototype-organizer-pages-admin-server-tab-i-139" : "prototype-organizer-pages-admin-server-tab-i-142"}`} />
+            <ul className="admin-services mono small mt-3 admin-services--line">
+              <li>
+                <i className={`admin-dot ${watchdog?.active && watchdog.last_result === 'success' ? 'admin-dot--ok' : watchdog?.available ? 'admin-dot--bad' : 'admin-dot--unknown'}`} />
                 watchdog{' '}
-                <span className="prototype-organizer-pages-admin-accounts-span-75">
+                <span className="muted">
                   {!watchdog?.available
                     ? 'unknown here'
                     : !watchdog.active
@@ -1020,10 +1042,10 @@ function ServerTab({ session }) {
                       : `last check ${watchdog.last_check ?? 'not yet'}${watchdog.last_result && watchdog.last_result !== 'success' ? ` (${watchdog.last_result})` : ''}`}
                 </span>
               </li>
-              <li className="prototype-organizer-pages-admin-report-card-div-54">
-                <i className={`prototype-organizer-pages-admin-server-tab-i-141 ${backups?.ok ? "prototype-organizer-pages-admin-server-tab-i-138" : backups?.available ? "prototype-organizer-pages-admin-server-tab-i-139" : "prototype-organizer-pages-admin-server-tab-i-142"}`} />
+              <li>
+                <i className={`admin-dot ${backups?.ok ? 'admin-dot--ok' : backups?.available ? 'admin-dot--bad' : 'admin-dot--unknown'}`} />
                 database backup{' '}
-                <span className="prototype-organizer-pages-admin-accounts-span-75">
+                <span className="muted">
                   {!backups?.available
                     ? 'unknown here'
                     : !backups.newest
@@ -1034,21 +1056,19 @@ function ServerTab({ session }) {
             </ul>
           </section>
 
-          <section className={panel}>
-            <p className={`${label} prototype-organizer-pages-admin-report-card-div-54`}>
-              <HardDrive size={13} className="prototype-organizer-pages-admin-key-values-icon-7" /> STORAGE
-            </p>
-            <ul className="prototype-organizer-pages-admin-server-tab-ul-143">
-              <li className="prototype-organizer-pages-admin-server-tab-li-144">
+          <section className="card">
+            <CardLabel icon={HardDrive}>STORAGE</CardLabel>
+            <ul className="admin-rows small mt-3">
+              <li>
                 <span>database</span>
-                <span className="prototype-organizer-pages-admin-key-values-dt-10">{fmtBytes(storage.database_bytes)}</span>
+                <span className="mono muted">{fmtBytes(storage.database_bytes)}</span>
               </li>
               {Object.entries(storage.dirs ?? {}).map(([name, info]) => (
-                <li key={name} className="prototype-organizer-pages-admin-server-tab-li-145">
-                  <span className="prototype-organizer-pages-admin-server-tab-span-146" title={info.path ?? ''}>
+                <li key={name}>
+                  <span className="truncate" title={info.path ?? ''}>
                     {name.replace('_', ' ')}
                   </span>
-                  <span className="prototype-organizer-pages-admin-overview-span-28">{info.bytes == null ? '—' : fmtBytes(info.bytes)}</span>
+                  <span className="mono muted">{info.bytes == null ? '—' : fmtBytes(info.bytes)}</span>
                 </li>
               ))}
             </ul>
@@ -1075,19 +1095,19 @@ export function AdminEvents({ session, tab = 'overview' }) {
       }
       intro="Accounts, events, races, results, shared courses and the state of the API. Every destructive action asks first and cannot be undone."
     >
-      <nav className="prototype-organizer-pages-admin-admin-events-nav-147">
+      <nav className="tabs mt-8">
         {TABS.map(([id, label]) => (
           <button
             key={id}
             type="button"
             onClick={() => setActive(id)}
-            className={`prototype-organizer-pages-admin-admin-events-button-148 ${active === id ? "prototype-organizer-pages-admin-admin-events-button-149" : "prototype-organizer-pages-admin-admin-events-button-150"}`}
+            className={`tabs__tab ${active === id ? 'is-active' : ''}`}
           >
             {label}
           </button>
         ))}
       </nav>
-      <div className="prototype-organizer-pages-admin-admin-events-div-151">
+      <div className="mt-6">
         {active === 'overview' && <Overview session={session} />}
         {active === 'reports' && <Reports session={session} />}
         {active === 'accounts' && <Accounts session={session} />}

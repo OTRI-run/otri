@@ -1,11 +1,10 @@
 import './Faq.css'
 import { NOT_MEASURED, WHAT_WE_SCORE, WhatWeScoreTable } from '../src/components/WhatWeScore'
 import { useEffect, useMemo, useState } from 'preact/compat'
-import { ArrowUpRight, Mail, Search } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Mail, Search } from '../src/ui/icons'
 import NextSteps from './NextSteps'
 
 const DOCS = 'https://github.com/OTRI-run/otri/blob/main'
-const CONTAINER = "prototype-faq-container-style-1"
 
 // Plain answers to the questions runners and organizers ask, in the order they tend to ask them.
 // Every claim here is also in the methodology pages; when the two disagree, the pages win.
@@ -220,72 +219,76 @@ export default function FaqPage({ initialQuery = '' }) {
   const groups = FAQ.map((group) => ({ ...group, items: group.items.filter((item) => matches.includes(item) || matches.some((m) => m.q === item.q)) })).filter((g) => g.items.length)
 
   return (
-    <section className="prototype-faq-faq-page-section-2">
-      <div className={CONTAINER}>
-        <div className="prototype-faq-faq-page-div-3">
-          <div className="prototype-faq-faq-page-div-4">04</div>
-          <div className="prototype-faq-faq-page-div-5">
-            <p className="prototype-faq-faq-page-p-6">QUESTIONS</p>
-            <h1 className="prototype-faq-faq-page-h1-7">
-              Asked often.
-              <br />
-              <span className="prototype-faq-faq-page-span-8">Answered plainly.</span>
-            </h1>
-          </div>
-          <p className="prototype-faq-faq-page-p-9">
+    <section className="section">
+      <div className="wrap wrap--narrow">
+        <div className="page-head">
+          <p className="eyebrow">Questions</p>
+          <h1 className="display-2">
+            Asked often.
+            <br />
+            <span className="accent">Answered plainly.</span>
+          </h1>
+          <p className="lead">
             Short answers about scores, courses, the runner index and publishing a race. The long answers live in the
             methodology pages, linked where they matter.
           </p>
         </div>
 
-        <div className="prototype-faq-faq-page-div-10">
-          <div className="prototype-faq-faq-page-div-11">
-          <Search size={16} className="prototype-faq-faq-page-search-12" />
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search the questions, e.g. zero, GPX, confidence, cost…"
-            aria-label="Search the FAQ"
-            autoFocus={Boolean(initialQuery)}
-            className="prototype-faq-faq-page-input-13"
-          />
+        <div className="mt-8">
+          <div className="input-wrap">
+            <Search size={18} />
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search the questions, e.g. zero, GPX, confidence, cost…"
+              aria-label="Search the FAQ"
+              autoFocus={Boolean(initialQuery)}
+              className="input"
+            />
           </div>
-          <p className="prototype-faq-faq-page-p-14" aria-live="polite">
+          <p className="tiny muted mono mt-2" aria-live="polite">
             {query ? `${matches.length} of ${ALL.length} questions match` : `${ALL.length} questions`}
           </p>
         </div>
 
         {groups.length === 0 && (
-          <div className="prototype-faq-faq-page-div-15">
-            Nothing matches <b>{query}</b>. Ask us directly:{' '}
-            <a href={`mailto:hello@otri.run?subject=${encodeURIComponent(`Question: ${query}`)}`} className="prototype-faq-faq-page-a-16">
-              <Mail size={14} /> hello@otri.run
-            </a>
+          <div className="empty mt-8">
+            <p className="empty__title">Nothing matches <b>{query}</b>.</p>
+            <p className="empty__text">
+              Ask us directly:{' '}
+              <a href={`mailto:hello@otri.run?subject=${encodeURIComponent(`Question: ${query}`)}`} className="link link--arrow">
+                <Mail size={14} /> hello@otri.run
+              </a>
+            </p>
           </div>
         )}
 
         {groups.map((group) => (
-          <div key={group.group} className="prototype-faq-faq-page-div-17">
-            <p className="prototype-faq-faq-page-p-18">{group.group.toUpperCase()}</p>
-            <div className="prototype-faq-faq-page-div-19">
+          <div key={group.group} className="faq-group">
+            <p className="rule"><span>{group.group.toUpperCase()}</span></p>
+            <div className="stack stack--tight">
               {group.items.map((item) => (
-                <details key={item.q} open={words.length > 0} className="prototype-faq-faq-page-details-20 otri-group">
-                  <summary className="prototype-faq-faq-page-summary-21">
-                    <span className="prototype-faq-faq-page-span-22">
-                      <span>{item.q}</span>
-                      <span aria-hidden="true" className="prototype-faq-faq-page-span-23">
-                        +
-                      </span>
-                    </span>
+                <details key={item.q} open={words.length > 0} className="details">
+                  <summary>
+                    <span>{item.q}</span>
                   </summary>
-                  <p className="prototype-faq-faq-page-p-24">{item.a}</p>
-                  {item.table && <WhatWeScoreTable className="prototype-faq-faq-page-what-we-score-table-25" />}
-                  {item.link && (
-                    <a href={item.link[0]} className="prototype-faq-faq-page-a-26" target={item.link[0].startsWith('http') ? '_blank' : undefined} rel="noreferrer">
-                      {item.link[1]} <ArrowUpRight size={14} />
-                    </a>
-                  )}
+                  <div className="details__body">
+                    <div className="prose">
+                      <p>{item.a}</p>
+                    </div>
+                    {item.table && <WhatWeScoreTable className="mt-4" />}
+                    {item.link && (
+                      <a
+                        href={item.link[0]}
+                        className={`link link--arrow small mt-3 ${item.link[0].startsWith('http') ? 'link--up' : ''}`}
+                        target={item.link[0].startsWith('http') ? '_blank' : undefined}
+                        rel="noreferrer"
+                      >
+                        {item.link[1]} {item.link[0].startsWith('http') ? <ArrowUpRight size={14} /> : <ArrowRight size={14} />}
+                      </a>
+                    )}
+                  </div>
                 </details>
               ))}
             </div>

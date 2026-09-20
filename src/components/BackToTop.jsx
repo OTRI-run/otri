@@ -1,6 +1,5 @@
-import './BackToTop.css'
 import { useEffect, useState } from 'preact/compat'
-import { ArrowUp } from 'lucide-react'
+import { ArrowUp } from '../ui/icons'
 import { scrollBehavior } from '../lib/comfort'
 
 /** A quiet way back up a long page: appears in the corner once a screen and a half has gone by, and
@@ -29,9 +28,9 @@ export default function BackToTop() {
       aria-label="Back to the top of the page"
       title="Back to top"
       tabIndex={shown ? 0 : -1}
-      className={`src-components-back-to-top-back-to-top-button-1 ${shown ? "src-components-back-to-top-back-to-top-button-2" : "src-components-back-to-top-back-to-top-button-3"}`}
+      className={`to-top ${shown ? '' : 'is-hidden'}`}
     >
-      <ArrowUp size={18} />
+      <ArrowUp size={20} />
     </button>
   )
 }

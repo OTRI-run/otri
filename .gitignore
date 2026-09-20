@@ -28,3 +28,6 @@ gpx courses/
 # Race calendars and results collected from third-party sources, kept to pick listings from. Local
 # only (DATA_POLICY.md: facts are re-compiled into a listings CSV, the source files are not published).
 docs/race result data/
+
+# Scratch builds made while checking single pages (npx vite build --outDir dist-x).
+dist-*/
