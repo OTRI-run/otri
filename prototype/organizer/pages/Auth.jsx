@@ -218,10 +218,10 @@ export function Welcome() {
             <a className="inline-flex items-center gap-1 no-underline hover:underline" href={`${DOCS}/docs/methodology/0.1.0/HOW-OTRI-SCORES.md`} target="_blank" rel="noreferrer">
               How scores are calculated <ArrowUpRight size={12} />
             </a>
-            <a className="inline-flex items-center gap-1 no-underline hover:underline" href={`${DOCS}/DATA_POLICY.md`} target="_blank" rel="noreferrer">
+            <a className="inline-flex items-center gap-1 no-underline hover:underline" href="/data-policy/" target="_blank" rel="noreferrer">
               Data policy <ArrowUpRight size={12} />
             </a>
-            <a className="inline-flex items-center gap-1 no-underline hover:underline" href={`${DOCS}/PRIVACY.md`} target="_blank" rel="noreferrer">
+            <a className="inline-flex items-center gap-1 no-underline hover:underline" href="/privacy/" target="_blank" rel="noreferrer">
               Privacy <ArrowUpRight size={12} />
             </a>
           </div>
@@ -350,15 +350,15 @@ export function Register({ onSignedIn, query = {} }) {
             <input id="reg-terms" type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600" />
             <span>
               I agree to the{' '}
-              <a className="font-semibold text-blue-600 underline" href={`${DOCS}/TERMS.md`} target="_blank" rel="noreferrer">
+              <a className="font-semibold text-blue-600 underline" href="/terms/" target="_blank" rel="noreferrer">
                 terms of service
               </a>{' '}
               and the{' '}
-              <a className="font-semibold text-blue-600 underline" href={`${DOCS}/PRIVACY.md`} target="_blank" rel="noreferrer">
+              <a className="font-semibold text-blue-600 underline" href="/privacy/" target="_blank" rel="noreferrer">
                 privacy policy
               </a>
               , and I confirm I may share the race data I upload (
-              <a className="underline" href={`${DOCS}/DATA_POLICY.md`} target="_blank" rel="noreferrer">
+              <a className="underline" href="/data-policy/" target="_blank" rel="noreferrer">
                 data policy
               </a>
               ). <span className="text-slate-500">Required.</span>
@@ -394,11 +394,11 @@ export function Register({ onSignedIn, query = {} }) {
           hint={
             <>
               By continuing with Google you agree to the{' '}
-              <a className="underline" href={`${DOCS}/TERMS.md`} target="_blank" rel="noreferrer">
+              <a className="underline" href="/terms/" target="_blank" rel="noreferrer">
                 terms of service
               </a>{' '}
               and the{' '}
-              <a className="underline" href={`${DOCS}/PRIVACY.md`} target="_blank" rel="noreferrer">
+              <a className="underline" href="/privacy/" target="_blank" rel="noreferrer">
                 privacy policy
               </a>
               , and confirm you may share the race data you upload.

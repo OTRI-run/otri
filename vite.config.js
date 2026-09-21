@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { resolve } from 'node:path'
 import { execSync } from 'node:child_process'
+import legalPages from './scripts/site/legal-pages.mjs'
 
 function gitInfo() {
   try {
@@ -20,7 +21,7 @@ function gitInfo() {
 const { commit, commitFull, commitDate } = gitInfo()
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), legalPages({ commitDate })],
   base: './',
   define: {
     __OTRI_COMMIT__: JSON.stringify(commit),
