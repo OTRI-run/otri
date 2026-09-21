@@ -34,10 +34,21 @@ MAX_COLUMNS = 200
 # of its cells rather than their number: two hundred headers of a hundred kilobytes each are a
 # legal results file by every other measure, and they came back in the answer three times over.
 MAX_CELL_CHARS = 512
+# Rows times columns is what costs memory, and each limit on its own allows ten million cells:
+# fifty thousand rows of two hundred columns is a 20 MB upload that cost 412 MB and four and a
+# half seconds. Neither dimension is worth narrowing on its own -- fifty thousand finishers is a
+# real race, and a timing export with every split is really that wide -- but no results file is
+# both at once.
+MAX_CELLS = 2_000_000
 # Anything below a space except tab and newline. A results file has no business carrying them, and
 # a NUL is not storable in a Postgres text column, so one in a name became an error at the end of
 # a long upload rather than a word about the file.
 _CONTROLS = {code: None for code in range(32) if code not in (9, 10, 13)} | {127: None}
+# The characters that tell a browser to lay text out right to left. A name carrying one renders
+# with the rank and the time around it in the wrong order, which is a leaderboard that lies
+# without any string in it being wrong. No name needs them; Arabic and Hebrew read right to left
+# on their own letters.
+_CONTROLS |= {code: None for code in (0x200E, 0x200F, 0x061C, *range(0x202A, 0x202F), *range(0x2066, 0x206A))}
 TEXT_SUFFIXES = (".csv", ".txt", ".tsv")
 SHEET_SUFFIXES = (".xlsx", ".xlsm")
 
@@ -156,12 +167,17 @@ def _read_text(path: Path) -> list[list[str]]:
     text = _decode(path.read_bytes())
     delimiter = "\t" if path.suffix.lower() == ".tsv" else _delimiter(text)
     table: list[list[str]] = []
+    cells = 0
     try:
         for row in csv.reader(io.StringIO(text, newline=""), delimiter=delimiter):
             if len(table) > MAX_ROWS + HEADER_SEARCH_ROWS:
                 raise ValueError(f"the file has more than {MAX_ROWS} rows; split it per race distance")
             # Past MAX_COLUMNS the rest of the row is dropped, as the .xlsx reader drops it.
-            table.append([_cell(cell) for cell in row[:MAX_COLUMNS]])
+            kept = [_cell(cell) for cell in row[:MAX_COLUMNS]]
+            cells += len(kept)
+            if cells > MAX_CELLS:
+                raise ValueError(_TOO_MANY_CELLS)
+            table.append(kept)
     except csv.Error as error:
         # csv.Error is not a ValueError, so it used to leave the reader as an unhandled error and
         # the upload answered 500 instead of saying which file could not be read.
@@ -188,6 +204,10 @@ _SHARED_STRINGS = "xl/sharedstrings.xml"
 _SHARED_STRINGS_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sharedstrings+xml"
 MAX_XLSX_ENTRIES = 2_000
 MAX_XLSX_COLUMNS = 200  # a results sheet has a dozen; timing exports with every split, a hundred
+_TOO_MANY_CELLS = (
+    "this file holds more cells than a results sheet can: keep the columns the scorer reads "
+    "(a rank, a time, a name, a gender) and split it per race distance"
+)
 _NOT_A_WORKBOOK = "this file is named .xlsx but is not an Excel workbook (it may be a CSV that was renamed, or a damaged download): open it in a spreadsheet, save it as .xlsx or CSV, and upload that"
 
 
@@ -245,12 +265,22 @@ def _read_xlsx(path: Path) -> list[list[str]]:
         limit = MAX_ROWS + HEADER_SEARCH_ROWS
         rows = sheet.iter_rows(values_only=True, max_row=limit + 1, max_col=MAX_XLSX_COLUMNS)
         table: list[list[str]] = []
+        cells = 0
         for seen, raw_row in enumerate(rows, start=1):
             if seen > limit:
                 raise ValueError(f"the file has more than {MAX_ROWS} rows; split it per race distance")
             if all(cell is None for cell in raw_row):
                 continue
-            table.append([_cell(_stringify(cell)) for cell in raw_row])
+            kept = [_cell(_stringify(cell)) for cell in raw_row]
+            # A sheet is read to a fixed width, so a three-column sheet comes back padded out to
+            # two hundred. The padding is not data and must not count against the cell budget, nor
+            # be stored fifty thousand times over.
+            while kept and not kept[-1]:
+                kept.pop()
+            cells += len(kept)
+            if cells > MAX_CELLS:
+                raise ValueError(_TOO_MANY_CELLS)
+            table.append(kept)
         return table
     finally:
         # Read-only workbooks stream from the zip: close the row generator (its open stream) and the
