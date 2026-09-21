@@ -516,11 +516,14 @@ export function Login({ onSignedIn, afterReset = false, query = {} }) {
   // signed in, needing this account's second factor, or not signed in with a reason.
   useEffect(() => {
     if (query.google === 'ok') {
-      // The cookie is already set. Tell the app a sign-in exists and go to the events page; the
-      // app then asks /auth/me who is signed in, as it does for a returning visitor. No reload:
+      // The cookie is already set. Tell the app a sign-in exists and go to the welcome page, whose
+      // rule for signed-in visitors takes them on to their events (or to publish a waiting race)
+      // once the session is applied; the app asks /auth/me who is signed in, as for a returning
+      // visitor. Not straight to /events: the app's guard runs in this same render, would see the
+      // new address with the session not yet applied, and would bounce back here. And no reload:
       // a reload racing the hash change left some browsers on this address with nothing drawn.
       onSignedIn('', '', false)
-      navigate(hasHandoff() ? '/publish' : '/events', { replace: true })
+      navigate('/', { replace: true })
     } else if (query.challenge) {
       setChallenge({ challenge: query.challenge, method: query.method || 'totp' })
       // a challenge is used once; it should not stay in the address bar or the history
