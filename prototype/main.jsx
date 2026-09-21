@@ -161,24 +161,88 @@ function Header({ tab }) {
   )
 }
 
+/**
+ * The footer is the site's map. Everything the page can reach is listed here in four columns, so
+ * a reader who has scrolled to the bottom does not have to scroll back up to find anything.
+ */
+const FOOTER_COLUMNS = [
+  {
+    heading: 'Score',
+    links: [
+      ['Calculator', '#calculator'],
+      ['Score a race', '#score'],
+      ['See an example race', '#score?example=1'],
+      ['For organizers', 'organizer/'],
+    ],
+  },
+  {
+    heading: 'Explore',
+    links: [
+      ['Races', '#races'],
+      ['Runners', '#runners'],
+      ['FAQ', '#faq'],
+      ['API and embed', '#api'],
+    ],
+  },
+  {
+    heading: 'The model',
+    links: [
+      ['How a score is made', `${GITHUB_URL}/blob/main/docs/methodology/0.1.0/HOW-OTRI-SCORES.md`],
+      ['Methodology', `${GITHUB_URL}/blob/main/METHODOLOGY.md`],
+      ['Data policy', `${GITHUB_URL}/blob/main/DATA_POLICY.md`],
+      ['Source code', GITHUB_URL],
+    ],
+  },
+  {
+    heading: 'Project',
+    links: [
+      ['Contribute', '#contribute'],
+      ['Media and logo', '#media'],
+      ['Privacy', `${GITHUB_URL}/blob/main/PRIVACY.md`],
+      ['hello@otri.run', 'mailto:hello@otri.run'],
+    ],
+  },
+]
+
 function Footer() {
   return (
-    <footer className="border-t border-slate-200 bg-white py-6">
-      <div className="mx-auto flex w-[min(1120px,calc(100%-28px))] flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-        <Logo href="../" />
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <a href="#api" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">API and embed</a>
-          <a href={GITHUB_URL} className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">GitHub</a>
-          <a href="#contribute" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Contribute</a>
-          <a href="#faq" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">FAQ</a>
-          <a href="#media" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Media and logo</a>
-          <a href="https://github.com/OTRI-run/otri/blob/main/PRIVACY.md" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Privacy</a>
-          <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">
-            <Mail size={14} />
-            hello@otri.run
-          </a>
+    <footer className="border-t border-slate-200 bg-white">
+      <div className="mx-auto w-[min(1120px,calc(100%-28px))] py-14">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.3fr)_repeat(4,minmax(0,1fr))] lg:gap-8">
+          <div className="min-w-0">
+            <Logo href="../" showName={false} />
+            <p className="mt-4 max-w-[34ch] text-[13px] leading-6 text-slate-600">
+              One comparable score for a finish time on any trail course. Open, versioned, and free to use.
+            </p>
+            <a
+              href="mailto:hello@otri.run"
+              className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-slate-700 no-underline hover:text-blue-700"
+            >
+              <Mail size={14} />
+              hello@otri.run
+            </a>
+          </div>
+          {FOOTER_COLUMNS.map(({ heading, links }) => (
+            <nav key={heading} className="min-w-0">
+              <h2 className="font-mono text-[10px] uppercase tracking-[.14em] text-slate-400">{heading}</h2>
+              <ul className="mt-3 flex flex-col gap-2.5">
+                {links.map(([label, href]) => (
+                  <li key={label}>
+                    <a href={href} className="text-[13px] text-slate-600 no-underline hover:text-blue-700">
+                      {label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
         </div>
-        <span className="font-mono text-[8px] tracking-[.08em] text-slate-500">OPEN · TRANSPARENT · REPRODUCIBLE · INDEPENDENT</span>
+        <div className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-6">
+          <span className="font-mono text-[10px] tracking-[.12em] text-slate-400">
+            OPEN · TRANSPARENT · REPRODUCIBLE · INDEPENDENT
+          </span>
+          <span className="font-mono text-[10px] tracking-[.12em] text-slate-400">OTRI · {new Date().getFullYear()}</span>
+        </div>
       </div>
     </footer>
   )

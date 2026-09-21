@@ -27,7 +27,7 @@ const LOGOS = [
   { title: 'Logo, one colour', note: 'Where only one ink prints: a bib, a stamp, a fax.', svg: 'otri-logo-black.svg', ground: 'light', width: 300 },
   { title: 'Compact', note: 'Without the full name, where space is tight.', svg: 'otri-logo-compact.svg', png: 'otri-logo-compact-1200.png', ground: 'light', width: 150 },
   { title: 'Compact, white', note: 'The same, on dark or colour.', svg: 'otri-logo-compact-white.svg', png: 'otri-logo-compact-white-1200.png', ground: 'dark', width: 150 },
-  { title: 'Mark', note: 'Alone only where OTRI is already named: an icon, a small size.', svg: 'otri-mark.svg', png: 'otri-mark-1024.png', ground: 'checker', width: 84 },
+  { title: 'Icon', note: 'The summit and the arrow alone, for an avatar or an app tile, where OTRI is already named.', svg: 'otri-mark.svg', png: 'otri-mark-1024.png', ground: 'checker', width: 84 },
   { title: 'Profile picture', note: 'A square that survives being cut to a circle.', png: 'otri-avatar-1024.png', alt: 'otri-avatar-light-1024.png', ground: 'dark', width: 96, round: true },
 ]
 
@@ -100,15 +100,15 @@ export default function Media() {
   const [copied, copy] = useCopy()
   return (
     <>
-      <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
+      <section className="border-b border-slate-200 bg-white">
         <div className={`${CONTAINER} py-12 sm:py-14`}>
           <div className={LABEL}>
-            OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> MEDIA AND BRAND
+            Media and brand
           </div>
           <h1 className="mt-5 max-w-[760px] text-[clamp(34px,5vw,56px)] font-bold leading-[1.02] tracking-[-.06em] text-[#0b1220]">
             Our logo,
             <br />
-            <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">yours to use.</em>
+            <em className="not-italic text-blue-700">yours to use.</em>
           </h1>
           <p className="mt-5 max-w-[680px] text-base leading-7 text-slate-600">
             Writing about OTRI, showing that your race was scored with it, or building on the API? Take the logo. You do not need to ask, only to use it as it is and not to suggest that OTRI approves anything: it measures, it does not certify.
@@ -129,7 +129,7 @@ export default function Media() {
           <p className={LABEL}>01 · LOGOS</p>
           <h2 id="media-logos" className={`${H2} mt-2`}>Pick the one for your background.</h2>
           <p className="mt-2 max-w-[680px] text-sm leading-7 text-slate-600">
-            SVG for the web and for print (it stays sharp at any size and needs no font), PNG with a transparent background for everything that takes no SVG: slides, documents, social posts.
+            The letters are drawn as outlines, so an SVG needs no font and stays sharp at any size. PNG with a transparent background is there for anything that takes no SVG: slides, documents, social posts.
           </p>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {LOGOS.map((logo) => (
