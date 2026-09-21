@@ -297,7 +297,7 @@ def test_remember_me_carries_through_to_the_session(monkeypatch):
 
 
 def test_a_google_only_account_can_set_a_password_and_then_use_both(monkeypatch):
-    _sign_in(monkeypatch, email="g@example.com", sub="sub-12", intent="register", accept_terms=True)
+    _sign_in(monkeypatch, email="g@gmail.com", sub="sub-12", intent="register", accept_terms=True)
 
     # password-gated actions explain what to do instead of counting a wrong password
     response = client.post(
@@ -306,11 +306,11 @@ def test_a_google_only_account_can_set_a_password_and_then_use_both(monkeypatch)
     assert response.status_code == 400 and "no password" in response.json()["detail"]
 
     # the reset link is how a password is set; opening it also proves the mailbox
-    _, token = auth.create_password_reset_token("g@example.com")
+    _, token = auth.create_password_reset_token("g@gmail.com")
     assert client.post("/auth/reset-password", json={"token": token, "new_password": "a-brand-new-password-2"}).status_code == 200
-    assert client.post("/auth/login", json={"email": "g@example.com", "password": "a-brand-new-password-2"}).status_code == 200
+    assert client.post("/auth/login", json={"email": "g@gmail.com", "password": "a-brand-new-password-2"}).status_code == 200
 
     client.cookies.clear()
-    response = _sign_in(monkeypatch, email="g@example.com", sub="sub-12")
+    response = _sign_in(monkeypatch, email="g@gmail.com", sub="sub-12")
     assert _landing(response)[1]["event"] == ["signed_in"]
     assert _me().json()["has_password"] is True

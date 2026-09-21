@@ -362,7 +362,8 @@ def reset_password(token: str, new_password: str) -> Organizer:
 # --- Password change ------------------------------------------------------
 
 
-def change_password(organizer_id: int, current_password: str, new_password: str) -> None:
+def change_password(organizer_id: int, current_password: str, new_password: str) -> int:
+    """Returns the session version this change set, for the token handed back to the caller."""
     with get_connection() as connection:
         # FOR UPDATE: bcrypt takes a sixth of a second, and a password reset that lands inside it
         # used to be overwritten by this one when it finished. The owner would have recovered the
@@ -377,11 +378,17 @@ def change_password(organizer_id: int, current_password: str, new_password: str)
         if password_matches(new_password, row["password_hash"]):
             raise AuthError("choose a password you have not used here before")
         password_hash = hash_password(new_password)
-        connection.execute(
-            "UPDATE organizers SET password_hash = %s, has_password = TRUE, password_changed_at = now(), session_version = session_version + 1 WHERE id = %s",
+        # The version this change set is returned, and the caller's fresh token carries it. Read
+        # from the account afterwards instead, the token would take whatever the version is by
+        # then: a reset committing in between would have handed this token its own version, and
+        # the session would have outlived the recovery meant to end it.
+        bumped = connection.execute(
+            "UPDATE organizers SET password_hash = %s, has_password = TRUE, password_changed_at = now(), session_version = session_version + 1 "
+            "WHERE id = %s RETURNING session_version",
             (password_hash, organizer_id),
-        )
+        ).fetchone()
         _end_pending_access(connection, organizer_id)
+        return int(bumped["session_version"])
 
 
 def _end_pending_access(connection, organizer_id: int) -> None:
@@ -461,7 +468,7 @@ def begin_totp_setup(organizer_id: int, email: str, password: str) -> tuple[str,
     return secret, security.otpauth_uri(secret, email)
 
 
-def enable_totp(organizer_id: int, code: str) -> list[str]:
+def enable_totp(organizer_id: int, code: str) -> tuple[list[str], int]:
     with get_connection() as connection:
         row = connection.execute("SELECT totp_secret_pending FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
         if row is None or not row["totp_secret_pending"]:
@@ -476,11 +483,13 @@ def enable_totp(organizer_id: int, code: str) -> list[str]:
             # totp_last_step: the code that switched this on is spent, so it cannot then be used
             # to sign in as well.
             "UPDATE organizers SET totp_secret = totp_secret_pending, totp_secret_pending = NULL, two_factor_method = 'totp', "
-            "email_code_hash = NULL, email_code_expires_at = NULL, totp_last_step = %s, session_version = session_version + 1 WHERE id = %s",
+            "email_code_hash = NULL, email_code_expires_at = NULL, totp_last_step = %s, session_version = session_version + 1 "
+            "WHERE id = %s RETURNING session_version",
             (step, organizer_id),
-        )
+        ).fetchone()
+        bumped = connection.execute("SELECT session_version FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
         _end_pending_access(connection, organizer_id)
-        return _issue_recovery_codes(connection, organizer_id)
+        return _issue_recovery_codes(connection, organizer_id), int(bumped["session_version"])
 
 
 def begin_email_two_factor(organizer_id: int, password: str) -> str:
@@ -496,7 +505,7 @@ def begin_email_two_factor(organizer_id: int, password: str) -> str:
     return code
 
 
-def enable_email_two_factor(organizer_id: int, code: str) -> list[str]:
+def enable_email_two_factor(organizer_id: int, code: str) -> tuple[list[str], int]:
     with get_connection() as connection:
         row = connection.execute("SELECT email_code_hash, email_code_expires_at FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
         if row is None or not row["email_code_hash"]:
@@ -507,23 +516,27 @@ def enable_email_two_factor(organizer_id: int, code: str) -> list[str]:
             raise AuthError("that code did not match")
         connection.execute(
             "UPDATE organizers SET two_factor_method = 'email', totp_secret = NULL, totp_secret_pending = NULL, "
-            "email_code_hash = NULL, email_code_expires_at = NULL, session_version = session_version + 1 WHERE id = %s",  # as for the authenticator
+            "email_code_hash = NULL, email_code_expires_at = NULL, session_version = session_version + 1 "
+            "WHERE id = %s RETURNING session_version",  # as for the authenticator
             (organizer_id,),
-        )
+        ).fetchone()
+        bumped = connection.execute("SELECT session_version FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
         _end_pending_access(connection, organizer_id)
-        return _issue_recovery_codes(connection, organizer_id)
+        return _issue_recovery_codes(connection, organizer_id), int(bumped["session_version"])
 
 
-def disable_two_factor(organizer_id: int, password: str) -> None:
+def disable_two_factor(organizer_id: int, password: str) -> int:
     with get_connection() as connection:
         _check_password(connection, organizer_id, password)
-        connection.execute(
+        bumped = connection.execute(
             "UPDATE organizers SET two_factor_method = NULL, totp_secret = NULL, totp_secret_pending = NULL, "
-            "email_code_hash = NULL, email_code_expires_at = NULL, session_version = session_version + 1 WHERE id = %s",
+            "email_code_hash = NULL, email_code_expires_at = NULL, session_version = session_version + 1 "
+            "WHERE id = %s RETURNING session_version",
             (organizer_id,),
-        )
+        ).fetchone()
         connection.execute("DELETE FROM recovery_codes WHERE organizer_id = %s", (organizer_id,))
         _end_pending_access(connection, organizer_id)
+        return int(bumped["session_version"])
 
 
 def revoke_all_sessions(organizer_id: int, password: str) -> None:

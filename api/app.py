@@ -757,6 +757,17 @@ def google_callback(request: Request, state: str = "", code: str = "", error: st
         _clear_oauth_cookie(response, request)
         return response
 
+    if outcome.event == "created" and outcome.pending is not None:
+        # The account is made and the visitor is signed in, as a password sign-up would be, but
+        # the Google identity is not joined to it until this link is opened. Nobody has shown they
+        # read this mailbox yet, and whoever does gets the account.
+        token = _google.begin_link(outcome.organizer, outcome.pending)
+        _email.send_google_link_email(
+            outcome.organizer.email,
+            f"{_api_base(request)}/auth/google/confirm-link?token={quote(token, safe='')}",
+            unconfirmed=True,
+        )
+
     if outcome.event == "confirm_link":
         # An account already has this address, and Google only checked the address once, some time
         # ago, on somebody else's domain. Whoever reads that mailbox now says whether this Google
@@ -777,11 +788,6 @@ def google_callback(request: Request, state: str = "", code: str = "", error: st
     organizer = _with_flags(organizer, check_session=False)
     if outcome.event in ("linked", "reclaimed"):
         _email.send_google_linked_email(organizer.email, reclaimed=outcome.event == "reclaimed")
-    if outcome.event == "created" and not organizer.email_verified:
-        # Google checked this address once and does not run the mailbox, so the account starts
-        # unconfirmed like any other: it may build a race, and publishing waits for the link.
-        send_verification_email(organizer.email, create_email_verification_token(organizer))
-
     session = _issue_session(organizer, started.remember, request, session_version=organizer.session_version)
     if session.requires_2fa:
         # The account's own second factor still stands. The login page knows this screen.
@@ -870,8 +876,8 @@ def _password_confirmed(request: Request, organizer: Organizer):
 def change_password(payload: ChangePassword, request: Request, response: Response, organizer: Organizer = Depends(require_organizer)) -> TokenResponse:
     """Changes the password and signs out every other device; returns a fresh token for this one."""
     with _password_confirmed(request, organizer):
-        _auth.change_password(organizer.id, payload.current_password, payload.new_password)
-    return _finish_session(response, request, _fresh_token(organizer), False)
+        version = _auth.change_password(organizer.id, payload.current_password, payload.new_password)
+    return _finish_session(response, request, _fresh_token(organizer, version), False)
 
 
 @app.post("/auth/logout", response_model=MessageResponse)
@@ -892,9 +898,12 @@ def logout(request: Request, response: Response, credentials: HTTPAuthorizationC
     return MessageResponse(message="signed out")
 
 
-def _fresh_token(organizer: Organizer) -> TokenResponse:
+def _fresh_token(organizer: Organizer, session_version: int) -> TokenResponse:
+    """The token for the device that just changed the account's protection. `session_version` is
+    the one that very change set: read from the account instead, a reset committing in between
+    would hand this token its own version and outlive the recovery."""
     return TokenResponse(
-        access_token=create_access_token(organizer),
+        access_token=create_access_token(organizer, session_version=session_version),
         email=organizer.email,
         is_admin=organizer.is_admin,
         is_demo=organizer.is_demo,
@@ -940,10 +949,10 @@ def totp_setup(payload: PasswordConfirm, request: Request, organizer: Organizer 
     return TotpSetupOut(secret=secret, otpauth_uri=uri)
 
 
-def _recovery_codes_with_session(response: Response, request: Request, organizer: Organizer, codes: list[str], method: str) -> RecoveryCodesOut:
+def _recovery_codes_with_session(response: Response, request: Request, organizer: Organizer, codes: list[str], method: str, session_version: int) -> RecoveryCodesOut:
     """Turning two-factor on signed out every session of the account, this one too: hand this
     device a new one with the codes, as turning it off does."""
-    session = _finish_session(response, request, _fresh_token(organizer), False)
+    session = _finish_session(response, request, _fresh_token(organizer, session_version), False)
     return RecoveryCodesOut(codes=codes, method=method, access_token=session.access_token, token_type=session.token_type, expires_in=session.expires_in)
 
 
@@ -951,10 +960,10 @@ def _recovery_codes_with_session(response: Response, request: Request, organizer
 def totp_enable(payload: TwoFactorCode, request: Request, response: Response, organizer: Organizer = Depends(require_organizer)) -> RecoveryCodesOut:
     enforce_rate_limit(request, max_requests=10, scope="2fa-enable", subject=f"account-{organizer.id}")
     try:
-        codes = _auth.enable_totp(organizer.id, payload.code)
+        codes, version = _auth.enable_totp(organizer.id, payload.code)
     except AuthError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    return _recovery_codes_with_session(response, request, organizer, codes, "totp")
+    return _recovery_codes_with_session(response, request, organizer, codes, "totp", version)
 
 
 @app.post("/auth/2fa/email/start", response_model=MessageResponse)
@@ -971,18 +980,18 @@ def email_two_factor_enable(payload: TwoFactorCode, request: Request, response: 
     # Six digits, ten minutes: without a limit the code is a guess away. Five tries a code.
     enforce_rate_limit(request, max_requests=5, scope="2fa-enable", subject=f"account-{organizer.id}", window_seconds=600)
     try:
-        codes = _auth.enable_email_two_factor(organizer.id, payload.code)
+        codes, version = _auth.enable_email_two_factor(organizer.id, payload.code)
     except AuthError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    return _recovery_codes_with_session(response, request, organizer, codes, "email")
+    return _recovery_codes_with_session(response, request, organizer, codes, "email", version)
 
 
 @app.post("/auth/2fa/disable", response_model=TokenResponse)
 def two_factor_disable(payload: PasswordConfirm, request: Request, response: Response, organizer: Organizer = Depends(require_organizer)) -> TokenResponse:
     """Turns two-factor off and signs out every other device; returns a fresh token for this one."""
     with _password_confirmed(request, organizer):
-        _auth.disable_two_factor(organizer.id, payload.password)
-    return _finish_session(response, request, _fresh_token(organizer), False)
+        version = _auth.disable_two_factor(organizer.id, payload.password)
+    return _finish_session(response, request, _fresh_token(organizer, version), False)
 
 
 @app.post("/auth/2fa/recovery-codes", response_model=RecoveryCodesOut)

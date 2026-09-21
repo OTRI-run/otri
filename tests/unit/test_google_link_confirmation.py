@@ -171,14 +171,40 @@ def test_a_hosted_domain_that_is_not_the_address_domain_proves_nothing(monkeypat
 
 
 def test_a_new_account_on_a_third_party_address_starts_unconfirmed(monkeypatch, google_stand_in):
-    """Nobody has this account yet, so it is made; but Google has not shown it reads the mailbox,
-    so the address is not confirmed and the usual link is sent. Publishing waits for it."""
+    """Nobody has this account yet, so it is made and the visitor is signed in, as a password
+    sign-up would be. But Google has not shown it reads the mailbox, so the address is not
+    confirmed, publishing waits for it, and the Google identity is not joined to the account
+    until the link we send there is opened."""
     _, path, query = _sign_in(monkeypatch, email="fresh@a-company.example", sub="fresh", intent="register", accept_terms=True)
     assert query["event"] == ["created"]
     me = client.get("/auth/me", headers=WEB).json()
     assert me["email"] == "fresh@a-company.example"
     assert me["email_verified"] is False, "Google only checked this address once, and not recently"
-    assert google_stand_in["verify"] == ["fresh@a-company.example"]
+    assert google_stand_in["link"][0][0] == "fresh@a-company.example"
+    with db.get_connection() as connection:
+        assert connection.execute("SELECT count(*) AS n FROM organizer_identities").fetchone()["n"] == 0, "linked before the mailbox answered"
+
+
+def test_registering_first_does_not_outlast_the_owner_recovering(monkeypatch, google_stand_in):
+    """The gap left by the first round. Whoever registers through Google on a stale address used
+    to have their identity joined to the new account for good: the owner of the mailbox could take
+    the account back with a password reset, and the identity survived it, so the other person
+    signed straight back in past the recovery."""
+    _sign_in(monkeypatch, email=VICTIM, sub="registered-first", intent="register", accept_terms=True)
+    client.cookies.clear()
+
+    # The owner of the mailbox takes the account: a reset link confirms the address and sets a password.
+    from api import auth
+
+    token = auth.create_password_reset_token(VICTIM)[1]
+    assert client.post("/auth/reset-password", json={"token": token, "new_password": "the owner is here now 5"}).status_code == 200
+    assert client.post("/auth/login", json={"email": VICTIM, "password": "the owner is here now 5"}).status_code == 200
+    client.cookies.clear()
+
+    # And the one who registered first is on the outside of it.
+    _, path, query = _sign_in(monkeypatch, email=VICTIM, sub="registered-first")
+    assert query["google"] == ["confirm-link"], "the identity survived the recovery"
+    assert client.get("/auth/me", headers=WEB).status_code == 401
 
 
 def test_a_stale_address_on_the_admin_list_is_not_an_admin(monkeypatch, google_stand_in):
