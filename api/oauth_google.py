@@ -302,14 +302,20 @@ def resolve(identity: Identity, started: Started) -> Outcome:
             if started.intent != "register" or not started.accept_terms:
                 return Outcome(None, "no_account")
             # The address counts as confirmed only where Google runs the mailbox. Otherwise the
-            # account starts unconfirmed, exactly as a password sign-up does, and the caller sends
-            # the usual confirmation link. This is what keeps a stale address off the admin list.
+            # account starts unconfirmed, exactly as a password sign-up does.
             account = connection.execute(
                 "INSERT INTO organizers (email, password_hash, has_password, email_verified, terms_accepted_at, marketing_opt_in, marketing_opt_in_at)"
                 " VALUES (%s, %s, FALSE, %s, now(), %s, CASE WHEN %s THEN now() ELSE NULL END)"
                 " RETURNING id, email, email_verified, session_version",
                 (identity.email, _auth.unusable_password_hash(), identity.google_owns, started.marketing_opt_in, started.marketing_opt_in),
             ).fetchone()
+            if not identity.google_owns:
+                # And no link either. Joining the identity here would outlast every recovery: the
+                # owner of the mailbox could take the account back, by the confirmation link or by
+                # a password reset, and the identity would still be attached, so whoever registered
+                # first would sign straight back in past all of it. The caller emails this address
+                # instead; opening that link confirms the address and makes the link at once.
+                return Outcome(_organizer(account), "created", pending=identity)
             _link(connection, account["id"], identity)
             return Outcome(_organizer(account), "created")
 
@@ -385,6 +391,14 @@ def complete_link(token: str) -> Outcome:
         if account["email_verified"]:
             _link(connection, account["id"], identity)
             return Outcome(_organizer(account), "linked")
+        # An unconfirmed account may be one somebody else registered on this address and is sitting
+        # on, or one this same visitor made through Google a minute ago. Either way the mailbox has
+        # now spoken and everything set without it goes; only the wording differs, and it turns on
+        # whether there was anything to take.
+        held = connection.execute(
+            "SELECT has_password, two_factor_method FROM organizers WHERE id = %s", (account["id"],)
+        ).fetchone()
+        taken_from_somebody = bool(held["has_password"]) or held["two_factor_method"] is not None
         reclaimed = connection.execute(
             "UPDATE organizers SET email_verified = TRUE, password_hash = %s, has_password = FALSE,"
             " two_factor_method = NULL, totp_secret = NULL, totp_secret_pending = NULL, email_code_hash = NULL, email_code_expires_at = NULL,"
@@ -395,7 +409,7 @@ def complete_link(token: str) -> Outcome:
         connection.execute("DELETE FROM login_challenges WHERE organizer_id = %s", (account["id"],))
         connection.execute("UPDATE password_reset_tokens SET used_at = now() WHERE organizer_id = %s AND used_at IS NULL", (account["id"],))
         _link(connection, account["id"], identity)
-        return Outcome(_organizer(reclaimed), "reclaimed")
+        return Outcome(_organizer(reclaimed), "reclaimed" if taken_from_somebody else "linked")
 
 
 def _organizer(row) -> Organizer:

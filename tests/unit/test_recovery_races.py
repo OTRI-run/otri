@@ -145,3 +145,27 @@ def test_a_burst_of_events_cannot_get_past_the_account_limit():
         held = connection.execute("SELECT count(*) AS n FROM events WHERE organizer_id = %s", (organizer_id,)).fetchone()["n"]
     assert held == limit, f"the account holds {held} events, past a limit of {limit}"
     assert len(made) == limit and len(refused) == 12 - limit
+
+
+@pytest.mark.usefixtures("clean_state")
+def test_a_token_issued_by_a_password_change_cannot_outlive_a_later_reset():
+    """The change commits, the owner's reset commits, and only then does the changing request mint
+    its token. Reading the account's session version at that moment would take the reset's own
+    version and hand the intruder a session the recovery could not end. The version the change
+    itself set is what the token carries."""
+    email = "version-race@example.com"
+    organizer_id = _make_account(email)
+    version = auth_module.change_password(organizer_id, PASSWORD, INTRUDER_CHOSE)
+    # The owner recovers, still before the changing request has handed back its token.
+    reset_token = auth_module.create_password_reset_token(email)[1]
+    auth_module.reset_password(reset_token, OWNER_CHOSE)
+
+    organizer = auth_module.Organizer(id=organizer_id, email=email)
+    minted = auth_module.decode_access_token(auth_module.create_access_token(organizer, session_version=version))
+    assert minted.session_version == version
+
+    current = auth_module.current_session_version(organizer_id)
+    assert current > version, "the reset must move the account past the change"
+    # What the old code did: read the version at minting time, which is the reset's own.
+    without = auth_module.decode_access_token(auth_module.create_access_token(organizer))
+    assert without.session_version == current, "this is the version the token must NOT be given"
