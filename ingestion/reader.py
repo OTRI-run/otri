@@ -23,6 +23,11 @@ from openpyxl import load_workbook
 MAX_ROWS = 50_000
 # How far down the header row may sit under titles, logos and blank lines.
 HEADER_SEARCH_ROWS = 30
+# A results row has a dozen cells; timing exports with every split have a hundred. The cap is what
+# stops a file that is wide instead of long: finding the header reads every cell of the first
+# HEADER_SEARCH_ROWS rows and runs two regular expressions on each, so 60,000 columns cost seconds
+# of a core per upload. The .xlsx reader has had this cap (MAX_XLSX_COLUMNS); CSV had none.
+MAX_COLUMNS = 200
 TEXT_SUFFIXES = (".csv", ".txt", ".tsv")
 SHEET_SUFFIXES = (".xlsx", ".xlsm")
 
@@ -113,7 +118,12 @@ def _delimiter(text: str) -> str:
     lines = [line for line in text.splitlines()[:40] if line.strip()]
     best, best_score = ",", 0.0
     for candidate in (",", ";", "\t", "|"):
-        counts = [len(row) for row in csv.reader(lines, delimiter=candidate)]
+        try:
+            counts = [len(row) for row in csv.reader(lines, delimiter=candidate)]
+        except csv.Error:
+            # A line with no such separator is one enormous field, and the csv module refuses a
+            # field over 128 KB. That says this is not the separator, not that the file is broken.
+            continue
         wide = [count for count in counts if count > 1]
         if not wide:
             continue
@@ -128,20 +138,32 @@ def _read_text(path: Path) -> list[list[str]]:
     text = _decode(path.read_bytes())
     delimiter = "\t" if path.suffix.lower() == ".tsv" else _delimiter(text)
     table: list[list[str]] = []
-    for row in csv.reader(io.StringIO(text, newline=""), delimiter=delimiter):
-        if len(table) > MAX_ROWS + HEADER_SEARCH_ROWS:
-            raise ValueError(f"the file has more than {MAX_ROWS} rows; split it per race distance")
-        table.append([(cell or "").strip() for cell in row])
+    try:
+        for row in csv.reader(io.StringIO(text, newline=""), delimiter=delimiter):
+            if len(table) > MAX_ROWS + HEADER_SEARCH_ROWS:
+                raise ValueError(f"the file has more than {MAX_ROWS} rows; split it per race distance")
+            # Past MAX_COLUMNS the rest of the row is dropped, as the .xlsx reader drops it.
+            table.append([(cell or "").strip() for cell in row[:MAX_COLUMNS]])
+    except csv.Error as error:
+        # csv.Error is not a ValueError, so it used to leave the reader as an unhandled error and
+        # the upload answered 500 instead of saying which file could not be read.
+        raise ValueError("this file could not be read as a table: save it again as CSV or .xlsx and upload that") from error
     return table
 
 
 # ---------------------------------------------------------------------------- spreadsheets
 
 
-# An .xlsx is a zip. A few kilobytes can unpack to gigabytes (a "zip bomb"), and the workbook's
-# shared strings are read into memory whole, so what the archive claims to hold is checked before
-# anything is unpacked. A real results sheet of 50,000 rows is a few tens of megabytes unpacked.
-MAX_XLSX_UNPACKED_BYTES = 200_000_000
+# An .xlsx is a zip. A few kilobytes can unpack to gigabytes (a "zip bomb"), so what the archive
+# claims to hold is checked before anything is unpacked. A real results sheet of 50,000 rows is a
+# few megabytes unpacked; the old 200 MB allowance was far more than any of them needs.
+MAX_XLSX_UNPACKED_BYTES = 25_000_000
+# The one part that must be checked on its own. openpyxl reads xl/sharedStrings.xml into a Python
+# list in full before a single row is read, so read_only=True, reset_dimensions(), MAX_ROWS and
+# MAX_XLSX_COLUMNS all come too late to help. A 0.12 MB upload declaring 50 MB of shared strings
+# cost 59 seconds of a core and 367 MB; the row and column caps never saw it.
+MAX_XLSX_SHARED_STRINGS_BYTES = 6_000_000
+_SHARED_STRINGS = "xl/sharedstrings.xml"
 MAX_XLSX_ENTRIES = 2_000
 MAX_XLSX_COLUMNS = 200  # a results sheet has a dozen; timing exports with every split, a hundred
 _NOT_A_WORKBOOK = "this file is named .xlsx but is not an Excel workbook (it may be a CSV that was renamed, or a damaged download): open it in a spreadsheet, save it as .xlsx or CSV, and upload that"
@@ -153,8 +175,12 @@ def _refuse_oversized_archive(path: Path) -> None:
             entries = archive.infolist()
     except (zipfile.BadZipFile, OSError) as error:
         raise ValueError(_NOT_A_WORKBOOK) from error
+    too_big = "this workbook is far larger inside than a results sheet can be; save the results as CSV and upload that"
     if len(entries) > MAX_XLSX_ENTRIES or sum(entry.file_size for entry in entries) > MAX_XLSX_UNPACKED_BYTES:
-        raise ValueError("this workbook is far larger inside than a results sheet can be; save the results as CSV and upload that")
+        raise ValueError(too_big)
+    shared = sum(entry.file_size for entry in entries if entry.filename.lower() == _SHARED_STRINGS)
+    if shared > MAX_XLSX_SHARED_STRINGS_BYTES:
+        raise ValueError(too_big)
 
 
 def _read_xlsx(path: Path) -> list[list[str]]:

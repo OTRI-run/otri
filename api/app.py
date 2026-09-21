@@ -20,7 +20,7 @@ import base64
 import gzip
 import json
 import os
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 from dataclasses import asdict, replace
 from hashlib import sha256
 from datetime import date, datetime, timezone
@@ -655,9 +655,18 @@ _OAUTH_COOKIE = "otri_oauth"
 _ORGANIZER_APP = f"{_email.APP_BASE_URL}/prototype/organizer/"
 
 
+_API_BASE_URL = os.environ.get("OTRI_API_BASE_URL", "").strip().rstrip("/")
+
+
 def _api_base(request: Request) -> str:
-    """This API's own origin as the browser sees it, behind the proxy: where Google must send the
-    browser back. It has to match the URI registered in the Google console exactly."""
+    """This API's own origin: where Google must send the browser back, and where a link we email
+    points. It has to match the URI registered in the Google console exactly.
+
+    OTRI_API_BASE_URL decides it. Without that it is read from the request, which is right for a
+    local run and wrong behind a proxy: nginx passes X-Forwarded-Host through from whoever sent
+    it, so the address would be the caller's to choose."""
+    if _API_BASE_URL:
+        return _API_BASE_URL
     scheme = request.headers.get("x-forwarded-proto", request.url.scheme).split(",")[0].strip()
     host = request.headers.get("x-forwarded-host", request.headers.get("host", request.url.netloc)).split(",")[0].strip()
     return f"{scheme}://{host}"
@@ -748,12 +757,30 @@ def google_callback(request: Request, state: str = "", code: str = "", error: st
         _clear_oauth_cookie(response, request)
         return response
 
+    if outcome.event == "confirm_link":
+        # An account already has this address, and Google only checked the address once, some time
+        # ago, on somebody else's domain. Whoever reads that mailbox now says whether this Google
+        # account belongs to it. Nothing has been written, and no session is issued.
+        token = _google.begin_link(outcome.organizer, outcome.pending)
+        _email.send_google_link_email(
+            outcome.organizer.email,
+            f"{_api_base(request)}/auth/google/confirm-link?token={quote(token, safe='')}",
+            unconfirmed=not outcome.organizer.email_verified,
+        )
+        response = _app_redirect("/login", google="confirm-link", email=identity.email)
+        _clear_oauth_cookie(response, request)
+        return response
+
     organizer = outcome.organizer
     # Every Google outcome has a verified address, so the admin list applies as at password sign-in.
     db.set_organizer_flags(organizer.email, is_admin=organizer.email in _ADMIN_EMAILS)
     organizer = _with_flags(organizer, check_session=False)
     if outcome.event in ("linked", "reclaimed"):
         _email.send_google_linked_email(organizer.email, reclaimed=outcome.event == "reclaimed")
+    if outcome.event == "created" and not organizer.email_verified:
+        # Google checked this address once and does not run the mailbox, so the account starts
+        # unconfirmed like any other: it may build a race, and publishing waits for the link.
+        send_verification_email(organizer.email, create_email_verification_token(organizer))
 
     session = _issue_session(organizer, started.remember, request, session_version=organizer.session_version)
     if session.requires_2fa:
@@ -764,6 +791,26 @@ def google_callback(request: Request, state: str = "", code: str = "", error: st
         _set_session_cookie(response, request, session.access_token, started.remember)
     _clear_oauth_cookie(response, request)
     return response
+
+
+@app.get("/auth/google/confirm-link")
+def google_confirm_link(request: Request, token: str = ""):
+    """The link we emailed the account's address when Google could not answer for it. Opening it
+    joins that Google account to this one; it does not sign anybody in, so reading the mailbox
+    gets a way in and nothing more, and the account's own second factor still stands at the door."""
+    if not _google.enabled():
+        raise HTTPException(status_code=404, detail="Google sign-in is not configured")
+    enforce_rate_limit(request, max_requests=20)
+    if not token:
+        return _app_redirect("/login", google="failed", reason="link-expired")
+    try:
+        outcome = _google.complete_link(token)
+    except _google.OAuthError as error:
+        return _app_redirect("/login", google="failed", reason=error.reason)
+    except AuthError:
+        return _app_redirect("/login", google="failed", reason="failed")
+    _email.send_google_linked_email(outcome.organizer.email, reclaimed=outcome.event == "reclaimed")
+    return _app_redirect("/login", google="connected")
 
 
 @app.get("/auth/me", response_model=MeResponse)
@@ -1223,9 +1270,15 @@ def create_event(payload: EventCreate, request: Request, organizer: Organizer = 
     if not payload.event_name.strip():
         raise HTTPException(status_code=422, detail="event_name is required")
     country = _clean_country(payload.country)
-    event = db.create_event(
-        payload.event_name.strip(), payload.event_date, organizer.id, location=(payload.location or "").strip() or None, country=country
-    )
+    ceiling = None if organizer.is_admin else (_MAX_EVENTS_UNCONFIRMED if not organizer.email_verified else _MAX_EVENTS_PER_ACCOUNT)
+    try:
+        event = db.create_event(
+            payload.event_name.strip(), payload.event_date, organizer.id,
+            location=(payload.location or "").strip() or None, country=country, max_for_organizer=ceiling,
+        )
+    except db.QuotaExceeded as error:
+        # The checks above answer in words; this one catches a burst that got past them together.
+        raise HTTPException(status_code=403, detail=f"This account holds {error} events, which is the limit.") from error
     return EventSummary(event_id=event.event_id, event_name=event.event_name, event_date=event.event_date, race_count=0, location=event.location, country=event.country)
 
 
@@ -1359,13 +1412,18 @@ def add_race(event_id: str, payload: RaceCreate, request: Request, organizer: Or
         raise HTTPException(status_code=422, detail="distance_km must be > 0 and elevation_gain_m must be >= 0")
     _validate_scoring_version(payload.scoring_version)
 
-    race = db.create_race(
-        event_id,
-        payload.course_name.strip(),
-        payload.distance_km,
-        payload.elevation_gain_m,
-        scoring_version=payload.scoring_version,
-    )
+    ceiling = None if organizer.is_admin else (_MAX_RACES_PER_EVENT_UNCONFIRMED if not organizer.email_verified else _MAX_RACES_PER_EVENT)
+    try:
+        race = db.create_race(
+            event_id,
+            payload.course_name.strip(),
+            payload.distance_km,
+            payload.elevation_gain_m,
+            scoring_version=payload.scoring_version,
+            max_for_event=ceiling,
+        )
+    except db.QuotaExceeded as error:
+        raise HTTPException(status_code=403, detail=f"An event holds at most {error} race distances.") from error
     return _race_summary(race)
 
 
@@ -1419,6 +1477,10 @@ def remove_race(race_id: str, organizer: Organizer = Depends(require_organizer))
 # same JSON snapshot the API already persists per race, so a cache hit is a `Measurement(**...)`.
 _MEASUREMENT_CACHE_DIR = Path(__file__).resolve().parents[1] / "data" / "cache" / "measurements"
 _MEASUREMENT_CACHE_MAX_ENTRIES = 64
+# And a budget in bytes, because the entries are not alike: one snapshot of a 2,000 km course is
+# 6 MB, so sixty-four of them is 384 MB of a 1 GB droplet, and any anonymous visitor can make
+# sixty-four of them out of one file with a byte changed.
+_MEASUREMENT_CACHE_MAX_BYTES = 48_000_000
 
 
 _TILE_CODE = re.compile(r"_(N|S)(\d{2})_00_(E|W)(\d{3})_00_")
@@ -1476,6 +1538,16 @@ def _measurement_cache_put(path, provider, measurement, points=()) -> None:
         entries = sorted(_MEASUREMENT_CACHE_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime)
         for stale in entries[:-_MEASUREMENT_CACHE_MAX_ENTRIES]:
             stale.unlink(missing_ok=True)
+            entries = entries[1:]
+        # Newest first, keeping entries while they fit the budget.
+        total = 0
+        for entry in reversed(entries):
+            try:
+                total += entry.stat().st_size
+            except OSError:
+                continue
+            if total > _MEASUREMENT_CACHE_MAX_BYTES:
+                entry.unlink(missing_ok=True)
     except OSError:
         pass  # a cache that cannot be written just means measuring again next time
 
@@ -1989,8 +2061,8 @@ def _runner_summary_fields(runner: db.Runner, as_of: date) -> dict:
 
 def _runner_summaries(runners: list[db.Runner], as_of: date) -> list[RunnerSummary]:
     """Summaries with indexes for a set of runners, scoring each involved race once."""
-    grouped = db.published_results_grouped_by_race()
     wanted = {runner.runner_id for runner in runners}
+    grouped = db.published_results_grouped_by_race(sorted(wanted))
     inputs: dict[str, list[IndexInput]] = {runner.runner_id: [] for runner in runners}
     for race_id, entries in grouped.items():
         if not any(entry["runner_id"] in wanted for entry in entries):
@@ -2008,8 +2080,13 @@ def _runner_summaries(runners: list[db.Runner], as_of: date) -> list[RunnerSumma
 
 
 @app.get("/runners", response_model=list[RunnerSummary])
-def list_runners(q: str | None = None, limit: int = 100) -> list[RunnerSummary]:
+def list_runners(request: Request, q: str | None = None, limit: int = 100) -> list[RunnerSummary]:
     """Search runners by name (``q``), or list every runner with a published result, indexed."""
+    # Public and, for all its caching, expensive: every race one of these runners ran is measured
+    # and scored to place them. The proxy's microcache does not cover a caller who sends an
+    # Authorization header, which is one line of a script, so the limit lives here too.
+    enforce_rate_limit(request, max_requests=30)
+    enforce_rate_limit(request, max_requests=600, scope="runners-hour", window_seconds=3600)
     as_of = date.today()
     limit = max(1, min(limit, 500))
     runners = db.search_runners(q, limit) if q and q.strip() else db.list_runners(limit)

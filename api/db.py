@@ -121,6 +121,9 @@ CREATE TABLE IF NOT EXISTS login_challenges (
 -- Accounts made through Google have no password of their own; the column tells the account page
 -- which actions can ask for one. The hash column stays NOT NULL and holds an unusable random hash.
 ALTER TABLE organizers ADD COLUMN IF NOT EXISTS has_password BOOLEAN NOT NULL DEFAULT TRUE;
+-- The 30-second step of the last authenticator code that opened this account, so the same code
+-- cannot open it twice inside the minute and a half it is accepted for (RFC 6238 section 5.2).
+ALTER TABLE organizers ADD COLUMN IF NOT EXISTS totp_last_step BIGINT;
 
 -- A sign-in identity from an outside provider, keyed on the provider's stable subject id, never on
 -- the email: addresses change, subjects do not. One organizer may hold several.
@@ -137,6 +140,20 @@ CREATE INDEX IF NOT EXISTS organizer_identities_organizer_idx ON organizer_ident
 
 -- A sign-in with an outside provider that has been started and not yet finished: ten minutes,
 -- used once. The state and nonce are kept as digests, like every other one-time token.
+-- A link between a Google identity and an account that already exists, waiting for whoever reads
+-- the account's mailbox to open the link we sent there. Google's answer about an address on a
+-- third party's domain says who held it when Google checked, not who holds it today.
+CREATE TABLE IF NOT EXISTS identity_link_tokens (
+    token TEXT PRIMARY KEY,
+    organizer_id INTEGER NOT NULL REFERENCES organizers(id) ON DELETE CASCADE,
+    provider TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    email TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS oauth_states (
     state TEXT PRIMARY KEY,
     provider TEXT NOT NULL,
@@ -380,6 +397,10 @@ def find_event(event_id: str) -> Event | None:
     return Event(**row) if row else None
 
 
+class QuotaExceeded(Exception):
+    """A per-account limit reached, counted in the same transaction as the row it would allow."""
+
+
 def create_event(
     event_name: str,
     event_date_: date,
@@ -390,10 +411,18 @@ def create_event(
     country: str | None = None,
     website: str | None = None,
     source_url: str | None = None,
+    max_for_organizer: int | None = None,
 ) -> Event:
     sql = "INSERT INTO events (event_id, event_name, event_date, organizer_id, location, country, website, source_url) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
     values = (event_name, event_date_, organizer_id, location, country, website, source_url)
     with get_connection() as connection:
+        if max_for_organizer is not None and organizer_id is not None:
+            # The account row, then the count, then the insert, all in one transaction: without the
+            # lock a burst of requests each read the count before any of them had inserted.
+            connection.execute("SELECT 1 FROM organizers WHERE id = %s FOR UPDATE", (organizer_id,))
+            held = connection.execute("SELECT count(*) AS n FROM events WHERE organizer_id = %s", (organizer_id,)).fetchone()["n"]
+            if held >= max_for_organizer:
+                raise QuotaExceeded(str(max_for_organizer))
         if event_id:
             connection.execute(sql, (event_id, *values))
         else:
@@ -539,6 +568,7 @@ def create_race(
     elevation_gain_m: float,
     race_id: str | None = None,
     scoring_version: str | None = None,
+    max_for_event: int | None = None,
 ) -> Race:
     # Pass the version explicitly rather than relying on the column's SQL DEFAULT — `CREATE
     # TABLE IF NOT EXISTS` never updates an already-existing column's default, so an older
@@ -548,6 +578,13 @@ def create_race(
     sql = "INSERT INTO races (race_id, event_id, course_name, distance_km, elevation_gain_m, scoring_version) VALUES (%s, %s, %s, %s, %s, %s)"
     values = (event_id, course_name, distance_km, elevation_gain_m, scoring_version or DEFAULT_SCORING_VERSION)
     with get_connection() as connection:
+        if max_for_event is not None:
+            # As create_event: the event row is taken first so that the count cannot be read by
+            # several requests at once and then satisfied by all of them.
+            connection.execute("SELECT 1 FROM events WHERE event_id = %s FOR UPDATE", (event_id,))
+            held = connection.execute("SELECT count(*) AS n FROM races WHERE event_id = %s", (event_id,)).fetchone()["n"]
+            if held >= max_for_event:
+                raise QuotaExceeded(str(max_for_event))
         if race_id:
             connection.execute(sql, (race_id, *values))
         else:
@@ -939,13 +976,24 @@ def published_results_for_runner(runner_id: str) -> list[dict]:
     return [dict(row) for row in rows]
 
 
-def published_results_grouped_by_race() -> dict[str, list[dict]]:
-    """For the runner table: every result in a published race, keyed by race. One query."""
+def published_results_grouped_by_race(runner_ids: list[str] | None = None) -> dict[str, list[dict]]:
+    """For the runner table: the results in published races of these runners, keyed by race.
+
+    Without `runner_ids` this reads every published result there is. That is what the public
+    /runners endpoint used to do on every request, however few runners it was showing, so the cost
+    of one anonymous call grew with the whole database. It asks for the hundred it is about to
+    show instead.
+    """
+    if runner_ids is not None and not runner_ids:
+        return {}
+    where = "WHERE res.runner_id IS NOT NULL" if runner_ids is None else "WHERE res.runner_id = ANY(%s)"
+    params = () if runner_ids is None else (list(runner_ids),)
     with get_connection() as connection:
         rows = connection.execute(
             "SELECT res.id AS result_id, res.race_id, res.runner_id, e.event_date FROM results res "
             "JOIN races ra ON ra.race_id = res.race_id AND ra.published_at IS NOT NULL "
-            "JOIN events e ON e.event_id = ra.event_id WHERE res.runner_id IS NOT NULL"
+            "JOIN events e ON e.event_id = ra.event_id " + where,
+            params,
         ).fetchall()
     grouped: dict[str, list[dict]] = {}
     for row in rows:

@@ -51,7 +51,12 @@ JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
 ISSUERS = frozenset({"https://accounts.google.com", "accounts.google.com"})
 
 STATE_TTL = timedelta(minutes=10)
+LINK_TTL = timedelta(hours=1)
 INTENTS = frozenset({"login", "register"})
+
+# The domains Google itself runs. For an address here, and for one on a Workspace domain (the `hd`
+# claim), Google *is* the mailbox: its answer about the address is about who holds it now.
+GOOGLE_MAILBOXES = frozenset({"gmail.com", "googlemail.com"})
 
 
 class OAuthError(AuthError):
@@ -128,6 +133,11 @@ class Identity:
     subject: str
     email: str
     name: str | None
+    # Whether Google runs the mailbox behind this address, rather than only having checked it once.
+    # An address on a third party's domain can change hands after Google's check and keep its
+    # `email_verified: true`, which is Google's own warning about it. Everything that treats the
+    # address as proof of who is signing in turns on this.
+    google_owns: bool = False
 
 
 @dataclass(frozen=True)
@@ -221,7 +231,14 @@ def complete(*, state: str, code: str, browser_token: str | None, redirect_uri: 
         # An address Google itself has not verified proves nothing about who is signing in.
         raise OAuthError("unverified", "Google has not verified the email address on this account")
 
-    identity = Identity(subject=str(claims["sub"]), email=email, name=(claims.get("name") or None))
+    domain = email.rpartition("@")[2]
+    hosted = str(claims.get("hd") or "").strip().lower()
+    identity = Identity(
+        subject=str(claims["sub"]),
+        email=email,
+        name=(claims.get("name") or None),
+        google_owns=domain in GOOGLE_MAILBOXES or (bool(hosted) and hosted == domain),
+    )
     started = Started(
         intent=row["intent"],
         accept_terms=bool(row["accept_terms"]),
@@ -237,7 +254,9 @@ def complete(*, state: str, code: str, browser_token: str | None, redirect_uri: 
 @dataclass(frozen=True)
 class Outcome:
     organizer: Organizer | None
-    event: str  # "signed_in" | "created" | "linked" | "reclaimed" | "no_account"
+    event: str  # "signed_in" | "created" | "linked" | "reclaimed" | "confirm_link" | "no_account"
+    # Set on "confirm_link": the identity waiting for the mailbox to answer for it.
+    pending: Identity | None = None
 
 
 def resolve(identity: Identity, started: Started) -> Outcome:
@@ -247,8 +266,12 @@ def resolve(identity: Identity, started: Started) -> Outcome:
     2. No account has this address: create one, but only from the register page with the terms
        accepted. From the login page the answer is "no account", and the app sends the visitor to
        register; a half-made account waiting on a checkbox is worse than one more click.
-    3. An account has this address and its address is confirmed: both sides have shown they own
-       the mailbox, so the identity is linked to it.
+    3. An account has this address and its address is confirmed. If Google runs the mailbox the
+       identity is linked to it: both sides are then talking about the same live mailbox. If the
+       address is on a third party's domain, Google's answer says who held it when Google checked,
+       which may no longer be who holds it: a former owner of the address would otherwise walk
+       into the account of the person who has it now. So nothing is linked here. The caller emails
+       the address a link, and opening it is what joins the two.
     4. An account has this address and its address was never confirmed. Sign-up is instant, so a
        stranger may have registered this address with a password and be sitting on it. Linking a
        verified Google identity to that account as it stands would leave the stranger with a
@@ -278,14 +301,23 @@ def resolve(identity: Identity, started: Started) -> Outcome:
         if account is None:
             if started.intent != "register" or not started.accept_terms:
                 return Outcome(None, "no_account")
+            # The address counts as confirmed only where Google runs the mailbox. Otherwise the
+            # account starts unconfirmed, exactly as a password sign-up does, and the caller sends
+            # the usual confirmation link. This is what keeps a stale address off the admin list.
             account = connection.execute(
                 "INSERT INTO organizers (email, password_hash, has_password, email_verified, terms_accepted_at, marketing_opt_in, marketing_opt_in_at)"
-                " VALUES (%s, %s, FALSE, TRUE, now(), %s, CASE WHEN %s THEN now() ELSE NULL END)"
+                " VALUES (%s, %s, FALSE, %s, now(), %s, CASE WHEN %s THEN now() ELSE NULL END)"
                 " RETURNING id, email, email_verified, session_version",
-                (identity.email, _auth.unusable_password_hash(), started.marketing_opt_in, started.marketing_opt_in),
+                (identity.email, _auth.unusable_password_hash(), identity.google_owns, started.marketing_opt_in, started.marketing_opt_in),
             ).fetchone()
             _link(connection, account["id"], identity)
             return Outcome(_organizer(account), "created")
+
+        if not identity.google_owns:
+            # Cases 3 and 4, for an address Google only checked once: the mailbox answers for
+            # itself. Nothing is written here, so a sign-in that stops at this point leaves the
+            # account exactly as it was.
+            return Outcome(_organizer(account), "confirm_link", pending=identity)
 
         if account["email_verified"]:
             _link(connection, account["id"], identity)
@@ -306,9 +338,64 @@ def resolve(identity: Identity, started: Started) -> Outcome:
 
 def _link(connection, organizer_id: int, identity: Identity) -> None:
     connection.execute(
-        "INSERT INTO organizer_identities (provider, subject, organizer_id, email, last_used_at) VALUES (%s, %s, %s, %s, now())",
+        "INSERT INTO organizer_identities (provider, subject, organizer_id, email, last_used_at) VALUES (%s, %s, %s, %s, now())"
+        " ON CONFLICT (provider, subject) DO NOTHING",
         (PROVIDER, identity.subject, organizer_id, identity.email),
     )
+
+
+# --- Linking by way of the mailbox ------------------------------------------------------------
+
+
+def begin_link(organizer: Organizer, identity: Identity) -> str:
+    """The one-time token for the link we email to the account's address. Only its digest is kept,
+    so a copy of the table joins nobody's account to anybody's Google."""
+    token = secrets.token_urlsafe(32)
+    with get_connection() as connection:
+        connection.execute("DELETE FROM identity_link_tokens WHERE expires_at < now()")
+        connection.execute(
+            "INSERT INTO identity_link_tokens (token, organizer_id, provider, subject, email, expires_at)"
+            " VALUES (%s, %s, %s, %s, %s, %s)",
+            (_auth._token_digest(token), organizer.id, PROVIDER, identity.subject, identity.email, datetime.now(timezone.utc) + LINK_TTL),
+        )
+    return token
+
+
+def complete_link(token: str) -> Outcome:
+    """Whoever opened the link reads the account's mail, which is the thing Google could not say.
+    The identity is joined to the account here, and an account nobody had confirmed is reclaimed
+    the way `resolve` reclaims one, because the same proof has now been given."""
+    with get_connection() as connection:
+        row = connection.execute(
+            "SELECT token, organizer_id, subject, email, expires_at, used_at FROM identity_link_tokens WHERE token = %s AND provider = %s FOR UPDATE",
+            (_auth._token_digest(token), PROVIDER),
+        ).fetchone()
+        if row is None or row["used_at"] is not None:
+            raise OAuthError("link-expired", "this link was already used, or was not one of ours")
+        if row["expires_at"] < datetime.now(timezone.utc):
+            raise OAuthError("link-expired", "this link has expired; start the sign-in again")
+        connection.execute("UPDATE identity_link_tokens SET used_at = now() WHERE token = %s", (row["token"],))
+
+        account = connection.execute(
+            "SELECT id, email, email_verified, session_version FROM organizers WHERE id = %s FOR UPDATE", (row["organizer_id"],)
+        ).fetchone()
+        if account is None:
+            raise OAuthError("link-expired", "that account no longer exists")
+        identity = Identity(subject=row["subject"], email=row["email"], name=None, google_owns=False)
+        if account["email_verified"]:
+            _link(connection, account["id"], identity)
+            return Outcome(_organizer(account), "linked")
+        reclaimed = connection.execute(
+            "UPDATE organizers SET email_verified = TRUE, password_hash = %s, has_password = FALSE,"
+            " two_factor_method = NULL, totp_secret = NULL, totp_secret_pending = NULL, email_code_hash = NULL, email_code_expires_at = NULL,"
+            " session_version = session_version + 1 WHERE id = %s RETURNING id, email, email_verified, session_version",
+            (_auth.unusable_password_hash(), account["id"]),
+        ).fetchone()
+        connection.execute("DELETE FROM recovery_codes WHERE organizer_id = %s", (account["id"],))
+        connection.execute("DELETE FROM login_challenges WHERE organizer_id = %s", (account["id"],))
+        connection.execute("UPDATE password_reset_tokens SET used_at = now() WHERE organizer_id = %s AND used_at IS NULL", (account["id"],))
+        _link(connection, account["id"], identity)
+        return Outcome(_organizer(reclaimed), "reclaimed")
 
 
 def _organizer(row) -> Organizer:

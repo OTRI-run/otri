@@ -316,6 +316,18 @@ def reset_password(token: str, new_password: str) -> Organizer:
     require_acceptable_password(new_password)
 
     with get_connection() as connection:
+        # Whose account this is, before anything is locked, so that the account row can be taken
+        # first. Every other path locks the account and then its tokens; taking them the other way
+        # round here would let two of them wait on each other.
+        owner = connection.execute("SELECT organizer_id FROM password_reset_tokens WHERE token IN (%s, %s)", _token_lookup(token)).fetchone()
+        if owner is None:
+            raise AuthError("invalid reset token")
+        # An account whose address nobody had confirmed until this link was opened: whatever second
+        # factor it has was set by someone who never showed they own the address (accounts made
+        # before two-factor required a confirmed address). The owner of the mailbox gets it without.
+        was_confirmed = connection.execute("SELECT email_verified FROM organizers WHERE id = %s FOR UPDATE", (owner["organizer_id"],)).fetchone()
+        # Read again under the account lock: whether the link is still unused is decided here, not
+        # before the wait.
         row = connection.execute(
             "SELECT token, organizer_id, expires_at, used_at FROM password_reset_tokens WHERE token IN (%s, %s) FOR UPDATE", _token_lookup(token)
         ).fetchone()
@@ -325,11 +337,6 @@ def reset_password(token: str, new_password: str) -> Organizer:
             raise AuthError("reset token has already been used")
         if row["expires_at"] < datetime.now(timezone.utc):
             raise AuthError("reset token has expired")
-
-        # An account whose address nobody had confirmed until this link was opened: whatever second
-        # factor it has was set by someone who never showed they own the address (accounts made
-        # before two-factor required a confirmed address). The owner of the mailbox gets it without.
-        was_confirmed = connection.execute("SELECT email_verified FROM organizers WHERE id = %s FOR UPDATE", (row["organizer_id"],)).fetchone()
         if was_confirmed is not None and not was_confirmed["email_verified"]:
             connection.execute(
                 "UPDATE organizers SET two_factor_method = NULL, totp_secret = NULL, totp_secret_pending = NULL, email_code_hash = NULL, email_code_expires_at = NULL WHERE id = %s",
@@ -357,7 +364,11 @@ def reset_password(token: str, new_password: str) -> Organizer:
 
 def change_password(organizer_id: int, current_password: str, new_password: str) -> None:
     with get_connection() as connection:
-        row = connection.execute("SELECT email, password_hash, has_password FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
+        # FOR UPDATE: bcrypt takes a sixth of a second, and a password reset that lands inside it
+        # used to be overwritten by this one when it finished. The owner would have recovered the
+        # account and lost it again to whoever still knew the old password. Locking the row makes
+        # the two happen one after the other, and the reset is then the one that stands.
+        row = connection.execute("SELECT email, password_hash, has_password FROM organizers WHERE id = %s FOR UPDATE", (organizer_id,)).fetchone()
         if row is not None and not row["has_password"]:
             raise NoPassword("this account signs in with Google and has no password yet: set one first, from the link we can email you")
         if row is None or not password_matches(current_password, row["password_hash"]):
@@ -387,7 +398,10 @@ class NoPassword(AuthError):
 
 
 def _check_password(connection, organizer_id: int, password: str) -> None:
-    row = connection.execute("SELECT password_hash, has_password FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
+    # FOR UPDATE for the reason given in change_password: what the password confirms (a second
+    # factor off, every session out, the account deleted) must not be decided on a password that
+    # a reset running beside it has already replaced.
+    row = connection.execute("SELECT password_hash, has_password FROM organizers WHERE id = %s FOR UPDATE", (organizer_id,)).fetchone()
     if row is not None and not row["has_password"]:
         raise NoPassword("this account signs in with Google and has no password yet: set one first, from the link we can email you")
     if row is None or not password_matches(password, row["password_hash"]):
@@ -452,15 +466,18 @@ def enable_totp(organizer_id: int, code: str) -> list[str]:
         row = connection.execute("SELECT totp_secret_pending FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
         if row is None or not row["totp_secret_pending"]:
             raise AuthError("start the authenticator setup first")
-        if not security.verify_totp(row["totp_secret_pending"], code):
+        step = security.totp_counter(row["totp_secret_pending"], code)
+        if step is None:
             raise AuthError("that code did not match; check the time on your phone and try the next one")
         connection.execute(
             # session_version + 1: an owner who turns this on because somebody else may be in the
             # account expects that somebody to be out. Their session used to stay good for its
             # full thirty days, never meeting the second factor it was turned on against.
+            # totp_last_step: the code that switched this on is spent, so it cannot then be used
+            # to sign in as well.
             "UPDATE organizers SET totp_secret = totp_secret_pending, totp_secret_pending = NULL, two_factor_method = 'totp', "
-            "email_code_hash = NULL, email_code_expires_at = NULL, session_version = session_version + 1 WHERE id = %s",
-            (organizer_id,),
+            "email_code_hash = NULL, email_code_expires_at = NULL, totp_last_step = %s, session_version = session_version + 1 WHERE id = %s",
+            (step, organizer_id),
         )
         _end_pending_access(connection, organizer_id)
         return _issue_recovery_codes(connection, organizer_id)
@@ -592,8 +609,9 @@ def complete_login_challenge(token: str, code: str) -> tuple[Organizer, bool]:
 
     with get_connection() as connection:
         row = connection.execute(
-            "SELECT c.organizer_id, c.method, c.code_hash, c.remember, c.attempts, c.expires_at, o.email, o.totp_secret, o.two_factor_method, o.session_version "
-            "FROM login_challenges c JOIN organizers o ON o.id = c.organizer_id WHERE c.token = %s FOR UPDATE OF c",
+            "SELECT c.organizer_id, c.method, c.code_hash, c.remember, c.attempts, c.expires_at, o.email, o.totp_secret, o.two_factor_method, "
+            "o.session_version, o.totp_last_step "
+            "FROM login_challenges c JOIN organizers o ON o.id = c.organizer_id WHERE c.token = %s FOR UPDATE OF c, o",
             (token,),
         ).fetchone()
         if row is None:
@@ -608,7 +626,14 @@ def complete_login_challenge(token: str, code: str) -> tuple[Organizer, bool]:
             raise AuthError("sign in again to get a new code")
         ok = False
         if row["method"] == "totp" and row["totp_secret"]:
-            ok = security.verify_totp(row["totp_secret"], code)
+            # An authenticator code stands for one 30-second step and is accepted for three of
+            # them, for clock drift. Remembering the last step it opened makes it one-time, as
+            # RFC 6238 section 5.2 asks: a code read over somebody's shoulder, or handed to a
+            # caller who says they are from OTRI, is no longer good for a second sign-in.
+            step = security.totp_counter(row["totp_secret"], code)
+            ok = step is not None and (row["totp_last_step"] is None or step > int(row["totp_last_step"]))
+            if ok:
+                connection.execute("UPDATE organizers SET totp_last_step = %s WHERE id = %s", (step, row["organizer_id"]))
         elif row["method"] == "email" and row["code_hash"]:
             ok = secrets.compare_digest(row["code_hash"], security.hash_code(code))
         if not ok:

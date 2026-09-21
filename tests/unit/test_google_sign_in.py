@@ -1,7 +1,12 @@
 """Sign in with Google, end to end against a stand-in for Google: the redirect out, the binding
-cookie, the one-shot state, the verified ID token, and the four ways an identity becomes an
-account (api/oauth_google.py). Google itself is replaced by a local RSA key and a fake code
-exchange; everything on OTRI's side runs for real."""
+cookie, the one-shot state, the verified ID token, and the ways an identity becomes an account
+(api/oauth_google.py). Google itself is replaced by a local RSA key and a fake code exchange;
+everything on OTRI's side runs for real.
+
+The addresses here are @gmail.com, the case where Google runs the mailbox and its answer about the
+address is about who holds it now. An address on somebody else's domain takes the longer way
+round; that is test_google_link_confirmation.py.
+"""
 
 import importlib
 import time
@@ -123,49 +128,49 @@ def test_an_unknown_intent_is_refused():
 
 
 def test_a_new_organizer_is_created_from_the_register_page(monkeypatch):
-    response = _sign_in(monkeypatch, email="new@example.com", sub="sub-1", intent="register", accept_terms=True)
+    response = _sign_in(monkeypatch, email="new@gmail.com", sub="sub-1", intent="register", accept_terms=True)
     path, query = _landing(response)
     assert path == "/login" and query["google"] == ["ok"] and query["event"] == ["created"]
     assert "otri_session" in response.cookies
     assert "otri_oauth" not in client.cookies  # the binding cookie is cleared once used
 
     me = _me().json()
-    assert me["email"] == "new@example.com"
+    assert me["email"] == "new@gmail.com"
     assert me["email_verified"] is True  # Google verified it; no confirmation email is needed
     assert me["has_password"] is False
     with db.get_connection() as connection:
-        row = connection.execute("SELECT terms_accepted_at FROM organizers WHERE email = %s", ("new@example.com",)).fetchone()
+        row = connection.execute("SELECT terms_accepted_at FROM organizers WHERE email = %s", ("new@gmail.com",)).fetchone()
     assert row["terms_accepted_at"] is not None
     # there is no password, so a password sign-in cannot work
-    assert client.post("/auth/login", json={"email": "new@example.com", "password": PASSWORD}).status_code == 401
+    assert client.post("/auth/login", json={"email": "new@gmail.com", "password": PASSWORD}).status_code == 401
 
 
 def test_the_register_page_without_the_terms_makes_no_account(monkeypatch):
-    response = _sign_in(monkeypatch, email="new@example.com", sub="sub-1", intent="register", accept_terms=False)
+    response = _sign_in(monkeypatch, email="new@gmail.com", sub="sub-1", intent="register", accept_terms=False)
     path, query = _landing(response)
-    assert path == "/register" and query["google"] == ["no-account"] and query["email"] == ["new@example.com"]
+    assert path == "/register" and query["google"] == ["no-account"] and query["email"] == ["new@gmail.com"]
     assert "otri_session" not in response.cookies
-    assert db.find_organizer_id("new@example.com") is None
+    assert db.find_organizer_id("new@gmail.com") is None
 
 
 def test_the_login_page_with_no_account_is_sent_to_register(monkeypatch):
-    response = _sign_in(monkeypatch, email="nobody@example.com", sub="sub-9")
+    response = _sign_in(monkeypatch, email="nobody@gmail.com", sub="sub-9")
     path, query = _landing(response)
     assert (path, query["google"]) == ("/register", ["no-account"])
-    assert db.find_organizer_id("nobody@example.com") is None
+    assert db.find_organizer_id("nobody@gmail.com") is None
 
 
 def test_a_confirmed_account_is_linked_and_keeps_its_password(monkeypatch, google_stand_in):
-    _register("owner@example.com")
+    _register("owner@gmail.com")
     with db.get_connection() as connection:
-        connection.execute("UPDATE organizers SET email_verified = TRUE WHERE email = %s", ("owner@example.com",))
+        connection.execute("UPDATE organizers SET email_verified = TRUE WHERE email = %s", ("owner@gmail.com",))
     client.cookies.clear()
 
-    response = _sign_in(monkeypatch, email="owner@example.com", sub="sub-2")
+    response = _sign_in(monkeypatch, email="owner@gmail.com", sub="sub-2")
     assert _landing(response)[1]["event"] == ["linked"]
-    assert google_stand_in == [("owner@example.com", False)]
+    assert google_stand_in == [("owner@gmail.com", False)]
     assert _me().json()["has_password"] is True
-    assert client.post("/auth/login", json={"email": "owner@example.com", "password": PASSWORD}).status_code == 200
+    assert client.post("/auth/login", json={"email": "owner@gmail.com", "password": PASSWORD}).status_code == 200
     with db.get_connection() as connection:
         identities = connection.execute("SELECT provider, subject FROM organizer_identities").fetchall()
     assert [(row["provider"], row["subject"]) for row in identities] == [("google", "sub-2")]
@@ -174,31 +179,31 @@ def test_a_confirmed_account_is_linked_and_keeps_its_password(monkeypatch, googl
 def test_an_unconfirmed_account_is_reclaimed_by_the_owner_of_the_mailbox(monkeypatch, google_stand_in):
     # A stranger registered this address, holds its password, has a session, and put a second
     # factor on it. None of that may survive the real owner arriving with a verified identity.
-    _register("victim@example.com")
-    strangers_session = client.post("/auth/login", json={"email": "victim@example.com", "password": PASSWORD}).json()["access_token"]
+    _register("victim@gmail.com")
+    strangers_session = client.post("/auth/login", json={"email": "victim@gmail.com", "password": PASSWORD}).json()["access_token"]
     with db.get_connection() as connection:
         connection.execute(
-            "UPDATE organizers SET two_factor_method = 'totp', totp_secret = %s WHERE email = %s", (security.new_totp_secret(), "victim@example.com")
+            "UPDATE organizers SET two_factor_method = 'totp', totp_secret = %s WHERE email = %s", (security.new_totp_secret(), "victim@gmail.com")
         )
     client.cookies.clear()
 
-    response = _sign_in(monkeypatch, email="victim@example.com", sub="sub-3")
+    response = _sign_in(monkeypatch, email="victim@gmail.com", sub="sub-3")
     assert _landing(response)[1]["event"] == ["reclaimed"]
-    assert google_stand_in == [("victim@example.com", True)]
+    assert google_stand_in == [("victim@gmail.com", True)]
     me = _me().json()
     assert me["email_verified"] is True and me["has_password"] is False
     assert me["two_factor"]["enabled"] is False
-    assert client.post("/auth/login", json={"email": "victim@example.com", "password": PASSWORD}).status_code == 401
+    assert client.post("/auth/login", json={"email": "victim@gmail.com", "password": PASSWORD}).status_code == 401
     assert client.get("/auth/me", headers={"Authorization": f"Bearer {strangers_session}"}).status_code == 401
 
 
 def test_a_known_subject_signs_in_even_after_the_address_changed(monkeypatch):
-    _sign_in(monkeypatch, email="first@example.com", sub="sub-4", intent="register", accept_terms=True)
+    _sign_in(monkeypatch, email="first@gmail.com", sub="sub-4", intent="register", accept_terms=True)
     client.cookies.clear()
-    response = _sign_in(monkeypatch, email="renamed@example.com", sub="sub-4")
+    response = _sign_in(monkeypatch, email="renamed@gmail.com", sub="sub-4")
     assert _landing(response)[1]["event"] == ["signed_in"]
-    assert _me().json()["email"] == "first@example.com"
-    assert db.find_organizer_id("renamed@example.com") is None
+    assert _me().json()["email"] == "first@gmail.com"
+    assert db.find_organizer_id("renamed@gmail.com") is None
 
 
 # --- What is refused --------------------------------------------------------------------------
@@ -265,22 +270,22 @@ def test_google_saying_no_is_reported_and_nothing_is_set(monkeypatch):
 
 
 def test_the_accounts_own_second_factor_still_stands(monkeypatch):
-    _register("careful@example.com")
+    _register("careful@gmail.com")
     with db.get_connection() as connection:
         connection.execute(
             "UPDATE organizers SET email_verified = TRUE, two_factor_method = 'totp', totp_secret = %s WHERE email = %s",
-            (security.new_totp_secret(), "careful@example.com"),
+            (security.new_totp_secret(), "careful@gmail.com"),
         )
     client.cookies.clear()
-    response = _sign_in(monkeypatch, email="careful@example.com", sub="sub-10")
+    response = _sign_in(monkeypatch, email="careful@gmail.com", sub="sub-10")
     path, query = _landing(response)
     assert path == "/login" and query["challenge"][0] and query["method"] == ["totp"]
     assert "otri_session" not in response.cookies
 
 
 def test_the_admin_list_applies_as_at_password_sign_in(monkeypatch):
-    monkeypatch.setattr(app_module, "_ADMIN_EMAILS", {"boss@example.com"})
-    response = _sign_in(monkeypatch, email="boss@example.com", sub="sub-11", intent="register", accept_terms=True)
+    monkeypatch.setattr(app_module, "_ADMIN_EMAILS", {"boss@gmail.com"})
+    response = _sign_in(monkeypatch, email="boss@gmail.com", sub="sub-11", intent="register", accept_terms=True)
     assert _landing(response)[1]["event"] == ["created"]
     assert _me().json()["is_admin"] is True
 
