@@ -102,6 +102,12 @@ def password_matches(password: str, password_hash: str) -> bool:
 _NO_ACCOUNT_HASH = bcrypt.hashpw(secrets.token_bytes(24), bcrypt.gensalt()).decode("utf-8")
 
 
+def unusable_password_hash() -> str:
+    """For an account that signs in another way and has no password: a hash of 192 random bits
+    nobody holds, so the column stays NOT NULL and a password sign-in can never match it."""
+    return bcrypt.hashpw(secrets.token_bytes(24), bcrypt.gensalt()).decode("utf-8")
+
+
 def _token_lookup(token: str) -> tuple[str, str]:
     """The two values a presented link token may be stored under: its digest, and, for a link sent
     before tokens were hashed, the token itself. A stored digest must never work as a token, or
@@ -336,7 +342,7 @@ def reset_password(token: str, new_password: str) -> Organizer:
             # The reset link went to the account's address: opening it confirms the address too.
             # session_version + 1: whoever is signed in anywhere, with the old password or a stolen
             # session, is signed out. A reset is what an owner does when they fear exactly that.
-            "UPDATE organizers SET password_hash = %s, email_verified = TRUE, session_version = session_version + 1, "
+            "UPDATE organizers SET password_hash = %s, has_password = TRUE, email_verified = TRUE, session_version = session_version + 1, "
             "password_changed_at = now() WHERE id = %s RETURNING id, email",
             (password_hash, row["organizer_id"]),
         ).fetchone()
@@ -351,7 +357,9 @@ def reset_password(token: str, new_password: str) -> Organizer:
 
 def change_password(organizer_id: int, current_password: str, new_password: str) -> None:
     with get_connection() as connection:
-        row = connection.execute("SELECT email, password_hash FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
+        row = connection.execute("SELECT email, password_hash, has_password FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
+        if row is not None and not row["has_password"]:
+            raise NoPassword("this account signs in with Google and has no password yet: set one first, from the link we can email you")
         if row is None or not password_matches(current_password, row["password_hash"]):
             raise WrongPassword("the current password is not right")
         require_acceptable_password(new_password, row["email"])
@@ -359,7 +367,7 @@ def change_password(organizer_id: int, current_password: str, new_password: str)
             raise AuthError("choose a password you have not used here before")
         password_hash = hash_password(new_password)
         connection.execute(
-            "UPDATE organizers SET password_hash = %s, password_changed_at = now(), session_version = session_version + 1 WHERE id = %s",
+            "UPDATE organizers SET password_hash = %s, has_password = TRUE, password_changed_at = now(), session_version = session_version + 1 WHERE id = %s",
             (password_hash, organizer_id),
         )
         _end_pending_access(connection, organizer_id)
@@ -374,8 +382,14 @@ def _end_pending_access(connection, organizer_id: int) -> None:
     connection.execute("UPDATE password_reset_tokens SET used_at = now() WHERE organizer_id = %s AND used_at IS NULL", (organizer_id,))
 
 
+class NoPassword(AuthError):
+    """The account signs in with Google and has never set a password."""
+
+
 def _check_password(connection, organizer_id: int, password: str) -> None:
-    row = connection.execute("SELECT password_hash FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
+    row = connection.execute("SELECT password_hash, has_password FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
+    if row is not None and not row["has_password"]:
+        raise NoPassword("this account signs in with Google and has no password yet: set one first, from the link we can email you")
     if row is None or not password_matches(password, row["password_hash"]):
         raise WrongPassword("the password is not right")
 

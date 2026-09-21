@@ -67,3 +67,15 @@ Passwords are hashed with `bcrypt`, never stored or logged in plain text. Sessio
 ## Changes to this policy
 
 This is a living document during OTRI's prototype phase. Material changes will be noted in `CHANGELOG.md`.
+
+## Signing in with Google
+
+Organizers may sign in with a Google account instead of, or as well as, a password. When they do,
+OTRI receives from Google a stable account identifier and the account's email address, and keeps
+those two things so the same Google account opens the same OTRI account next time. Nothing else
+from the Google account is read or kept: no contacts, no calendar, no files, and no access token
+or refresh token, because OTRI never calls Google's services after the sign-in itself. Google is
+told only that a sign-in to OTRI happened. Google's own script is never loaded on OTRI's pages.
+
+An OTRI account created this way has no password until its owner chooses to set one from the
+account page.

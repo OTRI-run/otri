@@ -240,3 +240,31 @@ def send_security_alert_email(to: str) -> None:
         reason="You received this email because of repeated failed sign-in attempts on your OTRI organizer account.",
     )
     _send(to, "Someone may know your OTRI password", html, text)
+
+
+def send_google_linked_email(to: str, *, reclaimed: bool) -> None:
+    """A Google account was just joined to this address. The owner of the mailbox is told either
+    way; when the account had never confirmed its address, they are told the old password and
+    second factor were removed too, because whoever set them had never shown they own the address."""
+    if reclaimed:
+        paragraphs = [
+            f"Someone signed in to OTRI with a Google account for {to}, which Google has verified. There was already an OTRI organizer account at this address, but its email had never been confirmed, so we treated the Google sign-in as the confirmation.",
+            "The password that account had, and any two-factor setup, were removed and every session was signed out. From now on this account signs in with Google. You can set a password again from the account page.",
+        ]
+        after = ["If this was not you, someone with access to your Google account signed in to OTRI. Secure your Google account first, then write to us."]
+        preheader = "Google sign-in was added to your OTRI account, and the old password was removed."
+    else:
+        paragraphs = [
+            f"Google sign-in was added to the OTRI organizer account for {to}. From now on you can sign in with either your password or your Google account.",
+        ]
+        after = ["If this was not you, sign in with your password, sign out everywhere from the account page, and write to us."]
+        preheader = "Google sign-in was added to your OTRI account."
+    html, text = _render(
+        preheader=preheader,
+        heading="Google sign-in was added",
+        paragraphs=paragraphs,
+        cta=("Open your account", f"{APP_BASE_URL}/prototype/organizer/#/account"),
+        after=after,
+        reason="You received this email because a Google account was linked to your OTRI organizer account.",
+    )
+    _send(to, "Google sign-in was added to your OTRI account", html, text)
