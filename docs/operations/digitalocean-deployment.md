@@ -130,6 +130,8 @@ OTRI_API_JWT_SECRET=<generate with: python -c "import secrets; print(secrets.tok
 
 `OTRI_API_JWT_SECRET` matters here specifically: without it, a random secret is generated on every process start, which means every organizer gets logged out whenever the service restarts (deploys, reboots, crashes). Generate it once and keep it in `.env`.
 
+The deploy script rewrites this file on every deploy, but carries over every setting already in it, so a setting added by hand stays.
+
 Lock it down:
 
 ```bash
