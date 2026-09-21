@@ -1,4 +1,5 @@
 import React from 'react'
+import { Wordmark } from './Logo'
 import { reportError } from '../lib/monitoring'
 
 // Last line of defence for the three React apps: a render error would otherwise leave a blank
@@ -25,18 +26,7 @@ export default class ErrorBoundary extends React.Component {
     const home = this.props.home ?? './'
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#f7f9fc] px-6 text-center text-[#0b1220]">
-        <svg className="h-14 w-14" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-          <defs>
-            <linearGradient id="otriErrGrad" x1="5" y1="4" x2="35" y2="37" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#60A5FA" />
-              <stop offset=".48" stopColor="#2563EB" />
-              <stop offset="1" stopColor="#1D4ED8" />
-            </linearGradient>
-          </defs>
-          <circle cx="20" cy="20" r="17" stroke="url(#otriErrGrad)" strokeWidth="5" />
-          <path d="M7 26.5 15.5 20l4 2.7L26 16l7 6" stroke="url(#otriErrGrad)" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M9 30c5-6 10-7 17-10" stroke="#2563EB" strokeWidth="3.4" strokeLinecap="round" />
-        </svg>
+        <Wordmark size={34} />
         <p className="mt-6 font-mono text-[10px] tracking-[.08em] text-slate-500">SOMETHING WENT WRONG</p>
         <h1 className="mt-3 text-[clamp(28px,4.5vw,44px)] font-bold leading-[.98] tracking-[-.05em]">This page hit an error.</h1>
         <p className="mt-4 max-w-md text-sm leading-6 text-slate-600">
