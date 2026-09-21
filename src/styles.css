@@ -4,37 +4,6 @@ html{scroll-behavior:smooth}
 body{margin:0;font-synthesis:none;text-rendering:optimizeLegibility}
 *{box-sizing:border-box}
 
-/* OTRI brand lockup: emblem + wordmark + full name */
-a[aria-label="OTRI home"]{gap:0!important}
-a[aria-label="OTRI home"]>span:last-child{margin-left:5px}
-a[aria-label="OTRI home"]::after{
-  content:"OPEN TRAIL\A RUNNING INDEX";
-  white-space:pre;
-  display:block;
-  margin-left:12px;
-  padding-left:12px;
-  border-left:2px solid #2563eb;
-  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
-  font-size:8px;
-  font-weight:700;
-  line-height:1.45;
-  letter-spacing:.12em;
-  background:linear-gradient(180deg,#2563eb 0%,#06b6d4 100%);
-  -webkit-background-clip:text;
-  background-clip:text;
-  color:transparent;
-}
-@media (max-width:767px){
-  a[aria-label="OTRI home"]>span:last-child{margin-left:4px}
-  a[aria-label="OTRI home"]::after{
-    margin-left:8px;
-    padding-left:8px;
-    font-size:6px;
-    letter-spacing:.07em;
-  }
-}
-
-/* deployment refresh: preserve the OTRI lockup exactly */
 
 /* Home card: scores scrolling by. The list is rendered twice so the loop is seamless. */
 @keyframes otri-ticker{from{transform:translateY(0)}to{transform:translateY(-50%)}}
