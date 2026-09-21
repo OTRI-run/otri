@@ -66,7 +66,12 @@ export default function Home() {
     <>
       {/* Hero */}
       <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
-        <div className={`${CONTAINER} flex min-w-0 flex-col items-center py-14 text-center sm:py-20 lg:py-24`}>
+        {/* The first screen is the hero and nothing else. The header is 68px, and below md a
+            second row of section links adds about 44 more, so the hero is told to fill what is
+            left of the viewport. svh rather than vh, so a phone's collapsing toolbar does not
+            push the next section into view. */}
+        <div
+          className={`${CONTAINER} flex min-w-0 flex-col items-center justify-center py-14 text-center sm:py-20 min-h-[calc(100svh-112px)] md:min-h-[calc(100svh-68px)]`}>
           <div className="flex min-w-0 flex-col items-center">
             <div className="font-mono text-[10px] font-medium tracking-[.1em] text-blue-600">
               OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> PROTOTYPE
