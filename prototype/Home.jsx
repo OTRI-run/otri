@@ -8,7 +8,7 @@ const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 const DOCS = {
   how: `${GITHUB_URL}/blob/main/docs/methodology/0.1.0/HOW-OTRI-SCORES.md`,
   methodology: `${GITHUB_URL}/blob/main/METHODOLOGY.md`,
-  dataPolicy: `${GITHUB_URL}/blob/main/DATA_POLICY.md`,
+  dataPolicy: '/data-policy/',
   organizer: `${GITHUB_URL}/blob/main/docs/organizer-upload.md`,
 }
 

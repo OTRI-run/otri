@@ -189,7 +189,7 @@ const FOOTER_COLUMNS = [
     links: [
       ['How a score is made', `${GITHUB_URL}/blob/main/docs/methodology/0.1.0/HOW-OTRI-SCORES.md`],
       ['Methodology', `${GITHUB_URL}/blob/main/METHODOLOGY.md`],
-      ['Data policy', `${GITHUB_URL}/blob/main/DATA_POLICY.md`],
+      ['Data policy', '/data-policy/'],
       ['Source code', GITHUB_URL],
     ],
   },
@@ -198,7 +198,8 @@ const FOOTER_COLUMNS = [
     links: [
       ['Contribute', '#contribute'],
       ['Media and logo', '#media'],
-      ['Privacy', `${GITHUB_URL}/blob/main/PRIVACY.md`],
+      ['Privacy', '/privacy/'],
+      ['Terms', '/terms/'],
       ['hello@otri.run', 'mailto:hello@otri.run'],
     ],
   },

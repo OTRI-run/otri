@@ -24,5 +24,8 @@
     "react-dom": "latest",
     "tailwindcss": "latest",
     "vite": "latest"
+  },
+  "devDependencies": {
+    "marked": "^18.0.13"
   }
 }

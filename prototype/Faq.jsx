@@ -130,7 +130,7 @@ const FAQ = [
       {
         q: 'I am on a leaderboard and do not want to be. What can I do?',
         a: 'Use “Report a problem” on the race or runner page, or write to hello@otri.run. The organizer who published the results is responsible for them; OTRI removes a row on request, as described in the privacy policy.',
-        link: [`${DOCS}/PRIVACY.md`, 'Privacy policy'],
+        link: ['/privacy/', 'Privacy policy'],
         tags: 'remove delete privacy name leaderboard opt out',
       },
     ],
@@ -162,7 +162,7 @@ const FAQ = [
       {
         q: 'Do you use my results to change the model?',
         a: 'No. A score never depends on the field, and the production model is not fitted to uploaded results. Calibration studies, when they happen, use separately licensed data and are published as a new model version.',
-        link: [`${DOCS}/DATA_POLICY.md`, 'Data policy'],
+        link: ['/data-policy/', 'Data policy'],
         tags: 'data policy calibration use results training',
       },
     ],
