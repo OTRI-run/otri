@@ -25,6 +25,28 @@ const EXAMPLE = {
   results: { url: '../examples/otri-example-results.csv', file: 'otri-example-results.csv', type: 'text/csv' },
 }
 const EXAMPLE_ROWS_SHOWN = 8
+// What each column of the example file is to the scorer. Only a time and a name are required;
+// the rank is worked out from the times when it is missing, gender feeds the gender rankings, the
+// status marks DNF and DNS rows, and the rest is kept if it is there (ingestion/schema.py).
+const COLUMN_ROLE = {
+  Time: 'required',
+  'Last name': 'required',
+  'First name': 'required',
+  Gender: 'recommended',
+  Rank: 'optional',
+  Status: 'dnf',
+  Bib: 'optional',
+  Nationality: 'optional',
+  'Birth year': 'optional',
+  Team: 'optional',
+}
+const ROLE_LABEL = { required: 'Required', recommended: 'Recommended', optional: 'Optional', dnf: 'DNF and DNS' }
+const ROLE_CLASS = {
+  required: 'bg-blue-600 text-white',
+  recommended: 'bg-blue-50 text-blue-700',
+  optional: 'bg-slate-100 text-slate-500',
+  dnf: 'bg-amber-50 text-amber-700',
+}
 
 async function fetchExample({ url, file, type }) {
   const response = await fetch(url)
@@ -237,7 +259,8 @@ function Scored({ result, fileStem, gpxText, children }) {
 }
 
 // Nothing to hand? Try the whole thing on a made-up race: one press fills in the course and the
-// results, and the rows can be looked at first, which is also the quickest way to see the format.
+// results and scores them, and the answer scrolls into view. The rows can be looked at first,
+// which is also the quickest way to see the format.
 function ExampleRace({ onUse, busy, rowsOpen, onToggleRows }) {
   const [state, setState] = useState('idle') // idle | loading | failed
 
@@ -245,8 +268,8 @@ function ExampleRace({ onUse, busy, rowsOpen, onToggleRows }) {
     setState('loading')
     try {
       const [course, results] = await Promise.all([fetchExample(EXAMPLE.course), fetchExample(EXAMPLE.results)])
-      onUse({ gpx: course.file, results: results.file, raceName: EXAMPLE.name })
       setState('idle')
+      await onUse({ gpx: course.file, results: results.file, raceName: EXAMPLE.name })
     } catch {
       setState('failed')
     }
@@ -257,12 +280,13 @@ function ExampleRace({ onUse, busy, rowsOpen, onToggleRows }) {
     <div className="mt-4 border-t border-slate-200 pt-4">
       <p className="text-center font-mono text-[9px] tracking-[.08em] text-slate-500">NO FILES AT HAND?</p>
       <button
+        id="score-example"
         type="button"
         onClick={use}
         disabled={busy || state === 'loading'}
         className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-[13px] font-semibold text-[#0b1220] transition hover:border-blue-300 disabled:opacity-60"
       >
-        {state === 'loading' ? 'Loading the example…' : 'Use the example race'}
+        {state === 'loading' ? 'Loading the example…' : 'Score the example race'}
       </button>
       <p className="mt-2 text-center text-xs leading-5 text-slate-500">
         A made-up 24 km course and 100 finishers called John Doe and Max Mustermann.{' '}
@@ -297,7 +321,9 @@ function ExampleRows({ onClose }) {
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-3">
         <div className="min-w-0">
           <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">THE EXAMPLE RESULTS FILE · {EXAMPLE.results.file}</p>
-          <p className="mt-0.5 text-sm text-slate-600">A finisher needs a rank, a time, a name and a gender; DNF and DNS rows carry their status instead of a time. Any file laid out like this passes.</p>
+          <p className="mt-0.5 text-sm text-slate-600">
+            Only the <strong className="font-semibold text-[#0b1220]">time</strong> and a <strong className="font-semibold text-[#0b1220]">name</strong> are required. The rank is worked out from the times when it is missing, gender is used for the gender rankings, and the status marks DNF and DNS rows, which carry no time. Everything else is optional and kept if it is there.
+          </p>
         </div>
         <button type="button" onClick={onClose} className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-[#0b1220] hover:border-blue-300">Hide rows</button>
       </div>
@@ -310,9 +336,15 @@ function ExampleRows({ onClose }) {
           <table className="w-full text-left font-mono text-[12px]">
             <thead>
               <tr className="bg-slate-50 text-[10px] uppercase tracking-[.06em] text-slate-500">
-                {header.map((cell) => (
-                  <th key={cell} className="whitespace-nowrap px-4 py-2.5 font-semibold">{cell}</th>
-                ))}
+                {header.map((cell) => {
+                  const role = COLUMN_ROLE[cell] || 'optional'
+                  return (
+                    <th key={cell} className="whitespace-nowrap px-4 py-2.5 align-top font-semibold">
+                      {cell}
+                      <span className={`mt-1 block w-fit rounded px-1.5 py-0.5 text-[8px] font-semibold normal-case tracking-[.04em] ${ROLE_CLASS[role]}`}>{ROLE_LABEL[role]}</span>
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody>
@@ -324,9 +356,12 @@ function ExampleRows({ onClose }) {
                     </tr>
                   )}
                   <tr className="border-t border-slate-100 text-[#0b1220] odd:bg-white even:bg-slate-50/70">
-                    {row.map((cell, column) => (
-                      <td key={column} className="whitespace-nowrap px-4 py-2">{cell || <span className="text-slate-300">—</span>}</td>
-                    ))}
+                    {row.map((cell, column) => {
+                      const faint = (COLUMN_ROLE[header[column]] || 'optional') === 'optional'
+                      return (
+                        <td key={column} className={`whitespace-nowrap px-4 py-2 ${faint ? 'text-slate-500' : ''}`}>{cell || <span className="text-slate-300">—</span>}</td>
+                      )
+                    })}
                   </tr>
                 </Fragment>
               ))}
@@ -423,15 +458,16 @@ export default function ScoreRace() {
     if (result) revealElement('score-result', { focus: true })
   }, [result])
 
-  // #score?example=1 scores the example race straight away: a link that shows the result, not the form.
+  // The example race fills the form and is scored in the same press; the answer then scrolls into
+  // view like any other. #score?example=1 does the same on arrival: a link that shows the result.
+  function scoreExample(example) {
+    useExample(example)
+    return score(example)
+  }
   useEffect(() => {
     if (!/[?&]example=1/.test(window.location.hash)) return
     Promise.all([fetchExample(EXAMPLE.course), fetchExample(EXAMPLE.results)])
-      .then(([course, list]) => {
-        const example = { gpx: course.file, results: list.file, raceName: EXAMPLE.name }
-        useExample(example)
-        return score(example)
-      })
+      .then(([course, list]) => scoreExample({ gpx: course.file, results: list.file, raceName: EXAMPLE.name }))
       .catch((err) => setError(err.message))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -516,7 +552,7 @@ export default function ScoreRace() {
               {busy ? 'Measuring the course and scoring…' : <>Validate and score <ArrowRight size={15} /></>}
             </button>
             {!busy && missing && <p className="mt-2 text-center text-xs text-slate-500">{missing}</p>}
-            <ExampleRace onUse={useExample} busy={busy} rowsOpen={rowsOpen} onToggleRows={() => setRowsOpen((open) => !open)} />
+            <ExampleRace onUse={scoreExample} busy={busy} rowsOpen={rowsOpen} onToggleRows={() => setRowsOpen((open) => !open)} />
           </form>
           <div className="min-w-0 lg:col-start-1">
             <ul className="space-y-2 text-sm text-slate-600">
