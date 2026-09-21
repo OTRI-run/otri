@@ -17,7 +17,6 @@ const CONTAINER = 'mx-auto w-[min(1080px,calc(100%-32px))]'
 export default function Home() {
   const [races, setRaces] = useState([])
   const [recent, setRecent] = useState([])
-  const [term, setTerm] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -53,12 +52,6 @@ export default function Home() {
   const resultCount = races.reduce((sum, race) => sum + (race.finisher_count ?? 0), 0)
   const version = races[0]?.scoring_version
 
-  const search = (event) => {
-    event.preventDefault()
-    const q = term.trim()
-    window.location.hash = q ? `#runners?q=${encodeURIComponent(q)}` : '#runners'
-  }
-
   return (
     <>
       {/* The first screen: what it is, and the three things you can do. */}
@@ -72,37 +65,31 @@ export default function Home() {
             A finish time and the course it was run on, as one number from 0 to 1000.
           </p>
 
-          <form onSubmit={search} className="mt-8 flex w-full max-w-[520px] items-center gap-2" role="search">
-            <label htmlFor="home-search" className="sr-only">
-              Search for a runner
-            </label>
-            <div className="relative flex-1">
-              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                id="home-search"
-                type="search"
-                value={term}
-                onChange={(event) => setTerm(event.target.value)}
-                placeholder="Search for a runner"
-                className="h-12 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-[15px] text-[#0b1220] outline-none placeholder:text-slate-400 focus:border-blue-600"
-              />
-            </div>
-            <button
-              type="submit"
-              className="inline-flex h-12 shrink-0 items-center rounded-lg bg-blue-600 px-5 text-[14px] font-semibold text-white hover:bg-blue-700"
+          {/* The two things someone came here to do, side by side and in the middle. */}
+          <div className="mt-9 flex w-full max-w-[560px] flex-col gap-3 sm:flex-row sm:justify-center">
+            <a
+              href="#calculator"
+              className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 text-[15px] font-semibold text-white no-underline hover:bg-blue-700"
             >
-              Search
-            </button>
-          </form>
-
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
-            <a href="#calculator" className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-blue-600 no-underline hover:underline">
-              What is my time worth? <ArrowUpRight size={14} />
+              <Calculator size={17} />
+              Calculate my score
             </a>
-            <a href="#score" className="inline-flex items-center gap-1.5 text-[14px] font-semibold text-blue-600 no-underline hover:underline">
-              Score my race <ArrowUpRight size={14} />
+            <a
+              href="#score"
+              className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-6 text-[15px] font-semibold text-[#0b1220] no-underline hover:border-blue-600"
+            >
+              <Upload size={17} />
+              Score my race
             </a>
           </div>
+
+          <a
+            href="#runners"
+            className="mt-6 inline-flex items-center gap-1.5 text-[14px] font-semibold text-blue-600 no-underline hover:underline"
+          >
+            <Search size={14} />
+            Find a runner
+          </a>
         </div>
       </section>
 
