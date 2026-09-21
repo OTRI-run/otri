@@ -34,10 +34,7 @@ a[aria-label="OTRI home"]::after{
   }
 }
 
-.otri-wordmark{position:relative;display:block;padding-bottom:8px;font-size:30px;font-weight:800;line-height:1;letter-spacing:-.045em}
-a[aria-label="OTRI home"]>span:last-child{margin-left:0}
-.otri-wordmark-terrain{position:absolute;bottom:0;left:0;width:100%;height:9px;color:#2563eb}
-
+/* deployment refresh: preserve the OTRI lockup exactly */
 
 /* Home card: scores scrolling by. The list is rendered twice so the loop is seamless. */
 @keyframes otri-ticker{from{transform:translateY(0)}to{transform:translateY(-50%)}}

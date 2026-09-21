@@ -2,7 +2,6 @@ import { scrollBehavior } from '../src/lib/comfort'
 import { ArrowRight, ArrowUpRight, Calculator, Database, FileText, GitBranch, Mountain, ShieldCheck, Timer, Upload, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import RaceCard from './RaceCard'
-import TopographicHero from './TopographicHero'
 import { listRaces } from './apiClient'
 
 const GITHUB_URL = 'https://github.com/OTRI-run/otri'
@@ -66,9 +65,8 @@ export default function Home() {
   return (
     <>
       {/* Hero */}
-      <section className="relative isolate overflow-hidden border-b border-slate-200 bg-[radial-gradient(circle_at_50%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
-        <TopographicHero />
-        <div className={`${CONTAINER} relative z-10 py-9 sm:py-14 lg:py-16`}>
+      <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_50%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
+        <div className={`${CONTAINER} py-9 sm:py-14 lg:py-16`}>
           <div className="mx-auto max-w-[800px] text-center">
             <h1 className="text-[clamp(38px,6vw,68px)] font-bold leading-[1.08] tracking-[-.05em] text-[#0b1220]">
               Open Trail<br /> <Gradient>Running Index</Gradient>
