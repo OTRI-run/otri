@@ -93,7 +93,11 @@ fi
 
 # Optional settings live in .env only (set by hand on the Droplet); keep them across re-deploys.
 keep_env() { grep "^$1=" "${APP_DIR}/.env" 2>/dev/null | head -1 | cut -d= -f2- || true; }
+OTRI_EMAIL_FROM="${OTRI_EMAIL_FROM:-$(keep_env OTRI_EMAIL_FROM)}"
+OTRI_APP_BASE_URL="${OTRI_APP_BASE_URL:-$(keep_env OTRI_APP_BASE_URL)}"
 OTRI_ADMIN_EMAILS="${OTRI_ADMIN_EMAILS:-$(keep_env OTRI_ADMIN_EMAILS)}"
+OTRI_GOOGLE_CLIENT_ID="${OTRI_GOOGLE_CLIENT_ID:-$(keep_env OTRI_GOOGLE_CLIENT_ID)}"
+OTRI_GOOGLE_CLIENT_SECRET="${OTRI_GOOGLE_CLIENT_SECRET:-$(keep_env OTRI_GOOGLE_CLIENT_SECRET)}"
 OTRI_ALERT_EMAIL="${OTRI_ALERT_EMAIL:-$(keep_env OTRI_ALERT_EMAIL)}"
 OTRI_SHARED_COURSES_MAX_MB="${OTRI_SHARED_COURSES_MAX_MB:-$(keep_env OTRI_SHARED_COURSES_MAX_MB)}"
 OTRI_DEM_AUTOFETCH="${OTRI_DEM_AUTOFETCH:-$(keep_env OTRI_DEM_AUTOFETCH)}"
@@ -101,6 +105,10 @@ OTRI_DEM_BUDGET_MB="${OTRI_DEM_BUDGET_MB:-$(keep_env OTRI_DEM_BUDGET_MB)}"
 OTRI_BACKUP_RCLONE_REMOTE="${OTRI_BACKUP_RCLONE_REMOTE:-$(keep_env OTRI_BACKUP_RCLONE_REMOTE)}"
 SENTRY_DSN="${SENTRY_DSN:-$(keep_env SENTRY_DSN)}"
 OTRI_ENV="${OTRI_ENV:-$(keep_env OTRI_ENV)}"
+
+# Anything else set by hand in .env (a setting this script does not know) is carried over too,
+# so that adding a setting on the Droplet never depends on this list being up to date.
+PREVIOUS_ENV="$(cat "${APP_DIR}/.env" 2>/dev/null || true)"
 
 echo "==> Writing ${APP_DIR}/.env"
 cat >"${APP_DIR}/.env" <<EOF
@@ -114,12 +122,18 @@ OTRI_DEM_MANIFEST=${OTRI_DEM_MANIFEST}
 OTRI_DEM_AUTOFETCH=${OTRI_DEM_AUTOFETCH:-1}
 OTRI_DEM_BUDGET_MB=${OTRI_DEM_BUDGET_MB:-8192}
 OTRI_ADMIN_EMAILS=${OTRI_ADMIN_EMAILS}
+OTRI_GOOGLE_CLIENT_ID=${OTRI_GOOGLE_CLIENT_ID}
+OTRI_GOOGLE_CLIENT_SECRET=${OTRI_GOOGLE_CLIENT_SECRET}
 OTRI_ALERT_EMAIL=${OTRI_ALERT_EMAIL}
 OTRI_SHARED_COURSES_MAX_MB=${OTRI_SHARED_COURSES_MAX_MB:-2048}
 OTRI_BACKUP_RCLONE_REMOTE=${OTRI_BACKUP_RCLONE_REMOTE}
 SENTRY_DSN=${SENTRY_DSN}
 OTRI_ENV=${OTRI_ENV:-production}
 EOF
+while IFS= read -r line; do
+  [[ "${line}" =~ ^([A-Za-z_][A-Za-z0-9_]*)= ]] || continue
+  grep -q "^${BASH_REMATCH[1]}=" "${APP_DIR}/.env" || echo "${line}" >>"${APP_DIR}/.env"
+done <<<"${PREVIOUS_ENV}"
 chmod 600 "${APP_DIR}/.env"
 
 echo "==> Applying schema migrations, seeding demo data on first run"
