@@ -4,7 +4,7 @@ import WhatWeScore from '../src/components/WhatWeScore'
 import useFileDrop from '../src/lib/useFileDrop'
 import { revealElement } from '../src/lib/comfort'
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, ArrowRight, CheckCircle2, Code2, Download, Share2, FileSpreadsheet, Map as MapIcon, Timer, Trophy, XCircle } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CheckCircle2, Code2, Download, Share2, FileSpreadsheet, Map as MapIcon, ShieldCheck, Timer, Trophy, XCircle } from 'lucide-react'
 import { scoreRace } from './apiClient'
 import { saveHandoff } from './publishHandoff'
 import { ShareResults } from './SharePanel'
@@ -78,11 +78,11 @@ function download(name, type, content) {
 
 function FilePick({ icon: Icon, label, hint, accept, file, onFile, disabled }) {
   return (
-    <label className={`flex min-w-0 cursor-pointer items-center gap-3 rounded-xl focus-within:ring-2 focus-within:ring-blue-500 border border-dashed px-4 py-3 transition ${file ? 'border-blue-300 bg-blue-50/50' : 'border-slate-300 bg-white hover:border-blue-300'} ${disabled ? 'opacity-60' : ''}`}>
+    <label className={`flex min-w-0 cursor-pointer items-center gap-3 rounded-xl border border-dashed px-4 py-3 transition ${file ? 'border-blue-300 bg-blue-50/50' : 'border-slate-300 bg-white hover:border-blue-300'} ${disabled ? 'opacity-60' : ''}`}>
       <Icon size={18} className="shrink-0 text-blue-600" />
       <span className="min-w-0">
-        <span className="block truncate text-base font-semibold text-[#0b1220]">{file ? file.name : label}</span>
-        <span className="block text-sm text-slate-500">{file ? 'Choose another file' : hint}</span>
+        <span className="block truncate text-sm font-semibold text-[#0b1220]">{file ? file.name : label}</span>
+        <span className="block text-xs text-slate-500">{file ? 'Choose another file' : hint}</span>
       </span>
       <input type="file" accept={accept} className="sr-only" disabled={disabled} onChange={(event) => onFile(event.target.files?.[0] ?? null)} />
     </label>
@@ -255,18 +255,17 @@ function ExampleRace({ onUse, busy, rowsOpen, onToggleRows }) {
   // Sits in the form, under "Validate and score": the place someone looks when they have no files.
   return (
     <div className="mt-4 border-t border-slate-200 pt-4">
-      <p className="text-center font-mono text-[9px] tracking-[.08em] text-slate-500">JUST TRYING IT OUT?</p>
+      <p className="text-center font-mono text-[9px] tracking-[.08em] text-slate-500">NO FILES AT HAND?</p>
       <button
         type="button"
         onClick={use}
         disabled={busy || state === 'loading'}
         className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-[13px] font-semibold text-[#0b1220] transition hover:border-blue-300 disabled:opacity-60"
       >
-        {state === 'loading' ? 'Loading the example…' : 'Try with sample files'}
+        {state === 'loading' ? 'Loading the example…' : 'Use the example race'}
       </button>
-      <details className="mt-2 text-center text-xs leading-5 text-slate-500">
-        <summary className="cursor-pointer">Preview or download sample files</summary>
-        <p className="mt-2">Demo course · 100 sample finishers.{' '}
+      <p className="mt-2 text-center text-xs leading-5 text-slate-500">
+        A made-up 24 km course and 100 finishers called John Doe and Max Mustermann.{' '}
         <button type="button" onClick={onToggleRows} aria-expanded={rowsOpen} aria-controls="example-rows" className="font-semibold text-blue-600 hover:underline">
           {rowsOpen ? 'Hide' : 'Show'} rows
         </button>
@@ -274,8 +273,7 @@ function ExampleRace({ onUse, busy, rowsOpen, onToggleRows }) {
         <a href={EXAMPLE.results.url} download={EXAMPLE.results.file} className="font-semibold text-blue-600 no-underline hover:underline">CSV</a>
         {' · '}
         <a href={EXAMPLE.course.url} download={EXAMPLE.course.file} className="font-semibold text-blue-600 no-underline hover:underline">GPX</a>
-        </p>
-      </details>
+      </p>
       {state === 'failed' && <p className="mt-2 text-center text-xs text-red-600">The example files could not be loaded. Try again in a moment.</p>}
     </div>
   )
@@ -474,53 +472,62 @@ export default function ScoreRace() {
   return (
     <>
       <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
-        <div className={`${CONTAINER} py-8 sm:py-12`}>
-          <div className="mx-auto max-w-[680px]">
-          <div className="mb-6 text-center">
-            <h1 className="text-[clamp(30px,5vw,44px)] font-bold leading-tight tracking-[-.04em] text-[#0b1220]">Score all finishers</h1>
-            <p className="mt-2 text-base text-slate-600">Add your course and results. Get a score for every finisher.</p>
-            <p className="mt-3 text-xs text-slate-500">Free · No account needed</p>
+        <div className={`${CONTAINER} grid min-w-0 items-start gap-8 py-10 sm:py-14 lg:grid-cols-[minmax(0,1fr)_460px] lg:gap-x-16 lg:gap-y-6 lg:py-16`}>
+          <div className="min-w-0">
+            <div className="font-mono text-[10px] font-medium tracking-[.1em] text-blue-600">
+              OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> SCORE MY RACE
+            </div>
+            <h1 className="mt-5 max-w-[640px] text-[clamp(34px,5vw,56px)] font-bold leading-[1.02] tracking-[-.06em] text-[#0b1220]">
+              Your results,
+              <br />
+              <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">scored in a minute.</em>
+            </h1>
+            <p className="mt-5 max-w-[560px] text-base leading-7 text-slate-600">
+              Bring the course and the results file of any trail race. OTRI measures the course, checks the file, and gives every finisher a score you can explain: the same open model as every race here, with no account and no approval.
+            </p>
+            <WhatWeScore className="mt-4 max-w-[560px]" />
           </div>
 
-          <form onSubmit={submit} {...dropProps} className={`min-w-0 rounded-2xl border bg-white p-5 shadow-[0_18px_44px_rgba(15,23,42,.07)] transition sm:p-6 ${dragging ? 'border-blue-500 ring-4 ring-blue-100' : 'border-slate-200'}`}>
+          <form onSubmit={submit} {...dropProps} className={`min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1 rounded-2xl border bg-white p-5 shadow-[0_18px_44px_rgba(15,23,42,.07)] transition sm:p-6 ${dragging ? 'border-blue-500 ring-4 ring-blue-100' : 'border-slate-200'}`}>
             {dragging && <p className="mb-3 rounded-lg bg-blue-50 px-3 py-2 text-center text-xs font-semibold text-blue-700">Drop the course (.gpx) and the results (.csv, .xlsx) here, together or one at a time</p>}
-            <p className="text-base font-semibold text-blue-700">1 · Add the course</p>
+            <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">1 · THE COURSE</p>
             <div className="mt-2">
-              <FilePick icon={MapIcon} label="Upload course" hint="GPX route file · Up to 20 MB" accept=".gpx,application/gpx+xml" file={gpx} onFile={setGpx} disabled={busy} />
+              <FilePick icon={MapIcon} label="Choose the course (GPX)" hint="The official track of the race, up to 20 MB" accept=".gpx,application/gpx+xml" file={gpx} onFile={setGpx} disabled={busy} />
+              <p className="mt-2 text-xs text-slate-500">A score rests on where the climbing is, so it needs the track: a distance and a climb figure are not enough.</p>
             </div>
 
-            <p className="mt-5 text-base font-semibold text-blue-700">2 · Add the results</p>
+            <p className="mt-5 font-mono text-[9px] tracking-[.08em] text-slate-500">2 · THE RESULTS</p>
             <div className="mt-2">
-              <FilePick icon={FileSpreadsheet} label="Upload results" hint="CSV or Excel · Runner names and finish times" accept=".csv,.tsv,.txt,.xlsx,.xlsm,text/csv" file={results} onFile={setResults} disabled={busy} />
+              <FilePick icon={FileSpreadsheet} label="Choose the results (CSV or Excel)" hint="The export you already have: from your timing company, or the sheet you send to ITRA or UTMB. It needs a finish time and a name; the rest is read if it is there." accept=".csv,.tsv,.txt,.xlsx,.xlsm,text/csv" file={results} onFile={setResults} disabled={busy} />
             </div>
 
-            <details className="mt-4">
-              <summary className="cursor-pointer text-xs font-semibold text-slate-600">Add a race name (optional)</summary>
-            <label className="mt-3 block font-mono text-[9px] tracking-[.08em] text-slate-500">
-              RACE NAME
+            <label className="mt-5 block font-mono text-[9px] tracking-[.08em] text-slate-500">
+              3 · RACE NAME (OPTIONAL)
               <input value={raceName} onChange={(e) => setRaceName(e.target.value)} maxLength={200} list={RACE_NAME_LIST} autoComplete="off" className={`${input} mt-2 font-sans tracking-normal`} placeholder="Doi Suthep Trail 30K" />
               <RaceNameList />
             </label>
-            </details>
 
             {error && (
-              <div id="score-error" role="alert" className="mt-4 flex gap-2 rounded-xl border border-red-100 bg-red-50/70 px-3 py-2.5 text-sm text-red-900">
+              <div id="score-error" role="alert" role="alert" className="mt-4 flex gap-2 rounded-xl border border-red-100 bg-red-50/70 px-3 py-2.5 text-sm text-red-900">
                 <XCircle size={16} className="mt-0.5 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
               </div>
             )}
             <button type="submit" disabled={busy || Boolean(missing)} className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 px-4 text-[13px] font-semibold text-white shadow-[0_10px_28px_rgba(37,99,235,.2)] transition hover:from-blue-800 hover:to-blue-600 disabled:cursor-not-allowed disabled:opacity-50">
-              {busy ? 'Calculating scores…' : <>Calculate scores <ArrowRight size={15} /></>}
+              {busy ? 'Measuring the course and scoring…' : <>Validate and score <ArrowRight size={15} /></>}
             </button>
             {!busy && missing && <p className="mt-2 text-center text-xs text-slate-500">{missing}</p>}
             <ExampleRace onUse={useExample} busy={busy} rowsOpen={rowsOpen} onToggleRows={() => setRowsOpen((open) => !open)} />
           </form>
-          <details className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-            <summary className="cursor-pointer font-semibold text-blue-700">Need help with your files?</summary>
-            <p className="mt-3 leading-6"><b>Course:</b> upload the route as a GPX file. Distance and elevation totals alone are not enough.</p>
-            <p className="mt-2 leading-6"><b>Results:</b> upload your timing export or spreadsheet with runner names and finish times. CSV, TSV and Excel (.xlsx or .xlsm) are supported.</p>
-            <p className="mt-2 leading-6">You can also drop both files onto the form. After scoring, download the scores or choose to publish a race page.</p>
-          </details>
-          <WhatWeScore className="mt-2" />
+          <div className="min-w-0 lg:col-start-1">
+            <ul className="space-y-2 text-sm text-slate-600">
+              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Free and instant: no account, no approval, every score in about a minute.</li>
+              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Publish with one click: a leaderboard page for your runners, and podium images with a post for your channels.</li>
+              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> A score depends on the course and the runner's own time, never on who else raced, so it compares across races.</li>
+              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Where the model runs out of evidence it says so, per course, instead of guessing.</li>
+            </ul>
+            <p className="mt-6 text-xs text-slate-500">
+              Timing company or developer? The same call is a public API: <a href="#api" className="font-semibold text-blue-600 no-underline hover:underline">POST /score</a>.
+            </p>
           </div>
           {rowsOpen && <ExampleRows onClose={() => setRowsOpen(false)} />}
         </div>
@@ -548,9 +555,7 @@ export default function ScoreRace() {
           </Scored>
         )}
 
-        <details className="mt-6">
-          <summary className="cursor-pointer text-sm font-semibold text-blue-700">Publishing, website tools and scoring help</summary>
-        <section className="mt-4 grid gap-4 md:grid-cols-3">
+        <section className="mt-12 grid gap-4 md:grid-cols-3">
           {[
             ['Want a public race page?', 'Score the race here first, then press Publish this race: the course and the results come with you into a free organizer account. No approval, and you decide when it goes public.', 'organizer/', 'Or start with an account'],
             ['Put the calculator on your site', 'Runners try a target time on your course before race day. One line of HTML, no account, free.', '#api', 'Embed the calculator'],
@@ -563,7 +568,6 @@ export default function ScoreRace() {
             </a>
           ))}
         </section>
-        </details>
       </div>
     </>
   )

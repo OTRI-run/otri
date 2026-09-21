@@ -15,7 +15,7 @@ const DOCS = {
 const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
 
 function Eyebrow({ children, className = '' }) {
-  return <p className={`text-sm font-semibold tracking-[.04em] text-slate-500 ${className}`}>{children}</p>
+  return <p className={`font-mono text-[10px] tracking-[.08em] text-slate-500 ${className}`}>{children}</p>
 }
 
 function Heading({ children, className = '' }) {
@@ -65,50 +65,50 @@ export default function Home() {
   return (
     <>
       {/* Hero */}
-      <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_50%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
+      <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
         <div className={`${CONTAINER} py-9 sm:py-14 lg:py-16`}>
-          <div className="mx-auto max-w-[800px] text-center">
-            <h1 className="text-[clamp(38px,6vw,68px)] font-bold leading-[1.08] tracking-[-.05em] text-[#0b1220]">
-              Open Trail<br /> <Gradient>Running Index</Gradient>
+          <div className="mx-auto max-w-[760px]">
+            <div className="font-mono text-[10px] font-medium tracking-[.1em] text-blue-600">
+              OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> PROTOTYPE
+            </div>
+            <h1 className="mt-4 text-[clamp(36px,6vw,64px)] font-bold leading-[1.08] tracking-[-.055em] text-[#0b1220]">
+              Your trail run. <Gradient>One clear score.</Gradient>
             </h1>
-            <p className="mx-auto mt-5 max-w-[620px] text-[19px] leading-7 text-slate-600 sm:text-[22px] sm:leading-8">
-              Compare trail running performances with a score based on the course and finish time.
+            <p className="mt-4 max-w-[620px] text-[16px] leading-6 text-slate-600 sm:text-[18px] sm:leading-7">
+              OTRI turns your course and finish time into a score you can compare across trail races.
             </p>
-            <div className="mx-auto mt-6 grid max-w-[720px] gap-3 sm:mt-8 sm:grid-cols-2">
+            <div className="mt-6 grid gap-3 sm:mt-8 sm:grid-cols-2">
               {[
                 {
                   Icon: Calculator,
-                  audience: 'For runners',
-                  title: 'Calculate my score',
-                  text: 'Pick a course. Add your time. See your score.',
+                  title: 'Index calculator',
+                  text: 'Choose a course and enter your finish time.',
                   href: '#calculator',
                 },
                 {
                   Icon: Upload,
-                  audience: 'For race organizers',
-                  title: 'Score all finishers',
-                  text: 'Add your course and results. Get everyone’s scores.',
+                  title: 'Score a race',
+                  text: 'Upload a course and results to score every finisher.',
                   href: '#score',
                 },
-              ].map(({ Icon, audience, title, text, href }) => (
+              ].map(({ Icon, title, text, href }) => (
                 <a
                   key={href}
                   href={href}
-                  className="group relative flex min-w-0 items-center gap-4 rounded-2xl border border-blue-200 bg-white p-5 text-inherit no-underline shadow-[0_10px_28px_rgba(15,23,42,.04)] transition hover:border-blue-500 hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 sm:flex-col sm:p-6"
+                  className="group flex min-w-0 items-center gap-4 rounded-2xl border border-blue-200 bg-white p-5 text-inherit no-underline shadow-[0_10px_28px_rgba(15,23,42,.04)] transition hover:border-blue-500 hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 sm:items-start sm:p-6"
                 >
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
                     <Icon size={22} aria-hidden="true" />
                   </span>
-                  <span className="min-w-0 flex-1 text-left sm:text-center">
-                    <span className="mb-2 block text-[17px] font-semibold text-slate-600">{audience}</span>
-                    <span className="block text-[24px] font-bold leading-7 tracking-[-.02em] text-blue-700">{title}</span>
-                    <span className="mt-3 block text-[16px] leading-6 text-slate-600">{text}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[20px] font-bold leading-6 tracking-[-.02em] text-blue-700">{title}</span>
+                    <span className="mt-2 block text-[13px] leading-5 text-slate-600">{text}</span>
                   </span>
-                  <ArrowRight size={18} aria-hidden="true" className="shrink-0 text-blue-600 transition group-hover:translate-x-1 sm:absolute sm:right-5 sm:top-5" />
+                  <ArrowRight size={18} aria-hidden="true" className="mt-1 shrink-0 text-blue-600 transition group-hover:translate-x-1" />
                 </a>
               ))}
             </div>
-            <p className="mt-5 text-[15px] text-slate-500">Free to use · No account needed · Open scoring</p>
+            <p className="mt-4 text-[12px] text-slate-500">Free to use · No account needed · Open scoring</p>
           </div>
         </div>
       </section>
@@ -127,7 +127,7 @@ export default function Home() {
               </Heading>
             </div>
             <div className="min-w-0">
-              <p className="text-base leading-7 text-slate-500">
+              <p className="text-sm leading-7 text-slate-500">
                 No sign-up to see your scores. Keep them as a file, share the podium, or turn the race into a public page with one
                 click: free, and nobody has to approve you.
               </p>
@@ -172,7 +172,7 @@ export default function Home() {
               </Heading>
             </div>
             <div className="min-w-0">
-              <p className="text-base leading-7 text-slate-500">
+              <p className="text-sm leading-7 text-slate-500">
                 Pick a race or upload a GPX, set a target finish time, and watch the score update live —
                 with the full reasoning underneath.
               </p>
@@ -195,7 +195,7 @@ export default function Home() {
                 <small className="flex items-center gap-2 font-mono text-[9px] tracking-[.08em] text-blue-600">
                   <Icon size={14} /> {title}
                 </small>
-                <b className="mt-2 block text-base leading-7 text-[#0b1220]">{desc}</b>
+                <b className="mt-2 block text-sm leading-6 text-[#0b1220]">{desc}</b>
                 <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-slate-400 transition group-hover:text-blue-600">
                   {href.startsWith('#') ? 'Try it' : 'Read how'} <ArrowUpRight size={12} />
                 </span>
@@ -222,7 +222,7 @@ export default function Home() {
                 <br />
                 <Gradient>Every number explained.</Gradient>
               </Heading>
-              <p className="mt-5 max-w-[440px] text-base leading-7 text-slate-500">
+              <p className="mt-5 max-w-[440px] text-sm leading-7 text-slate-500">
                 {races.every((race) => race.is_demo) ? 'Demonstration races' : 'Races'} their organizers published, all scored with the same open model. A score depends only on the course and the
                 runner's own finish time — never on who else raced. Open one to see its leaderboard.
               </p>
@@ -264,7 +264,7 @@ export default function Home() {
                 <small className="flex items-center gap-2 font-mono text-[9px] text-white">
                   <Icon size={14} className="text-blue-400" /> {title}
                 </small>
-                <p className="mt-3 text-[15px] leading-6 text-slate-400">{desc}</p>
+                <p className="mt-3 text-[11px] leading-5 text-slate-400">{desc}</p>
                 <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-300 transition group-hover:text-white">
                   Read <ArrowUpRight size={12} />
                 </span>
@@ -278,7 +278,7 @@ export default function Home() {
               <div className="min-w-0">
                 <p className="font-mono text-[10px] tracking-[.08em] text-blue-400">CONTRIBUTE</p>
                 <h3 className="mt-3 text-[clamp(26px,3.2vw,38px)] font-bold leading-[1.02] tracking-[-.045em]">Help improve the model and the course measurement.</h3>
-                <p className="mt-3 text-base leading-7 text-slate-400">
+                <p className="mt-3 text-sm leading-6 text-slate-400">
                   OTRI belongs to nobody's federation. The model has known limits, written down where everyone can read them, and it gets better the way open software does: someone shows where it is wrong, with a course or a paper, and the fix becomes a new version.
                 </p>
                 <a href={`${GITHUB_URL}/blob/main/CONTRIBUTING.md`} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-white px-4 text-[13px] font-semibold text-[#0b1220] no-underline hover:bg-blue-50">
@@ -294,7 +294,7 @@ export default function Home() {
                 ].map(([title, text, cta, href]) => (
                   <a key={title} href={href} className="group block bg-[#0b1220] p-5 text-white no-underline transition hover:bg-[#101a33]">
                     <p className="text-sm font-bold tracking-[-.01em]">{title}</p>
-                    <p className="mt-2 text-[15px] leading-6 text-slate-400">{text}</p>
+                    <p className="mt-2 text-[12px] leading-5 text-slate-400">{text}</p>
                     <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-300 transition group-hover:text-white">
                       {cta} <ArrowUpRight size={12} />
                     </span>

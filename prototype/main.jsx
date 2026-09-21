@@ -123,6 +123,10 @@ function Header({ tab }) {
       <header className="sticky top-0 z-50 h-[68px] border-b border-slate-200/90 bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-full min-w-0 w-[min(1120px,calc(100%-28px))] items-center">
           <Logo href="#home" />
+          <div className="ml-4 hidden shrink-0 items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 font-mono text-[9px] font-medium tracking-[.08em] text-blue-600 lg:flex">
+            <i className="h-1.5 w-1.5 rounded-full bg-blue-600 shadow-[0_0_0_3px_#dbeafe]" />
+            PROTOTYPE <span className="text-slate-400">v0.x</span>
+          </div>
           <nav className="ml-auto hidden shrink-0 items-center gap-5 md:flex lg:gap-7">
             {NAV.map((item) => (
               <NavLink key={item.id} item={item} active={tab === item.id} />
