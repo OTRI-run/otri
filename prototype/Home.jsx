@@ -227,56 +227,11 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 01 / Score a race */}
+      {/* 01 / Calculate */}
       <section className="border-t border-slate-200 bg-slate-50 py-14 sm:py-20">
         <div className={CONTAINER}>
           <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
             <div className="hidden font-mono text-xs text-blue-600 md:block">01</div>
-            <div className="min-w-0">
-              <Eyebrow className="mb-3">FOR RACES</Eyebrow>
-              <Heading>
-                Score your race.
-                <br />
-                <Gradient>Then show it off.</Gradient>
-              </Heading>
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm leading-7 text-slate-500">
-                No sign-up to see your scores. Keep them as a file, share the podium, or turn the race into a public page with one
-                click: free, and nobody has to approve you.
-              </p>
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                <a className={primaryButton} href="#score">
-                  Score my race <ArrowRight size={15} />
-                </a>
-                <a className={secondaryButton} href="#score?example=1">
-                  See an example result
-                </a>
-              </div>
-            </div>
-          </div>
-          <div className="mt-10 grid grid-cols-1 border-y border-slate-200 sm:grid-cols-3">
-            {[
-              [Upload, 'BRING TWO FILES', 'The course as a GPX and the results as CSV or Excel. There is an example race to try first.', '#score'],
-              [ShieldCheck, 'GET EVERY SCORE', 'The file is checked row by row, the course is measured, and the model says how far each number can be trusted.', '#score'],
-              [Users, 'PUBLISH AND SHARE', 'A leaderboard page for your runners, podium images and a post for your channels, the calculator on your site.', '#score'],
-            ].map(([Icon, title, desc, href], index) => (
-              <a key={title} href={href} className={`group block min-w-0 px-0 py-5 text-inherit no-underline sm:px-5 ${index < 2 ? 'border-b border-slate-200 sm:border-b-0 sm:border-r' : ''}`}>
-                <small className="flex items-center gap-2 font-mono text-[9px] tracking-[.06em] text-blue-600">
-                  <Icon size={14} /> {title}
-                </small>
-                <p className="mt-2 text-sm font-semibold leading-6 text-[#0b1220]">{desc}</p>
-              </a>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 02 / Calculate */}
-      <section className="border-t border-slate-200 bg-white py-14 sm:py-20">
-        <div className={CONTAINER}>
-          <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
-            <div className="hidden font-mono text-xs text-blue-600 md:block">02</div>
             <div className="min-w-0">
               <Eyebrow className="mb-3">FOR RUNNERS</Eyebrow>
               <Heading>
@@ -313,6 +268,51 @@ export default function Home() {
                 <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-slate-400 transition group-hover:text-blue-600">
                   {href.startsWith('#') ? 'Try it' : 'Read how'} <ArrowUpRight size={12} />
                 </span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 02 / Score a race */}
+      <section className="border-t border-slate-200 bg-white py-14 sm:py-20">
+        <div className={CONTAINER}>
+          <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
+            <div className="hidden font-mono text-xs text-blue-600 md:block">02</div>
+            <div className="min-w-0">
+              <Eyebrow className="mb-3">FOR RACES</Eyebrow>
+              <Heading>
+                Score your race.
+                <br />
+                <Gradient>Then show it off.</Gradient>
+              </Heading>
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm leading-7 text-slate-500">
+                No sign-up to see your scores. Keep them as a file, share the podium, or turn the race into a public page with one
+                click: free, and nobody has to approve you.
+              </p>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <a className={primaryButton} href="#score">
+                  Score my race <ArrowRight size={15} />
+                </a>
+                <a className={secondaryButton} href="#score?example=1">
+                  See an example result
+                </a>
+              </div>
+            </div>
+          </div>
+          <div className="mt-10 grid grid-cols-1 border-y border-slate-200 sm:grid-cols-3">
+            {[
+              [Upload, 'BRING TWO FILES', 'The course as a GPX and the results as CSV or Excel. There is an example race to try first.', '#score'],
+              [ShieldCheck, 'GET EVERY SCORE', 'The file is checked row by row, the course is measured, and the model says how far each number can be trusted.', '#score'],
+              [Users, 'PUBLISH AND SHARE', 'A leaderboard page for your runners, podium images and a post for your channels, the calculator on your site.', '#score'],
+            ].map(([Icon, title, desc, href], index) => (
+              <a key={title} href={href} className={`group block min-w-0 px-0 py-5 text-inherit no-underline sm:px-5 ${index < 2 ? 'border-b border-slate-200 sm:border-b-0 sm:border-r' : ''}`}>
+                <small className="flex items-center gap-2 font-mono text-[9px] tracking-[.06em] text-blue-600">
+                  <Icon size={14} /> {title}
+                </small>
+                <p className="mt-2 text-sm font-semibold leading-6 text-[#0b1220]">{desc}</p>
               </a>
             ))}
           </div>
@@ -359,7 +359,8 @@ export default function Home() {
       <section className="bg-[#0b1220] py-14 text-white sm:py-20">
         <div className={CONTAINER}>
           <div className="flex items-center justify-between">
-            <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">04 / METHOD</p>
+            {/* Section 03 only appears once a race has been scored, so this one counts itself. */}
+            <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">{races.length > 0 ? '04' : '03'} / METHOD</p>
             <span className="font-mono text-[9px] tracking-[.08em] text-blue-400">NO BLACK BOX</span>
           </div>
           <h2 className="mt-5 text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em]">Built in the open.</h2>
