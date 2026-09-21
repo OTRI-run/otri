@@ -20,12 +20,12 @@ const STEPS = ['Creating the event', 'Measuring the course', 'Scoring the result
 function Waiting({ race }) {
   const units = useUnits()
   return (
-    <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
-      <p className="font-mono text-[9px] tracking-[.08em] text-blue-700">WAITING IN THIS BROWSER</p>
-      <p className="mt-1 text-base font-bold tracking-[-.02em] text-[#0b1220]">{race.raceName || 'Your scored race'}</p>
-      <ul className="mt-2 space-y-1 text-xs text-slate-600">
-        <li className="flex items-center gap-2"><MapIcon size={13} className="shrink-0 text-blue-600" /> <span className="min-w-0 truncate">{race.gpx.name} · {formatDistance(race.course.distance_km, units)} · {formatElevation(race.course.elevation_gain_m, units, { sign: '+' })}</span></li>
-        <li className="flex items-center gap-2"><FileSpreadsheet size={13} className="shrink-0 text-blue-600" /> <span className="min-w-0 truncate">{race.results.name} · {race.summary?.finishers ?? 0} finishers scored</span></li>
+    <div className="rounded-[3px] border border-rule bg-wash/60 p-4">
+      <p className="font-mono text-[9px] tracking-[.08em] text-accent">WAITING IN THIS BROWSER</p>
+      <p className="mt-1 text-base font-bold tracking-[-.02em] text-ink">{race.raceName || 'Your scored race'}</p>
+      <ul className="mt-2 space-y-1 text-xs text-muted">
+        <li className="flex items-center gap-2"><MapIcon size={13} className="shrink-0 text-accent" /> <span className="min-w-0 truncate">{race.gpx.name} · {formatDistance(race.course.distance_km, units)} · {formatElevation(race.course.elevation_gain_m, units, { sign: '+' })}</span></li>
+        <li className="flex items-center gap-2"><FileSpreadsheet size={13} className="shrink-0 text-accent" /> <span className="min-w-0 truncate">{race.results.name} · {race.summary?.finishers ?? 0} finishers scored</span></li>
       </ul>
     </div>
   )
@@ -95,7 +95,7 @@ export default function PublishScoredRace({ session }) {
         intro="Score a race on the public site first and press “Publish this race”: the course and the results come along, so there is nothing to upload twice. A scored race waits for a day in the browser it was scored in."
       >
         <div className="mt-8 flex flex-wrap gap-3">
-          <a href="../#score" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 px-4 text-[13px] font-semibold text-white no-underline">
+          <a href="../#score" className="inline-flex min-h-11 items-center gap-2 rounded-[3px] bg-gradient-to-r from-blue-700 to-blue-500 px-4 text-[13px] font-semibold text-white no-underline">
             Score my race <ArrowRight size={15} />
           </a>
           {session && <Button variant="secondary" onClick={() => navigate('/events')}>Your events</Button>}
@@ -117,10 +117,10 @@ export default function PublishScoredRace({ session }) {
               <Button onClick={() => navigate('/register')}>Create my free account <ArrowRight size={15} /></Button>
               <Button variant="secondary" onClick={() => navigate('/login')}>I already have an account</Button>
             </div>
-            <p className="mt-4 text-xs leading-5 text-slate-500">
+            <p className="mt-4 text-xs leading-5 text-muted">
               You are signed in as soon as the account exists and come straight back here. We email you a link to confirm the address; you only need it before you press Publish.
             </p>
-            <button type="button" onClick={discard} className="mt-3 text-xs font-semibold text-slate-500 hover:text-red-600">Forget this race</button>
+            <button type="button" onClick={discard} className="mt-3 text-xs font-semibold text-muted hover:text-red-600">Forget this race</button>
           </Card>
         }
       />
@@ -175,10 +175,10 @@ export default function PublishScoredRace({ session }) {
             </div>
 
             {busy && (
-              <ol className="grid gap-1.5 rounded-xl bg-slate-50 px-4 py-3 text-sm">
+              <ol className="grid gap-1.5 rounded-[3px] bg-slate-50 px-4 py-3 text-sm">
                 {STEPS.map((label, index) => (
-                  <li key={label} className={`flex items-center gap-2 ${index > step ? 'text-slate-400' : 'text-[#0b1220]'}`}>
-                    {index < step ? <CheckCircle2 size={15} className="text-emerald-600" /> : index === step ? <Loader2 size={15} className="animate-spin text-blue-600" /> : <span className="inline-block h-[15px] w-[15px] rounded-full border border-slate-300" />}
+                  <li key={label} className={`flex items-center gap-2 ${index > step ? 'text-muted' : 'text-ink'}`}>
+                    {index < step ? <CheckCircle2 size={15} className="text-emerald-600" /> : index === step ? <Loader2 size={15} className="animate-spin text-accent" /> : <span className="inline-block h-[15px] w-[15px] rounded-full border border-rule" />}
                     {label}
                   </li>
                 ))}
@@ -194,8 +194,8 @@ export default function PublishScoredRace({ session }) {
                 Not now
               </Button>
             </div>
-            {!busy && missing && <p className="text-xs text-slate-500">{missing}</p>}
-            <p className="text-xs leading-5 text-slate-500">Building the page publishes nothing. The next screen shows the leaderboard as runners will see it, with one Publish button.</p>
+            {!busy && missing && <p className="text-xs text-muted">{missing}</p>}
+            <p className="text-xs leading-5 text-muted">Building the page publishes nothing. The next screen shows the leaderboard as runners will see it, with one Publish button.</p>
           </form>
         </Card>
       }

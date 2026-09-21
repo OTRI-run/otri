@@ -13,25 +13,38 @@ const DOCS = {
   organizer: `${GITHUB_URL}/blob/main/docs/organizer-upload.md`,
 }
 
-const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
+const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-64px))]'
 
 function Eyebrow({ children, className = '' }) {
-  return <p className={`font-mono text-[10px] tracking-[.08em] text-slate-500 ${className}`}>{children}</p>
+  return <p className={`font-mono text-[10px] uppercase tracking-[.12em] text-muted ${className}`}>{children}</p>
+}
+
+/** A section opens the way a ruled page does: a number, a rule, then what the section is. */
+function SectionLabel({ n, children }) {
+  return (
+    <p className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[.12em] text-muted">
+      <span className="text-accent">{n}</span>
+      <span className="h-3 w-px bg-rule" />
+      <span>{children}</span>
+    </p>
+  )
 }
 
 function Heading({ children, className = '' }) {
-  return <h2 className={`text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220] ${className}`}>{children}</h2>
+  return <h2 className={`text-[clamp(28px,3.6vw,42px)] font-normal leading-[1.1] tracking-[-.03em] text-ink ${className}`}>{children}</h2>
 }
 
 function Gradient({ children }) {
-  return <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">{children}</span>
+  return <span className="text-accent">{children}</span>
 }
 
 const primaryButton =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 px-4 text-[13px] font-semibold text-white no-underline shadow-[0_10px_28px_rgba(37,99,235,.2)] hover:from-blue-800 hover:to-blue-600'
+  'inline-flex min-h-10 items-center justify-center gap-1.5 rounded-[3px] bg-accent px-4 text-[12px] font-semibold text-white no-underline hover:bg-accent-deep'
 const secondaryButton =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white/90 px-4 text-[13px] font-semibold text-[#0b1220] no-underline hover:border-blue-300'
-const textLink = 'inline-flex items-center gap-1 text-xs font-semibold text-blue-600 no-underline hover:underline'
+  'inline-flex min-h-10 items-center justify-center gap-1.5 rounded-[3px] border border-rule bg-sheet px-4 text-[12px] font-semibold text-ink no-underline hover:border-accent'
+// Secondary actions are a link with a rule under it, the way a footnote is marked, not a button.
+const textLink =
+  'inline-flex items-center gap-1 border-b border-rule pb-1 text-[12px] font-semibold text-accent no-underline hover:border-accent'
 
 // The landing page's dark "index engine" card, with every row a link into the prototype.
 // A handful of real (demo) scores scrolling by, each a link to the runner: the quickest way to
@@ -40,16 +53,14 @@ function ScoreTicker({ entries }) {
   if (!entries.length) return null
   const rows = [...entries, ...entries]
   return (
-    <div className="relative mt-1 h-[88px] overflow-hidden border-b border-slate-700/70" aria-label="Recent scores">
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-4 bg-gradient-to-b from-[#0b1730] to-transparent" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-4 bg-gradient-to-t from-[#0f2a5f] to-transparent" />
+    <div className="relative h-[92px] overflow-hidden border-b border-rule" aria-label="Recent scores">
       <ul className="otri-ticker">
         {rows.map((entry, index) => (
-          <li key={`${entry.runner_id ?? entry.name}-${index}`} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-1 font-mono text-[10px]">
-            <a href={entry.runner_id ? `#runners/${encodeURIComponent(entry.runner_id)}` : `#races/${encodeURIComponent(entry.race_id)}`} className="min-w-0 truncate text-slate-300 no-underline hover:text-white">
-              {entry.name} <span className="text-slate-500">· {entry.race}</span>
+          <li key={`${entry.runner_id ?? entry.name}-${index}`} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-rule/60 py-1.5 font-mono text-[10px]">
+            <a href={entry.runner_id ? `#runners/${encodeURIComponent(entry.runner_id)}` : `#races/${encodeURIComponent(entry.race_id)}`} className="min-w-0 truncate text-ink-2 no-underline hover:text-accent">
+              {entry.name} <span className="text-muted">· {entry.race}</span>
             </a>
-            <span className="font-bold text-blue-300">{entry.score}</span>
+            <span className="font-semibold text-accent">{entry.score}</span>
           </li>
         ))}
       </ul>
@@ -65,36 +76,36 @@ function EngineCard({ raceCount, resultCount, scoringVersion, ticker }) {
     [Users, 'Find a runner', 'SEARCH · PROFILES', '#runners'],
   ]
   return (
-    <div className="min-w-0 overflow-hidden rounded-2xl bg-[linear-gradient(145deg,#08111f_0%,#0b1730_58%,#123b85_100%)] p-4 text-white shadow-[0_24px_70px_rgba(11,18,32,.2)] sm:p-5">
-      <div className="flex items-center justify-between font-mono text-[8px] tracking-[.08em] text-slate-400">
+    <div className="min-w-0 overflow-hidden border border-rule bg-sheet">
+      <div className="flex items-center justify-between border-b border-rule bg-wash px-4 py-2 font-mono text-[9px] tracking-[.12em] text-muted">
         <span>OTRI / OPEN SCORING</span>
         <span className="flex items-center gap-1.5">
-          <i className="h-1.5 w-1.5 rounded-full bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,.9)]" />
+          <i className="h-1.5 w-1.5 rounded-full bg-accent" />
           LIVE API
         </span>
       </div>
-      <div className="border-b border-slate-700/70 py-7">
-        <small className="font-mono text-[8px] tracking-[.08em] text-blue-300">WHAT IS AN OTRI SCORE?</small>
-        <strong className="mt-2 block bg-gradient-to-r from-white to-blue-200 bg-clip-text pb-1 text-4xl font-bold leading-[1.25] tracking-[-.05em] text-transparent">
-          Course + time = score.
+      <div className="border-b border-rule px-4 py-6">
+        <small className="font-mono text-[9px] tracking-[.12em] text-muted">WHAT IS AN OTRI SCORE?</small>
+        <strong className="mt-2 block pb-1 text-[30px] font-normal leading-[1.15] tracking-[-.03em] text-ink">
+          Course + time = <span className="text-accent">score.</span>
         </strong>
-        <span className="mt-1 block text-xs leading-5 text-slate-400">
+        <span className="mt-1 block text-xs leading-5 text-muted">
           One number for a finish time on any trail course, so a hilly 25 km and a flat 50 km can be compared. 1000 is
           world-record level, and your score never depends on who else raced.
         </span>
       </div>
-      <ScoreTicker entries={ticker} />
-      <div>
+      <div className="px-4"><ScoreTicker entries={ticker} /></div>
+      <div className="px-4">
         {rows.map(([Icon, title, desc, href]) => (
           <a
             key={title}
             href={href}
-            className="group grid min-w-0 grid-cols-[22px_minmax(0,1fr)_auto_14px] items-center gap-2 border-b border-slate-700/70 py-4 text-white no-underline transition hover:bg-white/5"
+            className="group grid min-w-0 grid-cols-[22px_minmax(0,1fr)_auto_14px] items-center gap-2 border-b border-rule py-3.5 text-ink no-underline transition hover:bg-wash"
           >
-            <Icon size={16} className="text-blue-400" />
+            <Icon size={16} className="text-accent" />
             <span className="truncate text-xs font-semibold">{title}</span>
-            <small className="font-mono text-[8px] text-slate-500">{desc}</small>
-            <ArrowRight size={13} className="text-slate-600 transition group-hover:translate-x-0.5 group-hover:text-blue-300" />
+            <small className="font-mono text-[9px] tracking-[.1em] text-muted">{desc}</small>
+            <ArrowRight size={13} className="text-muted transition group-hover:translate-x-0.5 group-hover:text-accent" />
           </a>
         ))}
       </div>
@@ -155,22 +166,22 @@ export default function Home() {
   return (
     <>
       {/* Hero */}
-      <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
+      <section className="border-b border-rule bg-sheet">
         <div className={`${CONTAINER} grid min-w-0 items-center gap-12 py-14 sm:py-20 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-20 lg:py-24`}>
           <div className="min-w-0">
-            <div className="font-mono text-[10px] font-medium tracking-[.1em] text-blue-600">
-              OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> PROTOTYPE
+            <div className="font-mono text-[10px] uppercase tracking-[.12em] text-muted">
+              Open Trail Running Index <span className="text-rule">/</span> <span className="text-accent">Prototype</span>
             </div>
-            <h1 className="mt-5 max-w-[760px] text-[clamp(44px,7vw,84px)] font-bold leading-[1.08] tracking-[-.065em] text-[#0b1220]">
+            <h1 className="mt-5 max-w-[760px] text-[clamp(34px,5vw,58px)] font-normal leading-[1.1] tracking-[-.035em] text-ink">
               The open score
               <br />
-              <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">for any trail race.</em>
+              <em className="not-italic text-accent">for any trail race.</em>
             </h1>
             {/* The words that carry the promise are set in ink and semibold; the rest stays grey, so the
                 paragraph can be read at a glance by its dark words alone. */}
-            <p className="mt-6 max-w-[620px] text-[15px] leading-7 text-slate-500 sm:text-[17px] [&_b]:whitespace-nowrap [&_b]:font-semibold [&_b]:text-[#0b1220]">
+            <p className="mt-6 max-w-[620px] text-[15px] leading-7 text-muted sm:text-[17px] [&_b]:whitespace-nowrap [&_b]:font-semibold [&_b]:text-ink">
               OTRI turns a <b>finish time</b> on <b>any trail course</b> into{' '}
-              <b className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text !text-transparent">one comparable score</b>. A <b>calculator</b>, not a
+              <b className="text-accent">one comparable score</b>. A <b>calculator</b>, not a
               governing body, and <b>no black box</b>: every number <b>explains itself</b>. Made for the <b>local race</b> as much as the famous one:{' '}
               <b>free</b>, <b>no account</b>, <b>no approval</b>.
             </p>
@@ -195,15 +206,15 @@ export default function Home() {
                   more: ['See an example', '#score?example=1'],
                 },
               ].map(({ who, Icon, title, text, href, action, more }) => (
-                <div key={who} className="flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+                <div key={who} className="flex min-w-0 flex-col border border-rule bg-wash p-4">
                   <span className="flex items-center gap-2.5">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-accent text-white">
                       <Icon size={18} />
                     </span>
-                    <span className="text-[19px] font-bold uppercase leading-6 tracking-[-.01em] text-blue-700">{who}</span>
+                    <span className="font-mono text-[10px] uppercase tracking-[.12em] text-muted">{who}</span>
                   </span>
-                  <b className="mt-3 block text-[16px] leading-6 tracking-[-.02em] text-[#0b1220]">{title}</b>
-                  <p className="mt-1 flex-1 text-[13px] leading-5 text-slate-500">{text}</p>
+                  <b className="mt-3 block text-[16px] font-semibold leading-6 tracking-[-.02em] text-ink">{title}</b>
+                  <p className="mt-1 flex-1 text-[13px] leading-5 text-muted">{text}</p>
                   <a className={`${primaryButton} mt-4`} href={href}>
                     {action} <ArrowRight size={15} />
                   </a>
@@ -216,39 +227,57 @@ export default function Home() {
             {/* The fastest way to understand OTRI is to see it: one press scores the example race. */}
             <a
               href="#score?example=1"
-              className="group mt-3 flex max-w-[680px] items-center gap-3 rounded-xl bg-[#0b1220] px-4 py-2.5 text-white no-underline transition hover:bg-[#13203a]"
+              className="group mt-3 flex max-w-[680px] items-center gap-3 border border-rule bg-wash px-4 py-3 text-ink no-underline transition hover:border-accent"
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-400">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center bg-accent">
                 <Play size={13} className="ml-0.5 fill-white text-white" />
               </span>
               <span className="min-w-0 flex-1 text-[13px] leading-5">
-                <b className="font-semibold">See a race scored, live.</b> <span className="text-slate-300">The course on the map and 100 finishers, in one click.</span>
+                <b className="font-semibold">See a race scored, live.</b> <span className="text-muted">The course on the map and 100 finishers, in one click.</span>
               </span>
-              <ArrowRight size={16} className="shrink-0 text-cyan-300 transition group-hover:translate-x-1" />
+              <ArrowRight size={16} className="shrink-0 text-accent transition group-hover:translate-x-1" />
             </a>
-            <p className="mt-4 text-sm text-slate-500">
+            <p className="mt-4 text-sm text-muted">
               Building something?{' '}
-              <a href="#api" className="font-semibold text-blue-600 no-underline hover:underline">
+              <a href="#api" className="font-semibold text-accent no-underline hover:underline">
                 API and embeddable calculator →
               </a>
             </p>
-            <p className="mt-6 max-w-[620px] text-sm leading-6 text-slate-500">
+            <p className="mt-6 max-w-[620px] text-sm leading-6 text-muted">
               One open, versioned model.{' '}
-              <a href={GITHUB_URL} className="inline-flex items-center gap-1 whitespace-nowrap font-semibold text-[#0b1220] no-underline hover:text-blue-600">
+              <a href={GITHUB_URL} className="inline-flex items-center gap-1 whitespace-nowrap font-semibold text-ink no-underline hover:text-accent">
                 <GitBranch size={14} /> The code and the method are on GitHub <ArrowUpRight size={13} />
               </a>{' '}
-              and <a href="#contribute" className="font-semibold text-blue-600 no-underline hover:underline">you can help improve both</a>.
+              and <a href="#contribute" className="font-semibold text-accent no-underline hover:underline">you can help improve both</a>.
             </p>
           </div>
           <EngineCard raceCount={races.length} resultCount={resultCount} scoringVersion={scoringVersion} ticker={ticker} />
         </div>
       </section>
 
+      {/* The measured strip. Every cell is a number the index actually holds, read straight off the
+          API, in the same ruled register a results sheet uses. */}
+      <section className="border-b border-rule bg-wash">
+        <div className={`${CONTAINER} grid grid-cols-2 border-x border-rule sm:grid-cols-4`}>
+          {[
+            ['Races scored', races.length || '—'],
+            ['Results indexed', resultCount || '—'],
+            ['Model', scoringVersion ? modelLabel(scoringVersion) : '—'],
+            ['Scale', '0 – 1000'],
+          ].map(([label, value], i) => (
+            <div key={label} className={`px-5 py-4 ${i ? 'border-l border-rule' : ''} ${i === 2 ? 'border-l-0 sm:border-l' : ''}`}>
+              <p className="font-mono text-[9px] uppercase tracking-[.12em] text-muted">{label}</p>
+              <p className="mt-1 font-mono text-[20px] text-ink">{value}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* 01 / Score a race */}
-      <section className="bg-white py-14 sm:py-20">
+      <section className="border-b border-rule bg-sheet py-14 sm:py-20">
         <div className={CONTAINER}>
           <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
-            <div className="hidden font-mono text-xs text-blue-600 md:block">01</div>
+            <div className="hidden font-mono text-xs text-accent md:block">01</div>
             <div className="min-w-0">
               <Eyebrow className="mb-3">FOR RACES</Eyebrow>
               <Heading>
@@ -258,7 +287,7 @@ export default function Home() {
               </Heading>
             </div>
             <div className="min-w-0">
-              <p className="text-sm leading-7 text-slate-500">
+              <p className="text-sm leading-7 text-muted">
                 No sign-up to see your scores. Keep them as a file, share the podium, or turn the race into a public page with one
                 click: free, and nobody has to approve you.
               </p>
@@ -272,17 +301,17 @@ export default function Home() {
               </div>
             </div>
           </div>
-          <div className="mt-10 grid grid-cols-1 border-y border-slate-200 sm:grid-cols-3">
+          <div className="mt-10 grid grid-cols-1 border-y border-rule sm:grid-cols-3">
             {[
               [Upload, 'BRING TWO FILES', 'The course as a GPX and the results as CSV or Excel. There is an example race to try first.', '#score'],
               [ShieldCheck, 'GET EVERY SCORE', 'The file is checked row by row, the course is measured, and the model says how far each number can be trusted.', '#score'],
               [Users, 'PUBLISH AND SHARE', 'A leaderboard page for your runners, podium images and a post for your channels, the calculator on your site.', '#score'],
             ].map(([Icon, title, desc, href], index) => (
-              <a key={title} href={href} className={`group block min-w-0 px-0 py-5 text-inherit no-underline sm:px-5 ${index < 2 ? 'border-b border-slate-200 sm:border-b-0 sm:border-r' : ''}`}>
-                <small className="flex items-center gap-2 font-mono text-[9px] tracking-[.06em] text-blue-600">
+              <a key={title} href={href} className={`group block min-w-0 px-0 py-5 text-inherit no-underline sm:px-5 ${index < 2 ? 'border-b border-rule sm:border-b-0 sm:border-r' : ''}`}>
+                <small className="flex items-center gap-2 font-mono text-[9px] tracking-[.06em] text-accent">
                   <Icon size={14} /> {title}
                 </small>
-                <p className="mt-2 text-sm font-semibold leading-6 text-[#0b1220]">{desc}</p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-ink">{desc}</p>
               </a>
             ))}
           </div>
@@ -290,10 +319,10 @@ export default function Home() {
       </section>
 
       {/* 02 / Calculate */}
-      <section className="border-t border-slate-200 bg-white py-14 sm:py-20">
+      <section className="border-b border-rule bg-sheet py-14 sm:py-20">
         <div className={CONTAINER}>
           <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
-            <div className="hidden font-mono text-xs text-blue-600 md:block">02</div>
+            <div className="hidden font-mono text-xs text-accent md:block">02</div>
             <div className="min-w-0">
               <Eyebrow className="mb-3">FOR RUNNERS</Eyebrow>
               <Heading>
@@ -303,7 +332,7 @@ export default function Home() {
               </Heading>
             </div>
             <div className="min-w-0">
-              <p className="text-sm leading-7 text-slate-500">
+              <p className="text-sm leading-7 text-muted">
                 Pick a race or upload a GPX, set a target finish time, and watch the score update live —
                 with the full reasoning underneath.
               </p>
@@ -312,7 +341,7 @@ export default function Home() {
               </a>
             </div>
           </div>
-          <div className="mt-10 grid grid-cols-1 border-y border-slate-200 sm:grid-cols-3">
+          <div className="mt-10 grid grid-cols-1 border-y border-rule sm:grid-cols-3">
             {[
               [Mountain, 'COURSE', 'Distance, climb and steepness, measured on the server.', '#calculator'],
               [Timer, 'TIME', 'A target, not a result. Drag it and see what it is worth.', '#calculator'],
@@ -321,13 +350,13 @@ export default function Home() {
               <a
                 key={title}
                 href={href}
-                className={`group block min-w-0 px-2 py-5 no-underline sm:px-5 ${index > 0 ? 'border-t border-slate-200 sm:border-l sm:border-t-0' : ''}`}
+                className={`group block min-w-0 px-2 py-5 no-underline sm:px-5 ${index > 0 ? 'border-t border-rule sm:border-l sm:border-t-0' : ''}`}
               >
-                <small className="flex items-center gap-2 font-mono text-[9px] tracking-[.08em] text-blue-600">
+                <small className="flex items-center gap-2 font-mono text-[9px] tracking-[.08em] text-accent">
                   <Icon size={14} /> {title}
                 </small>
-                <b className="mt-2 block text-sm leading-6 text-[#0b1220]">{desc}</b>
-                <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-slate-400 transition group-hover:text-blue-600">
+                <b className="mt-2 block text-sm leading-6 text-ink">{desc}</b>
+                <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-muted transition group-hover:text-accent">
                   {href.startsWith('#') ? 'Try it' : 'Read how'} <ArrowUpRight size={12} />
                 </span>
               </a>
@@ -338,11 +367,11 @@ export default function Home() {
 
       {/* 03 / Races: only when there is a scored race to show */}
       {races.length > 0 && (
-      <section id="races-preview" className="bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] py-14 sm:py-20">
+      <section id="races-preview" className="border-b border-rule bg-wash py-14 sm:py-20">
         <div className={CONTAINER}>
           <div className="flex items-center justify-between gap-4">
             <Eyebrow>03 / RACES</Eyebrow>
-            <a href="#races" className="flex shrink-0 items-center gap-1 text-xs font-semibold text-blue-600 no-underline">
+            <a href="#races" className="flex shrink-0 items-center gap-1 text-xs font-semibold text-accent no-underline">
               All races <ArrowRight size={14} />
             </a>
           </div>
@@ -353,13 +382,13 @@ export default function Home() {
                 <br />
                 <Gradient>Every number explained.</Gradient>
               </Heading>
-              <p className="mt-5 max-w-[440px] text-sm leading-7 text-slate-500">
+              <p className="mt-5 max-w-[440px] text-sm leading-7 text-muted">
                 {races.every((race) => race.is_demo) ? 'Demonstration races' : 'Races'} their organizers published, all scored with the same open model. A score depends only on the course and the
                 runner's own finish time — never on who else raced. Open one to see its leaderboard.
               </p>
-              <div className="mt-6 flex flex-wrap items-center gap-2 font-mono text-[8px] text-slate-500">
-                <GitBranch size={16} className="text-blue-600" />
-                same course + same time + same version <b className="text-blue-600">=</b> same score
+              <div className="mt-6 flex flex-wrap items-center gap-2 font-mono text-[8px] text-muted">
+                <GitBranch size={16} className="text-accent" />
+                same course + same time + same version <b className="text-accent">=</b> same score
               </div>
             </div>
             <div className="grid min-w-0 gap-4 sm:grid-cols-2">
@@ -373,14 +402,14 @@ export default function Home() {
       )}
 
       {/* 04 / Method */}
-      <section className="bg-[#0b1220] py-14 text-white sm:py-20">
+      <section className="border-b border-rule bg-sheet py-14 sm:py-20">
         <div className={CONTAINER}>
           <div className="flex items-center justify-between">
-            <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">04 / METHOD</p>
+            <p className="font-mono text-[10px] tracking-[.08em] text-muted">04 / METHOD</p>
             <span className="font-mono text-[9px] tracking-[.08em] text-blue-400">NO BLACK BOX</span>
           </div>
-          <h2 className="mt-5 text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em]">Built in the open.</h2>
-          <div className="mt-9 grid border-t border-slate-700/80 sm:grid-cols-2 lg:grid-cols-4">
+          <h2 className="mt-5 text-[clamp(28px,3.6vw,42px)] font-normal leading-[1.1] tracking-[-.03em] text-ink">Built in the open.</h2>
+          <div className="mt-9 grid border-t border-rule sm:grid-cols-2 lg:grid-cols-4">
             {[
               [FileText, 'HOW A SCORE IS MADE', 'Plain-language explainer, then every constant and where it comes from.', DOCS.how],
               [GitBranch, 'VERSIONED MODEL', 'Every score names its model version. A change to the scoring is a new version, never a silent edit.', DOCS.methodology],
@@ -390,12 +419,12 @@ export default function Home() {
               <a
                 key={title}
                 href={href}
-                className="group block border-b border-slate-700/80 px-0 py-5 text-white no-underline transition hover:bg-white/5 sm:border-r sm:px-4 lg:border-b-0"
+                className="group block border-b border-rule px-0 py-5 text-ink no-underline transition hover:bg-wash sm:border-r sm:px-4 lg:border-b-0"
               >
                 <small className="flex items-center gap-2 font-mono text-[9px] text-white">
                   <Icon size={14} className="text-blue-400" /> {title}
                 </small>
-                <p className="mt-3 text-[11px] leading-5 text-slate-400">{desc}</p>
+                <p className="mt-3 text-[11px] leading-5 text-muted">{desc}</p>
                 <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-300 transition group-hover:text-white">
                   Read <ArrowUpRight size={12} />
                 </span>
@@ -404,28 +433,28 @@ export default function Home() {
           </div>
 
           {/* Contribute: the model and the course measurement get better with more eyes and more courses. */}
-          <div id="contribute" className="mt-12 scroll-mt-24 rounded-2xl border border-slate-700/80 bg-white/[.03] p-6 sm:p-8">
+          <div id="contribute" className="mt-12 scroll-mt-24 rounded-[3px] border border-rule bg-wash p-6 sm:p-8">
             <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.4fr)]">
               <div className="min-w-0">
                 <p className="font-mono text-[10px] tracking-[.08em] text-blue-400">CONTRIBUTE</p>
-                <h3 className="mt-3 text-[clamp(26px,3.2vw,38px)] font-bold leading-[1.02] tracking-[-.045em]">Help improve the model and the course measurement.</h3>
-                <p className="mt-3 text-sm leading-6 text-slate-400">
+                <h3 className="mt-3 text-[clamp(24px,3vw,34px)] font-normal leading-[1.1] tracking-[-.03em] text-ink">Help improve the model and the course measurement.</h3>
+                <p className="mt-3 text-sm leading-6 text-muted">
                   OTRI belongs to nobody's federation. The model has known limits, written down where everyone can read them, and it gets better the way open software does: someone shows where it is wrong, with a course or a paper, and the fix becomes a new version.
                 </p>
-                <a href={`${GITHUB_URL}/blob/main/CONTRIBUTING.md`} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-white px-4 text-[13px] font-semibold text-[#0b1220] no-underline hover:bg-blue-50">
+                <a href={`${GITHUB_URL}/blob/main/CONTRIBUTING.md`} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-[3px] bg-white px-4 text-[13px] font-semibold text-ink no-underline hover:bg-wash">
                   <GitBranch size={15} /> How to contribute <ArrowUpRight size={14} />
                 </a>
               </div>
-              <div className="grid min-w-0 gap-px overflow-hidden rounded-xl border border-slate-700/80 bg-slate-700/80 sm:grid-cols-2">
+              <div className="grid min-w-0 gap-px overflow-hidden rounded-[3px] border border-rule bg-rule sm:grid-cols-2">
                 {[
                   ['Challenge the scoring model', 'Every formula and constant is in one specification, with what it does not know yet. Propose a change as an OEP: tested on real results, versioned, never a silent edit.', 'The model and its open questions', DOCS.how],
                   ['Improve course measurement', 'How a GPX becomes distance, climb and demand: denoising, terrain data, steep ground, altitude. A course that measures wrong is the most useful bug report there is.', 'The measurement specification', `${GITHUB_URL}/blob/main/docs/methodology/course-measurement/REAL-WORLD-COURSE-MEASUREMENT-SPEC.md`],
                   ['Report what looks wrong', 'A score that cannot be right, a results file that should have passed, a confusing page. An issue with the file or the link is enough.', 'Open an issue', `${GITHUB_URL}/issues`],
                   ['Write code', 'Python for scoring, measurement and the API; React for the site. Tests run in a minute and a half, and the good first issues are labelled.', 'Browse the code', GITHUB_URL],
                 ].map(([title, text, cta, href]) => (
-                  <a key={title} href={href} className="group block bg-[#0b1220] p-5 text-white no-underline transition hover:bg-[#101a33]">
-                    <p className="text-sm font-bold tracking-[-.01em]">{title}</p>
-                    <p className="mt-2 text-[12px] leading-5 text-slate-400">{text}</p>
+                  <a key={title} href={href} className="group block border border-rule bg-wash p-5 text-ink no-underline transition hover:border-accent">
+                    <p className="text-sm font-semibold tracking-[-.01em] text-ink">{title}</p>
+                    <p className="mt-2 text-[12px] leading-5 text-muted">{text}</p>
                     <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-300 transition group-hover:text-white">
                       {cta} <ArrowUpRight size={12} />
                     </span>
@@ -438,23 +467,23 @@ export default function Home() {
       </section>
 
       {/* CTA band */}
-      <section className="bg-[linear-gradient(115deg,#1d4ed8_0%,#2563eb_48%,#0891b2_100%)] py-14 text-white sm:py-16">
+      <section className="bg-accent py-14 text-white sm:py-16">
         <div className={`${CONTAINER} flex flex-col items-start`}>
           <p className="font-mono text-[10px] tracking-[.08em] text-blue-100">OPEN TRAIL RUNNING INDEX</p>
-          <h2 className="mt-2 text-[clamp(40px,5.8vw,70px)] font-bold leading-[.94] tracking-[-.065em]">
+          <h2 className="mt-2 text-[clamp(28px,4vw,46px)] font-normal leading-[1.08] tracking-[-.03em]">
             Compare trail performances.
             <br />
             <span>Not just finish times.</span>
           </h2>
           <div className="mt-7 flex flex-col gap-2 sm:flex-row">
             <a
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-white px-4 text-[13px] font-semibold text-blue-600 no-underline shadow-[0_10px_30px_rgba(0,0,0,.12)]"
+              className="inline-flex min-h-11 items-center gap-2 rounded-[3px] bg-white px-4 text-[13px] font-semibold text-accent no-underline "
               href="#score"
             >
               Score my race <ArrowRight size={15} />
             </a>
             <a
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/40 px-4 text-[13px] font-semibold text-white no-underline hover:bg-white/10"
+              className="inline-flex min-h-11 items-center gap-2 rounded-[3px] border border-white/40 px-4 text-[13px] font-semibold text-white no-underline hover:bg-white/10"
               href="#calculator"
             >
               Calculate a target time <Calculator size={15} />

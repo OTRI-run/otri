@@ -34,7 +34,7 @@ function RecoveryCodes({ codes, method }) {
       <p className="text-xs">Each works once, when you cannot get a code. They are shown only this once.</p>
       <ul className="mt-2 grid grid-cols-2 gap-1 font-mono text-xs sm:grid-cols-5">
         {codes.map((code) => (
-          <li key={code} className="rounded bg-white px-2 py-1 text-[#0b1220]">
+          <li key={code} className="rounded bg-white px-2 py-1 text-ink">
             {code}
           </li>
         ))}
@@ -97,11 +97,11 @@ function ProfileForm({ me, onSaved }) {
       <Field label="About" htmlFor="pf-bio" hint="A sentence or two about the races you organize.">
         <textarea id="pf-bio" rows={3} maxLength={1000} value={form.bio} onChange={set('bio')} className={inputClass} />
       </Field>
-      <label className="flex items-start gap-2 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
+      <label className="flex items-start gap-2 rounded-[3px] bg-slate-50 px-4 py-3 text-sm text-slate-700">
         <input id="pf-news" type="checkbox" checked={form.marketing_opt_in} onChange={(e) => setForm((f) => ({ ...f, marketing_opt_in: e.target.checked }))} className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600" />
         <span>
-          <span className="font-semibold text-[#0b1220]">Email me OTRI news.</span> New features, scoring-model updates, organizer tips; a few times a year.
-          {me?.profile?.marketing_opt_in_at && <span className="block text-xs text-slate-500">Subscribed since {new Date(me.profile.marketing_opt_in_at).toLocaleDateString()}.</span>}
+          <span className="font-semibold text-ink">Email me OTRI news.</span> New features, scoring-model updates, organizer tips; a few times a year.
+          {me?.profile?.marketing_opt_in_at && <span className="block text-xs text-muted">Subscribed since {new Date(me.profile.marketing_opt_in_at).toLocaleDateString()}.</span>}
         </span>
       </label>
       {error && <Notice kind="error">{error}</Notice>}
@@ -246,15 +246,15 @@ function TwoFactor({ me, email, onChanged, onToken }) {
 
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[3px] bg-slate-50 px-4 py-3">
         <p className="text-sm">
-          <span className="font-semibold text-[#0b1220]">Two-factor authentication</span>{' '}
+          <span className="font-semibold text-ink">Two-factor authentication</span>{' '}
           {status.enabled ? (
             <span className="text-emerald-700">
               on · {status.method === 'totp' ? 'authenticator app' : 'email codes'} · {status.recovery_codes_left} recovery codes left
             </span>
           ) : (
-            <span className="text-slate-500">off · a second code at sign-in stops a stolen password on its own</span>
+            <span className="text-muted">off · a second code at sign-in stops a stolen password on its own</span>
           )}
         </p>
         {!status.enabled && mode == null && (
@@ -306,12 +306,12 @@ function TwoFactor({ me, email, onChanged, onToken }) {
       )}
       {mode === 'totp' && setup && (
         <div className="grid gap-4 sm:grid-cols-[200px_1fr]">
-          <div className="rounded-xl border border-slate-200 bg-white p-2" dangerouslySetInnerHTML={{ __html: setup.svg }} aria-label="QR code for your authenticator app" />
+          <div className="rounded-[3px] border border-rule bg-white p-2" dangerouslySetInnerHTML={{ __html: setup.svg }} aria-label="QR code for your authenticator app" />
           <div className="grid gap-3">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-muted">
               Scan the code with an authenticator app (any that speaks TOTP: Aegis, Google Authenticator, 1Password, Authy…), or enter the key by hand:
             </p>
-            <code className="select-all break-all rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs">{setup.secret}</code>
+            <code className="select-all break-all rounded-[3px] bg-slate-50 px-3 py-2 font-mono text-xs">{setup.secret}</code>
             <Field label="Enter the 6-digit code the app shows" htmlFor="tf-code">
               <input id="tf-code" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} className={`${inputClass} font-mono tracking-[.3em]`} maxLength={7} />
             </Field>
@@ -384,11 +384,11 @@ function SessionsCard({ onSignedOut }) {
     }
   }
   return (
-    <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3">
+    <div className="mt-4 rounded-[3px] bg-slate-50 px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm">
-          <span className="font-semibold text-[#0b1220]">Sign out everywhere</span>{' '}
-          <span className="text-slate-500">· lost a phone or used a shared computer? Every session ends, this one too.</span>
+          <span className="font-semibold text-ink">Sign out everywhere</span>{' '}
+          <span className="text-muted">· lost a phone or used a shared computer? Every session ends, this one too.</span>
         </p>
         {!open && (
           <Button variant="secondary" className="min-h-10 text-xs" onClick={() => setOpen(true)}>
@@ -452,20 +452,20 @@ function DataCard({ email, onDeleted }) {
     <Card>
       <Eyebrow>YOUR DATA</Eyebrow>
       <div className="mt-3 grid gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[3px] bg-slate-50 px-4 py-3">
           <p className="text-sm">
-            <span className="font-semibold text-[#0b1220]">Download my data</span>{' '}
-            <span className="text-slate-500">· your account, events, races, result rows and the emails we sent you, as JSON.</span>
+            <span className="font-semibold text-ink">Download my data</span>{' '}
+            <span className="text-muted">· your account, events, races, result rows and the emails we sent you, as JSON.</span>
           </p>
           <Button variant="secondary" className="min-h-10 text-xs" onClick={download}>
             <Download size={14} /> Download (JSON)
           </Button>
         </div>
-        <div className="rounded-xl border border-red-200 bg-red-50/60 px-4 py-3">
+        <div className="rounded-[3px] border border-red-200 bg-red-50/60 px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm">
               <span className="font-semibold text-red-700">Delete my account</span>{' '}
-              <span className="text-slate-600">· removes every event, race and result you uploaded. Published leaderboards disappear. This cannot be undone.</span>
+              <span className="text-muted">· removes every event, race and result you uploaded. Published leaderboards disappear. This cannot be undone.</span>
             </p>
             {!open && (
               <Button variant="danger" className="min-h-10 text-xs" onClick={() => setOpen(true)}>
@@ -541,7 +541,7 @@ export function AccountPage({ session, onToken, onSignOut }) {
               <TwoFactor me={me} email={session.email} onChanged={load} onToken={keepToken} />
             </div>
             <SessionsCard onSignedOut={onSignOut} />
-            <p className="mt-4 text-[11px] leading-5 text-slate-500">
+            <p className="mt-4 text-[11px] leading-5 text-muted">
               Sessions last 12 hours, or 30 days when you tick "remember me" at sign-in. Password last changed:{' '}
               {me?.password_changed_at ? new Date(me.password_changed_at).toLocaleDateString() : 'never'}.
               {me?.profile?.terms_accepted_at && <> Terms accepted {new Date(me.profile.terms_accepted_at).toLocaleDateString()}.</>}

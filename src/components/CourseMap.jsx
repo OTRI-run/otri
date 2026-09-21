@@ -592,27 +592,27 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
   return (
     <div className={className}>
       <div className="relative">
-        <div ref={mapContainerRef} className="h-[360px] w-full overflow-hidden rounded-xl sm:h-[460px]" />
+        <div ref={mapContainerRef} className="h-[360px] w-full overflow-hidden rounded-[3px] sm:h-[460px]" />
         <div className="absolute right-2 top-2 flex gap-1.5">
           {stretches.length > 0 && (
             <button
               onClick={() => setShowSteepness((value) => !value)}
               aria-pressed={showSteepness}
               title="Colour the route by how steep it is"
-              className={`rounded-md px-2.5 py-1.5 text-[10px] font-semibold shadow-sm ${showSteepness ? 'bg-[#0b1220] text-white' : 'bg-white/95 text-slate-700 hover:bg-white'}`}
+              className={`rounded-[3px] px-2.5 py-1.5 text-[10px] font-semibold shadow-sm ${showSteepness ? 'bg-ink text-white' : 'bg-sheet text-slate-700 hover:bg-white'}`}
             >
               Steepness
             </button>
           )}
           <button
             onClick={() => setIs3D((value) => !value)}
-            className="rounded-md bg-white/95 px-2.5 py-1.5 text-[10px] font-semibold text-slate-700 shadow-sm hover:bg-white"
+            className="rounded-[3px] bg-sheet px-2.5 py-1.5 text-[10px] font-semibold text-slate-700 shadow-sm hover:bg-white"
           >
             {is3D ? '2D' : '3D'}
           </button>
           <button
             onClick={() => setIsSatellite((value) => !value)}
-            className="rounded-md bg-white/95 px-2.5 py-1.5 text-[10px] font-semibold text-slate-700 shadow-sm hover:bg-white"
+            className="rounded-[3px] bg-sheet px-2.5 py-1.5 text-[10px] font-semibold text-slate-700 shadow-sm hover:bg-white"
           >
             {isSatellite ? 'Map' : 'Satellite'}
           </button>
@@ -620,7 +620,7 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
       </div>
       <ElevationProfile profile={profile} stretches={showSteepness ? stretches : []} stepUnit={stepUnit} units={units} onHover={handleProfileHover} />
       {stretches.length > 0 && <SteepnessFigures stretches={stretches} profile={profile} units={units} shown={showSteepness} />}
-      <p className="mt-2 text-xs text-slate-500">{measurement ? elevationCaption(measurement) : 'Route preview. Analyze the GPX to calculate its elevation profile.'}</p>
+      <p className="mt-2 text-xs text-muted">{measurement ? elevationCaption(measurement) : 'Route preview. Analyze the GPX to calculate its elevation profile.'}</p>
     </div>
   )
 }
@@ -674,15 +674,15 @@ function SteepnessFigures({ stretches, profile, units, shown }) {
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-5">
         {figures.map(([label, value]) => (
           <div key={label} className="min-w-0">
-            <dt className="font-mono text-[8px] tracking-[.08em] text-slate-500">{label}</dt>
-            <dd className="mt-0.5 truncate font-mono text-[13px] font-semibold text-[#0b1220]">{value}</dd>
+            <dt className="font-mono text-[8px] tracking-[.08em] text-muted">{label}</dt>
+            <dd className="mt-0.5 truncate font-mono text-[13px] font-semibold text-ink">{value}</dd>
           </div>
         ))}
       </dl>
       {shown && (
         <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5" aria-label="What the colours mean">
           {GRADE_CLASSES.map((entry) => (
-            <li key={entry.id} className="flex items-center gap-1.5 font-mono text-[9px] text-slate-500" title={entry.label}>
+            <li key={entry.id} className="flex items-center gap-1.5 font-mono text-[9px] text-muted" title={entry.label}>
               <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: entry.color }} />
               {entry.range}
             </li>
@@ -843,7 +843,7 @@ function ElevationProfile({ profile, stretches = [], stepUnit, units, onHover })
   const tooltipAlign = hover && geometry && hover.x > width - 140 ? 'translateX(-100%)' : 'none'
 
   return (
-    <div ref={wrapperRef} className="relative mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
+    <div ref={wrapperRef} className="relative mt-3 overflow-hidden rounded-[3px] border border-rule bg-white">
       {geometry ? (
         <>
           <svg
@@ -948,13 +948,13 @@ function ElevationProfile({ profile, stretches = [], stepUnit, units, onHover })
 
           {hover && (
             <div
-              className="pointer-events-none absolute top-2 rounded-lg bg-[#0b1220] px-2.5 py-1.5 font-mono text-[10px] leading-4 text-white shadow-lg"
+              className="pointer-events-none absolute top-2 rounded-[3px] bg-ink px-2.5 py-1.5 font-mono text-[10px] leading-4 text-white shadow-lg"
               style={{ left: tooltipLeft, transform: tooltipAlign }}
             >
               <div className="font-semibold">
                 {(Math.round(hover.distance * 10) / 10).toFixed(1)} {distanceLabel}
               </div>
-              <div className="text-slate-300">
+              <div className="text-rule">
                 {formatNumber(hover.elevation)} {elevationLabel}
                 {hover.grade != null && (
                   <span className={hover.grade >= 0 ? 'text-cyan-300' : 'text-blue-300'}>
@@ -968,7 +968,7 @@ function ElevationProfile({ profile, stretches = [], stepUnit, units, onHover })
           )}
         </>
       ) : (
-        <div style={{ height: PROFILE_HEIGHT }} className="flex items-center justify-center text-xs text-slate-400">
+        <div style={{ height: PROFILE_HEIGHT }} className="flex items-center justify-center text-xs text-muted">
           {valid.length < 2 ? 'No elevation data in this profile.' : ''}
         </div>
       )}

@@ -127,7 +127,7 @@ export function NewRace({ session, eventId }) {
             </Button>
           </div>
           {!busy && (!form.course_name.trim() || !form.distance_km || form.elevation_gain_m === '') && (
-            <p className="text-xs text-slate-500">Enter the name, official distance and climb to continue.</p>
+            <p className="text-xs text-muted">Enter the name, official distance and climb to continue.</p>
           )}
         </form>
       </Card>
@@ -159,11 +159,11 @@ function CourseFacts({ measurement, features, entered }) {
           ['Descent', features.elevation_loss_m != null ? formatElevation(features.elevation_loss_m, units, { sign: '-' }) : '—', null, null],
           ['Elevation source', dem ? 'Terrain model' : 'Your GPX file', dem ? measurement.source.dataset : 'not independently verified', null],
         ].map(([label, value, sub, delta]) => (
-          <div key={label} className="rounded-lg bg-slate-50 px-3 py-2">
-            <dt className="font-mono text-[9px] uppercase tracking-[.06em] text-slate-400">{label}</dt>
-            <dd className="mt-0.5 text-sm font-semibold text-[#0b1220]">{value}</dd>
+          <div key={label} className="rounded-[3px] bg-slate-50 px-3 py-2">
+            <dt className="font-mono text-[9px] uppercase tracking-[.06em] text-muted">{label}</dt>
+            <dd className="mt-0.5 text-sm font-semibold text-ink">{value}</dd>
             {sub && (
-              <dd className={`text-[11px] ${big(delta) ? 'text-amber-700' : 'text-slate-500'}`}>
+              <dd className={`text-[11px] ${big(delta) ? 'text-amber-700' : 'text-muted'}`}>
                 {sub}
                 {delta != null ? ` (${delta > 0 ? '+' : ''}${delta.toFixed(0)}%)` : ''}
               </dd>
@@ -256,7 +256,7 @@ export function CourseStep({ session, raceId }) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <Eyebrow>COURSE ON FILE</Eyebrow>
-                <p className="mt-1 text-sm text-slate-600">
+                <p className="mt-1 text-sm text-muted">
                   {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })} · measurement{' '}
                   {race.measurement_version ?? '—'}
                   {race.measurement_status === 'needs_review' ? ' · flagged for review' : ''}
@@ -279,7 +279,7 @@ export function CourseStep({ session, raceId }) {
 
         <Card>
           <Eyebrow>{race.has_gpx ? 'REPLACE THE COURSE' : 'UPLOAD THE COURSE'}</Eyebrow>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-muted">
             Upload the official route as a GPX. OTRI measures it — every 10 m, elevation from verified terrain data where available — and shows how it compares with the figures you entered before anything is saved.
           </p>
           <div className="mt-4">
@@ -311,7 +311,7 @@ export function CourseStep({ session, raceId }) {
               <Button variant="secondary" onClick={() => { setAnalysis(null); setFile(null) }}>
                 Choose another file
               </Button>
-              <p className="text-xs text-slate-500">Saving replaces the race's distance and climb with the measured values.</p>
+              <p className="text-xs text-muted">Saving replaces the race's distance and climb with the measured values.</p>
             </div>
           </Card>
         )}
@@ -358,32 +358,32 @@ const EXAMPLE_ROWS = [
 function ExampleFile({ onUse, busy }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/60">
+    <div className="mt-4 rounded-[3px] border border-rule bg-slate-50/60">
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div>
-          <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">EXAMPLE FILE</p>
-          <p className="mt-0.5 text-xs text-slate-600">Six rows: four finishers, a DNF, a DNS. Any file laid out like this passes.</p>
+          <p className="font-mono text-[9px] tracking-[.08em] text-muted">EXAMPLE FILE</p>
+          <p className="mt-0.5 text-xs text-muted">Six rows: four finishers, a DNF, a DNS. Any file laid out like this passes.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <a href={EXAMPLE_FILES.csv} download="otri-results-example.csv" className="inline-flex min-h-9 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-[#0b1220] no-underline hover:border-blue-300">
+          <a href={EXAMPLE_FILES.csv} download="otri-results-example.csv" className="inline-flex min-h-9 items-center rounded-[3px] border border-rule bg-white px-3 text-xs font-semibold text-ink no-underline hover:border-accent">
             Download CSV
           </a>
-          <a href={EXAMPLE_FILES.xlsx} download="otri-results-example.xlsx" className="inline-flex min-h-9 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-[#0b1220] no-underline hover:border-blue-300">
+          <a href={EXAMPLE_FILES.xlsx} download="otri-results-example.xlsx" className="inline-flex min-h-9 items-center rounded-[3px] border border-rule bg-white px-3 text-xs font-semibold text-ink no-underline hover:border-accent">
             Download XLSX
           </a>
           <Button type="button" variant="secondary" className="min-h-9 px-3 text-xs" busy={busy} onClick={onUse}>
             Use the example file
           </Button>
-          <button type="button" onClick={() => setOpen((v) => !v)} className="text-xs font-semibold text-blue-600">
+          <button type="button" onClick={() => setOpen((v) => !v)} className="text-xs font-semibold text-accent">
             {open ? 'Hide' : 'Show'} rows
           </button>
         </div>
       </div>
       {open && (
-        <div className="overflow-x-auto border-t border-slate-200">
+        <div className="overflow-x-auto border-t border-rule">
           <table className="w-full min-w-[820px] text-left font-mono text-[11px]">
             <thead>
-              <tr className="bg-white text-[9px] uppercase tracking-[.06em] text-slate-500">
+              <tr className="bg-white text-[9px] uppercase tracking-[.06em] text-muted">
                 {EXAMPLE_HEADER.map((h) => (
                   <th key={h} className="whitespace-nowrap px-3 py-2 font-semibold">
                     {h}
@@ -393,10 +393,10 @@ function ExampleFile({ onUse, busy }) {
             </thead>
             <tbody>
               {EXAMPLE_ROWS.map((row, i) => (
-                <tr key={i} className="border-t border-slate-100 text-[#0b1220]">
+                <tr key={i} className="border-t border-rule text-ink">
                   {row.map((cell, j) => (
                     <td key={j} className="whitespace-nowrap px-3 py-1.5">
-                      {cell === '' ? <span className="text-slate-300">·</span> : cell}
+                      {cell === '' ? <span className="text-rule">·</span> : cell}
                     </td>
                   ))}
                 </tr>
@@ -445,10 +445,10 @@ function IssueList({ issues, kind }) {
 export function ScoresTable({ rows, limit, compact = false }) {
   const shown = limit ? rows.slice(0, limit) : rows
   return (
-    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+    <div className="overflow-x-auto rounded-[3px] border border-rule bg-white">
       <table className={`w-full text-left text-sm ${compact ? '' : 'min-w-[480px]'}`}>
         <thead>
-          <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
+          <tr className="border-b border-rule bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-muted">
             <th className="px-3 py-2">Rank</th>
             <th className="px-3 py-2">Runner</th>
             {!compact && <th className="px-3 py-2">Bib</th>}
@@ -457,16 +457,16 @@ export function ScoresTable({ rows, limit, compact = false }) {
         </thead>
         <tbody>
           {shown.map((row) => (
-            <tr key={`${row.rank}-${row.bib_number ?? row.family_name}`} className="border-b border-slate-100 last:border-0">
-              <td className="px-3 py-2 font-mono text-xs text-slate-500"><RankBadge rank={row.rank} /></td>
-              <td className="px-3 py-2 font-medium text-[#0b1220]">{row.first_name} {row.family_name}</td>
-              {!compact && <td className="px-3 py-2 font-mono text-xs text-slate-500">{row.bib_number ?? '—'}</td>}
-              <td className="px-3 py-2 text-right font-mono font-bold text-blue-600">{row.otri_score ?? <span className="font-normal text-slate-400">{row.status === 'finisher' ? 'not scored' : row.status}</span>}</td>
+            <tr key={`${row.rank}-${row.bib_number ?? row.family_name}`} className="border-b border-rule last:border-0">
+              <td className="px-3 py-2 font-mono text-xs text-muted"><RankBadge rank={row.rank} /></td>
+              <td className="px-3 py-2 font-medium text-ink">{row.first_name} {row.family_name}</td>
+              {!compact && <td className="px-3 py-2 font-mono text-xs text-muted">{row.bib_number ?? '—'}</td>}
+              <td className="px-3 py-2 text-right font-mono font-bold text-accent">{row.otri_score ?? <span className="font-normal text-muted">{row.status === 'finisher' ? 'not scored' : row.status}</span>}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      {limit && rows.length > limit && <p className="px-3 py-2 text-xs text-slate-500">…and {rows.length - limit} more</p>}
+      {limit && rows.length > limit && <p className="px-3 py-2 text-xs text-muted">…and {rows.length - limit} more</p>}
     </div>
   )
 }
@@ -533,7 +533,7 @@ export function ResultsStep({ session, raceId }) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <Eyebrow>RESULTS ON FILE</Eyebrow>
-                <p className="mt-1 text-sm text-slate-600">{existing.length} finishers scored. Uploading a new file replaces them.</p>
+                <p className="mt-1 text-sm text-muted">{existing.length} finishers scored. Uploading a new file replaces them.</p>
               </div>
               <Button onClick={() => navigate(`/races/${encodeURIComponent(raceId)}/review`)}>
                 Continue to review <ArrowRight size={15} />
@@ -544,7 +544,7 @@ export function ResultsStep({ session, raceId }) {
 
         <Card>
           <Eyebrow>{existing?.length ? 'REPLACE RESULTS' : 'UPLOAD RESULTS'}</Eyebrow>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-muted">
             Upload the export you already have: from your timing company, or the sheet you send to ITRA or UTMB.
             One file per race distance, CSV or Excel, one row per participant. It needs a finish time and a name;
             positions, gender, nationality and the rest are read where the file has them, under whatever the columns
@@ -552,15 +552,15 @@ export function ResultsStep({ session, raceId }) {
           </p>
           <ExampleFile onUse={useExample} busy={loadingExample} />
           <div className="mt-3">
-            <button type="button" onClick={() => setShowGuide((v) => !v)} className="text-xs font-semibold text-blue-600">
+            <button type="button" onClick={() => setShowGuide((v) => !v)} className="text-xs font-semibold text-accent">
               {showGuide ? 'Hide' : 'Show'} the accepted columns
             </button>
           </div>
           {showGuide && (
-            <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200">
+            <div className="mt-3 overflow-x-auto rounded-[3px] border border-rule">
               <table className="w-full min-w-[560px] text-left text-xs">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[9px] uppercase tracking-[.06em] text-slate-500">
+                  <tr className="border-b border-rule bg-slate-50 font-mono text-[9px] uppercase tracking-[.06em] text-muted">
                     <th className="px-3 py-2">Column</th>
                     <th className="px-3 py-2">Needed</th>
                     <th className="px-3 py-2">Values</th>
@@ -569,16 +569,16 @@ export function ResultsStep({ session, raceId }) {
                 </thead>
                 <tbody>
                   {COLUMNS.map(([name, need, note, aliases]) => (
-                    <tr key={name} className="border-b border-slate-100 last:border-0">
-                      <td className="px-3 py-1.5 font-mono font-semibold text-[#0b1220]">{name}</td>
-                      <td className="px-3 py-1.5 text-slate-500">{need}</td>
-                      <td className="px-3 py-1.5 text-slate-500">{note}</td>
-                      <td className="px-3 py-1.5 text-slate-500">{aliases}</td>
+                    <tr key={name} className="border-b border-rule last:border-0">
+                      <td className="px-3 py-1.5 font-mono font-semibold text-ink">{name}</td>
+                      <td className="px-3 py-1.5 text-muted">{need}</td>
+                      <td className="px-3 py-1.5 text-muted">{note}</td>
+                      <td className="px-3 py-1.5 text-muted">{aliases}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-              <p className="px-3 py-2 text-[11px] text-slate-500">
+              <p className="px-3 py-2 text-[11px] text-muted">
                 Files that mix several distances are rejected with the distances found: each race distance has its own
                 course, so each gets its own upload.
               </p>
@@ -598,7 +598,7 @@ export function ResultsStep({ session, raceId }) {
             <Button busy={busy} disabled={!file} onClick={submit}>
               Validate and score <ArrowRight size={15} />
             </Button>
-            {!file && <span className="text-xs text-slate-500">Choose a file first.</span>}
+            {!file && <span className="text-xs text-muted">Choose a file first.</span>}
           </div>
           {error && <div id="results-error" className="mt-3 scroll-mt-24"><Notice kind="error">{error}</Notice></div>}
         </Card>
@@ -616,7 +616,7 @@ export function ResultsStep({ session, raceId }) {
               {submission.warnings.length > 0 ? `${submission.warnings.length} warning${submission.warnings.length === 1 ? '' : 's'} to review — none block submission.` : 'No warnings.'}
             </Notice>
             {submission.warnings.length > 0 && (
-              <details className="mt-3 rounded-lg bg-amber-50/60 px-3 py-2">
+              <details className="mt-3 rounded-[3px] bg-amber-50/60 px-3 py-2">
                 <summary className="cursor-pointer text-xs font-semibold text-amber-800">Warnings</summary>
                 <IssueList issues={submission.warnings} kind="warning" />
               </details>
@@ -756,11 +756,11 @@ export function ReviewStep({ session, raceId }) {
               <Notice kind="info">Finish the items marked above, then publish.</Notice>
             )}
             {!race.is_published && (
-              <p className="mt-3 text-xs leading-5 text-slate-500">
+              <p className="mt-3 text-xs leading-5 text-muted">
                 {race.is_listed ? (
                   <>
                     Listed: runners can find this race, see its course and ask for scores.{' '}
-                    <a href={`../#races/${encodeURIComponent(raceId)}`} className="font-semibold text-blue-600">View the listing</a>. Results stay private until you publish.
+                    <a href={`../#races/${encodeURIComponent(raceId)}`} className="font-semibold text-accent">View the listing</a>. Results stay private until you publish.
                   </>
                 ) : (
                   'Race day still ahead, or results not ready? List the race now: runners can find it, see the course and try target times, and results stay private until you publish.'
@@ -799,7 +799,7 @@ export function ReviewStep({ session, raceId }) {
               <ScoresTable rows={results} limit={12} compact />
             </div>
           ) : (
-            <p className="mt-3 text-sm text-slate-500">Appears once results are scored.</p>
+            <p className="mt-3 text-sm text-muted">Appears once results are scored.</p>
           )}
         </Card>
       </div>
