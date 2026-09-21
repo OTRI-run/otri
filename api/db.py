@@ -121,6 +121,9 @@ CREATE TABLE IF NOT EXISTS login_challenges (
 -- Accounts made through Google have no password of their own; the column tells the account page
 -- which actions can ask for one. The hash column stays NOT NULL and holds an unusable random hash.
 ALTER TABLE organizers ADD COLUMN IF NOT EXISTS has_password BOOLEAN NOT NULL DEFAULT TRUE;
+-- The 30-second step of the last authenticator code that opened this account, so the same code
+-- cannot open it twice inside the minute and a half it is accepted for (RFC 6238 section 5.2).
+ALTER TABLE organizers ADD COLUMN IF NOT EXISTS totp_last_step BIGINT;
 
 -- A sign-in identity from an outside provider, keyed on the provider's stable subject id, never on
 -- the email: addresses change, subjects do not. One organizer may hold several.

@@ -7,6 +7,7 @@ from datetime import date
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+import time
 import pytest
 
 from api import app
@@ -1195,9 +1196,19 @@ def test_authenticator_two_factor_setup_login_and_recovery_codes():
     assert first["requires_2fa"] is True and first["method"] == "totp" and first["access_token"] == ""
     wrong = client.post("/auth/login/2fa", json={"challenge": first["challenge"], "code": "123456"})
     assert wrong.status_code == 401
-    second = client.post("/auth/login/2fa", json={"challenge": first["challenge"], "code": totp_now(setup["secret"])}).json()
+    # The code that switched it on is spent, so this is the next one.
+    signing_in = totp_now(setup["secret"], at=time.time() + 30)
+    second = client.post("/auth/login/2fa", json={"challenge": first["challenge"], "code": signing_in}).json()
     assert second["access_token"] and second["expires_in"] == 30 * 24 * 3600, "remember me survives the second step"
-    assert client.post("/auth/login/2fa", json={"challenge": first["challenge"], "code": totp_now(setup["secret"])}).status_code == 401, "a challenge is single use"
+    assert client.post("/auth/login/2fa", json={"challenge": first["challenge"], "code": signing_in}).status_code == 401, "a challenge is single use"
+
+    # And that code is now spent too: a fresh challenge does not take it again (RFC 6238 5.2).
+    again = client.post("/auth/login", json={"email": "totp@example.com", "password": "correct horse battery"}).json()
+    replay = client.post("/auth/login/2fa", json={"challenge": again["challenge"], "code": signing_in})
+    assert replay.status_code == 401, "an authenticator code opens the account once, not twice"
+    # Nothing the authenticator shows right now opens it again: the two steps it is still willing
+    # to accept are both spent, and the owner reads the next code off their phone. That a later
+    # code does work is what the sign-ins above already showed.
 
     # A recovery code works once.
     again = client.post("/auth/login", json={"email": "totp@example.com", "password": "correct horse battery"}).json()

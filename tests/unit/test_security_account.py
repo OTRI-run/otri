@@ -2,6 +2,7 @@
 each tried here as an attacker would."""
 
 import importlib
+import time
 from pathlib import Path
 
 import pytest
@@ -46,13 +47,13 @@ def test_wrong_codes_are_counted_and_the_sixth_guess_is_refused_even_when_right(
         assert client.post("/auth/login/2fa", json={"challenge": challenge, "code": "000000"}).status_code == 401
         with db.get_connection() as connection:
             assert connection.execute("SELECT attempts FROM login_challenges WHERE token = %s", (auth._token_digest(challenge),)).fetchone()["attempts"] == attempt
-    answer = client.post("/auth/login/2fa", json={"challenge": challenge, "code": security.totp_now(secret)})
+    answer = client.post("/auth/login/2fa", json={"challenge": challenge, "code": security.totp_now(secret, at=time.time() + 30)})
     assert answer.status_code == 401 and "too many attempts" in answer.json()["detail"], "the right code, too late"
     with db.get_connection() as connection:
         assert connection.execute("SELECT count(*) AS n FROM login_challenges WHERE token = %s", (auth._token_digest(challenge),)).fetchone()["n"] == 0
     # A fresh sign-in gets a fresh five.
     challenge = client.post("/auth/login", json={"email": "guess@example.com", "password": PASSWORD}).json()["challenge"]
-    assert client.post("/auth/login/2fa", json={"challenge": challenge, "code": security.totp_now(secret)}).status_code == 200
+    assert client.post("/auth/login/2fa", json={"challenge": challenge, "code": security.totp_now(secret, at=time.time() + 30)}).status_code == 200
 
 
 def test_a_reset_link_does_not_get_past_the_second_factor():
@@ -65,7 +66,7 @@ def test_a_reset_link_does_not_get_past_the_second_factor():
     # The new password works, and still asks for the code.
     login = client.post("/auth/login", json={"email": "recover@example.com", "password": "a-brand-new-password-9"}).json()
     assert login["requires_2fa"] is True and login["access_token"] == ""
-    assert client.post("/auth/login/2fa", json={"challenge": login["challenge"], "code": security.totp_now(secret)}).status_code == 200
+    assert client.post("/auth/login/2fa", json={"challenge": login["challenge"], "code": security.totp_now(secret, at=time.time() + 30)}).status_code == 200
     # Without a second factor a reset signs in, as before.
     _account("plain@example.com")
     _organizer, token = auth.create_password_reset_token("plain@example.com")

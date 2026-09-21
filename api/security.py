@@ -109,14 +109,24 @@ def totp_now(secret_b32: str, at: float | None = None, step: int = 30) -> str:
     return _hotp(secret_b32, int((time.time() if at is None else at) // step))
 
 
-def verify_totp(secret_b32: str, code: str, at: float | None = None, step: int = 30, window: int = 1) -> bool:
-    """True if `code` matches the current step or one step either side (clock drift)."""
+def totp_counter(secret_b32: str, code: str, at: float | None = None, step: int = 30, window: int = 1) -> int | None:
+    """Which 30-second step `code` is the code for, or None if it is not one of them. The caller
+    keeps the number: an authenticator code is valid for a minute and a half, and RFC 6238 asks
+    that it open an account once in that time and not again."""
     cleaned = re.sub(r"\s+", "", code or "")
     if not re.fullmatch(r"\d{6}", cleaned):
-        return False
+        return None
     now = time.time() if at is None else at
     counter = int(now // step)
-    return any(hmac.compare_digest(_hotp(secret_b32, counter + delta), cleaned) for delta in range(-window, window + 1))
+    for delta in range(-window, window + 1):
+        if hmac.compare_digest(_hotp(secret_b32, counter + delta), cleaned):
+            return counter + delta
+    return None
+
+
+def verify_totp(secret_b32: str, code: str, at: float | None = None, step: int = 30, window: int = 1) -> bool:
+    """True if `code` matches the current step or one step either side (clock drift)."""
+    return totp_counter(secret_b32, code, at, step, window) is not None
 
 
 def otpauth_uri(secret_b32: str, account: str, issuer: str = "OTRI") -> str:
@@ -149,7 +159,10 @@ def _normalise_code(code: str) -> str:
 # The key lives in the environment, not in the database. A recovery code is 40 bits: with a plain
 # SHA-256, whoever copied the database could try all of them on a graphics card in an afternoon.
 # Keyed, the digests in a leaked table say nothing without the server's secret as well.
-_CODE_KEY = hashlib.sha256(b"otri-code-key:" + os.environ.get("OTRI_API_JWT_SECRET", "").encode("utf-8")).digest()
+# Without OTRI_API_JWT_SECRET this used to be sha256(b"otri-code-key:"), a value anybody can
+# compute from this file, which left the digests in a leaked table open to a straight guess at the
+# 40 bits behind them. Unset, the key is now random per process, like the JWT secret beside it.
+_CODE_KEY = hashlib.sha256(b"otri-code-key:" + (os.environ.get("OTRI_API_JWT_SECRET") or secrets.token_hex(32)).encode("utf-8")).digest()
 
 
 def hash_code(code: str) -> str:

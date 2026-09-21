@@ -88,6 +88,9 @@ def match_columns(headers: list[str]) -> dict[str, str]:
 
 # ---------------------------------------------------------------------------- names
 
+# How many words of one name cell are looked at. A results file is public and anonymous at
+# /score, so the cost of one cell has to be bounded by something other than good faith.
+MAX_NAME_WORDS = 24
 _PARTICLES = {"de", "del", "della", "di", "da", "dos", "das", "du", "la", "le", "van", "von", "der", "den", "ter", "ten", "bin", "binti", "al", "el", "st", "mc", "na"}
 
 
@@ -109,12 +112,17 @@ def split_name(text: str, family_first: bool = False) -> tuple[str, str]:
     if "," in text:
         family, _, first = text.partition(",")
         return family.strip(), first.strip()
-    words = text.split(" ")
+    # Nobody is named in more than a handful of words. The cap matters because everything below
+    # walks the list: a cell of thousands of particles ("de de de ... SMITH Jim") is not a name,
+    # and one 24 KB cell used to cost the scorer a fifth of a second all by itself.
+    words = text.split(" ", MAX_NAME_WORDS)[:MAX_NAME_WORDS]
     if len(words) == 1:
         return words[0], ""
     upper = [_is_upper_word(word) for word in words]
     if any(upper) and not all(upper):
-        family = " ".join(word for word, is_upper in zip(words, upper) if is_upper or word.lower() in _PARTICLES and any(upper))
+        # `any(upper)` is true throughout this branch. It used to be tested again for every word,
+        # which walked the list once per word: the cost grew with the square of the word count.
+        family = " ".join(word for word, is_upper in zip(words, upper) if is_upper or word.lower() in _PARTICLES)
         first = " ".join(word for word, is_upper in zip(words, upper) if not is_upper and word.lower() not in _PARTICLES)
         if family and first:
             return family, first

@@ -198,7 +198,7 @@ def test_a_reset_lets_the_owner_of_a_locked_account_with_two_factor_back_in():
     assert client.post("/auth/reset-password", json={"token": token, "new_password": "a-brand-new-password-9"}).json()["requires_2fa"] is True
     login = client.post("/auth/login", json={"email": "locked-2fa@example.com", "password": "a-brand-new-password-9"})
     assert login.status_code == 200 and login.json()["requires_2fa"] is True
-    assert client.post("/auth/login/2fa", json={"challenge": login.json()["challenge"], "code": security.totp_now(secret)}).status_code == 200
+    assert client.post("/auth/login/2fa", json={"challenge": login.json()["challenge"], "code": security.totp_now(secret, at=time.time() + 30)}).status_code == 200
 
 
 def test_failure_rows_for_addresses_nobody_has_do_not_stay_for_ever():

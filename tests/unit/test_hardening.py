@@ -4,6 +4,7 @@ email log, health, account export/deletion, eviction under concurrency, deletion
 from __future__ import annotations
 
 import importlib
+import time
 import threading
 from pathlib import Path
 
@@ -305,5 +306,6 @@ def test_login_challenge_survives_a_process_restart():
     assert first["requires_2fa"]
     importlib.reload(importlib.import_module("api.rate_limit"))
     fresh_client = TestClient(app_module.app)
-    second = fresh_client.post("/auth/login/2fa", json={"challenge": first["challenge"], "code": totp_now(setup["secret"])})
+    # The code that switched two-factor on is spent (one code, one sign-in): use the next one.
+    second = fresh_client.post("/auth/login/2fa", json={"challenge": first["challenge"], "code": totp_now(setup["secret"], at=time.time() + 30)})
     assert second.status_code == 200 and second.json()["access_token"]

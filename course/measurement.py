@@ -23,6 +23,10 @@ from .gpx import GpxParseError, TrackPoint
 # not bit for bit, so profile hashes change and this is a new processing version (spec section
 # 21). On a 1-CPU droplet the measure step drops from ~5 s to well under 1 s for a 171 km course.
 VERSION = 'course-measurement-v3'
+# How many points of the elevation grid the measurement hands out. A chart is drawn on a few
+# hundred pixels; everything past this is detail nobody can see, and bytes an anonymous caller
+# can ask for. The full grid stays in the measurement itself.
+PROFILE_MAX_POINTS = 4_000
 PARAMETERS = dict(spacing_m=10.0, median_radius_m=10.0, mean_radius_m=10.0,
                   reversal_m=8.0, grade_window_m=50.0, max_missing_gap_m=30.0,
                   smoothing_policy='terrain-or-implausible-local-elevation',
@@ -158,9 +162,21 @@ class Measurement:
         return self.source.get('dataset') != UPLOADED_SOURCE['dataset']
 
     def to_dict(self):
+        # The profile is what a chart draws, not the record: `snapshot` in the stored measurement
+        # keeps every grid point. The grid is one point per 10 m, so a 2,000 km course is 200,000
+        # of them, and two track points an ocean apart is a legal 216-byte course that used to
+        # answer with 13.7 MB. Past PROFILE_MAX_POINTS every nth point is sent instead, the ends
+        # of every segment always among them, so the shape and the distances are unchanged and a
+        # chart cannot tell. The choice is deterministic, so two measurements of one course still
+        # produce the same profile_hash.
+        total = sum(len(segment) for segment in self.segments)
+        stride = max(1, -(-total // PROFILE_MAX_POINTS))
         profile, offset = [], 0.0
         for sid, segment in enumerate(self.segments):
-            for x, z in segment:
+            last = len(segment) - 1
+            for i, (x, z) in enumerate(segment):
+                if i % stride and i != last:
+                    continue
                 profile.append(dict(distanceKm=(offset + x) / 1000, elevation=z, segmentId=sid))
             offset += segment[-1][0]
         return dict(version=VERSION, parameters=PARAMETERS.copy(), distance_method='WGS84 horizontal',
@@ -168,6 +184,7 @@ class Measurement:
                     status='needs_review' if self.needs_review else 'provisional', quality_flags=list(self.quality_flags),
                     median_edge_m=self.median_edge_m,
                     coverage_fraction=1.0, profile=profile,
+                    profile_points=total, profile_stride=stride,
                     profile_hash=sha256(json.dumps(profile, sort_keys=True).encode()).hexdigest())
 
 

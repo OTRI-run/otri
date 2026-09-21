@@ -4,6 +4,7 @@ tokens. Both paths, the CSRF guard, logout, and revocation through the cookie.""
 from __future__ import annotations
 
 import importlib
+import time
 
 import pytest
 from fastapi.testclient import TestClient
@@ -86,7 +87,8 @@ def test_password_change_and_two_factor_flow_keep_the_web_session_in_the_cookie(
     fresh = _web_client()
     first = fresh.post("/auth/login", json={"email": "cookie-2fa@example.com", "password": "a brand new passphrase 9"}, headers=WEB).json()
     assert first["requires_2fa"] and fresh.cookies.get("otri_session") is None, "no cookie before the second step"
-    second = fresh.post("/auth/login/2fa", json={"challenge": first["challenge"], "code": totp_now(setup["secret"])}, headers=WEB)
+    # The code that switched two-factor on is spent (one code, one sign-in): use the next one.
+    second = fresh.post("/auth/login/2fa", json={"challenge": first["challenge"], "code": totp_now(setup["secret"], at=time.time() + 30)}, headers=WEB)
     assert second.status_code == 200 and second.json()["access_token"] == "" and fresh.cookies.get("otri_session")
     assert fresh.get("/auth/me").status_code == 200
 
