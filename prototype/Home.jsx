@@ -1,5 +1,5 @@
 import { scrollBehavior } from '../src/lib/comfort'
-import { ArrowRight, ArrowUpRight, Calculator, Database, FileText, GitBranch, Mountain, ShieldCheck, Timer, Upload, Users } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Database, FileText, GitBranch, Mountain, ShieldCheck, Timer, Upload, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import RaceCard from './RaceCard'
 import { listRaces } from './apiClient'
@@ -77,7 +77,7 @@ function TerrainMesh() {
           <rect x="0" y="286" width="1440" height="614" fill="url(#otri-mesh-fade)" />
         </mask>
       </defs>
-      <g mask="url(#otri-mesh-mask)" strokeWidth="1" opacity=".16">
+      <g mask="url(#otri-mesh-mask)" strokeWidth="1" opacity=".085">
         {columns.map((d, i) => (
           <path key={`c${i}`} d={d} />
         ))}
@@ -156,9 +156,10 @@ export default function Home() {
             </h1>
             {/* Plain sentences in one colour. Scattered bold and a second accent made this harder
                 to read, not easier. */}
-            <p className="mt-6 max-w-[60ch] text-balance text-[17px] leading-8 text-slate-600">
-              OTRI turns a finish time on any trail course into one comparable score. Free, no account, and every
-              number explains itself.
+            {/* Each sentence gets its own line, so a break never lands in the middle of a phrase. */}
+            <p className="mt-6 max-w-[68ch] text-[18px] leading-8 text-slate-700">
+              OTRI turns a finish time on any trail course into one comparable score.
+              <span className="block">Free, no account, and every number explains itself.</span>
             </p>
             <div className="mt-7 grid max-w-[680px] gap-3 sm:grid-cols-2">
               {[
@@ -419,31 +420,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA band */}
-      <section className="bg-[linear-gradient(115deg,#1d4ed8_0%,#2563eb_48%,#0891b2_100%)] py-14 text-white sm:py-16">
-        <div className={`${CONTAINER} flex flex-col items-start`}>
-          <p className="font-mono text-[10px] tracking-[.08em] text-blue-100">OPEN TRAIL RUNNING INDEX</p>
-          <h2 className="mt-2 text-[clamp(40px,5.8vw,70px)] font-bold leading-[.94] tracking-[-.065em]">
-            Compare trail performances.
-            <br />
-            <span>Not just finish times.</span>
-          </h2>
-          <div className="mt-7 flex flex-col gap-2 sm:flex-row">
-            <a
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-white px-4 text-[13px] font-semibold text-blue-600 no-underline shadow-[0_10px_30px_rgba(0,0,0,.12)]"
-              href="#score"
-            >
-              Score my race <ArrowRight size={15} />
-            </a>
-            <a
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-white/40 px-4 text-[13px] font-semibold text-white no-underline hover:bg-white/10"
-              href="#calculator"
-            >
-              Calculate a target time <Calculator size={15} />
-            </a>
-          </div>
-        </div>
-      </section>
     </>
   )
 }
