@@ -20,6 +20,7 @@ import base64
 import gzip
 import json
 import os
+from urllib.parse import urlencode
 from dataclasses import asdict, replace
 from hashlib import sha256
 from datetime import date, datetime, timezone
@@ -30,6 +31,7 @@ import unicodedata
 from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 
+from fastapi.responses import RedirectResponse
 from fastapi import FastAPI, Form, HTTPException, Request, Response, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -74,6 +76,7 @@ from .auth import (
 from . import email as _email
 from . import server_stats as _server
 from .email import send_password_reset_email, send_verification_email
+from . import oauth_google as _google
 from . import rate_limit as _limits
 from .rate_limit import enforce_rate_limit, over_limit
 from . import rate_limit as _rate_limit
@@ -111,6 +114,7 @@ from .schemas import (
     GpxAnalysis,
     IllustrativeEstimateOut,
     MessageResponse,
+    ProvidersResponse,
     RegistrationResponse,
     OrganizerCredentials,
     OrganizerRegistration,
@@ -635,7 +639,131 @@ def _me(organizer: Organizer) -> MeResponse:
         profile=ProfileOut(**{k: profile.get(k) for k in (*db.PROFILE_FIELDS, "marketing_opt_in_at", "terms_accepted_at")}),
         two_factor=TwoFactorStatus(**_auth.two_factor_status(organizer.id)),
         password_changed_at=profile.get("password_changed_at"),
+        has_password=bool(profile.get("has_password", True)),
     )
+
+
+# --- Sign in with Google ------------------------------------------------------------------------
+#
+# See api/oauth_google.py for the flow and the checks. Two things are particular to these routes.
+# The callback is a top-level navigation from Google, so it cannot carry the web client's header:
+# it sets the session cookie directly, and the state row plus the browser cookie stand in for the
+# header as the proof that this browser meant to sign in. And every failure ends in a redirect to
+# the app with a short reason code, never in an error page on the API host.
+
+_OAUTH_COOKIE = "otri_oauth"
+_ORGANIZER_APP = f"{_email.APP_BASE_URL}/prototype/organizer/"
+
+
+def _api_base(request: Request) -> str:
+    """This API's own origin as the browser sees it, behind the proxy: where Google must send the
+    browser back. It has to match the URI registered in the Google console exactly."""
+    scheme = request.headers.get("x-forwarded-proto", request.url.scheme).split(",")[0].strip()
+    host = request.headers.get("x-forwarded-host", request.headers.get("host", request.url.netloc)).split(",")[0].strip()
+    return f"{scheme}://{host}"
+
+
+def _app_redirect(fragment: str, **params: str) -> RedirectResponse:
+    query = f"?{urlencode(params)}" if params else ""
+    return RedirectResponse(f"{_ORGANIZER_APP}#{fragment}{query}", status_code=303)
+
+
+def _clear_oauth_cookie(response: Response, request: Request) -> None:
+    response.delete_cookie(_OAUTH_COOKIE, path="/auth/google", httponly=True, secure=_cookie_secure(request), samesite="lax")
+
+
+@app.get("/auth/providers", response_model=ProvidersResponse)
+def auth_providers() -> ProvidersResponse:
+    """Which outside sign-ins this deployment offers, so the app only shows buttons that work."""
+    return ProvidersResponse(google=_google.enabled())
+
+
+@app.get("/auth/google/start")
+def google_start(
+    request: Request,
+    intent: str = "login",
+    accept_terms: bool = False,
+    marketing_opt_in: bool = False,
+    remember: bool = False,
+):
+    """Sends the browser to Google. `intent` says which page the button was on: only the register
+    page, with the terms ticked, may end in a new account."""
+    if not _google.enabled():
+        raise HTTPException(status_code=404, detail="Google sign-in is not configured")
+    enforce_rate_limit(request, max_requests=10)
+    enforce_rate_limit(request, max_requests=60, scope="oauth-start-hour", window_seconds=3600)
+    try:
+        begun = _google.begin(
+            redirect_uri=f"{_api_base(request)}/auth/google/callback",
+            intent=intent,
+            accept_terms=accept_terms,
+            marketing_opt_in=marketing_opt_in,
+            remember=remember,
+        )
+    except _google.OAuthError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    response = RedirectResponse(begun.url, status_code=303)
+    response.set_cookie(
+        _OAUTH_COOKIE,
+        begun.browser_token,
+        max_age=int(_google.STATE_TTL.total_seconds()),
+        httponly=True,
+        secure=_cookie_secure(request),
+        samesite="lax",  # sent on the top-level GET back from Google, never on a cross-site POST or fetch
+        path="/auth/google",
+    )
+    return response
+
+
+@app.get("/auth/google/callback")
+def google_callback(request: Request, state: str = "", code: str = "", error: str = ""):
+    """Where Google sends the browser back. Ends in the app, signed in or with a reason not to be."""
+    if not _google.enabled():
+        raise HTTPException(status_code=404, detail="Google sign-in is not configured")
+    enforce_rate_limit(request, max_requests=20)
+
+    def fail(reason: str) -> RedirectResponse:
+        response = _app_redirect("/login", google="failed", reason=reason)
+        _clear_oauth_cookie(response, request)
+        return response
+
+    if error or not state or not code:
+        return fail("denied" if error else "bad-request")
+    try:
+        identity, started = _google.complete(
+            state=state,
+            code=code,
+            browser_token=request.cookies.get(_OAUTH_COOKIE),
+            redirect_uri=f"{_api_base(request)}/auth/google/callback",
+        )
+        outcome = _google.resolve(identity, started)
+    except _google.OAuthError as exc:
+        return fail(exc.reason)
+    except AuthError:
+        return fail("failed")
+
+    if outcome.event == "no_account":
+        # The visitor's own address, handed back so the register page can fill it in.
+        response = _app_redirect("/register", google="no-account", email=identity.email)
+        _clear_oauth_cookie(response, request)
+        return response
+
+    organizer = outcome.organizer
+    # Every Google outcome has a verified address, so the admin list applies as at password sign-in.
+    db.set_organizer_flags(organizer.email, is_admin=organizer.email in _ADMIN_EMAILS)
+    organizer = _with_flags(organizer, check_session=False)
+    if outcome.event in ("linked", "reclaimed"):
+        _email.send_google_linked_email(organizer.email, reclaimed=outcome.event == "reclaimed")
+
+    session = _issue_session(organizer, started.remember, request, session_version=organizer.session_version)
+    if session.requires_2fa:
+        # The account's own second factor still stands. The login page knows this screen.
+        response = _app_redirect("/login", challenge=session.challenge, method=session.method or "")
+    else:
+        response = _app_redirect("/login", google="ok", event=outcome.event)
+        _set_session_cookie(response, request, session.access_token, started.remember)
+    _clear_oauth_cookie(response, request)
+    return response
 
 
 @app.get("/auth/me", response_model=MeResponse)
@@ -2377,7 +2505,7 @@ def _own_page_url(value: str | None) -> str | None:
     """The page a report was sent from, kept only when it is a page of this site. Anyone may file a
     report, and the admin dashboard and the admins' email show this address as a link: left as
     sent, it was a link of the sender's choosing in front of the people with the most access."""
-    from urllib.parse import urlsplit
+    from urllib.parse import urlencode, urlsplit
 
     value = (value or "").strip()[:500]
     try:

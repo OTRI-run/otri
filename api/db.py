@@ -118,6 +118,39 @@ CREATE TABLE IF NOT EXISTS login_challenges (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Accounts made through Google have no password of their own; the column tells the account page
+-- which actions can ask for one. The hash column stays NOT NULL and holds an unusable random hash.
+ALTER TABLE organizers ADD COLUMN IF NOT EXISTS has_password BOOLEAN NOT NULL DEFAULT TRUE;
+
+-- A sign-in identity from an outside provider, keyed on the provider's stable subject id, never on
+-- the email: addresses change, subjects do not. One organizer may hold several.
+CREATE TABLE IF NOT EXISTS organizer_identities (
+    provider TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    organizer_id INTEGER NOT NULL REFERENCES organizers(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_used_at TIMESTAMPTZ,
+    PRIMARY KEY (provider, subject)
+);
+CREATE INDEX IF NOT EXISTS organizer_identities_organizer_idx ON organizer_identities (organizer_id);
+
+-- A sign-in with an outside provider that has been started and not yet finished: ten minutes,
+-- used once. The state and nonce are kept as digests, like every other one-time token.
+CREATE TABLE IF NOT EXISTS oauth_states (
+    state TEXT PRIMARY KEY,
+    provider TEXT NOT NULL,
+    verifier TEXT NOT NULL,
+    nonce TEXT NOT NULL,
+    browser TEXT NOT NULL,
+    intent TEXT NOT NULL,
+    accept_terms BOOLEAN NOT NULL DEFAULT FALSE,
+    marketing_opt_in BOOLEAN NOT NULL DEFAULT FALSE,
+    remember BOOLEAN NOT NULL DEFAULT FALSE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS runners (
     runner_id TEXT PRIMARY KEY,
     family_name TEXT NOT NULL,
@@ -928,7 +961,7 @@ PROFILE_FIELDS = ("display_name", "organization", "website", "phone", "country",
 def get_profile(organizer_id: int) -> dict:
     with get_connection() as connection:
         row = connection.execute(
-            f"SELECT {', '.join(PROFILE_FIELDS)}, marketing_opt_in_at, terms_accepted_at, two_factor_method, password_changed_at FROM organizers WHERE id = %s", (organizer_id,)
+            f"SELECT {', '.join(PROFILE_FIELDS)}, marketing_opt_in_at, terms_accepted_at, two_factor_method, password_changed_at, has_password FROM organizers WHERE id = %s", (organizer_id,)
         ).fetchone()
     return dict(row) if row else {}
 

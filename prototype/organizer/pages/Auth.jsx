@@ -1,14 +1,85 @@
 import { autoFocusOnDesktop } from '../../../src/lib/comfort'
 import { useEffect, useState } from 'react'
 import { ArrowRight, ArrowUpRight, CalendarDays, FileSpreadsheet, Mountain, ShieldCheck } from 'lucide-react'
-import { completeTwoFactor, loginOrganizer, registerOrganizer, requestPasswordReset, resendVerification, resetPassword, verifyEmail } from '../../apiClient'
+import { completeTwoFactor, getAuthProviders, googleStartUrl, loginOrganizer, registerOrganizer, requestPasswordReset, resendVerification, resetPassword, verifyEmail } from '../../apiClient'
 import PasswordStrength, { assessPassword } from '../../../src/components/PasswordStrength'
 import { Link, navigate } from '../router'
 import { hasHandoff } from '../../publishHandoff'
+import { writeSession } from '../session'
 import { Button, Card, CONTAINER, Eyebrow, Field, Gradient, inputClass, Notice, Page, PasswordInput } from '../ui'
 
 const DOCS = 'https://github.com/OTRI-run/otri/blob/main'
 const MIN_PASSWORD = 10
+
+// --- Sign in with Google -------------------------------------------------------------------
+//
+// The button is a link to the API, which runs the whole OpenID Connect flow and lands back on
+// the login page with the session cookie set (see api/oauth_google.py). Nothing from Google is
+// loaded on this page.
+
+let providersPromise = null
+/** Which outside sign-ins the API offers, asked once per page load. */
+function useProviders() {
+  const [providers, setProviders] = useState({ google: false })
+  useEffect(() => {
+    providersPromise = providersPromise || getAuthProviders()
+    let live = true
+    providersPromise.then((found) => live && setProviders(found || { google: false }))
+    return () => {
+      live = false
+    }
+  }, [])
+  return providers
+}
+
+function GoogleMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.5l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.4 17.7 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z" />
+      <path fill="#FBBC05" d="M10.5 28.7A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.8-4.7l-7.9-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.1z" />
+      <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.1 1.4-4.9 2.3-8.2 2.3-6.3 0-11.6-3.9-13.5-9.4l-7.9 6.1C6.5 42.6 14.6 48 24 48z" />
+    </svg>
+  )
+}
+
+/** "Continue with Google". Shown only when the API says Google is configured. On the register
+ *  page it waits for the terms box, because a Google sign-up still creates an OTRI account. */
+function GoogleButton({ intent, acceptTerms = false, marketingOptIn = false, remember = false, disabled = false, hint = null }) {
+  const providers = useProviders()
+  if (!providers.google) return null
+  const classes =
+    'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-[13px] font-semibold text-[#0b1220] no-underline transition hover:border-blue-300'
+  return (
+    <div className="grid gap-2">
+      <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[.12em] text-slate-400">
+        <span className="h-px flex-1 bg-slate-200" />
+        or
+        <span className="h-px flex-1 bg-slate-200" />
+      </div>
+      {disabled ? (
+        <span aria-disabled="true" className={`${classes} cursor-not-allowed opacity-50`}>
+          <GoogleMark /> Continue with Google
+        </span>
+      ) : (
+        <a href={googleStartUrl({ intent, acceptTerms, marketingOptIn, remember })} className={classes}>
+          <GoogleMark /> Continue with Google
+        </a>
+      )}
+      {hint && <p className="text-xs text-slate-500">{hint}</p>}
+    </div>
+  )
+}
+
+// What the login page says for each way the API can send the browser back without a session.
+const GOOGLE_FAILURE = {
+  denied: 'Google did not complete the sign-in. You can try again.',
+  expired: 'That sign-in took too long, or was already used. Start it again.',
+  mismatch: 'That sign-in was started in a different browser. Start it again here.',
+  unverified: 'Google has not verified the email address on that account, so it cannot be used to sign in here.',
+  exchange: 'Google did not accept the sign-in. Try again in a moment.',
+  token: 'The sign-in from Google could not be verified. Try again.',
+}
 
 const STEPS = [
   [CalendarDays, 'EVENT', 'Name the event and its date. It holds every race distance.'],
@@ -214,8 +285,8 @@ function AuthCard({ title, intro, children, footer, eyebrow = 'FOR ORGANIZERS' }
   )
 }
 
-export function Register({ onSignedIn }) {
-  const [email, setEmail] = useState('')
+export function Register({ onSignedIn, query = {} }) {
+  const [email, setEmail] = useState(query.email || '')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState(null)
@@ -265,6 +336,11 @@ export function Register({ onSignedIn }) {
       }
     >
       <form onSubmit={submit} className="grid gap-4" noValidate>
+        {query.google === 'no-account' && (
+          <Notice kind="info" title="No OTRI account for that Google address yet.">
+            Create one here: tick the terms box and continue with Google again, or choose a password instead.
+          </Notice>
+        )}
         <Field label="Work email" htmlFor="reg-email" hint="We send the verification link and race notifications here.">
           <input id="reg-email" autoFocus={autoFocusOnDesktop} type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
         </Field>
@@ -317,6 +393,7 @@ export function Register({ onSignedIn }) {
                   : 'Tick the terms box to continue.'}
           </p>
         )}
+        <GoogleButton intent="register" acceptTerms={acceptTerms} marketingOptIn={news} disabled={!acceptTerms} hint={acceptTerms ? null : 'Tick the terms box first; a Google sign-up creates an OTRI account too.'} />
       </form>
     </AuthCard>
   )
@@ -414,7 +491,7 @@ export function Verify({ token }) {
   )
 }
 
-export function Login({ onSignedIn, afterReset = false }) {
+export function Login({ onSignedIn, afterReset = false, query = {} }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
@@ -424,6 +501,25 @@ export function Login({ onSignedIn, afterReset = false }) {
   const [remember, setRemember] = useState(true)
   const [challenge, setChallenge] = useState(null) // { challenge, method }
   const [code, setCode] = useState('')
+
+  // Google sends the browser back here (see api/app.py google_callback) in one of three states:
+  // signed in, needing this account's second factor, or not signed in with a reason.
+  useEffect(() => {
+    if (query.google === 'ok') {
+      // The cookie is already set. Remember that a sign-in exists and start the app from it, the
+      // way a returning visitor does, so who is signed in is read from /auth/me.
+      writeSession()
+      window.location.replace(`${window.location.pathname}${window.location.search}#${hasHandoff() ? '/publish' : '/events'}`)
+      window.location.reload()
+    } else if (query.challenge) {
+      setChallenge({ challenge: query.challenge, method: query.method || 'totp' })
+      // a challenge is used once; it should not stay in the address bar or the history
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#/login`)
+    } else if (query.google === 'failed') {
+      setError(GOOGLE_FAILURE[query.reason] || 'Signing in with Google did not work. Try again, or use your password.')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function submit(event) {
     event.preventDefault()
@@ -553,6 +649,7 @@ export function Login({ onSignedIn, afterReset = false }) {
         <Link to="/forgot" className="text-sm text-slate-500 underline">
           Forgot your password?
         </Link>
+        <GoogleButton intent="login" remember={remember} />
       </form>
     </AuthCard>
   )

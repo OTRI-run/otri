@@ -353,6 +353,9 @@ class MeResponse(BaseModel):
     profile: ProfileOut = ProfileOut()
     two_factor: TwoFactorStatus = TwoFactorStatus()
     password_changed_at: datetime | None = None
+    # False for an account made through Google that has not set a password yet: the account page
+    # then offers to set one instead of asking for the current one.
+    has_password: bool = True
 
 
 class TwoFactorLogin(BaseModel):
@@ -444,6 +447,12 @@ class RegistrationResponse(TokenResponse):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class ProvidersResponse(BaseModel):
+    """Which outside sign-in providers this deployment has configured."""
+
+    google: bool = False
 
 
 class EmailVerificationRequest(BaseModel):
