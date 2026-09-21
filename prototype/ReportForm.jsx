@@ -49,7 +49,7 @@ export default function ReportForm({ kind, subjectId, subjectLabel, prompt = 'Is
 
   if (state === 'sent') {
     return (
-      <p className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-xs text-emerald-900">
+      <p className="mt-3 rounded-[3px] border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-xs text-emerald-900">
         Thanks. An admin will look at it{email ? ` and reply to ${email}` : ''}. Removal requests are handled first.
       </p>
     )
@@ -57,20 +57,20 @@ export default function ReportForm({ kind, subjectId, subjectLabel, prompt = 'Is
 
   return (
     <div className="mt-3">
-      <p className="font-mono text-[9px] tracking-[.05em] text-slate-400">
+      <p className="font-mono text-[9px] tracking-[.05em] text-muted">
         Built only from races their organizers published. {prompt}{' '}
-        <button type="button" onClick={() => setOpen((v) => !v)} className="text-blue-600 underline">
+        <button type="button" onClick={() => setOpen((v) => !v)} className="text-accent underline">
           {open ? 'Close' : 'Report a problem'}
         </button>
       </p>
       {open && (
-        <form onSubmit={submit} className="mt-3 grid max-w-[560px] gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
-          <p className="flex items-center gap-2 text-sm font-semibold text-[#0b1220]">
-            <FlagIcon size={14} className="text-blue-600" /> Report: {subjectLabel}
+        <form onSubmit={submit} className="mt-3 grid max-w-[560px] gap-3 rounded-[3px] border border-rule bg-white p-4 ">
+          <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+            <FlagIcon size={14} className="text-accent" /> Report: {subjectLabel}
           </p>
-          <label className="text-xs text-slate-600">
+          <label className="text-xs text-muted">
             What is wrong?
-            <select value={reason} onChange={(e) => setReason(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-[#0b1220]">
+            <select value={reason} onChange={(e) => setReason(e.target.value)} className="mt-1 w-full rounded-[3px] border border-rule bg-white px-3 py-2 text-sm text-ink">
               {(REASONS[kind] ?? REASONS.runner).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
@@ -78,7 +78,7 @@ export default function ReportForm({ kind, subjectId, subjectLabel, prompt = 'Is
               ))}
             </select>
           </label>
-          <label className="text-xs text-slate-600">
+          <label className="text-xs text-muted">
             Details
             <textarea
               required
@@ -88,23 +88,23 @@ export default function ReportForm({ kind, subjectId, subjectLabel, prompt = 'Is
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Which result, what should it be, or why it should be removed."
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-[#0b1220]"
+              className="mt-1 w-full rounded-[3px] border border-rule bg-white px-3 py-2 text-sm text-ink"
             />
           </label>
-          <label className="text-xs text-slate-600">
+          <label className="text-xs text-muted">
             Your email (optional, so we can reply)
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-[#0b1220]" />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 w-full rounded-[3px] border border-rule bg-white px-3 py-2 text-sm text-ink" />
           </label>
           {error && <p className="text-xs text-red-600">{error}</p>}
           <div className="flex items-center gap-3">
             <button
               type="submit"
               disabled={state === 'sending' || message.trim().length < 10}
-              className="inline-flex min-h-10 items-center rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 px-4 text-[13px] font-semibold text-white disabled:opacity-50"
+              className="inline-flex min-h-10 items-center rounded-[3px] bg-gradient-to-r from-blue-700 to-blue-500 px-4 text-[13px] font-semibold text-white disabled:opacity-50"
             >
               {state === 'sending' ? 'Sending…' : 'Send report'}
             </button>
-            <span className="text-[11px] text-slate-500">Goes to the OTRI admins only.</span>
+            <span className="text-[11px] text-muted">Goes to the OTRI admins only.</span>
           </div>
         </form>
       )}

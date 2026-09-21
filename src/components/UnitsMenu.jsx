@@ -5,8 +5,8 @@ import { distanceUnit, setUnits, unitsSummary, useUnits } from '../lib/units'
 function Segment({ label, options, value, onChange }) {
   return (
     <div>
-      <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">{label}</p>
-      <div className="mt-1.5 inline-flex overflow-hidden rounded-lg border border-slate-300 bg-white">
+      <p className="font-mono text-[9px] tracking-[.08em] text-muted">{label}</p>
+      <div className="mt-1.5 inline-flex overflow-hidden rounded-[3px] border border-rule bg-white">
         {options.map(([optionValue, optionLabel]) => {
           const active = optionValue === value
           return (
@@ -16,7 +16,7 @@ function Segment({ label, options, value, onChange }) {
               onClick={() => onChange(optionValue)}
               aria-pressed={active}
               className={`px-3 py-1.5 font-mono text-[11px] font-semibold transition ${
-                active ? 'bg-[#0b1220] text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-[#0b1220]'
+                active ? 'bg-ink text-white' : 'text-muted hover:bg-slate-50 hover:text-ink'
               }`}
             >
               {optionLabel}
@@ -61,7 +61,7 @@ export default function UnitsMenu({ align = 'right', compact = false }) {
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label="Display units"
-        className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-[11px] font-semibold text-[#0b1220] hover:border-blue-300"
+        className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[3px] border border-rule bg-white px-2.5 py-1.5 font-mono text-[11px] font-semibold text-ink hover:border-accent"
       >
         {compact ? units.distance : unitsSummary(units)}
         <ChevronDown size={12} className={`transition ${open ? 'rotate-180' : ''}`} />
@@ -70,7 +70,7 @@ export default function UnitsMenu({ align = 'right', compact = false }) {
         <div
           role="dialog"
           aria-label="Display units"
-          className={`absolute top-full z-50 mt-2 w-56 space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_18px_44px_rgba(15,23,42,.14)] ${
+          className={`absolute top-full z-50 mt-2 w-56 space-y-3 rounded-[3px] border border-rule bg-white p-4  ${
             align === 'right' ? 'right-0' : 'left-0'
           }`}
         >
@@ -101,7 +101,7 @@ export default function UnitsMenu({ align = 'right', compact = false }) {
             value={units.pace}
             onChange={(pace) => setUnits({ pace })}
           />
-          <p className="text-[10px] leading-4 text-slate-400">Applies across the site. Scores never change with units.</p>
+          <p className="text-[10px] leading-4 text-muted">Applies across the site. Scores never change with units.</p>
         </div>
       )}
     </div>

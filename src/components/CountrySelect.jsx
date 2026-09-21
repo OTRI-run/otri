@@ -141,8 +141,8 @@ export default function CountrySelect({ id, value, onChange, className = '', pla
         />
       </div>
       {open && (
-        <ul id={listId} role="listbox" className="absolute left-0 right-0 top-full z-40 mt-1 max-h-72 overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-[0_18px_44px_rgba(15,23,42,.14)]">
-          {options.length === 0 && <li className="px-3 py-2 text-sm text-slate-500">No country matches “{text}”.</li>}
+        <ul id={listId} role="listbox" className="absolute left-0 right-0 top-full z-40 mt-1 max-h-72 overflow-auto rounded-[3px] border border-rule bg-white py-1 ">
+          {options.length === 0 && <li className="px-3 py-2 text-sm text-muted">No country matches “{text}”.</li>}
           {options.map((option, index) => (
             <li
               key={option.code}
@@ -152,11 +152,11 @@ export default function CountrySelect({ id, value, onChange, className = '', pla
               tabIndex={-1}
               onMouseDown={(event) => { event.preventDefault(); choose(option) }}
               onMouseEnter={() => setActive(index)}
-              className={`flex cursor-pointer items-center gap-2.5 px-3 py-2 text-sm ${index === active ? 'bg-blue-50 text-[#0b1220]' : 'text-slate-700'}`}
+              className={`flex cursor-pointer items-center gap-2.5 px-3 py-2 text-sm ${index === active ? 'bg-wash text-ink' : 'text-slate-700'}`}
             >
               <span className={`fi fi-${option.alpha2} shrink-0 rounded-[2px]`} aria-hidden="true" />
               <span className="min-w-0 flex-1 truncate">{option.name}</span>
-              <span className="font-mono text-[10px] text-slate-400">{option.code}</span>
+              <span className="font-mono text-[10px] text-muted">{option.code}</span>
             </li>
           ))}
         </ul>

@@ -34,7 +34,7 @@ export function Dashboard({ session }) {
       intro="An event is one edition of your race weekend. Each race distance lives inside it, with its own course and results."
     >
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-        <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">
+        <p className="font-mono text-[10px] tracking-[.08em] text-muted">
           {events ? `${events.length} EVENT${events.length === 1 ? '' : 'S'}` : ''}
         </p>
         {events?.length !== 0 && (
@@ -56,7 +56,7 @@ export function Dashboard({ session }) {
           <Notice kind="error">{error}</Notice>
         </div>
       )}
-      {events === null && !error && <p className="mt-6 text-sm text-slate-500">Loading your events…</p>}
+      {events === null && !error && <p className="mt-6 text-sm text-muted">Loading your events…</p>}
       {events?.length === 0 && (
         <div className="mt-6">
           <EmptyState
@@ -77,16 +77,16 @@ export function Dashboard({ session }) {
             <Link
               key={event.event_id}
               to={`/events/${encodeURIComponent(event.event_id)}`}
-              className="group block min-w-0 rounded-2xl border border-slate-200 bg-white p-5 no-underline shadow-[0_10px_28px_rgba(15,23,42,.04)] transition hover:border-blue-300 hover:shadow-[0_14px_34px_rgba(37,99,235,.12)]"
+              className="group block min-w-0 rounded-[3px] border border-rule bg-white p-5 no-underline  transition hover:border-accent hover:"
             >
               <div className="flex items-center justify-between">
-                <p className="flex items-center gap-1.5 font-mono text-[9px] tracking-[.08em] text-blue-600">
+                <p className="flex items-center gap-1.5 font-mono text-[9px] tracking-[.08em] text-accent">
                   <CalendarDays size={11} /> {formatDate(event.event_date).toUpperCase()}
                 </p>
-                <ArrowUpRight size={14} className="text-slate-300 transition group-hover:text-blue-600" />
+                <ArrowUpRight size={14} className="text-rule transition group-hover:text-accent" />
               </div>
-              <h2 className="otri-fit mt-2 text-xl font-bold tracking-[-.03em] text-[#0b1220]">{event.event_name}</h2>
-              <p className="mt-4 text-xs font-semibold text-blue-600">
+              <h2 className="otri-fit mt-2 text-xl font-bold tracking-[-.03em] text-ink">{event.event_name}</h2>
+              <p className="mt-4 text-xs font-semibold text-accent">
                 {event.race_count === 0 ? 'No races yet' : `${event.race_count} race${event.race_count === 1 ? '' : 's'}`}
               </p>
             </Link>
@@ -175,7 +175,7 @@ export function NewEvent({ session }) {
                 Cancel
               </Button>
             </div>
-            {!busy && (!name.trim() || !date) && <p className="text-xs text-slate-500">{!name.trim() ? 'Enter the event name to continue.' : 'Pick the event date to continue.'}</p>}
+            {!busy && (!name.trim() || !date) && <p className="text-xs text-muted">{!name.trim() ? 'Enter the event name to continue.' : 'Pick the event date to continue.'}</p>}
           </form>
         </Card>
       }
@@ -190,18 +190,18 @@ function RaceRow({ race }) {
   return (
     <Link
       to={`/races/${encodeURIComponent(race.race_id)}/${next}`}
-      className="group flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 no-underline shadow-[0_10px_28px_rgba(15,23,42,.04)] transition hover:border-blue-300"
+      className="group flex items-center justify-between gap-4 rounded-[3px] border border-rule bg-white px-5 py-4 no-underline  transition hover:border-accent"
     >
       <div className="min-w-0">
-        <p className="truncate text-base font-bold tracking-[-.02em] text-[#0b1220]">{race.course_name}</p>
-        <p className="mt-0.5 font-mono text-[10px] text-slate-500">
+        <p className="truncate text-base font-bold tracking-[-.02em] text-ink">{race.course_name}</p>
+        <p className="mt-0.5 font-mono text-[10px] text-muted">
           {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
           {race.has_gpx ? ' · measured from GPX' : ''}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-3">
         <StatusChip status={status} />
-        <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 transition group-hover:gap-2">
+        <span className="inline-flex items-center gap-1 text-xs font-semibold text-accent transition group-hover:gap-2">
           {status === 'published' ? 'Open' : status === 'scored' ? 'Review' : 'Continue'} <ArrowRight size={13} />
         </span>
       </div>
@@ -267,7 +267,7 @@ export function EventPage({ session, eventId }) {
   return (
     <Page back={{ to: '/events', label: 'Your events' }} eyebrow={`EVENT · ${formatDate(event.event_date).toUpperCase()}`} title={event.event_name}>
       <div className="mt-4 flex flex-wrap gap-4 text-sm">
-        <button onClick={() => setEditing((v) => !v)} className="font-semibold text-blue-600 hover:underline">
+        <button onClick={() => setEditing((v) => !v)} className="font-semibold text-accent hover:underline">
           {editing ? 'Cancel edit' : 'Edit event'}
         </button>
         <button onClick={remove} disabled={busy} className="font-semibold text-red-600 hover:underline">
@@ -312,10 +312,10 @@ export function EventPage({ session, eventId }) {
         </div>
       )}
 
-      <div className="mt-12 flex flex-wrap items-end justify-between gap-3 border-t border-slate-300 pt-8">
+      <div className="mt-12 flex flex-wrap items-end justify-between gap-3 border-t border-rule pt-8">
         <div>
           <Eyebrow>STEP 2 OF 4 · RACES</Eyebrow>
-          <h2 className="mt-2 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">Race distances</h2>
+          <h2 className="mt-2 text-2xl font-bold tracking-[-.03em] text-ink">Race distances</h2>
         </div>
         <Button onClick={() => navigate(`/events/${encodeURIComponent(eventId)}/races/new`)}>
           <Plus size={15} /> Add race
