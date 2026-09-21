@@ -5,7 +5,6 @@ import { completeTwoFactor, getAuthProviders, googleStartUrl, loginOrganizer, re
 import PasswordStrength, { assessPassword } from '../../../src/components/PasswordStrength'
 import { Link, navigate } from '../router'
 import { hasHandoff } from '../../publishHandoff'
-import { writeSession } from '../session'
 import { Button, Card, CONTAINER, Eyebrow, Field, Gradient, inputClass, Notice, Page, PasswordInput } from '../ui'
 
 const DOCS = 'https://github.com/OTRI-run/otri/blob/main'
@@ -517,11 +516,14 @@ export function Login({ onSignedIn, afterReset = false, query = {} }) {
   // signed in, needing this account's second factor, or not signed in with a reason.
   useEffect(() => {
     if (query.google === 'ok') {
-      // The cookie is already set. Remember that a sign-in exists and start the app from it, the
-      // way a returning visitor does, so who is signed in is read from /auth/me.
-      writeSession()
-      window.location.replace(`${window.location.pathname}${window.location.search}#${hasHandoff() ? '/publish' : '/events'}`)
-      window.location.reload()
+      // The cookie is already set. Tell the app a sign-in exists and go to the welcome page, whose
+      // rule for signed-in visitors takes them on to their events (or to publish a waiting race)
+      // once the session is applied; the app asks /auth/me who is signed in, as for a returning
+      // visitor. Not straight to /events: the app's guard runs in this same render, would see the
+      // new address with the session not yet applied, and would bounce back here. And no reload:
+      // a reload racing the hash change left some browsers on this address with nothing drawn.
+      onSignedIn('', '', false)
+      navigate('/', { replace: true })
     } else if (query.challenge) {
       setChallenge({ challenge: query.challenge, method: query.method || 'totp' })
       // a challenge is used once; it should not stay in the address bar or the history
