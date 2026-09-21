@@ -173,7 +173,7 @@ function Footer() {
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <a href="#api" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">API and embed</a>
           <a href={GITHUB_URL} className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">GitHub</a>
-          <a href="#contribute" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Contribute</a>
+          <a href="https://github.com/OTRI-run/otri/blob/main/CONTRIBUTING.md" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Contribute</a>
           <a href="#faq" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">FAQ</a>
           <a href="#media" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Media and logo</a>
           <a href="https://github.com/OTRI-run/otri/blob/main/PRIVACY.md" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Privacy</a>
