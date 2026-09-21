@@ -72,8 +72,7 @@ function parseHash(hash) {
   if (path.startsWith('races')) return { tab: 'races', raceId: null }
   const runnerMatch = path.match(/^runners\/(.+)$/)
   if (runnerMatch) return { tab: 'runners', raceId: null, runnerId: decodeURIComponent(runnerMatch[1]) }
-  if (path.startsWith('runners'))
-    return { tab: 'runners', raceId: null, runnerId: null, runnerQuery: new URLSearchParams(path.split('?')[1] || '').get('q') || '' }
+  if (path.startsWith('runners')) return { tab: 'runners', raceId: null, runnerId: null }
   // #contribute is a place on the home page (Home.jsx scrolls to it), not a page of its own.
   if (path === '' || path === 'home' || path === 'top' || path === 'contribute') return { tab: 'home', raceId: null }
   return { tab: 'notfound', raceId: null }
@@ -697,7 +696,7 @@ function App() {
       <main>
         {route.tab === 'home' && <Home />}
         {route.tab === 'races' && <RacesPage raceId={route.raceId} />}
-        {route.tab === 'runners' && (route.runnerId ? <RunnerProfilePage runnerId={route.runnerId} onBack={() => navigate('#runners')} /> : <RunnersPage initialQuery={route.runnerQuery} />)}
+        {route.tab === 'runners' && (route.runnerId ? <RunnerProfilePage runnerId={route.runnerId} onBack={() => navigate('#runners')} /> : <RunnersPage />)}
         {route.tab === 'calculator' && <ScoreCalculator />}
         {route.tab === 'score' && <ScoreRace />}
         {route.tab === 'api' && <ApiDocs />}
