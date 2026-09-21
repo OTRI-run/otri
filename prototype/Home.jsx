@@ -2,8 +2,7 @@ import { scrollBehavior } from '../src/lib/comfort'
 import { ArrowRight, ArrowUpRight, Calculator, Database, FileText, GitBranch, Mountain, ShieldCheck, Timer, Upload, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import RaceCard from './RaceCard'
-import { getRaceResults, listRaces } from './apiClient'
-import { modelLabel } from '../src/lib/model'
+import { listRaces } from './apiClient'
 
 const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 const DOCS = {
@@ -33,66 +32,6 @@ const secondaryButton =
   'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white/90 px-4 text-[13px] font-semibold text-[#0b1220] no-underline hover:border-blue-300'
 const textLink = 'inline-flex items-center gap-1 text-xs font-semibold text-blue-600 no-underline hover:underline'
 
-// The landing page's dark "index engine" card, with every row a link into the prototype.
-// A handful of real (demo) scores scrolling by, each a link to the runner: the quickest way to
-// show what the index produces. Pauses for people who prefer reduced motion (see styles.css).
-function ScoreTicker({ entries }) {
-  if (!entries.length) return null
-  const rows = [...entries, ...entries]
-  return (
-    <div className="relative mt-1 h-[88px] overflow-hidden border-b border-slate-700/70" aria-label="Recent scores">
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-4 bg-gradient-to-b from-[#0b1730] to-transparent" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-4 bg-gradient-to-t from-[#0f2a5f] to-transparent" />
-      <ul className="otri-ticker">
-        {rows.map((entry, index) => (
-          <li key={`${entry.runner_id ?? entry.name}-${index}`} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-1 font-mono text-[10px]">
-            <a href={entry.runner_id ? `#runners/${encodeURIComponent(entry.runner_id)}` : `#races/${encodeURIComponent(entry.race_id)}`} className="min-w-0 truncate text-slate-300 no-underline hover:text-white">
-              {entry.name} <span className="text-slate-500">· {entry.race}</span>
-            </a>
-            <span className="font-bold text-blue-300">{entry.score}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
-
-function EngineCard({ raceCount, resultCount, scoringVersion, ticker }) {
-  return (
-    <div className="min-w-0 overflow-hidden rounded-2xl bg-[linear-gradient(145deg,#08111f_0%,#0b1730_58%,#123b85_100%)] p-4 text-white shadow-[0_24px_70px_rgba(11,18,32,.2)] sm:p-5">
-      <div className="flex items-center justify-between font-mono text-[8px] tracking-[.08em] text-slate-400">
-        <span>OTRI / OPEN SCORING</span>
-        <span className="flex items-center gap-1.5">
-          <i className="h-1.5 w-1.5 rounded-full bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,.9)]" />
-          LIVE API
-        </span>
-      </div>
-      <div className="border-b border-slate-700/70 py-7">
-        <small className="font-mono text-[8px] tracking-[.08em] text-blue-300">WHAT IS AN OTRI SCORE?</small>
-        <strong className="mt-2 block bg-gradient-to-r from-white to-blue-200 bg-clip-text pb-1 text-4xl font-bold leading-[1.25] tracking-[-.05em] text-transparent">
-          Course + time = score.
-        </strong>
-        <span className="mt-1 block text-xs leading-5 text-slate-400">
-          A hilly 25 km and a flat 50 km, side by side. 1000 is world-record level, and your score never depends on
-          who else raced.
-        </span>
-      </div>
-      <ScoreTicker entries={ticker} />
-      <a
-        href="#races"
-        className="flex items-center justify-between gap-3 border-b border-slate-700/70 py-3.5 text-white no-underline transition hover:bg-white/5"
-      >
-        <span className="text-xs font-semibold">Browse every scored race</span>
-        <small className="font-mono text-[8px] text-slate-500">{raceCount} RACES · {resultCount} RESULTS</small>
-      </a>
-      <div className="flex justify-between gap-3 pt-4 font-mono text-[8px] tracking-[.08em]">
-        <b>OTRI INDEX</b>
-        <span className="text-right text-blue-300">{scoringVersion ? modelLabel(scoringVersion).toUpperCase() : 'VERSIONED · REPRODUCIBLE'}</span>
-      </div>
-    </div>
-  )
-}
-
 export default function Home() {
   // #contribute (the hero's link, the footer's, or an address someone shared) is the block below.
   useEffect(() => {
@@ -108,7 +47,6 @@ export default function Home() {
   }, [])
 
   const [races, setRaces] = useState([])
-  const [ticker, setTicker] = useState([])
   useEffect(() => {
     let cancelled = false
     listRaces()
@@ -117,34 +55,19 @@ export default function Home() {
         // The home page counts and previews scored races; listings without results live on the races page.
         const rows = all.filter((race) => race.is_published)
         setRaces(rows)
-        // A few scored finishers from the newest published races, for the card's ticker.
-        const sample = rows.filter((race) => (race.finisher_count ?? 0) > 0).slice(0, 4)
-        const lists = await Promise.all(sample.map((race) => getRaceResults(race.race_id).catch(() => [])))
-        // Top three of each race, interleaved round-robin so the list reads like a feed across races.
-        const perRace = sample.map((race, i) =>
-          lists[i]
-            .filter((row) => row.status === 'finisher' && row.otri_score != null)
-            .slice(0, 3)
-            .map((row) => ({ name: `${row.first_name} ${row.family_name}`, race: race.event_name, score: row.otri_score, runner_id: row.runner_id, race_id: race.race_id })),
-        )
-        const entries = []
-        for (let round = 0; round < 3; round += 1) perRace.forEach((rows) => rows[round] && entries.push(rows[round]))
-        if (!cancelled) setTicker(entries.slice(0, 12))
       })
       .catch(() => {})
     return () => {
       cancelled = true
     }
   }, [])
-  const resultCount = races.reduce((sum, race) => sum + (race.finisher_count ?? 0), 0)
-  const scoringVersion = races[0]?.scoring_version ?? ''
 
   return (
     <>
       {/* Hero */}
       <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
-        <div className={`${CONTAINER} grid min-w-0 items-center gap-12 py-14 sm:py-20 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-20 lg:py-24`}>
-          <div className="min-w-0">
+        <div className={`${CONTAINER} flex min-w-0 flex-col items-center py-14 text-center sm:py-20 lg:py-24`}>
+          <div className="flex min-w-0 flex-col items-center">
             <div className="font-mono text-[10px] font-medium tracking-[.1em] text-blue-600">
               OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> PROTOTYPE
             </div>
@@ -181,7 +104,7 @@ export default function Home() {
                   more: ['See an example', '#score?example=1'],
                 },
               ].map(({ who, Icon, title, text, href, action, more }) => (
-                <div key={who} className="flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+                <div key={who} className="flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white/90 p-4 text-left shadow-[0_10px_28px_rgba(15,23,42,.04)]">
                   <span className="flex items-center gap-2.5">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
                       <Icon size={18} />
@@ -200,7 +123,6 @@ export default function Home() {
               ))}
             </div>
           </div>
-          <EngineCard raceCount={races.length} resultCount={resultCount} scoringVersion={scoringVersion} ticker={ticker} />
         </div>
       </section>
 
