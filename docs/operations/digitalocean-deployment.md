@@ -121,6 +121,10 @@ Create `/opt/otri/.env` (not committed to git — see `.gitignore`):
 
 ```
 OTRI_API_ALLOWED_ORIGINS=https://otri.run,https://www.otri.run
+# Optional. "Continue with Google" for organizers: an OAuth client (Web application) in the Google
+# Cloud console, with https://api.otri.run/auth/google/callback as an authorised redirect URI.
+OTRI_GOOGLE_CLIENT_ID=
+OTRI_GOOGLE_CLIENT_SECRET=
 OTRI_API_JWT_SECRET=<generate with: python -c "import secrets; print(secrets.token_hex(32))">
 ```
 

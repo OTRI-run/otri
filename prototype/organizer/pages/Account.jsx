@@ -13,6 +13,7 @@ import {
   emailTwoFactorStart,
   getMe,
   regenerateRecoveryCodes,
+  requestPasswordReset,
   totpEnable,
   totpSetup,
   updateProfile,
@@ -113,6 +114,42 @@ function ProfileForm({ me, onSaved }) {
       </div>
       </fieldset>
     </form>
+  )
+}
+
+/** For an account that signs in with Google and has never set a password. The reset link is how
+ *  one is set: it goes to the confirmed address, and opening it is the proof the owner asked. */
+function SetPasswordCard({ email }) {
+  const [sent, setSent] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  async function send() {
+    setBusy(true)
+    setError(null)
+    try {
+      await requestPasswordReset(email)
+      setSent(true)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="grid gap-3">
+      <p className="text-sm leading-6 text-slate-600">
+        This account signs in with Google and has no password. You can add one: it gives you a second way in, and it is what
+        two-factor sign-in, signing out everywhere and deleting the account ask for.
+      </p>
+      {error && <Notice kind="error">{error}</Notice>}
+      {sent ? (
+        <Notice kind="success" title="Check your inbox.">We sent {email} a link to choose a password. It is good for an hour.</Notice>
+      ) : (
+        <Button type="button" variant="secondary" busy={busy} onClick={send}>
+          <KeyRound size={15} /> Email me a link to set a password
+        </Button>
+      )}
+    </div>
   )
 }
 
@@ -537,6 +574,11 @@ export function AccountPage({ session, onToken, onSignOut }) {
         <div className="grid gap-6">
           <Card>
             <Eyebrow>SIGN-IN SECURITY</Eyebrow>
+            {me?.has_password === false && (
+              <div className="mt-3">
+                <Notice kind="info">This account signs in with Google. Two-factor sign-in, signing out everywhere and deleting the account ask for a password; set one in the card below first.</Notice>
+              </div>
+            )}
             <div className="mt-3">
               <TwoFactor me={me} email={session.email} onChanged={load} onToken={keepToken} />
             </div>
@@ -550,7 +592,11 @@ export function AccountPage({ session, onToken, onSignOut }) {
           <Card>
             <Eyebrow>PASSWORD</Eyebrow>
             <div className="mt-3">
-              <ChangePasswordForm email={session.email} onChanged={(result) => { keepToken(result); load() }} />
+              {me?.has_password === false ? (
+                <SetPasswordCard email={session.email} />
+              ) : (
+                <ChangePasswordForm email={session.email} onChanged={(result) => { keepToken(result); load() }} />
+              )}
             </div>
           </Card>
           <DataCard email={session.email} onDeleted={onSignOut} />

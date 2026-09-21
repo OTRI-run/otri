@@ -104,6 +104,23 @@ export function registerOrganizer(email, password, { acceptTerms = false, market
   })
 }
 
+/** Which outside sign-ins this API offers. The buttons only render for the ones it does. */
+export function getAuthProviders() {
+  return request('/auth/providers').catch(() => ({ google: false }))
+}
+
+/** Where a "Continue with Google" button points. A plain navigation: the API runs the whole flow
+ *  and comes back to the login page with the session cookie set. */
+export function googleStartUrl({ intent = 'login', acceptTerms = false, marketingOptIn = false, remember = false } = {}) {
+  const params = new URLSearchParams({
+    intent,
+    accept_terms: String(acceptTerms),
+    marketing_opt_in: String(marketingOptIn),
+    remember: String(remember),
+  })
+  return `${API_BASE_URL}/auth/google/start?${params}`
+}
+
 export function loginOrganizer(email, password, remember = false) {
   return request('/auth/login', {
     method: 'POST',
