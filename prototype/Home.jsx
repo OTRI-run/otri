@@ -1,6 +1,6 @@
 import { scrollBehavior } from '../src/lib/comfort'
 import { ArrowRight, ArrowUpRight, Calculator, Database, FileText, GitBranch, Mountain, ShieldCheck, Timer, Upload, Users } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import RaceCard from './RaceCard'
 import { listRaces } from './apiClient'
 
@@ -13,6 +13,81 @@ const DOCS = {
 }
 
 const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
+
+/**
+ * The ground, drawn as a wireframe surface running back to a horizon: the thing the index
+ * measures, behind the words that describe it. The height field is a fixed sum of sines, so the
+ * same hills render on every load, and every line fades with distance so the type in front of it
+ * is never competing with anything.
+ */
+function TerrainMesh() {
+  const { rows, columns } = useMemo(() => {
+    const COLS = 40
+    const ROWS = 18
+    const CX = 720
+    const HORIZON = 286
+
+    const height = (i, j) =>
+      74 * Math.sin(i * 0.33 + 0.6) * Math.cos(j * 0.38) +
+      42 * Math.sin(i * 0.17 - j * 0.29) +
+      26 * Math.sin((i + j) * 0.48)
+
+    // depth 0 is the horizon, depth 1 is under the reader's feet
+    const project = (i, j) => {
+      const t = j / ROWS
+      const scale = 0.16 + 1.45 * t ** 1.55
+      const ground = HORIZON + 700 * t ** 1.85
+      return [CX + (i - COLS / 2) * 60 * scale, ground - height(i, j) * scale]
+    }
+    const line = (points) => 'M' + points.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join('L')
+
+    const rows = []
+    for (let j = 0; j <= ROWS; j += 1) {
+      const points = []
+      for (let i = 0; i <= COLS; i += 1) points.push(project(i, j))
+      rows.push({ d: line(points), opacity: (0.1 + 0.85 * (j / ROWS)).toFixed(3) })
+    }
+    const columns = []
+    for (let i = 0; i <= COLS; i += 1) {
+      const points = []
+      for (let j = 0; j <= ROWS; j += 1) points.push(project(i, j))
+      columns.push(line(points))
+    }
+    return { rows, columns }
+  }, [])
+
+  return (
+    <svg
+      className="pointer-events-none absolute inset-0 h-full w-full text-slate-900"
+      viewBox="0 0 1440 900"
+      preserveAspectRatio="xMidYMax slice"
+      fill="none"
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <defs>
+        {/* the far distance dissolves, and so does the very front, so the mesh has no cut edges */}
+        <linearGradient id="otri-mesh-fade" x1="0" y1="286" x2="0" y2="900" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#fff" stopOpacity="0" />
+          <stop offset=".28" stopColor="#fff" stopOpacity=".55" />
+          <stop offset=".78" stopColor="#fff" stopOpacity="1" />
+          <stop offset="1" stopColor="#fff" stopOpacity=".25" />
+        </linearGradient>
+        <mask id="otri-mesh-mask">
+          <rect x="0" y="286" width="1440" height="614" fill="url(#otri-mesh-fade)" />
+        </mask>
+      </defs>
+      <g mask="url(#otri-mesh-mask)" strokeWidth="1" opacity=".16">
+        {columns.map((d, i) => (
+          <path key={`c${i}`} d={d} />
+        ))}
+        {rows.map((row, i) => (
+          <path key={`r${i}`} d={row.d} opacity={row.opacity} />
+        ))}
+      </g>
+    </svg>
+  )
+}
 
 function Eyebrow({ children, className = '' }) {
   return <p className={`font-mono text-[10px] tracking-[.08em] text-slate-500 ${className}`}>{children}</p>
@@ -66,41 +141,7 @@ export default function Home() {
     <>
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-slate-200 bg-white">
-        {/* Contour lines and one dashed route, drawn at a twentieth of full strength so the ground
-            is felt rather than seen. Nothing here may compete with the type in front of it. */}
-        <svg
-          className="pointer-events-none absolute inset-0 h-full w-full text-slate-900/[0.075]"
-          viewBox="0 0 1440 900"
-          preserveAspectRatio="xMidYMid slice"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.25"
-          aria-hidden="true"
-        >
-          <path d="M-60 176c250-84 430 26 700-52s450-96 860-14" />
-          <path d="M-60 252c252-86 432 28 704-54s452-98 862-14" />
-          <path d="M-60 332c254-88 434 30 708-56s454-100 864-14" />
-          <path d="M-60 416c256-90 436 32 712-58s456-102 866-14" />
-          <path d="M-60 504c258-92 438 34 716-60s458-104 868-14" />
-          <path d="M-60 596c260-94 440 36 720-62s460-106 870-14" />
-          <path d="M-60 692c262-96 442 38 724-64s462-108 872-14" />
-          <path d="M-60 792c264-98 444 40 728-66s464-110 874-14" />
-          <path d="M-60 896c266-100 446 42 732-68s466-112 876-14" />
-          <g className="text-slate-900/[0.095]" stroke="currentColor">
-            <ellipse cx="1156" cy="236" rx="196" ry="108" />
-            <ellipse cx="1160" cy="234" rx="146" ry="80" />
-            <ellipse cx="1164" cy="232" rx="98" ry="53" />
-            <ellipse cx="1168" cy="230" rx="52" ry="27" />
-          </g>
-          <path
-            d="M96 742c142-34 196-118 318-146s186 36 292-32 148-150 268-160"
-            className="text-blue-700/25"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeDasharray="9 9"
-            strokeLinecap="round"
-          />
-        </svg>
+        <TerrainMesh />
         {/* The first screen is the hero and nothing else. The header is 68px, and below md a
             second row of section links adds about 44 more, so the hero is told to fill what is
             left of the viewport. svh rather than vh, so a phone's collapsing toolbar does not
@@ -108,7 +149,6 @@ export default function Home() {
         <div
           className={`${CONTAINER} flex min-w-0 flex-col items-center justify-center py-14 text-center sm:py-20 min-h-[calc(100svh-112px)] md:min-h-[calc(100svh-68px)]`}>
           <div className="flex min-w-0 flex-col items-center">
-            <p className="font-mono text-[11px] uppercase tracking-[.16em] text-slate-500">Open Trail Running Index</p>
             <h1 className="mt-5 max-w-[760px] text-[clamp(44px,7vw,84px)] font-bold leading-[1.08] tracking-[-.065em] text-[#0b1220]">
               The open score
               <br />
@@ -129,7 +169,8 @@ export default function Home() {
                   text: 'A race or your own GPX, and a finish time.',
                   href: '#calculator',
                   action: 'Open the calculator',
-                  more: ['Find my results', '#runners'],
+                  dark: false,
+                  more: ['Try it on Phuket Trail 55K', '#calculator?race=race-d8d0c2c5&t=37260'],
                 },
                 {
                   who: 'I organise a race',
@@ -138,22 +179,44 @@ export default function Home() {
                   text: 'The course and the results file. Every finisher scored.',
                   href: '#score',
                   action: 'Score my race',
+                  dark: true,
                   more: ['See an example', '#score?example=1'],
                 },
-              ].map(({ who, Icon, title, text, href, action, more }) => (
-                <div key={who} className="relative flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+              ].map(({ who, Icon, title, text, href, action, more, dark }) => (
+                <div
+                  key={who}
+                  className={`relative flex min-w-0 flex-col rounded-2xl border p-5 text-left ${
+                    dark ? 'border-[#17202c] bg-[#17202c]' : 'border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]'
+                  }`}
+                >
                   <span className="flex items-center gap-2.5">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+                    <span
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                        dark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'
+                      }`}
+                    >
                       <Icon size={18} />
                     </span>
-                    <span className="font-mono text-[11px] uppercase tracking-[.14em] text-slate-500">{who}</span>
+                    <span className={`font-mono text-[11px] uppercase tracking-[.14em] ${dark ? 'text-slate-400' : 'text-slate-500'}`}>
+                      {who}
+                    </span>
                   </span>
-                  <b className="mt-3 block text-[16px] leading-6 tracking-[-.02em] text-[#0b1220]">{title}</b>
-                  <p className="mt-1 flex-1 text-[13px] leading-5 text-slate-600">{text}</p>
-                  <a className={`${primaryButton} mt-4`} href={href}>
+                  <b className={`mt-3 block text-[16px] leading-6 tracking-[-.02em] ${dark ? 'text-white' : 'text-[#0b1220]'}`}>{title}</b>
+                  <p className={`mt-1 flex-1 text-[13px] leading-5 ${dark ? 'text-slate-400' : 'text-slate-600'}`}>{text}</p>
+                  <a
+                    className={`mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-semibold no-underline ${
+                      dark ? 'bg-white text-[#17202c] hover:bg-slate-100' : 'bg-blue-700 text-white hover:bg-blue-800'
+                    }`}
+                    href={href}
+                  >
                     {action} <ArrowRight size={15} />
                   </a>
-                  <a className={`${textLink} mt-3 justify-center`} href={more[1]}>
+                  <a
+                    className={`mt-3 inline-flex items-center justify-center gap-1 text-xs font-semibold no-underline hover:underline ${
+                      dark ? 'text-slate-300' : 'text-blue-700'
+                    }`}
+                    href={more[1]}
+                  >
                     {more[0]}
                   </a>
                 </div>
@@ -164,7 +227,7 @@ export default function Home() {
       </section>
 
       {/* 01 / Score a race */}
-      <section className="bg-white py-14 sm:py-20">
+      <section className="border-t border-slate-200 bg-slate-50 py-14 sm:py-20">
         <div className={CONTAINER}>
           <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
             <div className="hidden font-mono text-xs text-blue-600 md:block">01</div>

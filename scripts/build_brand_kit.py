@@ -1,174 +1,189 @@
 """Builds the logo files of the media page (public/brand/*.svg) from the site's own lockup.
 
-On the site the wordmark is live text in the visitor's system font (src/components/Logo.jsx and
-src/styles.css), which is fine on a page and useless as a file: it looks different on every
-machine. Here the letters are drawn as outlines, from two open-licence fonts (SIL OFL), so a file
-looks the same wherever it is opened and needs no font:
+On the site the wordmark is live text, so that it stays selectable and scales with the page. In a
+file that is useless, because the reader may not have the face. Here the same letters are drawn as
+outlines, so a file looks identical wherever it is opened and needs no font at all.
 
-    Inter Bold            https://github.com/rsms/inter            (the wordmark, "TRI")
-    JetBrains Mono Bold   https://github.com/JetBrains/JetBrainsMono   (the full name, the badge)
+Two open-licence faces (SIL OFL 1.1), both kept in the repository:
 
-Usage:  python scripts/build_brand_kit.py <Inter-Bold.ttf> <JetBrainsMono-Bold.ttf>
-Needs fonttools (pip install fonttools). The PNGs and the zip are made from these SVGs by
-scripts/build_brand_png.mjs, which needs Chrome.
+    Archivo Black       src/fonts/archivo-black-latin.woff2    the wordmark, "otrı"
+    JetBrains Mono Bold scripts/fonts/jetbrains-mono-bold.woff2 the full name and the badge
+
+Archivo Black is the face the site loads for the wordmark, so the letters in these files and the
+letters on the page are the same shapes.
+
+The wordmark is the word and nothing else. Only two things are drawn: the summit that stands in
+for the tittle of the i, and the arrow that follows the word. The i is written with a dotless ı
+(U+0131) so the summit has the place to itself.
+
+Usage:  python scripts/build_brand_kit.py
+Needs fonttools and brotli (pip install fonttools brotli). The PNGs and the zip are made from
+these SVGs by scripts/build_brand_png.mjs, which needs Chrome.
 """
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.pens.transformPen import TransformPen
+from fontTools.misc.transform import Transform
 from fontTools.ttLib import TTFont
 
-OUT = Path(__file__).resolve().parents[1] / "public" / "brand"
+ROOT = Path(__file__).resolve().parents[1]
+OUT = ROOT / "public" / "brand"
+WORD_FONT = ROOT / "src" / "fonts" / "archivo-black-latin.woff2"
+MONO_FONT = ROOT / "scripts" / "fonts" / "jetbrains-mono-bold.woff2"
 
-INK = "#0b1220"
-BLUE = "#2563eb"
+INK = "#17202c"
+BLUE = "#3576f6"
 WHITE = "#ffffff"
-GRADIENT_MARK = ("#60a5fa", "#2563eb", "#1d4ed8")  # as in Logo.jsx
-GRADIENT_NAME = ("#2563eb", "#06b6d4")  # as in styles.css
 
-# The mark, in the 40-unit box of Logo.jsx.
-RING = '<circle cx="20" cy="20" r="17" fill="none" stroke="{a}" stroke-width="5"/>'
-RIDGE = '<path d="M7 26.5 15.5 20l4 2.7L26 16l7 6" fill="none" stroke="{a}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>'
-TRAIL = '<path d="M9 30c5-6 10-7 17-10" fill="none" stroke="{b}" stroke-width="3.4" stroke-linecap="round"/>'
+CAP = 100.0          # the wordmark is drawn on a 100 unit cap height
+TRACK = -0.045       # the tracking used on the site, in em
+NAME = "Open Trail Running Index"
 
 
 class Face:
-    def __init__(self, path: str):
+    """Draws a string as one SVG path, on a 100 unit cap height."""
+
+    def __init__(self, path: Path):
         self.font = TTFont(path)
         self.glyphs = self.font.getGlyphSet()
         self.cmap = self.font.getBestCmap()
-        self.upm = self.font["head"].unitsPerEm
-        self.cap = getattr(self.font["OS/2"], "sCapHeight", 0) or int(self.upm * 0.72)
+        self.hmtx = self.font["hmtx"]
+        self.scale = CAP / self.font["OS/2"].sCapHeight
+        # the stylesheet sizes the summit and the arrow in em, not in cap heights
+        self.em_per_cap = self.font["head"].unitsPerEm / self.font["OS/2"].sCapHeight
 
-    def outline(self, text: str, size: float, x: float, baseline: float, tracking_em: float = 0.0) -> tuple[str, float]:
-        """(path data, x where the text ends) for `text` set at `size` px from `x` on `baseline`."""
-        scale = size / self.upm
-        pen = SVGPathPen(self.glyphs, ntos=lambda value: f"{value:.2f}".rstrip("0").rstrip("."))
+    def draw(self, text: str, size: float, track_em: float = 0.0, x: float = 0.0, y: float = 0.0):
+        """Returns (path data, advance width) with the baseline at `y` and the left edge at `x`."""
+        k = self.scale * size / CAP
+        track = track_em * size * self.em_per_cap
         cursor = x
-        for character in text:
-            name = self.cmap[ord(character)]
-            self.glyphs[name].draw(TransformPen(pen, (scale, 0, 0, -scale, cursor, baseline)))
-            cursor += self.glyphs[name].width * scale + tracking_em * size
-        return pen.getCommands(), cursor
-
-    def cap_height(self, size: float) -> float:
-        return self.cap * size / self.upm
-
-
-def mark(colours: dict, scale: float = 1.0, x: float = 0.0, y: float = 0.0) -> str:
-    body = RING.format(a=colours["a"]) + RIDGE.format(a=colours["a"]) + TRAIL.format(b=colours["b"])
-    return f'<g transform="translate({x:g} {y:g}) scale({scale:g})">{body}</g>'
+        parts = []
+        for ch in text:
+            name = self.cmap[ord(ch)]
+            pen = SVGPathPen(self.glyphs)
+            # font space is y-up, SVG is y-down
+            self.glyphs[name].draw(TransformPen(pen, Transform(k, 0, 0, -k, cursor, y)))
+            data = pen.getCommands()
+            if data:
+                parts.append(data)
+            cursor += self.hmtx[name][0] * k + track
+        return " ".join(parts), cursor - track - x
 
 
-def gradients(prefix: str, *, name_top: float = 0, name_bottom: float = 0) -> str:
-    a, b, c = GRADIENT_MARK
-    out = (
-        f'<linearGradient id="{prefix}m" x1="5" y1="4" x2="35" y2="37" gradientUnits="userSpaceOnUse">'
-        f'<stop stop-color="{a}"/><stop offset=".48" stop-color="{b}"/><stop offset="1" stop-color="{c}"/></linearGradient>'
-    )
-    if name_bottom:
-        top, bottom = GRADIENT_NAME
-        out += (
-            f'<linearGradient id="{prefix}n" x1="0" y1="{name_top:g}" x2="0" y2="{name_bottom:g}" gradientUnits="userSpaceOnUse">'
-            f'<stop stop-color="{top}"/><stop offset="1" stop-color="{bottom}"/></linearGradient>'
-        )
-    return f"<defs>{out}</defs>"
-
-
-def svg(width: float, height: float, title: str, body: str, pad: float = 0.0) -> str:
-    box = f"{-pad:g} {-pad:g} {width + 2 * pad:g} {height + 2 * pad:g}"
+def summit(cx: float, baseline: float, em: float, colour: str) -> str:
+    """The tittle of the i: a summit, sized and placed as the stylesheet places it."""
+    width = 0.32 * em
+    height = 0.26 * em
+    bottom = baseline - 0.63 * em
     return (
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{box}" width="{(width + 2 * pad) * 8:g}" height="{(height + 2 * pad) * 8:g}" role="img" aria-label="{title}">'
+        f'<path d="M{cx:.2f} {bottom - height:.2f}'
+        f'L{cx + width / 2:.2f} {bottom:.2f}'
+        f'H{cx - width / 2:.2f}Z" fill="{colour}"/>'
+    )
+
+
+def arrow(x: float, baseline: float, em: float, colour: str) -> str:
+    """The arrow after the word, drawn at the same weight as the site's."""
+    s = 0.33 * em / 12.0            # the site draws it in a 12 unit box at 0.33em
+    top = baseline - 0.92 * em
+    w = 2.2 * s
+    return (
+        f'<g transform="translate({x:.2f} {top:.2f}) scale({s:.4f})" fill="none" stroke="{colour}" '
+        f'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+        f'<path d="M2.4 9.6 9.6 2.4"/><path d="M4 2.4h5.6V8"/></g>'
+    ), 12 * s + w
+
+
+def wordmark(word: Face, size: float, letters: str, accent: str, x: float = 0.0, baseline: float = 0.0):
+    """The word, its summit and its arrow. Returns (svg, width)."""
+    em = size * word.em_per_cap
+    otr, otr_w = word.draw("otr", size, TRACK, x, baseline)
+    i_x = x + otr_w + TRACK * em
+    dotless, i_w = word.draw("ı", size, TRACK, i_x, baseline)
+    arrow_svg, arrow_w = arrow(i_x + i_w + 0.06 * em, baseline, em, accent)
+    svg = (
+        f'<path d="{otr} {dotless}" fill="{letters}"/>'
+        + summit(i_x + i_w / 2, baseline, em, accent)
+        + arrow_svg
+    )
+    return svg, (i_x + i_w + 0.06 * em + arrow_w) - x
+
+
+def document(width: float, height: float, body: str, title: str) -> str:
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width:.0f} {height:.0f}" '
+        f'width="{width:.0f}" height="{height:.0f}" role="img" aria-label="{title}">'
         f"<title>{title}</title>{body}</svg>\n"
     )
 
 
-PALETTES = {
-    # a: ring and ridge, b: the trail under the ridge, word: "TRI", name: the full name, rule: the line before it
-    "": {"a": "url(#{p}m)", "b": BLUE, "word": INK, "name": "url(#{p}n)", "rule": BLUE},
-    "-white": {"a": WHITE, "b": WHITE, "word": WHITE, "name": WHITE, "rule": WHITE},
-    "-black": {"a": INK, "b": INK, "word": INK, "name": INK, "rule": INK},
-    # For dark pages that still want the colour: the site's own dark variant.
-    "-on-dark": {"a": "url(#{p}m)", "b": WHITE, "word": WHITE, "name": "url(#{p}n)", "rule": BLUE},
-}
+def build_compact(word: Face, name: str, letters: str, accent: str, ground: str | None) -> None:
+    size = 100.0
+    pad = 24.0
+    baseline = pad + size
+    svg, width = wordmark(word, size, letters, accent, pad, baseline)
+    w, h = width + pad * 2, size * 1.34 + pad * 2
+    body = (f'<rect width="{w:.0f}" height="{h:.0f}" fill="{ground}"/>' if ground else "") + svg
+    (OUT / name).write_text(document(w, h, body, "OTRI"), encoding="utf-8")
 
 
-def build(inter_path: str, mono_path: str) -> list[Path]:
-    inter, mono = Face(inter_path), Face(mono_path)
+def build_full(word: Face, mono: Face, name: str, letters: str, accent: str, rule: str, sub: str, ground: str | None) -> None:
+    size = 100.0
+    pad = 24.0
+    baseline = pad + size
+    mark, mark_w = wordmark(word, size, letters, accent, pad, baseline)
+
+    gap = 28.0
+    rule_x = pad + mark_w + gap
+    name_size = 26.0
+    name_path, name_w = mono.draw(NAME, name_size, 0.06, rule_x + gap, baseline - size * 0.30)
+    w = rule_x + gap + name_w + pad
+    h = size * 1.34 + pad * 2
+    body = (
+        (f'<rect width="{w:.0f}" height="{h:.0f}" fill="{ground}"/>' if ground else "")
+        + mark
+        + f'<rect x="{rule_x:.1f}" y="{pad + size * 0.22:.1f}" width="2" height="{size * 0.72:.1f}" fill="{rule}"/>'
+        + f'<path d="{name_path}" fill="{sub}"/>'
+    )
+    (OUT / name).write_text(document(w, h, body, "OTRI — Open Trail Running Index"), encoding="utf-8")
+
+
+def build_mark(name: str, letters: str, accent: str, ground: str | None) -> None:
+    """The icon: the summit and the arrow, the two drawn parts of the lockup, in a square."""
+    box = 128.0
+    body = (f'<rect width="128" height="128" rx="26" fill="{ground}"/>' if ground else "")
+    body += f'<path d="M64 34 96 90H32Z" fill="{accent}"/>'
+    body += (
+        f'<g transform="translate(78 24)" fill="none" stroke="{letters}" stroke-width="9" '
+        f'stroke-linecap="round" stroke-linejoin="round"><path d="M2 26 26 2"/><path d="M7 2h19v19"/></g>'
+    )
+    (OUT / name).write_text(document(box, box, body, "OTRI"), encoding="utf-8")
+
+
+def main() -> None:
+    word = Face(WORD_FONT)
+    mono = Face(MONO_FONT)
     OUT.mkdir(parents=True, exist_ok=True)
-    written = []
 
-    def write(name: str, text: str) -> None:
-        (OUT / name).write_text(text, encoding="utf-8", newline="\n")
-        written.append(OUT / name)
+    build_full(word, mono, "otri-logo.svg", INK, BLUE, "#d3deeb", "#6b7d96", None)
+    build_full(word, mono, "otri-logo-on-dark.svg", WHITE, BLUE, "#33415c", "#94a3b8", None)
+    build_full(word, mono, "otri-logo-white.svg", WHITE, WHITE, "#ffffff59", "#ffffffb3", None)
+    build_full(word, mono, "otri-logo-black.svg", INK, INK, "#17202c40", INK, None)
 
-    for suffix, palette in PALETTES.items():
-        prefix = "o" + (suffix.replace("-", "") or "c")
-        colours = {key: value.format(p=prefix) for key, value in palette.items()}
+    build_compact(word, "otri-logo-compact.svg", INK, BLUE, None)
+    build_compact(word, "otri-logo-compact-on-dark.svg", WHITE, BLUE, None)
+    build_compact(word, "otri-logo-compact-white.svg", WHITE, WHITE, None)
+    build_compact(word, "otri-logo-compact-black.svg", INK, INK, None)
 
-        # --- the mark alone
-        write(f"otri-mark{suffix}.svg", svg(40, 40, "OTRI", gradients(prefix) + mark(colours), pad=4))
+    build_mark("otri-mark.svg", INK, BLUE, None)
 
-        # --- the lockup, measured as on the site: a 36 px mark and "TRI" at 26 px. The site tracks it
-        # at -0.09em in a system font; Inter is wider, and at that its R and I run into each other.
-        height, size, tracking = 36.0, 26.0, -0.035
-        baseline = height / 2 + inter.cap_height(size) / 2
-        word, end = inter.outline("TRI", size, 36 + 5, baseline, tracking)
-        end -= tracking * size  # the last letter's tracking is not part of the word
-        compact = gradients(prefix) + mark(colours, 0.9) + f'<path d="{word}" fill="{colours["word"]}"/>'
-        write(f"otri-logo-compact{suffix}.svg", svg(end, height, "OTRI", compact, pad=4))
-
-        # --- with the full name: a 2 px rule, then two lines at 8 px, 1.45 line height, 0.12em tracking
-        name_size, line = 8.0, 8.0 * 1.45
-        top = (height - 2 * line) / 2
-        rule_x = end + 12
-        text_x = rule_x + 2 + 12
-        lines, right = [], text_x
-        for index, words in enumerate(("OPEN TRAIL", "RUNNING INDEX")):
-            base = top + index * line + line / 2 + mono.cap_height(name_size) / 2
-            data, line_end = mono.outline(words, name_size, text_x, base, 0.12)
-            lines.append(data)
-            right = max(right, line_end - 0.12 * name_size)
-        full = (
-            gradients(prefix, name_top=top, name_bottom=top + 2 * line)
-            + mark(colours, 0.9)
-            + f'<path d="{word}" fill="{colours["word"]}"/>'
-            + f'<rect x="{rule_x:g}" y="{top:g}" width="2" height="{2 * line:g}" fill="{colours["rule"]}"/>'
-            + f'<path d="{" ".join(lines)}" fill="{colours["name"]}"/>'
-        )
-        write(f"otri-logo{suffix}.svg", svg(right, height, "OTRI, Open Trail Running Index", full, pad=4))
-
-    # --- "Scored with OTRI": for a race's own site, next to results that were scored here. It says
-    # what was done, not that anybody approved anything: OTRI approves no races.
-    for suffix, (fill, border, text_colour, palette) in {
-        "": (WHITE, "#cbd5e1", INK, PALETTES[""]),
-        "-dark": (INK, INK, WHITE, PALETTES["-on-dark"]),
-    }.items():
-        prefix = "b" + (suffix.replace("-", "") or "l")
-        colours = {key: value.format(p=prefix) for key, value in palette.items()}
-        height, size = 32.0, 9.0
-        base = height / 2 + mono.cap_height(size) / 2
-        label, end = mono.outline("SCORED WITH", size, 12, base, 0.1)
-        mark_x = end + 5
-        word, word_end = inter.outline("TRI", 15, mark_x + 20 + 2.5, height / 2 + inter.cap_height(15) / 2, -0.035)
-        width = word_end + 0.035 * 15 + 12
-        body = (
-            gradients(prefix)
-            + f'<rect x=".5" y=".5" width="{width - 1:g}" height="{height - 1:g}" rx="{(height - 1) / 2:g}" fill="{fill}" stroke="{border}"/>'
-            + f'<path d="{label}" fill="{text_colour}" opacity=".72"/>'
-            + mark(colours, 0.5, mark_x, 6)
-            + f'<path d="{word}" fill="{text_colour}"/>'
-        )
-        write(f"otri-badge-scored{suffix}.svg", svg(width, height, "Scored with OTRI", body))
-    return written
+    for path in sorted(OUT.glob("otri-logo*.svg")) + [OUT / "otri-mark.svg"]:
+        print(f"{path.name:34} {path.stat().st_size:6} bytes")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        raise SystemExit(__doc__)
-    for path in build(sys.argv[1], sys.argv[2]):
-        print(path.relative_to(OUT.parents[1]))
+    main()
