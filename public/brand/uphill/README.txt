@@ -5,3 +5,4 @@ Use color on light backgrounds, on-dark on dark backgrounds, black or white for 
 Keep proportions and clear space at least the width of the i stem.
 Do not imply endorsement or certification.
 Contact hello@otri.run.
+Includes four otri.run domain lockups for banners, social posts and partner websites.
