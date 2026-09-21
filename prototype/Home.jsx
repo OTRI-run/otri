@@ -27,7 +27,7 @@ function Gradient({ children }) {
 }
 
 const primaryButton =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 px-4 text-[13px] font-semibold text-white no-underline shadow-[0_10px_28px_rgba(37,99,235,.2)] hover:from-blue-800 hover:to-blue-600'
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 text-[13px] font-semibold text-white no-underline hover:bg-blue-800'
 const secondaryButton =
   'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white/90 px-4 text-[13px] font-semibold text-[#0b1220] no-underline hover:border-blue-300'
 const textLink = 'inline-flex items-center gap-1 text-xs font-semibold text-blue-600 no-underline hover:underline'
@@ -65,7 +65,42 @@ export default function Home() {
   return (
     <>
       {/* Hero */}
-      <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
+      <section className="relative overflow-hidden border-b border-slate-200 bg-white">
+        {/* Contour lines and one dashed route, drawn at a twentieth of full strength so the ground
+            is felt rather than seen. Nothing here may compete with the type in front of it. */}
+        <svg
+          className="pointer-events-none absolute inset-0 h-full w-full text-slate-900/[0.075]"
+          viewBox="0 0 1440 900"
+          preserveAspectRatio="xMidYMid slice"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.25"
+          aria-hidden="true"
+        >
+          <path d="M-60 176c250-84 430 26 700-52s450-96 860-14" />
+          <path d="M-60 252c252-86 432 28 704-54s452-98 862-14" />
+          <path d="M-60 332c254-88 434 30 708-56s454-100 864-14" />
+          <path d="M-60 416c256-90 436 32 712-58s456-102 866-14" />
+          <path d="M-60 504c258-92 438 34 716-60s458-104 868-14" />
+          <path d="M-60 596c260-94 440 36 720-62s460-106 870-14" />
+          <path d="M-60 692c262-96 442 38 724-64s462-108 872-14" />
+          <path d="M-60 792c264-98 444 40 728-66s464-110 874-14" />
+          <path d="M-60 896c266-100 446 42 732-68s466-112 876-14" />
+          <g className="text-slate-900/[0.095]" stroke="currentColor">
+            <ellipse cx="1156" cy="236" rx="196" ry="108" />
+            <ellipse cx="1160" cy="234" rx="146" ry="80" />
+            <ellipse cx="1164" cy="232" rx="98" ry="53" />
+            <ellipse cx="1168" cy="230" rx="52" ry="27" />
+          </g>
+          <path
+            d="M96 742c142-34 196-118 318-146s186 36 292-32 148-150 268-160"
+            className="text-blue-700/25"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeDasharray="9 9"
+            strokeLinecap="round"
+          />
+        </svg>
         {/* The first screen is the hero and nothing else. The header is 68px, and below md a
             second row of section links adds about 44 more, so the hero is told to fill what is
             left of the viewport. svh rather than vh, so a phone's collapsing toolbar does not
@@ -73,20 +108,17 @@ export default function Home() {
         <div
           className={`${CONTAINER} flex min-w-0 flex-col items-center justify-center py-14 text-center sm:py-20 min-h-[calc(100svh-112px)] md:min-h-[calc(100svh-68px)]`}>
           <div className="flex min-w-0 flex-col items-center">
-            <div className="font-mono text-[10px] font-medium tracking-[.1em] text-blue-600">
-              OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> PROTOTYPE
-            </div>
+            <p className="font-mono text-[11px] uppercase tracking-[.16em] text-slate-500">Open Trail Running Index</p>
             <h1 className="mt-5 max-w-[760px] text-[clamp(44px,7vw,84px)] font-bold leading-[1.08] tracking-[-.065em] text-[#0b1220]">
               The open score
               <br />
-              <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">for any trail race.</em>
+              <em className="not-italic text-blue-700">for any trail race.</em>
             </h1>
-            {/* The words that carry the promise are set in ink and semibold; the rest stays grey, so the
-                paragraph can be read at a glance by its dark words alone. */}
-            <p className="mt-6 max-w-[540px] text-[15px] leading-7 text-slate-500 sm:text-[17px] [&_b]:whitespace-nowrap [&_b]:font-semibold [&_b]:text-[#0b1220]">
-              OTRI turns a <b>finish time</b> on <b>any trail course</b> into{' '}
-              <b className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text !text-transparent">one comparable score</b>. Free, no account, and
-              every number explains itself.
+            {/* Plain sentences in one colour. Scattered bold and a second accent made this harder
+                to read, not easier. */}
+            <p className="mt-6 max-w-[60ch] text-balance text-[17px] leading-8 text-slate-600">
+              OTRI turns a finish time on any trail course into one comparable score. Free, no account, and every
+              number explains itself.
             </p>
             <div className="mt-7 grid max-w-[680px] gap-3 sm:grid-cols-2">
               {[
@@ -109,15 +141,15 @@ export default function Home() {
                   more: ['See an example', '#score?example=1'],
                 },
               ].map(({ who, Icon, title, text, href, action, more }) => (
-                <div key={who} className="flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white/90 p-4 text-left shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+                <div key={who} className="relative flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-[0_10px_28px_rgba(15,23,42,.04)]">
                   <span className="flex items-center gap-2.5">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
                       <Icon size={18} />
                     </span>
-                    <span className="text-[19px] font-bold uppercase leading-6 tracking-[-.01em] text-blue-700">{who}</span>
+                    <span className="font-mono text-[11px] uppercase tracking-[.14em] text-slate-500">{who}</span>
                   </span>
                   <b className="mt-3 block text-[16px] leading-6 tracking-[-.02em] text-[#0b1220]">{title}</b>
-                  <p className="mt-1 flex-1 text-[13px] leading-5 text-slate-500">{text}</p>
+                  <p className="mt-1 flex-1 text-[13px] leading-5 text-slate-600">{text}</p>
                   <a className={`${primaryButton} mt-4`} href={href}>
                     {action} <ArrowRight size={15} />
                   </a>
