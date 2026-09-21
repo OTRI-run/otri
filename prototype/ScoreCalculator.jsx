@@ -159,13 +159,13 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
             {pct != null ? (
               <>
                 <span className={`mt-2 block font-mono text-[11px] ${pct > 100 ? 'text-cyan-300' : 'text-slate-300'}`}>
-                  {pct}% of world-record speed for a course like this
+                  {pct}% of record-run speed for a course like this
                 </span>
                 {b?.world_best_time_seconds > 0 && (
                   <span className="mx-auto mt-1.5 block max-w-[300px] text-[11px] leading-4 text-slate-400">
                     {pct > 100
-                      ? `A world-record-level run here would take about ${formatHms(Math.round(b.world_best_time_seconds))} and score 1000. Your target is faster than that, so it scores above 1000.`
-                      : `A world-record-level run here would take about ${formatHms(Math.round(b.world_best_time_seconds))} and score 1000.`}
+                      ? `A record run here would take about ${formatHms(Math.round(b.world_best_time_seconds))} and score 1000. Your target is faster than that, so it scores above 1000.`
+                      : `A record run here would take about ${formatHms(Math.round(b.world_best_time_seconds))} and score 1000.`}
                   </span>
                 )}
                 {/* Where that stands, Beginner to World class (src/lib/scoreLevels.js). */}
@@ -393,7 +393,7 @@ D        = demand × terrain                    = ${b.adjusted_demand_km} demand
 Q        = D / T_hours                         = ${b.performance_rate} demand-km/h`}
 {b.reference_rate != null
   ? `
-rate(D)  = world-best rate at D  (b = ${b.riegel_exponent})  = ${b.reference_rate} demand-km/h
+rate(D)  = record-run rate at D  (b = ${b.riegel_exponent})  = ${b.reference_rate} demand-km/h
 factor   = rate(D_ref) / rate(D)               = ${b.reference_factor}
 Q_lookup = Q × factor                          = ${b.lookup_rate} demand-km/h`
   : ''}
@@ -411,7 +411,7 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
               {b && <Stat label="Terrain factor" value={`× ${b.terrain_factor}`} />}
               {b && <Stat label="Adjusted demand (scored)" value={`${b.adjusted_demand_km} demand-km`} />}
               <Stat label="Performance rate Q" value={`${estimate.performance_rate} demand-km/h`} />
-              {b?.reference_rate != null && <Stat label="World-record rate at this demand" value={`${b.reference_rate} demand-km/h`} />}
+              {b?.reference_rate != null && <Stat label="Record-run rate at this demand" value={`${b.reference_rate} demand-km/h`} />}
               {b?.fraction_of_ceiling != null && <Stat label="Fraction of ceiling" value={`${(b.fraction_of_ceiling * 100).toFixed(2)}%`} />}
               {b?.lookup_rate != null && <Stat label="Rate looked up in table" value={`${b.lookup_rate} demand-km/h`} />}
               <Stat label="Raw score (unrounded)" value={estimate.otri_raw} />
@@ -1002,7 +1002,7 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
         className="mt-4 w-full accent-blue-600"
       />
       <div className="mt-1 flex justify-between gap-3 font-mono text-[11px] tracking-[.04em] text-slate-500">
-        <span>{range.known ? `${formatHms(range.min)} · SCORE ${SLIDER_MAX_SCORE}` : formatHms(range.min)}{range.known && <span className="hidden sm:inline"> · 1000 = WORLD-RECORD LEVEL, {formatHms(ceilingSeconds)}</span>}</span>
+        <span>{range.known ? `${formatHms(range.min)} · SCORE ${SLIDER_MAX_SCORE}` : formatHms(range.min)}{range.known && <span className="hidden sm:inline"> · 1000 = RECORD-RUN LEVEL, {formatHms(ceilingSeconds)}</span>}</span>
         <span>{range.known ? `${formatHms(range.max)} · SCORE ${SLIDER_MIN_SCORE}` : formatHms(range.max)}</span>
       </div>
       {range.known && (

@@ -192,11 +192,11 @@ export function Welcome() {
               <h2 className="text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
                 Four things.
                 <br />
-                <Gradient>Ten minutes.</Gradient>
+                <Gradient>That is all.</Gradient>
               </h2>
             </div>
             <p className="min-w-0 text-sm leading-7 text-slate-500">
-              Have these to hand and the whole flow takes about ten minutes. You can also stop after any step and finish later.
+              Have these to hand and the flow goes quickly. You can also stop after any step and finish later.
             </p>
           </div>
           <div className="mt-10 grid grid-cols-2 border-y border-slate-300 lg:grid-cols-4">

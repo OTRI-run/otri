@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client'
 import { ArrowLeft, ArrowUpRight, Mail, Download, Upload, Play, ArrowRight, Calculator as CalculatorIcon } from 'lucide-react'
 import { countryName } from '../src/components/CountrySelect'
 import Logo from '../src/components/Logo'
+import GitHubMark from '../src/components/GitHubMark'
 import UnitsMenu from '../src/components/UnitsMenu'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import Home from './Home'
@@ -190,7 +191,7 @@ const FOOTER_COLUMNS = [
       ['How a score is made', `${GITHUB_URL}/blob/main/docs/methodology/0.1.0/HOW-OTRI-SCORES.md`],
       ['Methodology', `${GITHUB_URL}/blob/main/METHODOLOGY.md`],
       ['Data policy', '/data-policy/'],
-      ['Source code', GITHUB_URL],
+      ['GitHub', GITHUB_URL],
     ],
   },
   {
@@ -215,13 +216,20 @@ function Footer() {
             <p className="mt-4 max-w-[34ch] text-[13px] leading-6 text-slate-600">
               One comparable score for a finish time on any trail course. Open, versioned, and free to use.
             </p>
-            <a
-              href="mailto:hello@otri.run"
-              className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-slate-700 no-underline hover:text-blue-700"
-            >
-              <Mail size={14} />
-              hello@otri.run
-            </a>
+            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+              <a
+                href={GITHUB_URL}
+                className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-[13px] font-semibold text-[#0b1220] no-underline hover:border-blue-300"
+              >
+                <GitHubMark size={16} />
+                GitHub
+              </a>
+              <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-slate-700 no-underline hover:text-blue-700">
+                <Mail size={14} />
+                hello@otri.run
+              </a>
+            </div>
+            <p className="mt-2 text-[12px] text-slate-500">Open source. Every line of the model and the site is public.</p>
           </div>
           {FOOTER_COLUMNS.map(({ heading, links }) => (
             <nav key={heading} className="min-w-0">
