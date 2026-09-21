@@ -70,25 +70,25 @@ function when(iso) {
 
 function Tile({ label, value, sub }) {
   return (
-    <div className="rounded-[3px] border border-rule bg-white p-4 ">
-      <p className="font-mono text-[9px] tracking-[.08em] text-muted">{label}</p>
-      <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-ink">{value}</p>
-      {sub && <p className="mt-0.5 font-mono text-[10px] text-muted">{sub}</p>}
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+      <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">{label}</p>
+      <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">{value}</p>
+      {sub && <p className="mt-0.5 font-mono text-[10px] text-slate-500">{sub}</p>}
     </div>
   )
 }
 
 function KeyValues({ title, icon: Icon, rows }) {
   return (
-    <section className="rounded-[3px] border border-rule bg-white p-5 ">
-      <p className="flex items-center gap-2 font-mono text-[9px] tracking-[.08em] text-muted">
-        {Icon && <Icon size={13} className="text-accent" />} {title}
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+      <p className="flex items-center gap-2 font-mono text-[9px] tracking-[.08em] text-slate-500">
+        {Icon && <Icon size={13} className="text-blue-600" />} {title}
       </p>
       <dl className="mt-3 divide-y divide-slate-100">
         {rows.map(([k, v, tone]) => (
           <div key={k} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-3 py-2 text-xs">
-            <dt className="text-muted">{k}</dt>
-            <dd className={`break-words font-mono ${tone === 'bad' ? 'text-red-600' : tone === 'ok' ? 'text-emerald-700' : 'text-ink'}`}>{v}</dd>
+            <dt className="text-slate-500">{k}</dt>
+            <dd className={`break-words font-mono ${tone === 'bad' ? 'text-red-600' : tone === 'ok' ? 'text-emerald-700' : 'text-[#0b1220]'}`}>{v}</dd>
           </div>
         ))}
       </dl>
@@ -105,7 +105,7 @@ function Overview({ session }) {
     getAdminOverview(session.token).then(setData).catch((err) => setError(err.message))
   }, [session.token])
   if (error) return <Notice kind="error">{error}</Notice>
-  if (!data) return <p className="text-sm text-muted">Loading…</p>
+  if (!data) return <p className="text-sm text-slate-500">Loading…</p>
   const { stats, api, security, recent_signups: signups, recent_races: races } = data
   const yes = (v) => (v ? ['configured', 'ok'] : ['not configured', 'bad'])
 
@@ -163,40 +163,40 @@ function Overview({ session }) {
         />
       </div>
 
-      <section className="rounded-[3px] border border-amber-200 bg-amber-50/60 p-5">
+      <section className="rounded-2xl border border-amber-200 bg-amber-50/60 p-5">
         <p className="flex items-center gap-2 font-mono text-[9px] tracking-[.08em] text-amber-700">
           <ShieldCheck size={13} /> WHO IS ADMIN
         </p>
         <ul className="mt-2 flex flex-wrap gap-2">
           {(data.admin_accounts ?? []).map((email) => (
-            <li key={email} className="rounded-full bg-white px-3 py-1 font-mono text-xs text-ink shadow-sm">
+            <li key={email} className="rounded-full bg-white px-3 py-1 font-mono text-xs text-[#0b1220] shadow-sm">
               {email}
             </li>
           ))}
-          {(data.admin_accounts ?? []).length === 0 && <li className="text-xs text-muted">Nobody has signed in as admin yet.</li>}
+          {(data.admin_accounts ?? []).length === 0 && <li className="text-xs text-slate-500">Nobody has signed in as admin yet.</li>}
         </ul>
-        <p className="mt-2 text-[11px] text-muted">
+        <p className="mt-2 text-[11px] text-slate-600">
           Granted by the server's OTRI_ADMIN_EMAILS at sign-in ({(security.admin_emails ?? []).join(', ') || 'empty'}). Remove an email there and restart to revoke.
         </p>
       </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-[3px] border border-rule bg-white p-5 ">
-          <p className="font-mono text-[9px] tracking-[.08em] text-muted">RECENT SIGN-UPS</p>
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+          <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">RECENT SIGN-UPS</p>
           <ul className="mt-2 divide-y divide-slate-100 text-xs">
             {signups.map((o) => (
               <li key={o.id} className="flex items-center justify-between gap-3 py-2">
-                <span className="min-w-0 truncate font-mono text-ink">{o.email}</span>
-                <span className="shrink-0 text-muted">
+                <span className="min-w-0 truncate font-mono text-[#0b1220]">{o.email}</span>
+                <span className="shrink-0 text-slate-500">
                   {when(o.created_at)} · {o.email_verified ? 'verified' : <span className="text-amber-700">pending</span>}
                 </span>
               </li>
             ))}
-            {signups.length === 0 && <li className="py-2 text-muted">None yet.</li>}
+            {signups.length === 0 && <li className="py-2 text-slate-500">None yet.</li>}
           </ul>
         </section>
-        <section className="rounded-[3px] border border-rule bg-white p-5 ">
-          <p className="font-mono text-[9px] tracking-[.08em] text-muted">RECENT RACES</p>
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+          <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">RECENT RACES</p>
           <ul className="mt-2 divide-y divide-slate-100 text-xs">
             {races.map((r) => (
               <li key={r.race_id} className="flex items-center justify-between gap-3 py-2">
@@ -208,7 +208,7 @@ function Overview({ session }) {
                 </span>
               </li>
             ))}
-            {races.length === 0 && <li className="py-2 text-muted">None yet.</li>}
+            {races.length === 0 && <li className="py-2 text-slate-500">None yet.</li>}
           </ul>
         </section>
       </div>
@@ -288,25 +288,25 @@ function ReportCard({ report, token, onChanged }) {
   }
 
   return (
-    <li className={`rounded-[3px] border p-4 ${open ? 'border-amber-200 bg-white' : 'border-rule bg-slate-50/60'}`}>
+    <li className={`rounded-2xl border p-4 ${open ? 'border-amber-200 bg-white' : 'border-slate-200 bg-slate-50/60'}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="rounded-full bg-ink px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-white">{KIND_LABEL[report.kind] ?? report.kind}</span>
-            {report.reason && <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-muted">{REASON_LABEL[report.reason] ?? report.reason}</span>}
-            <span className="font-mono text-[10px] text-muted">{when(report.created_at)}</span>
+            <span className="rounded-full bg-[#0b1220] px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-white">{KIND_LABEL[report.kind] ?? report.kind}</span>
+            {report.reason && <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-slate-600">{REASON_LABEL[report.reason] ?? report.reason}</span>}
+            <span className="font-mono text-[10px] text-slate-500">{when(report.created_at)}</span>
             {!open && <span className="font-mono text-[10px] text-emerald-700">resolved {when(report.resolved_at)} by {report.resolved_by}{report.resolution ? ` · ${report.resolution}` : ''}</span>}
           </p>
-          <p className="mt-2 text-sm font-semibold text-ink">
+          <p className="mt-2 text-sm font-semibold text-[#0b1220]">
             <a href={subjectLink(report)} className="no-underline hover:underline">
               {report.subject_label ?? report.subject_id} <ArrowUpRight size={12} className="inline" />
             </a>
-            <span className="ml-2 font-mono text-[10px] font-normal text-muted">{report.subject_id}</span>
+            <span className="ml-2 font-mono text-[10px] font-normal text-slate-400">{report.subject_id}</span>
           </p>
           <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{report.message}</p>
-          <p className="mt-1 font-mono text-[10px] text-muted">
+          <p className="mt-1 font-mono text-[10px] text-slate-500">
             {report.reporter_email ? (
-              <a href={`mailto:${report.reporter_email}?subject=${encodeURIComponent(`Your OTRI report about ${report.subject_label ?? report.subject_id}`)}`} className="text-accent no-underline hover:underline">
+              <a href={`mailto:${report.reporter_email}?subject=${encodeURIComponent(`Your OTRI report about ${report.subject_label ?? report.subject_id}`)}`} className="text-blue-600 no-underline hover:underline">
                 {report.reporter_email}
               </a>
             ) : (
@@ -319,7 +319,7 @@ function ReportCard({ report, token, onChanged }) {
           <div className="flex shrink-0 flex-col items-end gap-2">
             <div className="flex flex-wrap justify-end gap-2">{subjectActions[report.kind] ?? null}</div>
             <div className="flex items-center gap-2">
-              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="note (optional)" className="w-40 rounded-[3px] border border-rule px-2 py-1.5 text-xs" />
+              <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="note (optional)" className="w-40 rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
               <Button variant="secondary" busy={busy} className="min-h-9 px-3 text-xs" onClick={() => resolve(note || null)}>
                 <Check size={13} /> Mark resolved
               </Button>
@@ -327,7 +327,7 @@ function ReportCard({ report, token, onChanged }) {
           </div>
         )}
         {!open && (
-          <button type="button" onClick={() => run(() => deleteAdminReport(report.id, token), 'Delete this resolved report?')} className="text-xs font-semibold text-muted hover:text-red-600">
+          <button type="button" onClick={() => run(() => deleteAdminReport(report.id, token), 'Delete this resolved report?')} className="text-xs font-semibold text-slate-500 hover:text-red-600">
             Delete
           </button>
         )}
@@ -348,14 +348,14 @@ function Reports({ session }) {
   }, [session.token, showAll, version])
   const reload = () => setVersion((v) => v + 1)
   if (error && !rows) return <Notice kind="error">{error}</Notice>
-  if (!rows) return <p className="text-sm text-muted">Loading…</p>
+  if (!rows) return <p className="text-sm text-slate-500">Loading…</p>
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="flex items-center gap-2 font-mono text-[10px] tracking-[.08em] text-muted">
-          <FlagIcon size={13} className="text-accent" /> {rows.length} {showAll ? 'REPORT' : 'OPEN REPORT'}{rows.length === 1 ? '' : 'S'}
+        <p className="flex items-center gap-2 font-mono text-[10px] tracking-[.08em] text-slate-500">
+          <FlagIcon size={13} className="text-blue-600" /> {rows.length} {showAll ? 'REPORT' : 'OPEN REPORT'}{rows.length === 1 ? '' : 'S'}
         </p>
-        <button type="button" onClick={() => setShowAll((v) => !v)} className="text-xs font-semibold text-accent">
+        <button type="button" onClick={() => setShowAll((v) => !v)} className="text-xs font-semibold text-blue-600">
           {showAll ? 'Show open only' : 'Show resolved too'}
         </button>
       </div>
@@ -363,7 +363,7 @@ function Reports({ session }) {
         {rows.map((report) => (
           <ReportCard key={report.id} report={report} token={session.token} onChanged={reload} />
         ))}
-        {rows.length === 0 && <li className="rounded-[3px] border border-dashed border-rule px-6 py-10 text-center text-sm text-muted">Nothing reported. The public pages have a "Report a problem" form under every runner profile, leaderboard and shared course.</li>}
+        {rows.length === 0 && <li className="rounded-2xl border border-dashed border-slate-300 px-6 py-10 text-center text-sm text-slate-500">Nothing reported. The public pages have a "Report a problem" form under every runner profile, leaderboard and shared course.</li>}
       </ul>
     </div>
   )
@@ -408,7 +408,7 @@ function Accounts({ session }) {
   }
 
   if (error && !rows) return <Notice kind="error">{error}</Notice>
-  if (!rows) return <p className="text-sm text-muted">Loading…</p>
+  if (!rows) return <p className="text-sm text-slate-500">Loading…</p>
   async function exportNewsletter() {
     setError(null)
     try {
@@ -427,9 +427,9 @@ function Accounts({ session }) {
   const subscribers = rows.filter((o) => o.marketing_opt_in && o.email_verified && !o.is_demo).length
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[3px] bg-slate-50 px-4 py-3 text-sm text-muted">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
         <span>
-          <span className="font-semibold text-ink">{subscribers}</span> verified {subscribers === 1 ? 'account' : 'accounts'} agreed to receive OTRI news. Only those may get marketing email; the export is the audience for a Resend broadcast.
+          <span className="font-semibold text-[#0b1220]">{subscribers}</span> verified {subscribers === 1 ? 'account' : 'accounts'} agreed to receive OTRI news. Only those may get marketing email; the export is the audience for a Resend broadcast.
         </span>
         <Button variant="secondary" className="min-h-9 px-3 text-xs" onClick={exportNewsletter} disabled={subscribers === 0}>
           Download newsletter list (CSV)
@@ -440,10 +440,10 @@ function Accounts({ session }) {
           <Notice kind="error">{error}</Notice>
         </div>
       )}
-      <div className="overflow-x-auto rounded-[3px] border border-rule bg-white ">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
         <table className="w-full min-w-[820px] text-left text-sm">
           <thead>
-            <tr className="border-b border-rule bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-muted">
+            <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Who</th>
               <th className="px-4 py-3">Status</th>
@@ -455,37 +455,37 @@ function Accounts({ session }) {
           </thead>
           <tbody>
             {rows.map((o) => (
-              <tr key={o.id} className="border-b border-rule last:border-0">
-                <td className="px-4 py-3 font-mono text-xs text-ink">
+              <tr key={o.id} className="border-b border-slate-100 last:border-0">
+                <td className="px-4 py-3 font-mono text-xs text-[#0b1220]">
                   {o.email}
-                  {o.email === session.email && <span className="ml-2 text-muted">(you)</span>}
+                  {o.email === session.email && <span className="ml-2 text-slate-400">(you)</span>}
                 </td>
-                <td className="px-4 py-3 text-xs text-muted">
+                <td className="px-4 py-3 text-xs text-slate-600">
                   {o.display_name || o.organization ? (
                     <>
-                      <span className="font-semibold text-ink">{o.display_name ?? '—'}</span>
-                      {o.organization && <span className="block text-muted">{o.organization}</span>}
+                      <span className="font-semibold text-[#0b1220]">{o.display_name ?? '—'}</span>
+                      {o.organization && <span className="block text-slate-500">{o.organization}</span>}
                     </>
                   ) : (
-                    <span className="text-muted">no profile yet</span>
+                    <span className="text-slate-400">no profile yet</span>
                   )}
                 </td>
                 <td className="px-4 py-3">
                   <span className="flex flex-wrap items-center gap-1.5">
                     {o.two_factor_method && <span className="rounded-full bg-emerald-600 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-white">2FA</span>}
-                    {o.marketing_opt_in && <span className="rounded-full bg-wash px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-accent">news</span>}
+                    {o.marketing_opt_in && <span className="rounded-full bg-blue-50 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-blue-700">news</span>}
                     {o.email_verified ? (
                       <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-emerald-700">verified</span>
                     ) : (
                       <span className="rounded-full bg-amber-50 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-amber-700">pending</span>
                     )}
                     {o.is_admin && <span className="rounded-full bg-amber-500 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-white">admin</span>}
-                    {o.is_demo && <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-muted">demo</span>}
+                    {o.is_demo && <span className="rounded-full bg-slate-100 px-2 py-0.5 font-mono text-[9px] uppercase tracking-[.06em] text-slate-600">demo</span>}
                   </span>
                 </td>
-                <td className="px-4 py-3 font-mono text-xs text-muted">{when(o.created_at)}</td>
-                <td className="px-4 py-3 font-mono text-xs text-muted">{o.event_count}</td>
-                <td className="px-4 py-3 font-mono text-xs text-muted">{o.race_count}</td>
+                <td className="px-4 py-3 font-mono text-xs text-slate-500">{when(o.created_at)}</td>
+                <td className="px-4 py-3 font-mono text-xs text-slate-500">{o.event_count}</td>
+                <td className="px-4 py-3 font-mono text-xs text-slate-500">{o.race_count}</td>
                 <td className="px-4 py-3">
                   <span className="flex justify-end gap-2">
                     {!o.email_verified && (
@@ -505,7 +505,7 @@ function Accounts({ session }) {
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-xs text-muted">
+      <p className="mt-3 text-xs text-slate-500">
         Admin rights come from the server's OTRI_ADMIN_EMAILS list and are applied at sign-in. Deleting an account removes everything it owns.
       </p>
     </div>
@@ -530,7 +530,7 @@ function CoursePreview({ raceId, token }) {
     }
   }, [raceId, token])
   if (error) return <p className="mt-2 text-xs text-red-600">{error}</p>
-  if (!course) return <p className="mt-2 text-xs text-muted">Loading course…</p>
+  if (!course) return <p className="mt-2 text-xs text-slate-500">Loading course…</p>
   return <CourseMap gpxText={course.gpxText} measurement={course.measurement} className="mt-3" />
 }
 
@@ -556,11 +556,11 @@ function AdminRaceRow({ race, token, onChanged }) {
   }
 
   return (
-    <li className="border-t border-rule py-3">
+    <li className="border-t border-slate-100 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-ink">{race.course_name}</p>
-          <p className="font-mono text-[10px] text-muted">
+          <p className="text-sm font-semibold text-[#0b1220]">{race.course_name}</p>
+          <p className="font-mono text-[10px] text-slate-500">
             {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })} · {race.finisher_count ?? 0} scored ·{' '}
             {modelLabel(race.scoring_version)}
             {race.has_gpx ? ` · ${race.measurement_version ?? 'course attached'}` : ' · no course file'}
@@ -570,11 +570,11 @@ function AdminRaceRow({ race, token, onChanged }) {
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <StatusChip status={status} />
-          <Link to={`/races/${encodeURIComponent(race.race_id)}/review`} className="text-xs font-semibold text-accent no-underline hover:underline">
+          <Link to={`/races/${encodeURIComponent(race.race_id)}/review`} className="text-xs font-semibold text-blue-600 no-underline hover:underline">
             Open
           </Link>
           {race.has_gpx && (
-            <button type="button" onClick={() => setShowCourse((v) => !v)} className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline">
+            <button type="button" onClick={() => setShowCourse((v) => !v)} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:underline">
               <Map size={12} /> {showCourse ? 'Hide course' : 'View course'}
             </button>
           )}
@@ -584,13 +584,13 @@ function AdminRaceRow({ race, token, onChanged }) {
             </Button>
           )}
           {race.is_listed && !race.is_published && (
-            <a href={`../#races/${encodeURIComponent(race.race_id)}`} className="inline-flex items-center gap-1 text-xs font-semibold text-accent no-underline hover:underline">
+            <a href={`../#races/${encodeURIComponent(race.race_id)}`} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 no-underline hover:underline">
               Public page <ArrowUpRight size={12} />
             </a>
           )}
           {race.is_published && (
             <>
-              <a href={`../#races/${encodeURIComponent(race.race_id)}`} className="inline-flex items-center gap-1 text-xs font-semibold text-accent no-underline hover:underline">
+              <a href={`../#races/${encodeURIComponent(race.race_id)}`} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 no-underline hover:underline">
                 Public page <ArrowUpRight size={12} />
               </a>
               <Button
@@ -646,7 +646,7 @@ function EventsAdmin({ session }) {
   }
 
   if (error && !events) return <Notice kind="error">{error}</Notice>
-  if (!events) return <p className="text-sm text-muted">Loading…</p>
+  if (!events) return <p className="text-sm text-slate-500">Loading…</p>
   const raceCount = events.reduce((n, e) => n + e.race_count, 0)
   // Thousands of events once listings are imported: search, and draw a screenful at a time.
   const needle = query.trim().toLowerCase()
@@ -660,7 +660,7 @@ function EventsAdmin({ session }) {
           <Notice kind="error">{error}</Notice>
         </div>
       )}
-      <p className="font-mono text-[10px] tracking-[.08em] text-muted">
+      <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">
         {events.length} EVENT{events.length === 1 ? '' : 'S'} · {raceCount} RACE{raceCount === 1 ? '' : 'S'} · {publishedCount} PUBLISHED
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -670,26 +670,26 @@ function EventsAdmin({ session }) {
           onChange={(e) => { setQuery(e.target.value); setVisible(EVENTS_PER_PAGE) }}
           placeholder="Find an event: name, place, country, owner or date"
           aria-label="Find an event"
-          className="min-w-0 flex-1 rounded-[3px] border border-rule bg-white px-3 py-2 text-sm"
+          className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
         />
-        <p className="font-mono text-[10px] text-muted">
+        <p className="font-mono text-[10px] text-slate-500">
           {shownEvents.length} OF {matching.length} SHOWN
         </p>
       </div>
       <div className="mt-4 grid gap-4">
         {shownEvents.map((event) => (
-          <section key={event.event_id} className="rounded-[3px] border border-rule bg-white p-5 ">
+          <section key={event.event_id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <div className="min-w-0">
-                <p className="font-mono text-[9px] tracking-[.08em] text-accent">{formatDate(event.event_date).toUpperCase()}</p>
-                <h2 className="mt-1 text-lg font-bold tracking-[-.02em] text-ink">
+                <p className="font-mono text-[9px] tracking-[.08em] text-blue-600">{formatDate(event.event_date).toUpperCase()}</p>
+                <h2 className="mt-1 text-lg font-bold tracking-[-.02em] text-[#0b1220]">
                   <Link to={`/events/${encodeURIComponent(event.event_id)}`} className="no-underline hover:underline">
                     {event.event_name}
                   </Link>
                 </h2>
               </div>
               <div className="flex items-center gap-3">
-                <p className="font-mono text-[10px] text-muted">
+                <p className="font-mono text-[10px] text-slate-500">
                   {event.organizer_email ?? 'no owner'} · {event.published_count}/{event.race_count} published
                 </p>
                 <button type="button" onClick={() => removeEvent(event)} className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline">
@@ -701,7 +701,7 @@ function EventsAdmin({ session }) {
               {event.races.map((race) => (
                 <AdminRaceRow key={race.race_id} race={race} token={session.token} onChanged={reload} />
               ))}
-              {event.races.length === 0 && <li className="border-t border-rule py-3 text-xs text-muted">No races yet.</li>}
+              {event.races.length === 0 && <li className="border-t border-slate-100 py-3 text-xs text-slate-500">No races yet.</li>}
             </ul>
           </section>
         ))}
@@ -744,7 +744,7 @@ function SharedCourses({ session }) {
   }
 
   if (error && !rows) return <Notice kind="error">{error}</Notice>
-  if (!rows) return <p className="text-sm text-muted">Loading…</p>
+  if (!rows) return <p className="text-sm text-slate-500">Loading…</p>
   const total = rows.reduce((n, r) => n + (r.size_bytes ?? 0), 0)
   return (
     <div>
@@ -753,13 +753,13 @@ function SharedCourses({ session }) {
           <Notice kind="error">{error}</Notice>
         </div>
       )}
-      <p className="font-mono text-[10px] tracking-[.08em] text-muted">
+      <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">
         {rows.length} SHARED COURSE{rows.length === 1 ? '' : 'S'} · {fmtBytes(total)} ON DISK (GZIP)
       </p>
-      <div className="mt-4 overflow-x-auto rounded-[3px] border border-rule bg-white ">
+      <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
         <table className="w-full min-w-[760px] text-left text-sm">
           <thead>
-            <tr className="border-b border-rule bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-muted">
+            <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">File</th>
               <th className="px-4 py-3">Shared</th>
@@ -769,17 +769,17 @@ function SharedCourses({ session }) {
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.share_id} className="border-b border-rule last:border-0">
-                <td className="px-4 py-3 text-ink">
-                  {row.name ?? <span className="text-muted">untitled</span>}
-                  <span className="block font-mono text-[10px] text-muted">{row.share_id}</span>
+              <tr key={row.share_id} className="border-b border-slate-100 last:border-0">
+                <td className="px-4 py-3 text-[#0b1220]">
+                  {row.name ?? <span className="text-slate-400">untitled</span>}
+                  <span className="block font-mono text-[10px] text-slate-400">{row.share_id}</span>
                 </td>
-                <td className="px-4 py-3 font-mono text-xs text-muted">{row.filename ?? '—'}</td>
-                <td className="px-4 py-3 font-mono text-xs text-muted">{when(row.created_at)}</td>
-                <td className="px-4 py-3 font-mono text-xs text-muted">{fmtBytes(row.size_bytes)}</td>
+                <td className="px-4 py-3 font-mono text-xs text-slate-500">{row.filename ?? '—'}</td>
+                <td className="px-4 py-3 font-mono text-xs text-slate-500">{when(row.created_at)}</td>
+                <td className="px-4 py-3 font-mono text-xs text-slate-500">{fmtBytes(row.size_bytes)}</td>
                 <td className="px-4 py-3">
                   <span className="flex justify-end gap-2">
-                    <a href={`../#calculator?gpx=${encodeURIComponent(row.share_id)}${row.name ? `&name=${encodeURIComponent(row.name)}` : ''}`} className="inline-flex min-h-9 items-center gap-1 rounded-[3px] border border-rule bg-white px-3 text-xs font-semibold text-ink no-underline hover:border-accent">
+                    <a href={`../#calculator?gpx=${encodeURIComponent(row.share_id)}${row.name ? `&name=${encodeURIComponent(row.name)}` : ''}`} className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-[#0b1220] no-underline hover:border-blue-300">
                       Open <ArrowUpRight size={12} />
                     </a>
                     <Button variant="danger" className="min-h-9 px-3 text-xs" busy={busyId === row.share_id} onClick={() => remove(row)}>
@@ -791,7 +791,7 @@ function SharedCourses({ session }) {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-sm text-muted">
+                <td colSpan={5} className="px-4 py-6 text-center text-sm text-slate-500">
                   Nobody has shared a course yet.
                 </td>
               </tr>
@@ -807,7 +807,7 @@ function SharedCourses({ session }) {
 
 function Bar({ value, max, tone = 'blue' }) {
   const pct = max ? Math.min(100, Math.round((value / max) * 100)) : 0
-  const color = pct > 90 ? 'bg-red-500' : pct > 75 ? 'bg-amber-500' : tone === 'blue' ? 'bg-accent' : 'bg-emerald-500'
+  const color = pct > 90 ? 'bg-red-500' : pct > 75 ? 'bg-amber-500' : tone === 'blue' ? 'bg-blue-600' : 'bg-emerald-500'
   return (
     <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
       <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
@@ -825,7 +825,7 @@ function uptime(seconds) {
 
 function Unavailable({ what, reason }) {
   return (
-    <p className="text-xs text-muted">
+    <p className="text-xs text-slate-500">
       {what} not available on this host{reason ? ` (${reason})` : ''}.
     </p>
   )
@@ -838,44 +838,44 @@ function ServerTab({ session }) {
     getAdminServer(session.token).then(setData).catch((err) => setError(err.message))
   }, [session.token])
   if (error) return <Notice kind="error">{error}</Notice>
-  if (!data) return <p className="text-sm text-muted">Reading the server…</p>
+  if (!data) return <p className="text-sm text-slate-500">Reading the server…</p>
   const { host, storage, services, watchdog, backups, firewall, fail2ban, api_usage: usage, tls } = data
   const memUsed = host.memory_total != null && host.memory_available != null ? host.memory_total - host.memory_available : null
   const maxHour = usage?.per_hour ? Math.max(1, ...usage.per_hour) : 1
-  const panel = 'rounded-[3px] border border-rule bg-white p-5 '
-  const label = 'font-mono text-[9px] tracking-[.08em] text-muted'
+  const panel = 'rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)]'
+  const label = 'font-mono text-[9px] tracking-[.08em] text-slate-500'
 
   return (
     <div className="grid gap-6">
-      <p className="font-mono text-[10px] tracking-[.08em] text-muted">
+      <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">
         {host.hostname?.toUpperCase()} · SNAPSHOT {when(data.generated_at)} · REFRESHED EVERY 30 S
       </p>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className={panel}>
           <p className={label}>CPU</p>
-          <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-ink">{host.cpu_percent != null ? `${host.cpu_percent}%` : '—'}</p>
-          <p className="mt-0.5 font-mono text-[10px] text-muted">
+          <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">{host.cpu_percent != null ? `${host.cpu_percent}%` : '—'}</p>
+          <p className="mt-0.5 font-mono text-[10px] text-slate-500">
             {host.cpu_count ?? '?'} core{host.cpu_count === 1 ? '' : 's'} · load {host.load_1 ?? '—'} / {host.load_5 ?? '—'} / {host.load_15 ?? '—'}
           </p>
           {host.cpu_percent != null && <Bar value={host.cpu_percent} max={100} />}
         </div>
         <div className={panel}>
           <p className={label}>MEMORY</p>
-          <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-ink">{memUsed != null ? fmtBytes(memUsed) : '—'}</p>
-          <p className="mt-0.5 font-mono text-[10px] text-muted">of {fmtBytes(host.memory_total)} · swap {fmtBytes(host.swap_total)}</p>
+          <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">{memUsed != null ? fmtBytes(memUsed) : '—'}</p>
+          <p className="mt-0.5 font-mono text-[10px] text-slate-500">of {fmtBytes(host.memory_total)} · swap {fmtBytes(host.swap_total)}</p>
           {memUsed != null && <Bar value={memUsed} max={host.memory_total} />}
         </div>
         <div className={panel}>
           <p className={label}>DISK</p>
-          <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-ink">{fmtBytes(storage.disk_used)}</p>
-          <p className="mt-0.5 font-mono text-[10px] text-muted">of {fmtBytes(storage.disk_total)} · {fmtBytes(storage.disk_free)} free</p>
+          <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">{fmtBytes(storage.disk_used)}</p>
+          <p className="mt-0.5 font-mono text-[10px] text-slate-500">of {fmtBytes(storage.disk_total)} · {fmtBytes(storage.disk_free)} free</p>
           {storage.disk_total && <Bar value={storage.disk_used} max={storage.disk_total} />}
         </div>
         <div className={panel}>
           <p className={label}>UPTIME</p>
-          <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-ink">{uptime(host.uptime_seconds)}</p>
-          <p className="mt-0.5 font-mono text-[10px] text-muted">
+          <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">{uptime(host.uptime_seconds)}</p>
+          <p className="mt-0.5 font-mono text-[10px] text-slate-500">
             TLS {tls?.available ? `${tls.days_left} days left` : 'not checked'}
           </p>
         </div>
@@ -884,34 +884,34 @@ function ServerTab({ session }) {
       <div className="grid gap-4 lg:grid-cols-2">
         <section className={panel}>
           <p className={`${label} flex items-center gap-2`}>
-            <Activity size={13} className="text-accent" /> API USAGE · LAST {usage?.hours ?? 24} H
+            <Activity size={13} className="text-blue-600" /> API USAGE · LAST {usage?.hours ?? 24} H
           </p>
           {usage?.available ? (
             <>
               <div className="mt-3 grid grid-cols-3 gap-3">
                 <div>
                   <p className={label}>REQUESTS</p>
-                  <p className="text-xl font-bold text-ink">{usage.total.toLocaleString()}</p>
+                  <p className="text-xl font-bold text-[#0b1220]">{usage.total.toLocaleString()}</p>
                 </div>
                 <div>
                   <p className={label}>CLIENTS</p>
-                  <p className="text-xl font-bold text-ink">{usage.unique_ips}</p>
+                  <p className="text-xl font-bold text-[#0b1220]">{usage.unique_ips}</p>
                 </div>
                 <div>
                   <p className={label}>5XX ERRORS</p>
-                  <p className={`text-xl font-bold ${usage.errors_5xx ? 'text-red-600' : 'text-ink'}`}>{usage.errors_5xx}</p>
+                  <p className={`text-xl font-bold ${usage.errors_5xx ? 'text-red-600' : 'text-[#0b1220]'}`}>{usage.errors_5xx}</p>
                 </div>
               </div>
               <div className="mt-4 flex h-16 items-end gap-[3px]" aria-label="Requests per hour">
                 {usage.per_hour.map((n, i) => (
-                  <div key={i} title={`${n} requests`} className="flex-1 rounded-t bg-accent/80" style={{ height: `${Math.max(2, (n / maxHour) * 100)}%` }} />
+                  <div key={i} title={`${n} requests`} className="flex-1 rounded-t bg-blue-600/80" style={{ height: `${Math.max(2, (n / maxHour) * 100)}%` }} />
                 ))}
               </div>
-              <p className="mt-1 flex justify-between font-mono text-[9px] text-muted">
+              <p className="mt-1 flex justify-between font-mono text-[9px] text-slate-400">
                 <span>{usage.hours} h ago</span>
                 <span>now</span>
               </p>
-              <p className="mt-3 font-mono text-[10px] text-muted">
+              <p className="mt-3 font-mono text-[10px] text-slate-500">
                 {Object.entries(usage.by_status)
                   .sort()
                   .map(([k, v]) => `${k} ${v}`)
@@ -923,8 +923,8 @@ function ServerTab({ session }) {
                   <ul className="mt-1 divide-y divide-slate-100 font-mono text-[11px]">
                     {usage.top_paths.map((row) => (
                       <li key={row.path} className="flex justify-between gap-2 py-1">
-                        <span className="min-w-0 truncate text-ink">{row.path}</span>
-                        <span className="text-muted">{row.count}</span>
+                        <span className="min-w-0 truncate text-[#0b1220]">{row.path}</span>
+                        <span className="text-slate-500">{row.count}</span>
                       </li>
                     ))}
                   </ul>
@@ -934,8 +934,8 @@ function ServerTab({ session }) {
                   <ul className="mt-1 divide-y divide-slate-100 font-mono text-[11px]">
                     {usage.top_ips.map((row) => (
                       <li key={row.ip} className="flex justify-between gap-2 py-1">
-                        <span className="text-ink">{row.ip}</span>
-                        <span className="text-muted">{row.count}</span>
+                        <span className="text-[#0b1220]">{row.ip}</span>
+                        <span className="text-slate-500">{row.count}</span>
                       </li>
                     ))}
                   </ul>
@@ -952,12 +952,12 @@ function ServerTab({ session }) {
         <div className="grid gap-4">
           <section className={panel}>
             <p className={`${label} flex items-center gap-2`}>
-              <ShieldCheck size={13} className="text-accent" /> FIREWALL & FAIL2BAN
+              <ShieldCheck size={13} className="text-blue-600" /> FIREWALL & FAIL2BAN
             </p>
             {firewall?.available ? (
-              <p className="mt-2 text-xs text-ink">
+              <p className="mt-2 text-xs text-[#0b1220]">
                 ufw <span className={firewall.active ? 'font-semibold text-emerald-700' : 'font-semibold text-red-600'}>{firewall.active ? 'active' : 'inactive'}</span>
-                {firewall.rules?.length ? <span className="text-muted"> · {firewall.rules.length} rules</span> : null}
+                {firewall.rules?.length ? <span className="text-slate-500"> · {firewall.rules.length} rules</span> : null}
               </p>
             ) : (
               <div className="mt-2">
@@ -969,17 +969,17 @@ function ServerTab({ session }) {
                 {fail2ban.jails.map((jail) => (
                   <li key={jail.name} className="py-2 text-xs">
                     <p className="flex items-center justify-between">
-                      <span className="font-mono font-semibold text-ink">jail {jail.name}</span>
-                      <span className="font-mono text-muted">
+                      <span className="font-mono font-semibold text-[#0b1220]">jail {jail.name}</span>
+                      <span className="font-mono text-slate-500">
                         {jail.currently_banned} banned now · {jail.total_banned} total · {jail.total_failed} failed attempts
                       </span>
                     </p>
                     {jail.banned_ips.length > 0 && (
-                      <p className="mt-1 font-mono text-[10px] text-muted">{jail.banned_ips.slice(0, 12).join(' · ')}{jail.banned_ips.length > 12 ? ' …' : ''}</p>
+                      <p className="mt-1 font-mono text-[10px] text-slate-500">{jail.banned_ips.slice(0, 12).join(' · ')}{jail.banned_ips.length > 12 ? ' …' : ''}</p>
                     )}
                   </li>
                 ))}
-                {fail2ban.jails.length === 0 && <li className="py-2 text-xs text-muted">fail2ban is running with no jails.</li>}
+                {fail2ban.jails.length === 0 && <li className="py-2 text-xs text-slate-500">fail2ban is running with no jails.</li>}
               </ul>
             ) : (
               <div className="mt-2">
@@ -990,14 +990,14 @@ function ServerTab({ session }) {
 
           <section className={panel}>
             <p className={`${label} flex items-center gap-2`}>
-              <Server size={13} className="text-accent" /> SERVICES
+              <Server size={13} className="text-blue-600" /> SERVICES
             </p>
             {services?.available ? (
               <ul className="mt-2 grid grid-cols-2 gap-1 font-mono text-xs">
                 {Object.entries(services.units).map(([unit, state]) => (
                   <li key={unit} className="flex items-center gap-2">
                     <i className={`h-2 w-2 rounded-full ${state === 'active' ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                    {unit} <span className="text-muted">{state}</span>
+                    {unit} <span className="text-slate-400">{state}</span>
                   </li>
                 ))}
               </ul>
@@ -1007,11 +1007,11 @@ function ServerTab({ session }) {
               </div>
             )}
             {/* Both report by email or not at all: a missing email looks the same as one that never ran. */}
-            <ul className="mt-3 space-y-1 border-t border-rule pt-3 font-mono text-xs">
+            <ul className="mt-3 space-y-1 border-t border-slate-100 pt-3 font-mono text-xs">
               <li className="flex items-center gap-2">
                 <i className={`h-2 w-2 shrink-0 rounded-full ${watchdog?.active && watchdog.last_result === 'success' ? 'bg-emerald-500' : watchdog?.available ? 'bg-red-500' : 'bg-slate-300'}`} />
                 watchdog{' '}
-                <span className="text-muted">
+                <span className="text-slate-400">
                   {!watchdog?.available
                     ? 'unknown here'
                     : !watchdog.active
@@ -1022,7 +1022,7 @@ function ServerTab({ session }) {
               <li className="flex items-center gap-2">
                 <i className={`h-2 w-2 shrink-0 rounded-full ${backups?.ok ? 'bg-emerald-500' : backups?.available ? 'bg-red-500' : 'bg-slate-300'}`} />
                 database backup{' '}
-                <span className="text-muted">
+                <span className="text-slate-400">
                   {!backups?.available
                     ? 'unknown here'
                     : !backups.newest
@@ -1035,19 +1035,19 @@ function ServerTab({ session }) {
 
           <section className={panel}>
             <p className={`${label} flex items-center gap-2`}>
-              <HardDrive size={13} className="text-accent" /> STORAGE
+              <HardDrive size={13} className="text-blue-600" /> STORAGE
             </p>
             <ul className="mt-2 divide-y divide-slate-100 font-mono text-xs">
               <li className="flex justify-between py-1">
                 <span>database</span>
-                <span className="text-muted">{fmtBytes(storage.database_bytes)}</span>
+                <span className="text-slate-500">{fmtBytes(storage.database_bytes)}</span>
               </li>
               {Object.entries(storage.dirs ?? {}).map(([name, info]) => (
                 <li key={name} className="flex justify-between gap-3 py-1">
                   <span className="min-w-0 truncate" title={info.path ?? ''}>
                     {name.replace('_', ' ')}
                   </span>
-                  <span className="shrink-0 text-muted">{info.bytes == null ? '—' : fmtBytes(info.bytes)}</span>
+                  <span className="shrink-0 text-slate-500">{info.bytes == null ? '—' : fmtBytes(info.bytes)}</span>
                 </li>
               ))}
             </ul>
@@ -1074,13 +1074,13 @@ export function AdminEvents({ session, tab = 'overview' }) {
       }
       intro="Accounts, events, races, results, shared courses and the state of the API. Every destructive action asks first and cannot be undone."
     >
-      <nav className="mt-8 flex flex-wrap gap-2 border-b border-rule">
+      <nav className="mt-8 flex flex-wrap gap-2 border-b border-slate-300">
         {TABS.map(([id, label]) => (
           <button
             key={id}
             type="button"
             onClick={() => setActive(id)}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm font-semibold ${active === id ? 'border-blue-600 text-accent' : 'border-transparent text-muted hover:text-ink'}`}
+            className={`-mb-px border-b-2 px-3 py-2 text-sm font-semibold ${active === id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-[#0b1220]'}`}
           >
             {label}
           </button>

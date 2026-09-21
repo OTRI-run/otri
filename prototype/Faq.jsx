@@ -222,16 +222,16 @@ export default function FaqPage({ initialQuery = '' }) {
     <section className="bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] py-14 sm:py-20">
       <div className={CONTAINER}>
         <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
-          <div className="font-mono text-xs text-accent">04</div>
+          <div className="font-mono text-xs text-blue-600">04</div>
           <div className="min-w-0">
-            <p className="mb-3 font-mono text-[10px] tracking-[.08em] text-muted">QUESTIONS</p>
-            <h1 className="text-[clamp(38px,5vw,62px)] font-normal leading-[.94] tracking-[-.06em] text-ink">
+            <p className="mb-3 font-mono text-[10px] tracking-[.08em] text-slate-500">QUESTIONS</p>
+            <h1 className="text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
               Asked often.
               <br />
-              <span className="text-accent">Answered plainly.</span>
+              <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">Answered plainly.</span>
             </h1>
           </div>
-          <p className="min-w-0 text-sm leading-7 text-muted">
+          <p className="min-w-0 text-sm leading-7 text-slate-500">
             Short answers about scores, courses, the runner index and publishing a race. The long answers live in the
             methodology pages, linked where they matter.
           </p>
@@ -239,7 +239,7 @@ export default function FaqPage({ initialQuery = '' }) {
 
         <div className="mt-10 max-w-[640px]">
           <div className="relative">
-          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="search"
             value={query}
@@ -247,18 +247,18 @@ export default function FaqPage({ initialQuery = '' }) {
             placeholder="Search the questions, e.g. zero, GPX, confidence, cost…"
             aria-label="Search the FAQ"
             autoFocus={Boolean(initialQuery)}
-            className="w-full rounded-[3px] border border-rule bg-white py-3 pl-9 pr-3 text-sm text-ink outline-none placeholder:text-muted focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            className="w-full rounded-lg border border-slate-300 bg-white py-3 pl-9 pr-3 text-sm text-[#0b1220] outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           />
           </div>
-          <p className="mt-2 font-mono text-[11px] text-muted" aria-live="polite">
+          <p className="mt-2 font-mono text-[11px] text-slate-500" aria-live="polite">
             {query ? `${matches.length} of ${ALL.length} questions match` : `${ALL.length} questions`}
           </p>
         </div>
 
         {groups.length === 0 && (
-          <div className="mt-8 rounded-[3px] border border-rule bg-white p-6 text-sm text-muted">
+          <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
             Nothing matches <b>{query}</b>. Ask us directly:{' '}
-            <a href={`mailto:hello@otri.run?subject=${encodeURIComponent(`Question: ${query}`)}`} className="inline-flex items-center gap-1 font-semibold text-accent no-underline hover:underline">
+            <a href={`mailto:hello@otri.run?subject=${encodeURIComponent(`Question: ${query}`)}`} className="inline-flex items-center gap-1 font-semibold text-blue-600 no-underline hover:underline">
               <Mail size={14} /> hello@otri.run
             </a>
           </div>
@@ -266,22 +266,22 @@ export default function FaqPage({ initialQuery = '' }) {
 
         {groups.map((group) => (
           <div key={group.group} className="mt-10">
-            <p className="mb-3 font-mono text-[11px] tracking-[.08em] text-muted">{group.group.toUpperCase()}</p>
-            <div className="divide-y divide-slate-200 rounded-[3px] border border-rule bg-white ">
+            <p className="mb-3 font-mono text-[11px] tracking-[.08em] text-slate-500">{group.group.toUpperCase()}</p>
+            <div className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
               {group.items.map((item) => (
                 <details key={item.q} open={words.length > 0} className="group px-5 py-4 sm:px-6">
-                  <summary className="cursor-pointer list-none text-[15px] font-semibold text-ink marker:content-none">
+                  <summary className="cursor-pointer list-none text-[15px] font-semibold text-[#0b1220] marker:content-none">
                     <span className="flex items-start justify-between gap-4">
                       <span>{item.q}</span>
-                      <span aria-hidden="true" className="mt-1 shrink-0 font-mono text-xs text-muted transition group-open:rotate-45">
+                      <span aria-hidden="true" className="mt-1 shrink-0 font-mono text-xs text-slate-400 transition group-open:rotate-45">
                         +
                       </span>
                     </span>
                   </summary>
-                  <p className="mt-3 max-w-[720px] text-sm leading-7 text-muted">{item.a}</p>
+                  <p className="mt-3 max-w-[720px] text-sm leading-7 text-slate-600">{item.a}</p>
                   {item.table && <WhatWeScoreTable className="mt-3 max-w-[720px]" />}
                   {item.link && (
-                    <a href={item.link[0]} className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-accent no-underline hover:underline" target={item.link[0].startsWith('http') ? '_blank' : undefined} rel="noreferrer">
+                    <a href={item.link[0]} className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-blue-600 no-underline hover:underline" target={item.link[0].startsWith('http') ? '_blank' : undefined} rel="noreferrer">
                       {item.link[1]} <ArrowUpRight size={14} />
                     </a>
                   )}

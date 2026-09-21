@@ -40,8 +40,8 @@ export default function Flag({ code, showCode = true, className = '' }) {
   const upper = String(code).trim().toUpperCase()
   return (
     <span className={`inline-flex items-center gap-1.5 ${className}`} title={countryName(upper)}>
-      {alpha2 && <span className={`fi fi-${alpha2} shrink-0 rounded-[2px] text-[13px] `} aria-hidden="true" />}
-      {showCode && <span className="font-mono text-[10px] text-muted">{upper}</span>}
+      {alpha2 && <span className={`fi fi-${alpha2} shrink-0 rounded-[2px] text-[13px] shadow-[0_0_0_1px_rgba(15,23,42,.08)]`} aria-hidden="true" />}
+      {showCode && <span className="font-mono text-[10px] text-slate-500">{upper}</span>}
     </span>
   )
 }

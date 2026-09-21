@@ -60,7 +60,7 @@ export default function BuildBanner() {
   }, [apiStartedAt])
 
   return (
-    <div className="bg-ink px-4 text-center font-mono text-[10px] leading-7 text-rule">
+    <div className="bg-[#0b1220] px-4 text-center font-mono text-[10px] leading-7 text-slate-300">
       Built from commit{' '}
       {COMMIT_URL ? (
         <a href={COMMIT_URL} target="_blank" rel="noreferrer" className="font-semibold text-white underline underline-offset-2">

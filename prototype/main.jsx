@@ -98,7 +98,6 @@ function navigate(hash) {
 // The header carries what a visitor came to do; the API page and GitHub are in the footer (GitHub
 // also sits in the home page's opening, next to what OTRI is).
 const NAV = [
-  { id: 'home', label: 'Home', href: '#home' },
   { id: 'calculator', label: 'Calculator', href: '#calculator' },
   { id: 'score', label: 'Score a race', short: 'Score', href: '#score' },
   { id: 'races', label: 'Races', href: '#races' },
@@ -106,94 +105,92 @@ const NAV = [
   { id: 'faq', label: 'FAQ', href: '#faq' },
 ]
 
-/** A tab on the ribbon. The active one is held by a blue rule, the way a sheet tab is. */
 function NavLink({ item, active, className = '', short = false }) {
   return (
     <a
       href={item.href}
       aria-current={active ? 'page' : undefined}
-      className={`flex h-full shrink-0 items-center whitespace-nowrap border-b-[3px] px-0.5 text-[12px] no-underline ${
-        active
-          ? 'border-accent font-semibold text-accent-deep'
-          : 'border-transparent font-medium text-muted hover:text-ink'
-      } ${className}`}
+      className={`text-[13px] font-medium no-underline ${active ? 'text-[#0b1220]' : 'text-slate-500 hover:text-slate-950'} ${className}`}
     >
       {short ? item.short ?? item.label : item.label}
     </a>
   )
 }
 
-/**
- * The chrome, in two rows. A title bar carrying the mark and the one action that matters, and a
- * ribbon of tabs underneath. Everything is flat and ruled with hairlines: no gradients, no
- * shadows, and blue reserved for what you can act on.
- */
 function Header({ tab }) {
   return (
-    <header className="sticky top-0 z-50 border-b border-rule bg-sheet">
-      <div className="mx-auto flex h-[68px] w-[min(1200px,calc(100%-32px))] items-center gap-5">
-        <Logo href="#home" />
-        <div className="ml-auto flex shrink-0 items-center gap-5">
+    <>
+      <header className="sticky top-0 z-50 h-[68px] border-b border-slate-200/90 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex h-full min-w-0 w-[min(1120px,calc(100%-28px))] items-center">
+          <Logo href="#home" />
+          <div className="ml-4 hidden shrink-0 items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 font-mono text-[9px] font-medium tracking-[.08em] text-blue-600 lg:flex">
+            <i className="h-1.5 w-1.5 rounded-full bg-blue-600 shadow-[0_0_0_3px_#dbeafe]" />
+            PROTOTYPE <span className="text-slate-400">v0.x</span>
+          </div>
+          <nav className="ml-auto hidden shrink-0 items-center gap-5 md:flex lg:gap-7">
+            {NAV.map((item) => (
+              <NavLink key={item.id} item={item} active={tab === item.id} />
+            ))}
+            <UnitsMenu compact />
+            <a href="organizer/" className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-300 px-3 text-[13px] font-semibold text-[#0b1220] no-underline hover:border-blue-300">
+              For organizers <ArrowUpRight size={13} />
+            </a>
+          </nav>
           <a
-            href={`${GITHUB_URL}/blob/main/METHODOLOGY.md`}
-            className="hidden items-center gap-1 text-[12px] font-medium text-ink no-underline hover:text-accent sm:flex"
+            className="ml-auto flex shrink-0 items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white no-underline md:hidden"
+            href="organizer/"
           >
-            Methodology <ArrowUpRight size={12} />
-          </a>
-          <a
-            href="#score"
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-[3px] bg-accent px-4 text-[12px] font-semibold text-white no-underline hover:bg-accent-deep"
-          >
-            Score a race <ArrowUpRight size={12} />
+            Organizers <ArrowUpRight size={13} />
           </a>
         </div>
-      </div>
-
-      <div className="border-t border-rule bg-sheet">
-        <div className="mx-auto flex h-[44px] w-[min(1200px,calc(100%-32px))] items-center gap-6 overflow-x-auto">
+      </header>
+      {/* Small screens: the section links live in their own row under the header. */}
+      <div className="border-b border-slate-200 bg-white md:hidden">
+        <div className="mx-auto flex w-[min(1120px,calc(100%-28px))] items-center gap-4 overflow-x-auto">
           {NAV.map((item) => (
-            <NavLink key={item.id} item={item} active={tab === item.id} />
+            <NavLink
+              key={item.id}
+              item={item}
+              active={tab === item.id}
+              short
+              className={`whitespace-nowrap border-b-2 py-3 ${tab === item.id ? 'border-blue-600' : 'border-transparent'}`}
+            />
           ))}
-          <div className="ml-auto flex shrink-0 items-center gap-5 pl-6">
-            <span className="hidden font-mono text-[9px] tracking-[.12em] text-muted lg:block">
-              FREE / OPEN METHOD / NO ACCOUNT
-            </span>
+          <div className="ml-auto py-1.5">
             <UnitsMenu compact />
-            <a
-              href="organizer/"
-              className="hidden items-center gap-1 text-[12px] font-medium text-muted no-underline hover:text-accent md:flex"
-            >
-              For organizers <ArrowUpRight size={12} />
-            </a>
           </div>
         </div>
       </div>
-    </header>
+    </>
   )
 }
 
 function Footer() {
   return (
-    <footer className="border-t border-rule bg-sheet py-7">
-      <div className="mx-auto flex w-[min(1200px,calc(100%-32px))] flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+    <footer className="border-t border-slate-200 bg-white py-6">
+      <div className="mx-auto flex w-[min(1120px,calc(100%-28px))] flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
         <Logo href="../" />
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <a href="#api" className="text-[12px] font-medium text-muted no-underline hover:text-accent">API and embed</a>
-          <a href={GITHUB_URL} className="text-[12px] font-medium text-muted no-underline hover:text-accent">GitHub</a>
-          <a href="#contribute" className="text-[12px] font-medium text-muted no-underline hover:text-accent">Contribute</a>
-          <a href="#faq" className="text-[12px] font-medium text-muted no-underline hover:text-accent">FAQ</a>
-          <a href="#media" className="text-[12px] font-medium text-muted no-underline hover:text-accent">Media and logo</a>
-          <a href="https://github.com/OTRI-run/otri/blob/main/PRIVACY.md" className="text-[12px] font-medium text-muted no-underline hover:text-accent">Privacy</a>
-          <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-muted no-underline hover:text-accent">
+          <a href="#api" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">API and embed</a>
+          <a href={GITHUB_URL} className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">GitHub</a>
+          <a href="#contribute" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Contribute</a>
+          <a href="#faq" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">FAQ</a>
+          <a href="#media" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Media and logo</a>
+          <a href="https://github.com/OTRI-run/otri/blob/main/PRIVACY.md" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Privacy</a>
+          <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">
             <Mail size={14} />
             hello@otri.run
           </a>
         </div>
-        <span className="font-mono text-[9px] tracking-[.12em] text-muted">OPEN · TRANSPARENT · REPRODUCIBLE · INDEPENDENT</span>
+        <span className="font-mono text-[8px] tracking-[.08em] text-slate-500">OPEN · TRANSPARENT · REPRODUCIBLE · INDEPENDENT</span>
       </div>
     </footer>
   )
 }
+
+// ------------------------------------------------------------------------------------- races
+// Published races come straight from the API: what an organizer publishes is what the public sees.
+
 function formatHms(totalSeconds) {
   if (totalSeconds == null) return '—'
   const s = Math.max(0, Math.round(totalSeconds))
@@ -242,20 +239,20 @@ function Leaderboard({ raceId, onBack }) {
 
   return (
     <div>
-      <button onClick={onBack} className="inline-flex items-center gap-1 text-xs font-semibold text-accent">
+      <button onClick={onBack} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600">
         <ArrowLeft size={13} /> All races
       </button>
       {error && error.status === 404 && (
         <NotFound eyebrow="RACE NOT FOUND" title="No race with that id." where={raceId} home="#races" homeLabel="All races" note="It may have been unpublished by its organizer or removed after a report." />
       )}
-      {error && error.status !== 404 && <p className="mt-6 rounded-[3px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error.message}</p>}
-      {!race && !error && <p className="mt-6 text-sm text-muted">Loading…</p>}
+      {error && error.status !== 404 && <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error.message}</p>}
+      {!race && !error && <p className="mt-6 text-sm text-slate-500">Loading…</p>}
       {race && (
         <>
-          <p className="mt-6 flex flex-wrap items-center gap-3 font-mono text-[9px] tracking-[.08em] text-accent">
+          <p className="mt-6 flex flex-wrap items-center gap-3 font-mono text-[9px] tracking-[.08em] text-blue-600">
             <span>{race.event_date}</span>
             {(race.event_location || race.event_country) && (
-              <span className="flex items-center gap-2 text-ink">
+              <span className="flex items-center gap-2 text-[#0b1220]">
                 {race.event_country && <Flag code={race.event_country} showCode={false} />}
                 {[race.event_location, race.event_country].filter(Boolean).join(' · ').toUpperCase()}
               </span>
@@ -264,32 +261,32 @@ function Leaderboard({ raceId, onBack }) {
             {race.is_vertical && <VerticalBadge />}
             {race.is_demo && <DemoBadge />}
           </p>
-          <h2 className="otri-fit mt-2 font-bold leading-[1.04] tracking-[-.045em] text-ink" style={{ fontSize: fitFontSize(race.event_name, { min: 28, vw: 4.5, max: 52 }) }}>{race.event_name}</h2>
-          <p className="mt-3 text-sm text-muted">
+          <h2 className="otri-fit mt-2 font-bold leading-[1.04] tracking-[-.045em] text-[#0b1220]" style={{ fontSize: fitFontSize(race.event_name, { min: 28, vw: 4.5, max: 52 }) }}>{race.event_name}</h2>
+          <p className="mt-3 text-sm text-slate-500">
             {race.course_name} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
             {race.has_gpx ? ' · Measured from the course file' : ' · Official figures, no course file'}
           </p>
           {race.organizer_display && (
-            <p className="mt-2 text-xs text-muted">
+            <p className="mt-2 text-xs text-slate-500">
               Organized by{' '}
               {race.organizer_website ? (
-                <a href={race.organizer_website} target="_blank" rel="noreferrer" className="font-semibold text-accent no-underline hover:underline">
+                <a href={race.organizer_website} target="_blank" rel="noreferrer" className="font-semibold text-blue-600 no-underline hover:underline">
                   {race.organizer_display} ↗
                 </a>
               ) : (
-                <span className="font-semibold text-ink">{race.organizer_display}</span>
+                <span className="font-semibold text-[#0b1220]">{race.organizer_display}</span>
               )}
             </p>
           )}
           {race.is_demo && (
-            <p className="mt-2 text-xs text-muted">Demo data: synthetic runners and results, here to show what a scored race looks like.</p>
+            <p className="mt-2 text-xs text-slate-500">Demo data: synthetic runners and results, here to show what a scored race looks like.</p>
           )}
           {course && (
-            <div className="mt-6 overflow-hidden rounded-[3px] border border-rule bg-white ">
+            <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
               <CourseMap gpxText={course.gpxText} measurement={course.measurement} className="p-3" />
-              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-rule px-4 py-3">
-                <p className="min-w-0 text-xs leading-5 text-muted">The course as a GPX file for your watch or app: the track and its elevations, nothing else from the original file.</p>
-                <a href={raceGpxDownloadUrl(race.race_id)} className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-[3px] border border-rule bg-white px-3 text-xs font-semibold text-ink no-underline hover:border-accent">
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-slate-200 px-4 py-3">
+                <p className="min-w-0 text-xs leading-5 text-slate-500">The course as a GPX file for your watch or app: the track and its elevations, nothing else from the original file.</p>
+                <a href={raceGpxDownloadUrl(race.race_id)} className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-[#0b1220] no-underline hover:border-blue-300">
                   <Download size={14} /> Download the GPX
                 </a>
               </div>
@@ -299,14 +296,14 @@ function Leaderboard({ raceId, onBack }) {
           {race.is_published && (
             <>
             {notScoredReason(results) && (
-              <p className="mt-6 rounded-[3px] border border-blue-200 bg-wash px-4 py-3 text-sm leading-6 text-slate-700">
-                <strong className="text-ink">Finish times only.</strong> {notScoredReason(results)}
+              <p className="mt-6 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-6 text-slate-700">
+                <strong className="text-[#0b1220]">Finish times only.</strong> {notScoredReason(results)}
               </p>
             )}
-            <div className="mt-6 overflow-x-auto rounded-[3px] border border-rule bg-white ">
+            <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
               <table className="w-full border-collapse text-left text-sm">
                 <thead>
-                  <tr className="border-b border-rule bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-muted">
+                  <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
                     <th className="px-4 py-3">Rank</th>
                     <th className="px-4 py-3">Runner</th>
                     <th className="hidden px-4 py-3 sm:table-cell">Country</th>
@@ -317,9 +314,9 @@ function Leaderboard({ raceId, onBack }) {
                 </thead>
                 <tbody>
                   {(results ?? []).map((row) => (
-                    <tr key={`${row.rank}-${row.bib_number ?? row.family_name}-${row.first_name}`} className={`border-b border-rule last:border-0 hover:bg-wash/50 ${row.status !== 'finisher' ? 'bg-slate-50/60 text-muted' : 'even:bg-slate-50/70'}`}>
-                      <td className="px-4 py-3 font-mono text-xs text-muted"><RankBadge rank={row.rank} /></td>
-                      <td className="px-4 py-3 font-medium text-ink">
+                    <tr key={`${row.rank}-${row.bib_number ?? row.family_name}-${row.first_name}`} className={`border-b border-slate-100 last:border-0 hover:bg-blue-50/50 ${row.status !== 'finisher' ? 'bg-slate-50/60 text-slate-500' : 'even:bg-slate-50/70'}`}>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-500"><RankBadge rank={row.rank} /></td>
+                      <td className="px-4 py-3 font-medium text-[#0b1220]">
                         {row.runner_id ? (
                           <a href={`#runners/${encodeURIComponent(row.runner_id)}`} className="no-underline hover:underline">
                             {row.first_name} {row.family_name}
@@ -329,20 +326,20 @@ function Leaderboard({ raceId, onBack }) {
                             {row.first_name} {row.family_name}
                           </>
                         )}
-                        <span className="mt-0.5 flex items-center gap-2 font-mono text-[10px] font-normal text-muted sm:hidden">
+                        <span className="mt-0.5 flex items-center gap-2 font-mono text-[10px] font-normal text-slate-500 sm:hidden">
                           {row.nationality && <Flag code={row.nationality} />}
                           {row.gender && <span>{row.gender}</span>}
                         </span>
                       </td>
-                      <td className="hidden px-4 py-3 sm:table-cell">{row.nationality ? <Flag code={row.nationality} /> : <span className="text-rule">—</span>}</td>
-                      <td className="hidden px-4 py-3 font-mono text-xs text-muted sm:table-cell">{row.gender ?? '—'}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-muted">{formatHms(row.finish_time_seconds)}</td>
-                      <td className="px-4 py-3 font-mono text-sm font-bold text-accent">{row.otri_score ?? <span className="text-rule">—</span>}</td>
+                      <td className="hidden px-4 py-3 sm:table-cell">{row.nationality ? <Flag code={row.nationality} /> : <span className="text-slate-300">—</span>}</td>
+                      <td className="hidden px-4 py-3 font-mono text-xs text-slate-500 sm:table-cell">{row.gender ?? '—'}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-500">{formatHms(row.finish_time_seconds)}</td>
+                      <td className="px-4 py-3 font-mono text-sm font-bold text-blue-600">{row.otri_score ?? <span className="text-slate-300">—</span>}</td>
                     </tr>
                   ))}
                   {results?.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-sm text-muted">
+                      <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">
                         No results published yet.
                       </td>
                     </tr>
@@ -350,16 +347,16 @@ function Leaderboard({ raceId, onBack }) {
                 </tbody>
               </table>
             </div>
-            <p className="mt-3 font-mono text-[10px] tracking-[.05em] text-muted">
+            <p className="mt-3 font-mono text-[10px] tracking-[.05em] text-slate-400">
               {modelLabel(race.scoring_version)} · depends only on the course and each runner's own finish time, never the field
             </p>
             {results?.some((row) => row.status === 'finisher') && (
               <div className="mt-5">
-                <button type="button" onClick={() => setSharing((open) => !open)} aria-expanded={sharing} className="inline-flex min-h-10 items-center gap-2 rounded-[3px] border border-rule bg-white px-4 text-xs font-semibold text-ink hover:border-accent">
+                <button type="button" onClick={() => setSharing((open) => !open)} aria-expanded={sharing} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-xs font-semibold text-[#0b1220] hover:border-blue-300">
                   {sharing ? 'Close sharing' : 'Share these results: image and post text'}
                 </button>
                 {sharing && (
-                  <div className="mt-3 rounded-[3px] border border-rule bg-white p-5">
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-5">
                     <ShareResults raceName={`${race.event_name} ${race.course_name}`} distanceKm={race.distance_km} elevationGainM={race.elevation_gain_m} scores={results} url={window.location.href} />
                   </div>
                 )}
@@ -435,25 +432,25 @@ function NoRacesYet() {
     [CalculatorIcon, 'Just curious about a time?', 'Pick a course or upload a GPX and see what a finish time is worth, before or after race day.', '#calculator', 'Open the calculator'],
   ]
   return (
-    <div className="mt-8 overflow-hidden rounded-[3px] border border-rule bg-white ">
+    <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
       <div className="bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] px-5 py-6 sm:px-7">
-        <p className="font-mono text-[10px] tracking-[.08em] text-accent">NO RACES PUBLISHED YET</p>
-        <h2 className="mt-2 text-2xl font-bold tracking-[-.03em] text-ink">The first race here could be yours.</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
+        <p className="font-mono text-[10px] tracking-[.08em] text-blue-600">NO RACES PUBLISHED YET</p>
+        <h2 className="mt-2 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">The first race here could be yours.</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
           OTRI keeps no list of every race: a race appears when its organizer publishes the results, free and without anyone's approval. Until then, here is
           what you can do.
         </p>
       </div>
       <div className="grid gap-px bg-slate-200 sm:grid-cols-2">
         {ways.map(([Icon, title, text, href, action]) => (
-          <a key={title} href={href} className="group flex min-w-0 gap-3 bg-white p-5 text-inherit no-underline transition hover:bg-wash/40 sm:p-6">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[3px] bg-accent text-white">
+          <a key={title} href={href} className="group flex min-w-0 gap-3 bg-white p-5 text-inherit no-underline transition hover:bg-blue-50/40 sm:p-6">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
               <Icon size={17} />
             </span>
             <span className="min-w-0">
-              <b className="block text-[15px] text-ink">{title}</b>
-              <span className="mt-1 block text-sm leading-6 text-muted">{text}</span>
-              <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-accent">
+              <b className="block text-[15px] text-[#0b1220]">{title}</b>
+              <span className="mt-1 block text-sm leading-6 text-slate-500">{text}</span>
+              <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-blue-600">
                 {action} <ArrowRight size={14} className="transition group-hover:translate-x-0.5" />
               </span>
             </span>
@@ -553,22 +550,22 @@ function RacesPage({ raceId }) {
           <>
             <div className="grid min-w-0 items-end gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,.8fr)]">
               <div className="min-w-0">
-                <p className="mb-3 font-mono text-[10px] tracking-[.08em] text-muted">RACES</p>
-                <h1 className="text-[clamp(38px,5vw,62px)] font-normal leading-[.94] tracking-[-.06em] text-ink">
+                <p className="mb-3 font-mono text-[10px] tracking-[.08em] text-slate-500">RACES</p>
+                <h1 className="text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
                   Scored races.
                   <br />
-                  <span className="text-accent">Every number explained.</span>
+                  <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">Every number explained.</span>
                 </h1>
               </div>
-              <p className="min-w-0 text-sm leading-7 text-muted">
+              <p className="min-w-0 text-sm leading-7 text-slate-500">
                 Races their organizers have published, all scored with the same open model. Each score depends only on the
                 course and the runner's own finish time — never on who else raced.
                 {hasListings ? ' Races marked UPCOMING or AWAITING RESULTS are listed by their organizer ahead of the results: open one to try a target time on its course.' : ''}
                 {hasDemo ? ' Races marked DEMO DATA are synthetic examples.' : ''}
               </p>
             </div>
-            {error && <p className="mt-8 rounded-[3px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</p>}
-            {races === null && !error && <p className="mt-8 text-sm text-muted">Loading races…</p>}
+            {error && <p className="mt-8 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</p>}
+            {races === null && !error && <p className="mt-8 text-sm text-slate-500">Loading races…</p>}
             {races?.length === 0 && <NoRacesYet />}
             {races?.length > 0 && (
               <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -590,21 +587,21 @@ function RacesPage({ raceId }) {
                   ]}
                 />
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="inline-flex max-w-full overflow-x-auto rounded-[3px] border border-rule bg-white" role="group" aria-label="Distance">
+                  <div className="inline-flex max-w-full overflow-x-auto rounded-lg border border-slate-300 bg-white" role="group" aria-label="Distance">
                     {DISTANCE_BUCKETS.map((b) => (
                       <button
                         key={b.id}
                         type="button"
                         onClick={() => setBucket(b.id)}
                         aria-pressed={bucket === b.id}
-                        className={`whitespace-nowrap px-3 py-2 text-xs font-semibold ${bucket === b.id ? 'bg-ink text-white' : 'text-muted hover:text-ink'}`}
+                        className={`whitespace-nowrap px-3 py-2 text-xs font-semibold ${bucket === b.id ? 'bg-[#0b1220] text-white' : 'text-slate-500 hover:text-[#0b1220]'}`}
                       >
                         {b.label}
                       </button>
                     ))}
                   </div>
                   {countryOptions.length > 1 && (
-                    <select value={country} onChange={(event) => setCountry(event.target.value)} aria-label="Country" className="rounded-[3px] border border-rule bg-white px-3 py-2 text-xs font-semibold text-ink">
+                    <select value={country} onChange={(event) => setCountry(event.target.value)} aria-label="Country" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-[#0b1220]">
                       <option value="all">All countries</option>
                       {countryOptions.map((option) => (
                         <option key={option.code} value={option.code}>{option.name}</option>
@@ -612,13 +609,13 @@ function RacesPage({ raceId }) {
                     </select>
                   )}
                   {hasListings && (
-                    <select value={status} onChange={(event) => setStatus(event.target.value)} aria-label="Status" className="rounded-[3px] border border-rule bg-white px-3 py-2 text-xs font-semibold text-ink">
+                    <select value={status} onChange={(event) => setStatus(event.target.value)} aria-label="Status" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-[#0b1220]">
                       {RACE_STATUSES.map(([id, label]) => (
                         <option key={id} value={id}>{label}</option>
                       ))}
                     </select>
                   )}
-                  <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort races" className="rounded-[3px] border border-rule bg-white px-3 py-2 text-xs font-semibold text-ink">
+                  <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort races" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-[#0b1220]">
                     {Object.entries(RACE_SORTS).map(([id, option]) => (
                       <option key={id} value={id}>{option.label}</option>
                     ))}
@@ -627,20 +624,20 @@ function RacesPage({ raceId }) {
               </div>
             )}
             {races?.length > 0 && (
-              <p className="mt-3 font-mono text-[11px] text-muted" aria-live="polite">
+              <p className="mt-3 font-mono text-[11px] text-slate-500" aria-live="polite">
                 {shown.length === races.length ? `${races.length} races` : `${shown.length} of ${races.length} races match`}
               </p>
             )}
             {races?.length > 0 && shown.length === 0 && (
-              <div className="mt-6 rounded-[3px] border border-rule bg-white p-6 text-sm leading-6 text-muted">
-                <p className="font-semibold text-ink">{query.trim() ? `“${query.trim()}” is not on OTRI yet.` : 'No race matches.'}</p>
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 text-sm leading-6 text-slate-600">
+                <p className="font-semibold text-[#0b1220]">{query.trim() ? `“${query.trim()}” is not on OTRI yet.` : 'No race matches.'}</p>
                 <p className="mt-1">
                   OTRI shows the races their organizers have published here; it keeps no list of every race. Try fewer words, another distance, or{' '}
-                  <button type="button" onClick={() => { setQuery(''); setBucket('all'); setCountry('all'); setStatus('all') }} className="font-semibold text-accent hover:underline">clear the filters</button>.
+                  <button type="button" onClick={() => { setQuery(''); setBucket('all'); setCountry('all'); setStatus('all') }} className="font-semibold text-blue-600 hover:underline">clear the filters</button>.
                 </p>
                 <p className="mt-3">
-                  Have its course as a GPX? <a href="#calculator" className="font-semibold text-accent no-underline hover:underline">Work out what a time there is worth</a>.
-                  Have the results too? <a href="#score" className="font-semibold text-accent no-underline hover:underline">Score the whole race</a>, free and without an account.
+                  Have its course as a GPX? <a href="#calculator" className="font-semibold text-blue-600 no-underline hover:underline">Work out what a time there is worth</a>.
+                  Have the results too? <a href="#score" className="font-semibold text-blue-600 no-underline hover:underline">Score the whole race</a>, free and without an account.
                 </p>
               </div>
             )}
@@ -651,12 +648,12 @@ function RacesPage({ raceId }) {
             </div>
             {shown.length > 0 && (
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                <p className="font-mono text-[11px] text-muted">Showing {Math.min(visible, shown.length)} of {shown.length}</p>
+                <p className="font-mono text-[11px] text-slate-500">Showing {Math.min(visible, shown.length)} of {shown.length}</p>
                 {shown.length > visible && (
                   <button
                     type="button"
                     onClick={() => setVisible((n) => n + RACE_PAGE_SIZE)}
-                    className="inline-flex min-h-[40px] items-center rounded-[3px] border border-rule bg-white px-4 text-sm font-semibold text-ink hover:border-accent"
+                    className="inline-flex min-h-[40px] items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-[#0b1220] hover:border-blue-300"
                   >
                     Show {Math.min(RACE_PAGE_SIZE, shown.length - visible)} more
                   </button>
@@ -694,10 +691,9 @@ function App() {
   useDocumentTitle(route.raceId || route.runnerId ? null : PAGE_TITLES[route.tab] ?? PAGE_TITLES.home)
 
   return (
-    <div id="top" className="min-h-screen max-w-full overflow-x-clip bg-desk text-ink-2">
+    <div id="top" className="min-h-screen max-w-full overflow-x-clip bg-[#f7f9fc] text-[#0b1220]">
       <Header tab={route.tab} />
-      {/* Every page is a sheet laid on the desk: white, ruled with a hairline, never floating. */}
-      <main className="mx-auto my-6 w-[min(1200px,calc(100%-32px))] border border-rule bg-sheet">
+      <main>
         {route.tab === 'home' && <Home />}
         {route.tab === 'races' && <RacesPage raceId={route.raceId} />}
         {route.tab === 'runners' && (route.runnerId ? <RunnerProfilePage runnerId={route.runnerId} onBack={() => navigate('#runners')} /> : <RunnersPage />)}

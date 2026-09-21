@@ -49,7 +49,7 @@ function AccountMenu({ session, onSignOut }) {
       document.removeEventListener('keydown', onKey)
     }
   }, [open])
-  const item = 'block rounded-[3px] px-3 py-2 text-sm text-ink no-underline hover:bg-slate-50'
+  const item = 'block rounded-lg px-3 py-2 text-sm text-[#0b1220] no-underline hover:bg-slate-50'
   return (
     <div ref={rootRef} className="relative">
       <button
@@ -58,25 +58,25 @@ function AccountMenu({ session, onSignOut }) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Account menu"
-        className="flex items-center gap-1.5 rounded-full border border-rule bg-white py-1 pl-1 pr-2 hover:border-accent"
+        className="flex items-center gap-1.5 rounded-full border border-slate-300 bg-white py-1 pl-1 pr-2 hover:border-blue-300"
       >
-        <span className={`flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs font-bold text-white ${session.isAdmin ? 'bg-amber-500' : 'bg-accent'}`}>
+        <span className={`flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs font-bold text-white ${session.isAdmin ? 'bg-amber-500' : 'bg-blue-600'}`}>
           {initialOf(session.email)}
         </span>
-        <ChevronDown size={13} className={`text-muted transition ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={13} className={`text-slate-500 transition ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-64 rounded-[3px] border border-rule bg-white p-2 ">
+        <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_18px_44px_rgba(15,23,42,.14)]">
           <div className="px-3 py-2">
-            <p className="truncate font-mono text-xs text-ink" title={session.email}>
+            <p className="truncate font-mono text-xs text-[#0b1220]" title={session.email}>
               {session.email}
             </p>
-            <p className="mt-1 flex items-center gap-2 font-mono text-[9px] tracking-[.08em] text-muted">
+            <p className="mt-1 flex items-center gap-2 font-mono text-[9px] tracking-[.08em] text-slate-500">
               ORGANIZER
               {session.isAdmin && <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[8px] font-bold text-white">ADMIN</span>}
             </p>
           </div>
-          <div className="my-1 border-t border-rule" />
+          <div className="my-1 border-t border-slate-100" />
           <Link to="/events" className={item} onClick={() => setOpen(false)}>
             Your events
           </Link>
@@ -94,7 +94,7 @@ function AccountMenu({ session, onSignOut }) {
           <a href={GITHUB_URL} className={item}>
             GitHub ↗
           </a>
-          <div className="my-1 border-t border-rule" />
+          <div className="my-1 border-t border-slate-100" />
           <button type="button" onClick={onSignOut} className={`${item} w-full text-left`}>
             Sign out
           </button>
@@ -107,19 +107,19 @@ function AccountMenu({ session, onSignOut }) {
 function Header({ session, onSignOut }) {
   return (
     <>
-      <header className="sticky top-0 z-50 h-[68px] border-b border-rule/90 bg-sheet backdrop-blur">
+      <header className="sticky top-0 z-50 h-[68px] border-b border-slate-200/90 bg-white/95 backdrop-blur">
         <div className={`${CONTAINER} flex h-full min-w-0 items-center gap-4`}>
           <Logo href="../#home" />
           <Link
             to="/"
-            className="hidden shrink-0 items-center gap-2 rounded-full border border-rule bg-wash px-3 py-1.5 font-mono text-[9px] font-medium tracking-[.08em] text-accent no-underline sm:flex"
+            className="hidden shrink-0 items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 font-mono text-[9px] font-medium tracking-[.08em] text-blue-600 no-underline sm:flex"
           >
-            <i className="h-1.5 w-1.5 rounded-full bg-accent " />
+            <i className="h-1.5 w-1.5 rounded-full bg-blue-600 shadow-[0_0_0_3px_#dbeafe]" />
             FOR ORGANIZERS
           </Link>
           <nav className="ml-auto flex shrink-0 items-center gap-3 sm:gap-5">
             {session && (
-              <Link to="/events" className="hidden text-[13px] font-semibold text-ink no-underline md:inline">
+              <Link to="/events" className="hidden text-[13px] font-semibold text-[#0b1220] no-underline md:inline">
                 Your events
               </Link>
             )}
@@ -131,7 +131,7 @@ function Header({ session, onSignOut }) {
                 ADMIN
               </Link>
             )}
-            <a href="../#home" className="hidden items-center gap-1 text-[13px] font-medium text-muted no-underline hover:text-ink lg:inline-flex">
+            <a href="../#home" className="hidden items-center gap-1 text-[13px] font-medium text-slate-500 no-underline hover:text-slate-950 lg:inline-flex">
               Public site <ArrowUpRight size={13} />
             </a>
             <span className="hidden sm:block">
@@ -140,7 +140,7 @@ function Header({ session, onSignOut }) {
             {session ? (
               <AccountMenu session={session} onSignOut={onSignOut} />
             ) : (
-              <Link to="/login" className="inline-flex min-h-9 items-center rounded-[3px] bg-accent px-3 text-xs font-semibold text-white no-underline hover:bg-accent">
+              <Link to="/login" className="inline-flex min-h-9 items-center rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white no-underline hover:bg-blue-700">
                 Sign in
               </Link>
             )}
@@ -148,14 +148,14 @@ function Header({ session, onSignOut }) {
         </div>
       </header>
       {/* Small screens: the app's pages in their own row. */}
-      <div className="border-b border-rule bg-white md:hidden">
+      <div className="border-b border-slate-200 bg-white md:hidden">
         <div className={`${CONTAINER} flex items-center gap-5`}>
           {session ? (
-            <Link to="/events" className="py-3 text-[13px] font-semibold text-ink no-underline">
+            <Link to="/events" className="py-3 text-[13px] font-semibold text-[#0b1220] no-underline">
               Your events
             </Link>
           ) : (
-            <Link to="/" className="py-3 text-[13px] font-semibold text-ink no-underline">
+            <Link to="/" className="py-3 text-[13px] font-semibold text-[#0b1220] no-underline">
               For organizers
             </Link>
           )}
@@ -164,7 +164,7 @@ function Header({ session, onSignOut }) {
               ADMIN
             </Link>
           )}
-          <a href="../#home" className="py-3 text-[13px] font-medium text-muted no-underline">
+          <a href="../#home" className="py-3 text-[13px] font-medium text-slate-500 no-underline">
             Public site
           </a>
           <div className="ml-auto py-1.5 sm:hidden">
@@ -178,14 +178,14 @@ function Header({ session, onSignOut }) {
 
 function Footer() {
   return (
-    <footer className="border-t border-rule bg-white py-6">
+    <footer className="border-t border-slate-200 bg-white py-6">
       <div className={`${CONTAINER} flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center`}>
         <Logo href="../#home" />
-        <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-muted no-underline hover:text-accent">
+        <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">
           <Mail size={14} />
           hello@otri.run
         </a>
-        <span className="font-mono text-[8px] tracking-[.08em] text-muted">OPEN · TRANSPARENT · REPRODUCIBLE · INDEPENDENT</span>
+        <span className="font-mono text-[8px] tracking-[.08em] text-slate-500">OPEN · TRANSPARENT · REPRODUCIBLE · INDEPENDENT</span>
       </div>
     </footer>
   )
@@ -288,7 +288,7 @@ function App() {
   else if (!needsAuth) page = <NotFound />
 
   return (
-    <div id="top" className="flex min-h-screen max-w-full flex-col overflow-x-clip bg-[#f7f9fc] text-ink">
+    <div id="top" className="flex min-h-screen max-w-full flex-col overflow-x-clip bg-[#f7f9fc] text-[#0b1220]">
       <Header session={session} onSignOut={signOut} />
       {unconfirmed && <ConfirmEmailBar email={session.email} />}
       <main className="flex-1">{page}</main>
