@@ -64,14 +64,14 @@ export default function ScoreScale({ score, share, exponent, targetSeconds, time
         </div>
         <div className="mt-1 flex justify-between font-mono text-[8px] tracking-[.08em] text-slate-500">
           <span>BEGINNER</span>
-          <span>WORLD RECORD ↑</span>
+          <span>RECORD RUN ↑</span>
         </div>
       </div>
 
       <ul className="mt-4 space-y-1.5 border-t border-slate-700/70 pt-3 text-[12px] leading-[1.45] text-slate-300">
         {marathon && score < 1000 && (
           <li>
-            On a flat road marathon, the same share of world-record speed is <strong className="font-mono text-white">{hms(marathon)}</strong>.
+            On a flat road marathon, the same share of record-run speed is <strong className="font-mono text-white">{hms(marathon)}</strong>.
           </li>
         )}
         {next && nextTime && faster > 0 && (
@@ -113,7 +113,7 @@ export default function ScoreScale({ score, share, exponent, targetSeconds, time
           </tbody>
         </table>
         <p className="mt-2 text-[10.5px] leading-[1.5] text-slate-500">
-          The names are a reading aid; the numbers are exact. A score is a share of the fastest pace a human has held on a course this demanding, and the road marathon column is that same share of the marathon world best (2:00:35). One scale for everyone. Rough ground is not measured yet, so on technical trails scores run a little under these road times.
+          The names are a reading aid; the numbers are exact. A score is a share of the fastest pace a human has held on a course this demanding, and the road marathon column is that same share of the marathon record (2:00:35). One scale for everyone. Rough ground is not measured yet, so on technical trails scores run a little under these road times.
         </p>
       </details>
     </div>

@@ -595,7 +595,7 @@ export default function ScoreRace() {
           {[
             ['Want a public race page?', 'Score the race here first, then press Publish this race: the course and the results come with you into a free organizer account. No approval, and you decide when it goes public.', 'organizer/', 'Or start with an account'],
             ['Put the calculator on your site', 'Runners try a target time on your course before race day. One line of HTML, no account, free.', '#api', 'Embed the calculator'],
-            ['How is a score worked out?', 'Course demand from the measured track, against a published world-record reference. Every step is documented and versioned.', '#faq', 'Read the answers'],
+            ['How is a score worked out?', 'Course demand from the measured track, against a published record-run reference. Every step is documented and versioned.', '#faq', 'Read the answers'],
           ].map(([title, text, href, cta]) => (
             <a key={title} href={href} className="group block rounded-2xl border border-slate-200 bg-white p-5 no-underline transition hover:border-blue-300">
               <p className="text-base font-bold tracking-[-.02em] text-[#0b1220]">{title}</p>
