@@ -121,12 +121,15 @@ Create `/opt/otri/.env` (not committed to git — see `.gitignore`):
 
 ```
 OTRI_API_ALLOWED_ORIGINS=https://otri.run,https://www.otri.run
+OTRI_API_BASE_URL=https://api.otri.run
 # Optional. "Continue with Google" for organizers: an OAuth client (Web application) in the Google
 # Cloud console, with https://api.otri.run/auth/google/callback as an authorised redirect URI.
 OTRI_GOOGLE_CLIENT_ID=
 OTRI_GOOGLE_CLIENT_SECRET=
 OTRI_API_JWT_SECRET=<generate with: python -c "import secrets; print(secrets.token_hex(32))">
 ```
+
+`OTRI_API_BASE_URL` is where Google is told to send the browser back and where a link the API emails points. Without it the address is read from the request, and Nginx passes `X-Forwarded-Host` through from whoever sent it, so the address would be the caller's to choose. It must match the redirect URI registered in the Google console exactly.
 
 `OTRI_API_JWT_SECRET` matters here specifically: without it, a random secret is generated on every process start, which means every organizer gets logged out whenever the service restarts (deploys, reboots, crashes). Generate it once and keep it in `.env`.
 

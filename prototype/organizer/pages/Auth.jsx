@@ -68,6 +68,7 @@ function GoogleButton({ intent, acceptTerms = false, marketingOptIn = false, rem
 const GOOGLE_FAILURE = {
   denied: 'Google did not complete the sign-in. You can try again.',
   expired: 'That sign-in took too long, or was already used. Start it again.',
+  'link-expired': 'That link had already been used, or it has expired. Start the sign-in again and we will send another.',
   mismatch: 'That sign-in was started in a different browser. Start it again here.',
   unverified: 'Google has not verified the email address on that account, so it cannot be used to sign in here.',
   exchange: 'Google did not accept the sign-in. Try again in a moment.',
@@ -512,8 +513,8 @@ export function Login({ onSignedIn, afterReset = false, query = {} }) {
   const [challenge, setChallenge] = useState(null) // { challenge, method }
   const [code, setCode] = useState('')
 
-  // Google sends the browser back here (see api/app.py google_callback) in one of three states:
-  // signed in, needing this account's second factor, or not signed in with a reason.
+  // Google sends the browser back here (see api/app.py google_callback) signed in, needing this
+  // account's second factor, waiting on a link we emailed, or not signed in with a reason.
   useEffect(() => {
     if (query.google === 'ok') {
       // The cookie is already set. Tell the app a sign-in exists and go to the welcome page, whose
@@ -630,6 +631,17 @@ export function Login({ onSignedIn, afterReset = false, query = {} }) {
     >
       <form onSubmit={submit} className="grid gap-4" noValidate>
         {afterReset && <Notice kind="success" title="Your password is changed.">Sign in with it; you will be asked for your code as usual. Every other session of this account was signed out.</Notice>}
+        {query.google === 'confirm-link' && (
+          <Notice kind="info" title="Check your email to connect Google.">
+            An OTRI account already uses {query.email || 'that address'}. Google told us the address was checked, but it does not run that mailbox, so
+            we have sent a link there. Open it and the two are connected. Until then nothing about the account has changed.
+          </Notice>
+        )}
+        {query.google === 'connected' && (
+          <Notice kind="success" title="Your Google account is connected.">
+            Press “Continue with Google” below to sign in.
+          </Notice>
+        )}
         <Field label="Email" htmlFor="login-email">
           <input id="login-email" autoFocus={autoFocusOnDesktop} type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
         </Field>

@@ -268,3 +268,26 @@ def send_google_linked_email(to: str, *, reclaimed: bool) -> None:
         reason="You received this email because a Google account was linked to your OTRI organizer account.",
     )
     _send(to, "Google sign-in was added to your OTRI account", html, text)
+
+
+def send_google_link_email(to: str, link: str, *, unconfirmed: bool) -> None:
+    """Somebody signed in with a Google account carrying this address, and Google does not run the
+    mailbox: it checked the address once and cannot say who reads it today. So we ask the mailbox.
+    Opening the link joins that Google account to this one; ignoring it changes nothing."""
+    lead = (
+        "Somebody signed in with a Google account that uses this address and asked to connect it to an OTRI account with the same address."
+        if not unconfirmed
+        else "Somebody signed in with a Google account that uses this address. An OTRI account was registered with this address but never confirmed."
+    )
+    after = ["If this was not you, ignore this email. Nothing has been connected and nothing has changed."]
+    if unconfirmed:
+        after.insert(0, "Opening the link also confirms the address and takes the account over: any password or second factor set on it stops working, because nobody had ever shown they read this mailbox.")
+    html, text = _render(
+        preheader="Connect your Google account to OTRI",
+        heading="Is this your Google account?",
+        paragraphs=[lead, "If it was you, open the link below. It works once and expires in an hour."],
+        cta=("Connect my Google account", link),
+        after=after,
+        reason="You received this email because somebody asked to connect a Google account to an OTRI account with this address.",
+    )
+    _send(to, "Connect your Google account to OTRI", html, text)

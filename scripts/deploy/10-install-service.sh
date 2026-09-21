@@ -52,6 +52,9 @@ ExecStart=${APP_DIR}/venv/bin/gunicorn api.app:app \\
     --error-logfile -
 Restart=on-failure
 RestartSec=5
+# An upload that asks for more memory than the box has should end as a restarted API, not as
+# whatever the kernel's OOM killer picks, which on a 1 GB droplet may well be postgres.
+MemoryMax=700M
 NoNewPrivileges=true
 ProtectSystem=strict
 ReadWritePaths=${APP_DIR}/data $(dirname "${OTRI_DEM_MANIFEST}")

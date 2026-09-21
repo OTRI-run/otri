@@ -140,6 +140,20 @@ CREATE INDEX IF NOT EXISTS organizer_identities_organizer_idx ON organizer_ident
 
 -- A sign-in with an outside provider that has been started and not yet finished: ten minutes,
 -- used once. The state and nonce are kept as digests, like every other one-time token.
+-- A link between a Google identity and an account that already exists, waiting for whoever reads
+-- the account's mailbox to open the link we sent there. Google's answer about an address on a
+-- third party's domain says who held it when Google checked, not who holds it today.
+CREATE TABLE IF NOT EXISTS identity_link_tokens (
+    token TEXT PRIMARY KEY,
+    organizer_id INTEGER NOT NULL REFERENCES organizers(id) ON DELETE CASCADE,
+    provider TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    email TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS oauth_states (
     state TEXT PRIMARY KEY,
     provider TEXT NOT NULL,
@@ -942,13 +956,24 @@ def published_results_for_runner(runner_id: str) -> list[dict]:
     return [dict(row) for row in rows]
 
 
-def published_results_grouped_by_race() -> dict[str, list[dict]]:
-    """For the runner table: every result in a published race, keyed by race. One query."""
+def published_results_grouped_by_race(runner_ids: list[str] | None = None) -> dict[str, list[dict]]:
+    """For the runner table: the results in published races of these runners, keyed by race.
+
+    Without `runner_ids` this reads every published result there is. That is what the public
+    /runners endpoint used to do on every request, however few runners it was showing, so the cost
+    of one anonymous call grew with the whole database. It asks for the hundred it is about to
+    show instead.
+    """
+    if runner_ids is not None and not runner_ids:
+        return {}
+    where = "WHERE res.runner_id IS NOT NULL" if runner_ids is None else "WHERE res.runner_id = ANY(%s)"
+    params = () if runner_ids is None else (list(runner_ids),)
     with get_connection() as connection:
         rows = connection.execute(
             "SELECT res.id AS result_id, res.race_id, res.runner_id, e.event_date FROM results res "
             "JOIN races ra ON ra.race_id = res.race_id AND ra.published_at IS NOT NULL "
-            "JOIN events e ON e.event_id = ra.event_id WHERE res.runner_id IS NOT NULL"
+            "JOIN events e ON e.event_id = ra.event_id " + where,
+            params,
         ).fetchall()
     grouped: dict[str, list[dict]] = {}
     for row in rows:
