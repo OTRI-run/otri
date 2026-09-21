@@ -79,11 +79,16 @@ OTRI_DEM_MANIFEST="${OTRI_DEM_MANIFEST:-${APP_DIR}/dem/manifest.json}"
 mkdir -p "$(dirname "${OTRI_DEM_MANIFEST}")"
 echo "==> Terrain manifest ${OTRI_DEM_MANIFEST}"
 
+# A setting's current value in .env. When a key appears more than once (a deploy wrote an
+# empty line, someone appended the real value below), the last line is the one systemd's
+# EnvironmentFile uses, so it is the one kept.
+keep_env() { grep "^$1=" "${APP_DIR}/.env" 2>/dev/null | tail -n 1 | cut -d= -f2- || true; }
+
 # Preserve an existing JWT secret across re-deploys (regenerating it would log
 # out every organizer on every deploy); only generate one the first time.
 if [[ -z "${OTRI_API_JWT_SECRET:-}" ]]; then
-  if [[ -f "${APP_DIR}/.env" ]] && grep -q '^OTRI_API_JWT_SECRET=' "${APP_DIR}/.env"; then
-    OTRI_API_JWT_SECRET="$(grep '^OTRI_API_JWT_SECRET=' "${APP_DIR}/.env" | cut -d= -f2-)"
+  if [[ -n "$(keep_env OTRI_API_JWT_SECRET)" ]]; then
+    OTRI_API_JWT_SECRET="$(keep_env OTRI_API_JWT_SECRET)"
     echo "==> Reusing existing OTRI_API_JWT_SECRET from ${APP_DIR}/.env"
   else
     OTRI_API_JWT_SECRET="$(python3.12 -c 'import secrets; print(secrets.token_hex(32))')"
@@ -92,7 +97,6 @@ if [[ -z "${OTRI_API_JWT_SECRET:-}" ]]; then
 fi
 
 # Optional settings live in .env only (set by hand on the Droplet); keep them across re-deploys.
-keep_env() { grep "^$1=" "${APP_DIR}/.env" 2>/dev/null | head -1 | cut -d= -f2- || true; }
 OTRI_EMAIL_FROM="${OTRI_EMAIL_FROM:-$(keep_env OTRI_EMAIL_FROM)}"
 OTRI_APP_BASE_URL="${OTRI_APP_BASE_URL:-$(keep_env OTRI_APP_BASE_URL)}"
 OTRI_ADMIN_EMAILS="${OTRI_ADMIN_EMAILS:-$(keep_env OTRI_ADMIN_EMAILS)}"
