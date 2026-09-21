@@ -112,3 +112,36 @@ def test_a_reset_waits_for_a_password_change_already_holding_the_account(monkeyp
     worker.join(timeout=20)
 
     assert waited > 0.4, "the account row was not held for the whole of the password change"
+
+
+@pytest.mark.usefixtures("clean_state")
+def test_a_burst_of_events_cannot_get_past_the_account_limit():
+    """The limit used to be counted in Python between two transactions, so requests arriving
+    together all read the same count and all inserted. It is counted inside the insert now."""
+    from datetime import date
+
+    from api import db
+
+    organizer_id = _make_account("quota-race@example.com")
+    limit = 3
+    made: list[str] = []
+    refused: list[Exception] = []
+    barrier = threading.Barrier(12)
+
+    def create(n: int):
+        barrier.wait()
+        try:
+            made.append(db.create_event(f"Race Weekend {n}", date(2026, 6, 1), organizer_id, max_for_organizer=limit).event_id)
+        except db.QuotaExceeded as error:
+            refused.append(error)
+
+    threads = [threading.Thread(target=create, args=(i,)) for i in range(12)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=30)
+
+    with get_connection() as connection:
+        held = connection.execute("SELECT count(*) AS n FROM events WHERE organizer_id = %s", (organizer_id,)).fetchone()["n"]
+    assert held == limit, f"the account holds {held} events, past a limit of {limit}"
+    assert len(made) == limit and len(refused) == 12 - limit

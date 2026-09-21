@@ -1270,9 +1270,15 @@ def create_event(payload: EventCreate, request: Request, organizer: Organizer = 
     if not payload.event_name.strip():
         raise HTTPException(status_code=422, detail="event_name is required")
     country = _clean_country(payload.country)
-    event = db.create_event(
-        payload.event_name.strip(), payload.event_date, organizer.id, location=(payload.location or "").strip() or None, country=country
-    )
+    ceiling = None if organizer.is_admin else (_MAX_EVENTS_UNCONFIRMED if not organizer.email_verified else _MAX_EVENTS_PER_ACCOUNT)
+    try:
+        event = db.create_event(
+            payload.event_name.strip(), payload.event_date, organizer.id,
+            location=(payload.location or "").strip() or None, country=country, max_for_organizer=ceiling,
+        )
+    except db.QuotaExceeded as error:
+        # The checks above answer in words; this one catches a burst that got past them together.
+        raise HTTPException(status_code=403, detail=f"This account holds {error} events, which is the limit.") from error
     return EventSummary(event_id=event.event_id, event_name=event.event_name, event_date=event.event_date, race_count=0, location=event.location, country=event.country)
 
 
@@ -1406,13 +1412,18 @@ def add_race(event_id: str, payload: RaceCreate, request: Request, organizer: Or
         raise HTTPException(status_code=422, detail="distance_km must be > 0 and elevation_gain_m must be >= 0")
     _validate_scoring_version(payload.scoring_version)
 
-    race = db.create_race(
-        event_id,
-        payload.course_name.strip(),
-        payload.distance_km,
-        payload.elevation_gain_m,
-        scoring_version=payload.scoring_version,
-    )
+    ceiling = None if organizer.is_admin else (_MAX_RACES_PER_EVENT_UNCONFIRMED if not organizer.email_verified else _MAX_RACES_PER_EVENT)
+    try:
+        race = db.create_race(
+            event_id,
+            payload.course_name.strip(),
+            payload.distance_km,
+            payload.elevation_gain_m,
+            scoring_version=payload.scoring_version,
+            max_for_event=ceiling,
+        )
+    except db.QuotaExceeded as error:
+        raise HTTPException(status_code=403, detail=f"An event holds at most {error} race distances.") from error
     return _race_summary(race)
 
 

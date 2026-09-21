@@ -397,6 +397,10 @@ def find_event(event_id: str) -> Event | None:
     return Event(**row) if row else None
 
 
+class QuotaExceeded(Exception):
+    """A per-account limit reached, counted in the same transaction as the row it would allow."""
+
+
 def create_event(
     event_name: str,
     event_date_: date,
@@ -407,10 +411,18 @@ def create_event(
     country: str | None = None,
     website: str | None = None,
     source_url: str | None = None,
+    max_for_organizer: int | None = None,
 ) -> Event:
     sql = "INSERT INTO events (event_id, event_name, event_date, organizer_id, location, country, website, source_url) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
     values = (event_name, event_date_, organizer_id, location, country, website, source_url)
     with get_connection() as connection:
+        if max_for_organizer is not None and organizer_id is not None:
+            # The account row, then the count, then the insert, all in one transaction: without the
+            # lock a burst of requests each read the count before any of them had inserted.
+            connection.execute("SELECT 1 FROM organizers WHERE id = %s FOR UPDATE", (organizer_id,))
+            held = connection.execute("SELECT count(*) AS n FROM events WHERE organizer_id = %s", (organizer_id,)).fetchone()["n"]
+            if held >= max_for_organizer:
+                raise QuotaExceeded(str(max_for_organizer))
         if event_id:
             connection.execute(sql, (event_id, *values))
         else:
@@ -556,6 +568,7 @@ def create_race(
     elevation_gain_m: float,
     race_id: str | None = None,
     scoring_version: str | None = None,
+    max_for_event: int | None = None,
 ) -> Race:
     # Pass the version explicitly rather than relying on the column's SQL DEFAULT — `CREATE
     # TABLE IF NOT EXISTS` never updates an already-existing column's default, so an older
@@ -565,6 +578,13 @@ def create_race(
     sql = "INSERT INTO races (race_id, event_id, course_name, distance_km, elevation_gain_m, scoring_version) VALUES (%s, %s, %s, %s, %s, %s)"
     values = (event_id, course_name, distance_km, elevation_gain_m, scoring_version or DEFAULT_SCORING_VERSION)
     with get_connection() as connection:
+        if max_for_event is not None:
+            # As create_event: the event row is taken first so that the count cannot be read by
+            # several requests at once and then satisfied by all of them.
+            connection.execute("SELECT 1 FROM events WHERE event_id = %s FOR UPDATE", (event_id,))
+            held = connection.execute("SELECT count(*) AS n FROM races WHERE event_id = %s", (event_id,)).fetchone()["n"]
+            if held >= max_for_event:
+                raise QuotaExceeded(str(max_for_event))
         if race_id:
             connection.execute(sql, (race_id, *values))
         else:
