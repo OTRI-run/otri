@@ -18,6 +18,8 @@ import re
 import unicodedata
 from dataclasses import dataclass
 from datetime import date
+
+from .time_utils import parse_hms_to_seconds
 from typing import Callable
 
 Severity = str  # "error" | "warning"
@@ -198,10 +200,13 @@ def _finish_time(value: str) -> list[FieldIssue]:
     raw = clean_cell(value)
     if not raw:
         return []  # requiredness for finishers is enforced in cross-field validation
-    if _TIME_PATTERN.match(raw):
-        return []
-    if _SHORT_TIME_PATTERN.match(raw):
-        return [("warning", "time has no hours part and is read as MM:SS")]
+    if _TIME_PATTERN.match(raw) or _SHORT_TIME_PATTERN.match(raw):
+        # 00:00:00 matches the pattern and is not a finish time. It used to pass validation, reach
+        # the database, and only then meet the scorer, which refuses a time that is not positive:
+        # the upload answered 422 with the rows already written and the race unreadable after.
+        if parse_hms_to_seconds(raw) <= 0:
+            return [("error", "a finisher's time cannot be zero")]
+        return [] if _TIME_PATTERN.match(raw) else [("warning", "time has no hours part and is read as MM:SS")]
     return [("error", "must be a finish time in HH:MM:SS format")]
 
 

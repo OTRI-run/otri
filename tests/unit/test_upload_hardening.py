@@ -156,3 +156,156 @@ def test_the_shared_strings_cap_holds_wherever_the_part_is_named(tmp_path):
 
     with pytest.raises(ValueError, match="larger inside"):
         read_table(path)
+
+
+# --- What the file costs, and what it can say ---------------------------------------------------
+
+
+def test_a_file_can_be_long_or_wide_but_not_both(tmp_path):
+    """Fifty thousand rows is a real race and two hundred columns is a real timing export. Ten
+    million cells is neither: it is a 20 MB upload that cost 412 MB and four and a half seconds."""
+    from ingestion.reader import MAX_CELLS, MAX_COLUMNS
+
+    rows = MAX_CELLS // MAX_COLUMNS + 50
+    path = tmp_path / "both.csv"
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        handle.write(",".join(f"c{i}" for i in range(MAX_COLUMNS)) + "\n")
+        for _ in range(rows):
+            handle.write(",".join("1" for _ in range(MAX_COLUMNS)) + "\n")
+    with pytest.raises(ValueError, match="more cells"):
+        read_table(path)
+
+
+def test_a_long_narrow_results_file_is_still_read(tmp_path):
+    path = tmp_path / "long.csv"
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        handle.write("Rank,Time,Last name,First name,Gender,Status\n")
+        for i in range(20_000):
+            handle.write(f"{i + 1},1:{i % 60:02d}:00,Doe{i},Jo,M,Finisher\n")
+    _, rows = read_table(path)
+    assert len(rows) == 20_000
+
+
+def test_a_narrow_spreadsheet_is_not_charged_for_its_padding(tmp_path):
+    """A sheet is read to a fixed width, so three columns come back padded out to two hundred.
+    Counting the padding charged a perfectly ordinary file for ten million cells."""
+    from openpyxl import Workbook
+
+    from ingestion.reader import MAX_ROWS
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.append(["Rank", "Last name", "Time"])
+    for i in range(1_000):
+        sheet.append([i + 1, f"Doe{i}", "1:00:00"])
+    path = tmp_path / "narrow.xlsx"
+    workbook.save(path)
+
+    headers, rows = read_table(path)
+    assert headers[:3] == ["Rank", "Last name", "Time"]
+    assert len(rows) == 1_000
+    assert max(len(row) for row in rows) <= 3, "the padding was stored as well as counted"
+    assert MAX_ROWS > 1_000
+
+
+def test_a_name_cannot_turn_the_row_around_it_back_to_front(tmp_path):
+    """A right-to-left override in a name lays out the rank and the time around it in the wrong
+    order: a leaderboard that lies without any string in it being wrong."""
+    path = tmp_path / "bidi.csv"
+    path.write_text("Rank,Time,Last name,First name\n1,1:00:00,\u202eDoe\u202c,Jo\n", encoding="utf-8")
+    _, rows = read_table(path)
+    assert rows[0][2] == "Doe"
+    assert not any(ch in "".join(rows[0]) for ch in "\u202a\u202b\u202c\u202d\u202e\u200e\u200f\u2066\u2069")
+
+
+def test_a_finisher_who_took_no_time_is_refused_before_the_database(tmp_path):
+    """00:00:00 matched the pattern, passed validation, was written, and only then met the scorer,
+    which refuses a time that is not positive: the answer was 422 with the rows already in."""
+    path = tmp_path / "zero.csv"
+    path.write_text(
+        "Rank,Time,Last name,First name,Gender,Status\n1,00:00:00,Doe,Jo,M,Finisher\n2,1:00:00,Roe,Al,F,Finisher\n",
+        encoding="utf-8",
+    )
+    report = validate_result_file(path)
+    assert not report.is_valid
+    assert any("zero" in issue.message for issue in report.errors)
+
+
+def test_a_real_finish_time_is_untouched(tmp_path):
+    path = tmp_path / "fine.csv"
+    path.write_text("Rank,Time,Last name,First name,Gender,Status\n1,0:00:01,Doe,Jo,M,Finisher\n", encoding="utf-8")
+    assert validate_result_file(path).is_valid
+
+
+def test_a_course_saved_as_utf_16_keeps_its_own_metadata(tmp_path):
+    """The course was decoded properly and the note about where it came from was not: forcing
+    UTF-8 on a UTF-16 file gives a string full of NULs, which is not XML, and the note took the
+    whole upload down with it."""
+    from course.gpx import decode_gpx
+    from course.sanitize import source_metadata
+
+    text = (
+        '<?xml version="1.0" encoding="UTF-16"?><gpx version="1.1" creator="BaseCamp"'
+        ' xmlns="http://www.topografix.com/GPX/1/1"><metadata><name>A course</name></metadata>'
+        "<trk><trkseg>" + _point() + _point(lat="46.001") + "</trkseg></trk></gpx>"
+    )
+    raw = text.encode("utf-16")
+    assert source_metadata(decode_gpx(raw)).get("creator") == "BaseCamp"
+    # and the old way does not take anything down with it any more
+    assert source_metadata(raw.decode("utf-8", errors="replace")) == {}
+
+
+# --- The course under a race the public has already seen ----------------------------------------
+
+
+@pytest.mark.usefixtures("clean_state")
+def test_a_published_races_course_cannot_be_swapped_under_its_runners():
+    """Scores are worked out from the course whenever they are asked for, so a new course on a
+    published race quietly restates every finisher's score and their runner index with it.
+    Unpublishing first makes that a thing the organizer did."""
+    import importlib
+
+    from fastapi.testclient import TestClient
+
+    from api import db
+    from test_api import DEMO_RESULT_001, FLAT_LOOP_GPX, _create_event_and_race, _organizer_auth_headers
+
+    client = TestClient(importlib.import_module("api.app").app)
+    headers = _organizer_auth_headers("swap@example.com")
+    with db.get_connection() as connection:
+        connection.execute("UPDATE organizers SET email_verified = TRUE WHERE email = %s", ("swap@example.com",))
+    _, race_id = _create_event_and_race(headers)
+    course = FLAT_LOOP_GPX.read_bytes()
+    upload = {"file": ("course.gpx", course, "application/gpx+xml")}
+    assert client.post(f"/races/{race_id}/gpx", files=upload, headers=headers).status_code == 200
+    results = {"file": ("results.csv", DEMO_RESULT_001.read_bytes(), "text/csv")}
+    assert client.post(f"/races/{race_id}/results", files=results, headers=headers).status_code == 200
+    assert client.post(f"/races/{race_id}/publish", headers=headers).status_code == 200
+
+    refused = client.post(f"/races/{race_id}/gpx", files={"file": ("other.gpx", course, "application/gpx+xml")}, headers=headers)
+    assert refused.status_code == 409 and "Unpublish" in refused.json()["detail"]
+
+    assert client.delete(f"/races/{race_id}/publish", headers=headers).status_code == 200
+    assert client.post(f"/races/{race_id}/gpx", files={"file": ("other.gpx", course, "application/gpx+xml")}, headers=headers).status_code == 200
+
+
+def test_a_terrain_tile_is_fetched_from_the_bucket_or_from_nowhere(monkeypatch):
+    """urllib follows redirects by default. The bucket is a fixed address and a tile is either
+    there or it is not, so a redirect is somebody else's idea of where to look, which on a cloud
+    host includes the address that hands out the machine's own credentials."""
+    import urllib.error
+    import urllib.request
+
+    from course import dem_fetch
+
+    class _Redirector(urllib.request.BaseHandler):
+        def https_open(self, req):
+            raise urllib.error.HTTPError(req.full_url, 302, "Found", {"Location": "http://169.254.169.254/latest/meta-data/"}, None)
+
+    handler = dem_fetch._NoRedirects()
+    with pytest.raises(urllib.error.HTTPError) as raised:
+        handler.redirect_request(
+            urllib.request.Request("https://copernicus-dem-30m.s3.amazonaws.com/x/x.tif"),
+            None, 302, "Found", {}, "http://169.254.169.254/latest/meta-data/",
+        )
+    assert raised.value.code == 302 and "not followed" in str(raised.value)

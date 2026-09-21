@@ -23,7 +23,7 @@ import os
 from urllib.parse import quote, urlencode
 from dataclasses import asdict, replace
 from hashlib import sha256
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import re
 import sys
 import tempfile
@@ -39,6 +39,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.concurrency import run_in_threadpool
 
 from course import GpxParseError, extract_features, parse_track_points, read_track_points
+from course.gpx import decode_gpx
 from course.discipline import is_vertical
 from course.sanitize import SANITIZED_HEADER, sanitized_gpx, source_metadata
 from course.measurement import Measurement, measure_course
@@ -1622,13 +1623,17 @@ def _measure_gpx_path(path, allow_tiles=_no_new_tiles):
 
 def _stored_gpx_fields(points, measurement, contents: bytes, name: str) -> dict:
     stored = sanitized_gpx(points, name=name)
+    # Decoded the way the course itself was decoded. Forcing UTF-8 on a file a spreadsheet or a
+    # Garmin wrote as UTF-16 gives a string full of NULs, which is not XML, and the note about
+    # where the file came from took the whole upload down with it.
+    text = decode_gpx(contents)
     return {
         "content": stored,
         "measurement": {
             **measurement.to_dict(),
             "raw_sha256": sha256(contents).hexdigest(),
             "stored_sha256": sha256(stored.encode("utf-8")).hexdigest(),
-            "source_metadata": source_metadata(contents.decode("utf-8", errors="replace")),
+            "source_metadata": source_metadata(text),
             "processed_at": datetime.now(timezone.utc).isoformat(),
             "snapshot": asdict(measurement),
         },
@@ -1753,6 +1758,14 @@ async def attach_race_gpx(
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
+    if race.published_at is not None:
+        # A score is worked out from the course whenever it is asked for, so a new course here
+        # would quietly restate every finisher's score, and their runner index with it, on a race
+        # the public has already seen. Unpublishing first makes that a thing the organizer did.
+        raise HTTPException(
+            status_code=409,
+            detail="This race is published. Unpublish it before changing its course: every finisher's score is worked out from the course, so publishing again will restate them.",
+        )
     _limit_uploads(request, organizer)  # measuring a course costs a core for seconds
 
     suffix = _safe_suffix(file.filename, ".gpx")
@@ -1784,7 +1797,7 @@ async def attach_race_gpx(
             **measurement.to_dict(),
             "raw_sha256": sha256(contents).hexdigest(),
             "stored_sha256": sha256(stored.encode("utf-8")).hexdigest(),
-            "source_metadata": source_metadata(contents.decode("utf-8", errors="replace")),
+            "source_metadata": source_metadata(decode_gpx(contents)),
             "processed_at": datetime.now(timezone.utc).isoformat(),
             "snapshot": asdict(measurement),
         },
@@ -2283,6 +2296,54 @@ _SHARED_COURSE_MAX_TOTAL_BYTES = int(float(os.environ.get("OTRI_SHARED_COURSES_M
 # Eviction and the write happen under one lock per process, and the folder is trimmed again after
 # the write, so concurrent shares cannot leave the folder over budget (verified in test_hardening).
 _SHARED_COURSE_LOCK = __import__("threading").Lock()
+# A threading lock holds within one process, and gunicorn runs one worker per core plus one. Two
+# shares arriving on two workers evicted and wrote over one another. The file below is held for
+# the length of a share, across processes, by whichever of flock or msvcrt this machine has.
+_SHARED_COURSE_LOCK_FILE = _SHARED_COURSE_DIR / ".lock"
+
+try:  # POSIX, which is what the droplet runs
+    import fcntl
+
+    def _lock_file(handle):
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+
+    def _unlock_file(handle):
+        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+except ImportError:  # Windows, where the tests run
+    import msvcrt
+
+    def _lock_file(handle):
+        handle.seek(0)
+        msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
+
+    def _unlock_file(handle):
+        handle.seek(0)
+        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+
+
+@contextmanager
+def _shared_course_guard():
+    """The thread lock and the file lock together: one share at a time on this machine."""
+    with _SHARED_COURSE_LOCK:
+        handle = None
+        try:
+            _SHARED_COURSE_DIR.mkdir(parents=True, exist_ok=True)
+            handle = open(_SHARED_COURSE_LOCK_FILE, "a+b")
+            _lock_file(handle)
+        except OSError:
+            if handle is not None:
+                handle.close()
+            handle = None  # no lock to be had: the thread lock and the sweep afterwards still apply
+        try:
+            yield
+        finally:
+            if handle is not None:
+                try:
+                    _unlock_file(handle)
+                except OSError:
+                    pass
+                handle.close()
 
 
 def _shared_course_path(share_id: str) -> Path:
@@ -2298,6 +2359,14 @@ def _shared_course_meta(share_id: str) -> dict:
         return json.loads(_shared_course_meta_path(share_id).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
+
+
+# How much of the folder one address may turn over in a day. The budget itself stays a hard cap
+# and eviction stays oldest-first: a folder that quietly outgrows its budget fills a disk, which
+# is worse than a lost link. What was missing is a limit on how fast one uploader can push other
+# people's shares out of it. Ten megabytes ten times a minute is six gigabytes an hour, three
+# times the whole budget; this is a fortieth of that.
+SHARED_COURSE_MB_PER_DAY = 150
 
 
 def _evict_shared_courses(budget_bytes: int) -> None:
@@ -2344,7 +2413,16 @@ async def share_gpx(request: Request, file: UploadFile, name: str | None = Form(
         # The id is the upload's own hash (the same file shares one link); what is kept is the track alone.
         packed = gzip.compress(sanitized_gpx(points).encode("utf-8"), compresslevel=6)
         clean_name = (name or Path(file.filename or "").stem or "").strip()[:120] or None
-        with _SHARED_COURSE_LOCK:
+        # The folder is a fixed size and the oldest go first, so what one address adds is what it
+        # pushes out of other people's. This is the brake on that.
+        enforce_rate_limit(
+            request,
+            max_requests=SHARED_COURSE_MB_PER_DAY,
+            scope="share-megabytes-day",
+            window_seconds=86_400,
+            cost=max(1, round(len(packed) / 1_000_000)),
+        )
+        with _shared_course_guard():
             _SHARED_COURSE_DIR.mkdir(parents=True, exist_ok=True)
             # Make room first so the new file is never the one evicted, then trim again in case
             # another process wrote in between.

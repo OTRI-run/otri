@@ -38,7 +38,7 @@ class TrackPoint:
 _HOW_TO_GET_GPX = "Export the course as GPX (from the organizer's website, or a watch or route-planning app) and upload that."
 
 
-def _decode_gpx(data: bytes) -> str:
+def decode_gpx(data: bytes) -> str:
     """The text of an uploaded course file, or a message naming what it is instead."""
     if not data.strip():
         raise GpxParseError("The file is empty.")
@@ -67,7 +67,7 @@ def read_track_points(path: str | Path) -> list[TrackPoint]:
         data = path.read_bytes()
     except OSError as error:
         raise GpxParseError("The course file could not be read. Try uploading it again.") from error
-    return parse_track_points(_decode_gpx(data))
+    return parse_track_points(decode_gpx(data))
 
 
 _OTHER_FORMATS = {

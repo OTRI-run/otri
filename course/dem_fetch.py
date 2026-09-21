@@ -199,13 +199,25 @@ def _fetch_slot(manifest: Path, file_name: str, deadline: float):
             slot.unlink(missing_ok=True)
 
 
+class _NoRedirects(urllib.request.HTTPRedirectHandler):
+    """A redirect is the bucket saying the tile is somewhere else. There is nowhere else: the host
+    is fixed and a tile is either there or it is not. Following one is how a fetch of a public
+    file ends up reading a cloud host's own metadata service instead."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise urllib.error.HTTPError(req.full_url, code, f"a redirect was not followed ({str(newurl)[:80]})", headers, fp)
+
+
+_NO_REDIRECT_OPENER = urllib.request.build_opener(_NoRedirects)
+
+
 def _download(name: str, target: Path) -> bool:
     """Fetch one tile. False when the bucket has none for this cell (sea); raises on anything else."""
     part = target.with_suffix(".part")
     request = urllib.request.Request(f"{BUCKET}/{name}/{name}.tif", headers={"User-Agent": "otri-dem-fetch"})
     give_up = time.monotonic() + DOWNLOAD_SECONDS
     try:
-        with urllib.request.urlopen(request, timeout=DOWNLOAD_TIMEOUT_SECONDS) as response, part.open("wb") as out:  # noqa: S310 - fixed https host
+        with _NO_REDIRECT_OPENER.open(request, timeout=DOWNLOAD_TIMEOUT_SECONDS) as response, part.open("wb") as out:  # noqa: S310 - fixed https host
             while chunk := response.read(1 << 20):
                 out.write(chunk)
                 if time.monotonic() > give_up:  # the socket timeout is per read: a trickle would never trip it

@@ -65,6 +65,15 @@ def _text(element, path: str) -> str | None:
 
 
 def source_metadata(gpx_text: str) -> dict:
+    """See _source_metadata. Kept as the name the API calls, and never a reason to fail an upload:
+    this is a note for the private record, not the course."""
+    try:
+        return _source_metadata(gpx_text)
+    except Exception:  # noqa: BLE001 - the course has already parsed; only the note is missing
+        return {}
+
+
+def _source_metadata(gpx_text: str) -> dict:
     """What the uploaded file said about where it came from. Kept privately with the race; never
     served. Call after the text has parsed once (it is assumed well-formed here)."""
     root = SafeElementTree.fromstring(gpx_text)
