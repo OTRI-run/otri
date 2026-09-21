@@ -44,8 +44,8 @@ function GoogleMark() {
 }
 
 /** "Continue with Google". Shown only when the API says Google is configured. On the register
- *  page it waits for the terms box, because a Google sign-up still creates an OTRI account. */
-function GoogleButton({ intent, acceptTerms = false, marketingOptIn = false, remember = false, disabled = false, hint = null }) {
+ *  page the terms are accepted by continuing, and the line under the button says so. */
+function GoogleButton({ intent, acceptTerms = false, marketingOptIn = false, remember = false, hint = null }) {
   const providers = useProviders()
   if (!providers.google) return null
   const classes =
@@ -57,16 +57,10 @@ function GoogleButton({ intent, acceptTerms = false, marketingOptIn = false, rem
         or
         <span className="h-px flex-1 bg-slate-200" />
       </div>
-      {disabled ? (
-        <span aria-disabled="true" className={`${classes} cursor-not-allowed opacity-50`}>
-          <GoogleMark /> Continue with Google
-        </span>
-      ) : (
-        <a href={googleStartUrl({ intent, acceptTerms, marketingOptIn, remember })} className={classes}>
-          <GoogleMark /> Continue with Google
-        </a>
-      )}
-      {hint && <p className="text-xs text-slate-500">{hint}</p>}
+      <a href={googleStartUrl({ intent, acceptTerms, marketingOptIn, remember })} className={classes}>
+        <GoogleMark /> Continue with Google
+      </a>
+      {hint && <p className="text-xs leading-5 text-slate-500">{hint}</p>}
     </div>
   )
 }
@@ -338,10 +332,10 @@ export function Register({ onSignedIn, query = {} }) {
       <form onSubmit={submit} className="grid gap-4" noValidate>
         {query.google === 'no-account' && (
           <Notice kind="info" title="No OTRI account for that Google address yet.">
-            Create one here: tick the terms box and continue with Google again, or choose a password instead.
+            Create one here: continue with Google again, or choose a password instead.
           </Notice>
         )}
-        <Field label="Work email" htmlFor="reg-email" hint="We send the verification link and race notifications here.">
+        <Field label="Email" htmlFor="reg-email" hint="We send the verification link and race notifications here.">
           <input id="reg-email" autoFocus={autoFocusOnDesktop} type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
         </Field>
         <Field label="Password" htmlFor="reg-pw">
@@ -385,7 +379,7 @@ export function Register({ onSignedIn, query = {} }) {
         {!busy && (!email || !password || tooShort || mismatch || !acceptTerms) && (
           <p className="text-xs text-slate-500">
             {!email
-              ? 'Enter your work email to continue.'
+              ? 'Enter your email to continue.'
               : !password || tooShort
                 ? 'Choose a password of at least 10 characters.'
                 : mismatch
@@ -393,7 +387,24 @@ export function Register({ onSignedIn, query = {} }) {
                   : 'Tick the terms box to continue.'}
           </p>
         )}
-        <GoogleButton intent="register" acceptTerms={acceptTerms} marketingOptIn={news} disabled={!acceptTerms} hint={acceptTerms ? null : 'Tick the terms box first; a Google sign-up creates an OTRI account too.'} />
+        <GoogleButton
+          intent="register"
+          acceptTerms
+          marketingOptIn={news}
+          hint={
+            <>
+              By continuing with Google you agree to the{' '}
+              <a className="underline" href={`${DOCS}/TERMS.md`} target="_blank" rel="noreferrer">
+                terms of service
+              </a>{' '}
+              and the{' '}
+              <a className="underline" href={`${DOCS}/PRIVACY.md`} target="_blank" rel="noreferrer">
+                privacy policy
+              </a>
+              , and confirm you may share the race data you upload.
+            </>
+          }
+        />
       </form>
     </AuthCard>
   )
