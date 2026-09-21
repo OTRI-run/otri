@@ -2231,7 +2231,9 @@ async def score_a_race(
                 "errors": [ValidationIssueOut(**issue.to_dict()) for issue in report.errors],
                 "warnings": [ValidationIssueOut(**issue.to_dict()) for issue in report.warnings],
                 "columns": dict(report.columns),
-                "ignored_columns": list(report.ignored_columns),
+                # A handful is what the page shows and what a person can act on. Everything the
+                # file holds is the file handed back, and it was handed back three times over.
+                "ignored_columns": [str(name)[:80] for name in list(report.ignored_columns)[:40]],
             }
             shared = {"scoring_version": version, "course": course, "measurement": measurement.to_dict()}
             if not report.is_valid:

@@ -13,6 +13,8 @@ import datetime as dt
 import io
 import zipfile
 from pathlib import Path
+
+from defusedxml import ElementTree as SafeElementTree
 from typing import Callable
 
 from openpyxl import load_workbook
@@ -28,6 +30,14 @@ HEADER_SEARCH_ROWS = 30
 # HEADER_SEARCH_ROWS rows and runs two regular expressions on each, so 60,000 columns cost seconds
 # of a core per upload. The .xlsx reader has had this cap (MAX_XLSX_COLUMNS); CSV had none.
 MAX_COLUMNS = 200
+# No name, time or bib is longer than this. The cap is what stops a file whose cost is in the size
+# of its cells rather than their number: two hundred headers of a hundred kilobytes each are a
+# legal results file by every other measure, and they came back in the answer three times over.
+MAX_CELL_CHARS = 512
+# Anything below a space except tab and newline. A results file has no business carrying them, and
+# a NUL is not storable in a Postgres text column, so one in a name became an error at the end of
+# a long upload rather than a word about the file.
+_CONTROLS = {code: None for code in range(32) if code not in (9, 10, 13)} | {127: None}
 TEXT_SUFFIXES = (".csv", ".txt", ".tsv")
 SHEET_SUFFIXES = (".xlsx", ".xlsm")
 
@@ -95,17 +105,25 @@ def _unique(headers: list[str]) -> list[str]:
 # ---------------------------------------------------------------------------- text files
 
 
+def _cell(value: str | None) -> str:
+    """One cell as it is kept: no control characters, and no longer than a name can be."""
+    return (value or "").translate(_CONTROLS).strip()[:MAX_CELL_CHARS]
+
+
 def _decode(data: bytes) -> str:
     if data.startswith((b"\xff\xfe", b"\xfe\xff")):
         return data.decode("utf-16")
     if data.startswith(b"\xef\xbb\xbf"):
         return data.decode("utf-8-sig")
     # "Unicode text" from a spreadsheet, without a byte-order mark: every other byte is zero.
-    if len(data) >= 4 and data[1:2] == b"\x00" and data[3:4] == b"\x00":
-        try:
-            return data.decode("utf-16-le")
-        except UnicodeDecodeError:
-            pass
+    # Which other one says which way round it is, and only the little-endian half used to be read.
+    if len(data) >= 4:
+        for first, encoding in ((1, "utf-16-le"), (0, "utf-16-be")):
+            if data[first : first + 1] == b"\x00" and data[first + 2 : first + 3] == b"\x00":
+                try:
+                    return data.decode(encoding)
+                except UnicodeDecodeError:
+                    pass
     try:
         return data.decode("utf-8")
     except UnicodeDecodeError:
@@ -143,7 +161,7 @@ def _read_text(path: Path) -> list[list[str]]:
             if len(table) > MAX_ROWS + HEADER_SEARCH_ROWS:
                 raise ValueError(f"the file has more than {MAX_ROWS} rows; split it per race distance")
             # Past MAX_COLUMNS the rest of the row is dropped, as the .xlsx reader drops it.
-            table.append([(cell or "").strip() for cell in row[:MAX_COLUMNS]])
+            table.append([_cell(cell) for cell in row[:MAX_COLUMNS]])
     except csv.Error as error:
         # csv.Error is not a ValueError, so it used to leave the reader as an unhandled error and
         # the upload answered 500 instead of saying which file could not be read.
@@ -164,6 +182,10 @@ MAX_XLSX_UNPACKED_BYTES = 25_000_000
 # cost 59 seconds of a core and 367 MB; the row and column caps never saw it.
 MAX_XLSX_SHARED_STRINGS_BYTES = 6_000_000
 _SHARED_STRINGS = "xl/sharedstrings.xml"
+# openpyxl does not look for that name. It reads [Content_Types].xml and takes whatever part is
+# declared with this content type, so the strings can sit at any path in the archive and a check
+# on the usual name alone is bypassed by renaming the part.
+_SHARED_STRINGS_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sharedstrings+xml"
 MAX_XLSX_ENTRIES = 2_000
 MAX_XLSX_COLUMNS = 200  # a results sheet has a dozen; timing exports with every split, a hundred
 _NOT_A_WORKBOOK = "this file is named .xlsx but is not an Excel workbook (it may be a CSV that was renamed, or a damaged download): open it in a spreadsheet, save it as .xlsx or CSV, and upload that"
@@ -178,9 +200,29 @@ def _refuse_oversized_archive(path: Path) -> None:
     too_big = "this workbook is far larger inside than a results sheet can be; save the results as CSV and upload that"
     if len(entries) > MAX_XLSX_ENTRIES or sum(entry.file_size for entry in entries) > MAX_XLSX_UNPACKED_BYTES:
         raise ValueError(too_big)
-    shared = sum(entry.file_size for entry in entries if entry.filename.lower() == _SHARED_STRINGS)
+    names = _shared_strings_parts(path) | {_SHARED_STRINGS}
+    shared = sum(entry.file_size for entry in entries if entry.filename.lower().lstrip("/") in names)
     if shared > MAX_XLSX_SHARED_STRINGS_BYTES:
         raise ValueError(too_big)
+
+
+def _shared_strings_parts(path: Path) -> set[str]:
+    """Which parts of this archive the workbook declares as its shared strings, read the way
+    openpyxl reads them: from [Content_Types].xml, by content type rather than by name."""
+    try:
+        with zipfile.ZipFile(path) as archive:
+            with archive.open("[Content_Types].xml") as handle:
+                raw = handle.read(1_000_000)
+        root = SafeElementTree.fromstring(raw)
+    except Exception:  # noqa: BLE001 - no content types, unreadable, or not XML: the name check stands
+        return set()
+    found = set()
+    for override in root.iter():
+        if not override.tag.endswith("Override"):
+            continue
+        if (override.get("ContentType") or "").strip().lower() == _SHARED_STRINGS_TYPE:
+            found.add((override.get("PartName") or "").strip().lower().lstrip("/"))
+    return {name for name in found if name}
 
 
 def _read_xlsx(path: Path) -> list[list[str]]:
@@ -208,7 +250,7 @@ def _read_xlsx(path: Path) -> list[list[str]]:
                 raise ValueError(f"the file has more than {MAX_ROWS} rows; split it per race distance")
             if all(cell is None for cell in raw_row):
                 continue
-            table.append([_stringify(cell) for cell in raw_row])
+            table.append([_cell(_stringify(cell)) for cell in raw_row])
         return table
     finally:
         # Read-only workbooks stream from the zip: close the row generator (its open stream) and the

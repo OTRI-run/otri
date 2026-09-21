@@ -140,7 +140,13 @@ def validate_result_file(path: str | Path) -> ValidationReport:
 
 def validate_result_table(table: ResultTable, source: str = "") -> ValidationReport:
     issues = [ValidationIssue(*note) for note in table.notes]
-    found = ", ".join(f"“{header}”" for header in table.headers if header) or "none"
+    # Naming the columns helps whoever has to fix the file. Naming two hundred of them, at the
+    # length a header may be, is the file coming back out at three times its own size, and these
+    # are file-level messages so nothing further down trims them.
+    named = [header for header in table.headers if header][:12]
+    listed = ", ".join(f"“{header[:40]}”" for header in named)
+    more = len([h for h in table.headers if h]) - len(named)
+    found = (f"{listed} and {more} more" if more > 0 else listed) or "none"
     if not table.headers:
         issues.append(ValidationIssue("error", None, None, "the file is empty"))
     else:

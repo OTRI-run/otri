@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from hashlib import sha256
 from itertools import groupby
 import json
+from math import isfinite
 import math
 import statistics
 
@@ -160,6 +161,17 @@ class Measurement:
     @property
     def dem_sourced(self) -> bool:
         return self.source.get('dataset') != UPLOADED_SOURCE['dataset']
+
+    def finite_or_raise(self) -> None:
+        """Every number in the measurement is a real one.
+
+        Elevations are bounded at the door, so this should never fire; it is here because the
+        alternative to firing is a NaN reaching the JSON encoder, which refuses it and turns a bad
+        upload into a server error instead of an answer.
+        """
+        for name, value in (("distance", self.distance_m), ("climb", self.gain_m), ("descent", self.loss_m)):
+            if not isfinite(value):
+                raise GpxParseError(f'This course measures to a {name} that is not a number. Check the elevations in the file.')
 
     def to_dict(self):
         # The profile is what a chart draws, not the record: `snapshot` in the stored measurement
@@ -327,7 +339,9 @@ def measure_course(points: list[TrackPoint], provider=None) -> Measurement:
         flags.add('sparse_geometry_median_over_30m')
     elevations = [z for segment in segments for _, z in segment]
     geometry_hash = sha256(json.dumps([(p.lat, p.lon, p.segment_id) for p in points]).encode()).hexdigest()
-    return Measurement(tuple(segments), total, gain, loss, steep_up, steep_down,
-                       max(0, max(grades)) if grades else None, max(0, -min(grades)) if grades else None,
-                       min(elevations), max(elevations), geometry_hash, source, tuple(sorted(flags)),
-                       round(median_edge, 1) if median_edge is not None else None)
+    measurement = Measurement(tuple(segments), total, gain, loss, steep_up, steep_down,
+                              max(0, max(grades)) if grades else None, max(0, -min(grades)) if grades else None,
+                              min(elevations), max(elevations), geometry_hash, source, tuple(sorted(flags)),
+                              round(median_edge, 1) if median_edge is not None else None)
+    measurement.finite_or_raise()
+    return measurement
