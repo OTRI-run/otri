@@ -1,10 +1,9 @@
-import '../../src/styles.css'
-import './main.css'
 import BackToTop from '../../src/components/BackToTop'
 import { installDropGuard, installScrollMemory, installSearchShortcut } from '../../src/lib/comfort'
-import { useEffect, useRef, useState } from 'preact/compat'
-import { createRoot } from 'preact/compat/client'
-import { ArrowUpRight, ChevronDown, LogOut, Mail } from '../../src/ui/icons'
+import { useEffect, useRef, useState } from 'react'
+import { createRoot } from 'react-dom/client'
+import { ArrowUpRight, ChevronDown, Mail } from 'lucide-react'
+import '../../src/styles.css'
 import Logo from '../../src/components/Logo'
 import UnitsMenu from '../../src/components/UnitsMenu'
 import { logoutOrganizer, getMe, resendVerification } from '../apiClient'
@@ -22,6 +21,7 @@ import { Dashboard, EventPage, NewEvent } from './pages/Events'
 import { CourseStep, NewRace, ResultsStep, ReviewStep } from './pages/Race'
 import { Link, match, navigate, useRoute } from './router'
 import { clearSession, readSession, writeSession } from './session'
+import { CONTAINER } from './ui'
 
 const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 
@@ -49,31 +49,55 @@ function AccountMenu({ session, onSignOut }) {
       document.removeEventListener('keydown', onKey)
     }
   }, [open])
+  const item = 'block rounded-lg px-3 py-2 text-sm text-[#0b1220] no-underline hover:bg-slate-50'
   return (
     <div ref={rootRef} className="relative">
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-haspopup="menu" aria-expanded={open} aria-label="Account menu" className="account-trigger">
-        <span className={`avatar ${session.isAdmin ? 'avatar--admin' : ''}`}>{initialOf(session.email)}</span>
-        <ChevronDown size={14} style={{ transition: 'transform var(--quick) var(--ease)', transform: open ? 'rotate(180deg)' : 'none' }} />
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Account menu"
+        className="flex items-center gap-1.5 rounded-full border border-slate-300 bg-white py-1 pl-1 pr-2 hover:border-blue-300"
+      >
+        <span className={`flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs font-bold text-white ${session.isAdmin ? 'bg-amber-500' : 'bg-blue-600'}`}>
+          {initialOf(session.email)}
+        </span>
+        <ChevronDown size={13} className={`text-slate-500 transition ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div role="menu" className="menu menu--right" style={{ width: 272 }}>
-          <div className="menu__head">
-            <p title={session.email}>{session.email}</p>
-            <p className="cluster cluster--tight mt-1">
-              <span className="badge">Organizer</span>
-              {session.isAdmin && <span className="badge badge--amber">Admin</span>}
+        <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-[0_18px_44px_rgba(15,23,42,.14)]">
+          <div className="px-3 py-2">
+            <p className="truncate font-mono text-xs text-[#0b1220]" title={session.email}>
+              {session.email}
+            </p>
+            <p className="mt-1 flex items-center gap-2 font-mono text-[9px] tracking-[.08em] text-slate-500">
+              ORGANIZER
+              {session.isAdmin && <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[8px] font-bold text-white">ADMIN</span>}
             </p>
           </div>
-          <div className="menu__sep" />
-          <Link to="/events" className="menu__item" onClick={() => setOpen(false)}>Your events</Link>
-          <Link to="/account" className="menu__item" onClick={() => setOpen(false)}>Account settings</Link>
+          <div className="my-1 border-t border-slate-100" />
+          <Link to="/events" className={item} onClick={() => setOpen(false)}>
+            Your events
+          </Link>
+          <Link to="/account" className={item} onClick={() => setOpen(false)}>
+            Account settings
+          </Link>
           {session.isAdmin && (
-            <Link to="/admin" className="menu__item" onClick={() => setOpen(false)}>Admin dashboard</Link>
+            <Link to="/admin" className={item} onClick={() => setOpen(false)}>
+              Admin dashboard
+            </Link>
           )}
-          <a href="../#home" className="menu__item">Public site <ArrowUpRight size={14} /></a>
-          <a href={GITHUB_URL} className="menu__item">GitHub <ArrowUpRight size={14} /></a>
-          <div className="menu__sep" />
-          <button type="button" onClick={onSignOut} className="menu__item"><LogOut size={16} /> Sign out</button>
+          <a href="../#home" className={item}>
+            Public site ↗
+          </a>
+          <a href={GITHUB_URL} className={item}>
+            GitHub ↗
+          </a>
+          <div className="my-1 border-t border-slate-100" />
+          <button type="button" onClick={onSignOut} className={`${item} w-full text-left`}>
+            Sign out
+          </button>
         </div>
       )}
     </div>
@@ -83,75 +107,85 @@ function AccountMenu({ session, onSignOut }) {
 function Header({ session, onSignOut }) {
   return (
     <>
-      <header className="site-header">
-        <div className="wrap site-header__inner">
-          <div className="site-header__brand">
-            <Logo href="../#home" compact />
-            <Link to="/" className="badge badge--volt hide-sm">For organizers</Link>
-          </div>
-          <nav className="site-nav" aria-label="Organizer">
-            {session && <Link to="/events" className="site-nav__link">Your events</Link>}
-            {session?.isAdmin && <Link to="/admin" className="site-nav__link"><span className="badge badge--amber">Admin</span></Link>}
-            <a href="../#home" className="site-nav__link">Public site <ArrowUpRight size={14} /></a>
-            <span className="site-nav__sep" aria-hidden="true" />
-            <UnitsMenu compact />
+      <header className="sticky top-0 z-50 h-[68px] border-b border-slate-200/90 bg-white/95 backdrop-blur">
+        <div className={`${CONTAINER} flex h-full min-w-0 items-center gap-4`}>
+          <Logo href="../#home" />
+          <Link
+            to="/"
+            className="hidden shrink-0 items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 font-mono text-[9px] font-medium tracking-[.08em] text-blue-600 no-underline sm:flex"
+          >
+            <i className="h-1.5 w-1.5 rounded-full bg-blue-600 shadow-[0_0_0_3px_#dbeafe]" />
+            FOR ORGANIZERS
+          </Link>
+          <nav className="ml-auto flex shrink-0 items-center gap-3 sm:gap-5">
+            {session && (
+              <Link to="/events" className="hidden text-[13px] font-semibold text-[#0b1220] no-underline md:inline">
+                Your events
+              </Link>
+            )}
+            {session?.isAdmin && (
+              <Link
+                to="/admin"
+                className="hidden items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-mono text-[9px] tracking-[.08em] text-amber-700 no-underline md:inline-flex"
+              >
+                ADMIN
+              </Link>
+            )}
+            <a href="../#home" className="hidden items-center gap-1 text-[13px] font-medium text-slate-500 no-underline hover:text-slate-950 lg:inline-flex">
+              Public site <ArrowUpRight size={13} />
+            </a>
+            <span className="hidden sm:block">
+              <UnitsMenu compact />
+            </span>
             {session ? (
               <AccountMenu session={session} onSignOut={onSignOut} />
             ) : (
-              <Link to="/login" className="btn btn--dark btn--sm" style={{ marginLeft: 8 }}>Sign in</Link>
+              <Link to="/login" className="inline-flex min-h-9 items-center rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white no-underline hover:bg-blue-700">
+                Sign in
+              </Link>
             )}
           </nav>
-          <div className="site-header__mobile">
-            {session ? <AccountMenu session={session} onSignOut={onSignOut} /> : <Link to="/login" className="btn btn--dark btn--sm">Sign in</Link>}
-          </div>
         </div>
       </header>
       {/* Small screens: the app's pages in their own row. */}
-      <nav className="site-subnav" aria-label="Organizer pages">
-        <div className="wrap site-subnav__inner">
-          {session ? <Link to="/events" className="site-nav__link">Your events</Link> : <Link to="/" className="site-nav__link">For organizers</Link>}
-          {session?.isAdmin && <Link to="/admin" className="site-nav__link">Admin</Link>}
-          <a href="../#home" className="site-nav__link">Public site</a>
-          <div className="push">
-            <UnitsMenu compact />
+      <div className="border-b border-slate-200 bg-white md:hidden">
+        <div className={`${CONTAINER} flex items-center gap-5`}>
+          {session ? (
+            <Link to="/events" className="py-3 text-[13px] font-semibold text-[#0b1220] no-underline">
+              Your events
+            </Link>
+          ) : (
+            <Link to="/" className="py-3 text-[13px] font-semibold text-[#0b1220] no-underline">
+              For organizers
+            </Link>
+          )}
+          {session?.isAdmin && (
+            <Link to="/admin" className="py-3 font-mono text-[9px] tracking-[.08em] text-amber-700 no-underline">
+              ADMIN
+            </Link>
+          )}
+          <a href="../#home" className="py-3 text-[13px] font-medium text-slate-500 no-underline">
+            Public site
+          </a>
+          <div className="ml-auto py-1.5 sm:hidden">
+            <UnitsMenu />
           </div>
         </div>
-      </nav>
+      </div>
     </>
   )
 }
 
 function Footer() {
   return (
-    <footer className="site-footer">
-      <div className="wrap site-footer__inner">
-        <div>
-          <Logo href="../#home" dark />
-          <p className="site-footer__tag">Your race, scored with an open method. Nothing is public until you press Publish.</p>
-        </div>
-        <div className="site-footer__col">
-          <h4>Organizers</h4>
-          <ul>
-            <li><Link to="/">Start here</Link></li>
-            <li><Link to="/events">Your events</Link></li>
-            <li><a href="../#score">Score a race without an account</a></li>
-            <li><a href={`${GITHUB_URL}/blob/main/docs/organizer-upload.md`}>Organizer documentation <ArrowUpRight size={13} /></a></li>
-          </ul>
-        </div>
-        <div className="site-footer__col">
-          <h4>OTRI</h4>
-          <ul>
-            <li><a href="../#home">Public site</a></li>
-            <li><a href="../#faq">FAQ</a></li>
-            <li><a href={GITHUB_URL}>Source on GitHub <ArrowUpRight size={13} /></a></li>
-            <li><a href={`${GITHUB_URL}/blob/main/PRIVACY.md`}>Privacy <ArrowUpRight size={13} /></a></li>
-            <li><a href="mailto:hello@otri.run"><Mail size={14} /> hello@otri.run</a></li>
-          </ul>
-        </div>
-      </div>
-      <div className="wrap site-footer__bottom">
-        <span>Open · Transparent · Reproducible · Independent</span>
-        <a href="https://otri.run">otri.run</a>
+    <footer className="border-t border-slate-200 bg-white py-6">
+      <div className={`${CONTAINER} flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center`}>
+        <Logo href="../#home" />
+        <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">
+          <Mail size={14} />
+          hello@otri.run
+        </a>
+        <span className="font-mono text-[8px] tracking-[.08em] text-slate-500">OPEN · TRANSPARENT · REPRODUCIBLE · INDEPENDENT</span>
       </div>
     </footer>
   )
@@ -254,10 +288,10 @@ function App() {
   else if (!needsAuth) page = <NotFound />
 
   return (
-    <div id="top" className="site">
+    <div id="top" className="flex min-h-screen max-w-full flex-col overflow-x-clip bg-[#f7f9fc] text-[#0b1220]">
       <Header session={session} onSignOut={signOut} />
       {unconfirmed && <ConfirmEmailBar email={session.email} />}
-      <main>{page}</main>
+      <main className="flex-1">{page}</main>
       <Footer />
       <BackToTop />
       <BuildBanner />
@@ -269,13 +303,18 @@ function App() {
 function ConfirmEmailBar({ email }) {
   const [sent, setSent] = useState(false)
   return (
-    <div className="site-bar">
-      <div className="wrap site-bar__inner">
-        <Mail size={16} />
-        <span className="min0">
-          Confirm your email to publish: we sent a link to <strong>{email}</strong>. You can build your race in the meantime.
+    <div className="border-b border-amber-200 bg-amber-50">
+      <div className={`${CONTAINER} flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-[13px] text-amber-900`}>
+        <Mail size={14} className="shrink-0" />
+        <span className="min-w-0">
+          Confirm your email to publish: we sent a link to <strong className="font-semibold">{email}</strong>. You can build your race in the meantime.
         </span>
-        <button type="button" disabled={sent} onClick={() => resendVerification(email).then(() => setSent(true)).catch(() => setSent(true))}>
+        <button
+          type="button"
+          disabled={sent}
+          onClick={() => resendVerification(email).then(() => setSent(true)).catch(() => setSent(true))}
+          className="font-semibold text-amber-900 underline disabled:no-underline"
+        >
           {sent ? 'Sent again' : 'Send it again'}
         </button>
       </div>
@@ -285,8 +324,8 @@ function ConfirmEmailBar({ email }) {
 
 function NotFound() {
   return (
-    <section className="section section--tight">
-      <div className="wrap">
+    <section className="py-4">
+      <div className={CONTAINER}>
         <SharedNotFound where={window.location.hash} home="#/" homeLabel="Back to the start" secondaryHref="../#calculator" note="Organizer pages need you to be signed in; admin pages need an admin account." />
       </div>
     </section>

@@ -1,5 +1,0 @@
-/* The FAQ: a narrow column of question groups. The folding is the system's `.details`; only the
-   rhythm between the groups and their rule headings is this page's own. */
-
-.faq-group { margin-top: var(--s-10); }
-.faq-group > .rule { margin-bottom: var(--s-4); }

@@ -1,9 +1,0 @@
-/* OTRI design system. Import this once per app entry; every page and component reads from it.
-   Order matters: tokens, then fonts, then the base, then layout and components, then patterns. */
-@import './tokens.css';
-@import './fonts.css';
-@import './base.css';
-@import './layout.css';
-@import './components.css';
-@import './shell.css';
-@import './patterns.css';

@@ -4,27 +4,35 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="robots" content="noindex" />
-<meta name="theme-color" content="#0b131a" />
-<title>Page not found</title>
+<meta name="theme-color" content="#0b1220" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<title>OTRI — Page not found</title>
 <style>
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;min-height:100svh;display:grid;place-items:center;padding:24px;background:#0b131a;color:#e9f2f7;
-font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;text-align:center;
-background-image:linear-gradient(rgba(233,242,247,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(233,242,247,.05) 1px,transparent 1px);background-size:28px 28px}
-main{display:grid;gap:18px;justify-items:center}
-svg{width:56px;height:56px}
-p{margin:0;font:600 11px "IBM Plex Mono",ui-monospace,Consolas,monospace;letter-spacing:.16em;text-transform:uppercase;color:#93a7b4}
-h1{margin:0;font-family:"Space Grotesk",system-ui,sans-serif;font-size:clamp(30px,5vw,50px);font-weight:700;letter-spacing:-.035em;line-height:1.05}
-a{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:4px;background:#cbf53f;color:#0b1319;
-font-size:15px;font-weight:600;text-decoration:none}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;background:#f7f9fc;color:#0b1220;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;text-align:center}
+.mark{width:64px;height:64px}
+.eyebrow{margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;letter-spacing:.12em;color:#64748b}
+h1{margin:0;font-size:clamp(30px,5vw,50px);font-weight:700;letter-spacing:-.05em;line-height:.98}
+p{margin:0;max-width:440px;font-size:14px;line-height:1.6;color:#475569}
+.links{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:8px}
+.links a{display:inline-block;padding:12px 18px;border-radius:12px;font-size:14px;font-weight:600;text-decoration:none}
+.primary{background:#2563eb;color:#fff}
+.secondary{background:#fff;color:#0b1220;border:1px solid #e2e8f0}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;color:#64748b;word-break:break-all}
 </style>
 </head>
 <body>
-<main>
-<svg viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="24" r="19" stroke="#e9f2f7" stroke-width="3.1"/><path d="M13 31.4 20 20.6 24.6 26.1 29.6 17.6 35 31.4" stroke="#e9f2f7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="29.6" cy="17.6" r="2.7" fill="#cbf53f"/></svg>
-<p>404 · Not found</p>
+<svg class="mark" viewBox="0 0 40 40" fill="none" aria-hidden="true"><defs><linearGradient id="otriBootGrad" x1="5" y1="4" x2="35" y2="37" gradientUnits="userSpaceOnUse"><stop stop-color="#60A5FA"/><stop offset=".48" stop-color="#2563EB"/><stop offset="1" stop-color="#1D4ED8"/></linearGradient></defs><circle cx="20" cy="20" r="17" stroke="url(#otriBootGrad)" stroke-width="5"/><path d="M7 26.5 15.5 20l4 2.7L26 16l7 6" stroke="url(#otriBootGrad)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 30c5-6 10-7 17-10" stroke="#2563EB" stroke-width="3.4" stroke-linecap="round"/></svg>
+<p class="eyebrow">404 · NOT FOUND</p>
 <h1>That page is not here.</h1>
-<a href="/prototype/">Back to OTRI</a>
-</main>
+<p>The address may have a typo, or the page moved while OTRI is being built in the open. Here is where things live now.</p>
+<code id="where"></code>
+<div class="links">
+<a class="primary" href="/">Home</a>
+<a class="secondary" href="/prototype/#calculator">Calculate a score</a>
+<a class="secondary" href="/prototype/#races">Races</a>
+<a class="secondary" href="/prototype/#runners">Runners</a>
+<a class="secondary" href="/prototype/organizer/">Organizers</a>
+</div>
+<script>document.getElementById('where').textContent = location.pathname + location.search + location.hash</script>
 </body>
 </html>

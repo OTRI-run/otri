@@ -55,7 +55,7 @@ A major planned capability is the **GPX Target Performance Predictor**: upload a
 │   ├── governance/          # Governance and decision records
 │   ├── api/                 # Future public API documentation
 │   └── operations/          # Deployment and maintenance runbooks
-├── media/brand/             # Generated OTRI brand assets
+├── media/brand/             # Canonical OTRI brand assets
 ├── public/                  # Static web assets
 ├── scripts/                 # Reproducible utilities and maintenance tools
 ├── src/                     # Website/application source
@@ -81,7 +81,7 @@ A major planned capability is the **GPX Target Performance Predictor**: upload a
 
 ## Frontend
 
-The website uses Preact and Vite with a design system, icon set and logo of its own (`src/ui`, see `docs/FRONTEND-STYLING.md`): an instrument-panel look in graphite, volt lime and ice cyan, with self-hosted open fonts. GitHub Actions builds and deploys the site to GitHub Pages.
+The website uses React, Vite, Tailwind CSS, Lucide icons, and responsive modern typography. GitHub Actions builds and deploys the site to GitHub Pages.
 
 ## Independence
 

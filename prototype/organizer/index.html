@@ -14,21 +14,37 @@
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="theme-color" content="#0b131a" />
+<meta name="theme-color" content="#0b1220" />
 <link rel="icon" type="image/svg+xml" href="../../favicon.svg" />
 <link rel="icon" type="image/png" sizes="32x32" href="../../favicon-32.png" />
 <link rel="apple-touch-icon" href="../../apple-touch-icon.png" />
 <link rel="manifest" href="../../site.webmanifest" />
 <title>OTRI — Organizers</title>
 <style>
-.otri-boot{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:24px;background:#0b131a;color:#e9f2f7;font-family:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;text-align:center;background-image:linear-gradient(rgba(233,242,247,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(233,242,247,.05) 1px,transparent 1px);background-size:28px 28px}.otri-boot-mark{width:64px;height:64px}.otri-boot-track{width:180px;height:2px;background:rgba(233,242,247,.14);overflow:hidden}.otri-boot-track:after{content:"";display:block;width:38%;height:100%;background:#cbf53f;animation:otri-boot-scan 1.5s cubic-bezier(.5,0,.5,1) infinite}.otri-boot-title{margin:0;font:600 11px "IBM Plex Mono",ui-monospace,Consolas,monospace;letter-spacing:.16em;text-transform:uppercase;color:#93a7b4}.otri-boot-hint{margin:0;max-width:420px;font-size:14px;line-height:1.6;color:#93a7b4;opacity:0;animation:otri-boot-appear .4s ease-out 8s forwards}.otri-boot-hint a{color:#cbf53f;font-weight:600}@keyframes otri-boot-scan{from{transform:translateX(-100%)}to{transform:translateX(365%)}}@keyframes otri-boot-appear{to{opacity:1}}@media(prefers-reduced-motion:reduce){.otri-boot-track:after{animation:none;width:100%}.otri-boot-hint{animation:none;opacity:1}}
+.otri-boot{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;background:#f7f9fc;color:#0b1220;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;text-align:center}
+.otri-boot-mark{width:144px;height:120px}
+.otri-boot-ring{stroke-dasharray:107;stroke-dashoffset:107;animation:otri-draw 1.6s cubic-bezier(.4,0,.2,1) infinite}
+.otri-boot-ridge{stroke-dasharray:40;stroke-dashoffset:40;animation:otri-draw 1.6s .35s cubic-bezier(.4,0,.2,1) infinite}
+.otri-boot-trail{stroke-dasharray:24;stroke-dashoffset:24;animation:otri-draw 1.6s .6s cubic-bezier(.4,0,.2,1) infinite}
+.otri-boot-word{display:flex;align-items:center;gap:0;font-weight:800;font-size:32px;letter-spacing:-.045em}
+.otri-boot-word svg{width:34px;height:34px}
+.otri-boot-title{margin:0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;animation:otri-pulse 1.6s ease-in-out infinite}
+.otri-boot-hint{margin:0;max-width:420px;font-size:13px;line-height:1.6;color:#64748b;opacity:0;animation:otri-appear .4s ease-out 8s forwards}
+.otri-boot-hint a{color:#2563eb;font-weight:600}
+@keyframes otri-draw{0%{stroke-dashoffset:107}55%{stroke-dashoffset:0}100%{stroke-dashoffset:0;opacity:.35}}
+@keyframes otri-pulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes otri-appear{to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.otri-boot-ring,.otri-boot-ridge,.otri-boot-trail{animation:none;stroke-dashoffset:0}.otri-boot-title{animation:none}}
+.otri-boot-route{stroke-dasharray:100;animation:otri-survey 2.4s ease-in-out infinite}
+@keyframes otri-survey{0%{stroke-dashoffset:100}65%,100%{stroke-dashoffset:0}}
+@media(prefers-reduced-motion:reduce){.otri-boot-route{animation:none}}
 </style>
 </head>
 <body>
 <div id="root">
 <main class="otri-boot" aria-busy="true">
-<svg class="otri-boot-mark" viewBox="0 0 48 48" fill="none" aria-hidden="true"><circle cx="24" cy="24" r="19" stroke="#e9f2f7" stroke-width="3.1"/><path d="M13 31.4 20 20.6 24.6 26.1 29.6 17.6 35 31.4" stroke="#e9f2f7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="29.6" cy="17.6" r="2.7" fill="#cbf53f"/></svg>
-<div class="otri-boot-track" aria-hidden="true"></div>
+<svg class="otri-boot-mark" viewBox="0 0 120 100" fill="none" aria-hidden="true"><g stroke="#2563eb" stroke-opacity=".3" stroke-width="1"><path d="M9 61C0 32 31 14 54 19S94 2 109 32 104 86 77 89 19 91 9 61Z"/><path d="M20 59C12 37 34 25 54 29S87 15 98 37 94 76 75 79 28 82 20 59Z"/><path d="M32 57C24 42 39 35 55 39S79 29 86 44 84 66 71 68 39 71 32 57Z"/><path d="M43 55C39 46 48 44 57 47S71 40 75 48 69 59 61 59 46 63 43 55Z"/></g><path d="M8 8h12M8 8v12M112 8h-12M112 8v12M8 92h12M8 92V80M112 92h-12M112 92V80" stroke="#94a3b8"/><path class="otri-boot-route" pathLength="100" d="M22 79C29 65 50 76 47 60S29 44 48 38 78 45 82 25" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round"/><circle cx="82" cy="25" r="3" fill="#2563eb"/></svg>
+<div class="otri-boot-word"><span style="color:#2563eb">O</span>TRI</div>
 <p class="otri-boot-title">OTRI for organizers is loading</p>
 <p class="otri-boot-hint">Still loading? <a href="javascript:location.reload()">Reload the page</a>. If that does not help, the site may be mid-deploy; try again in a minute.</p>
 </main>

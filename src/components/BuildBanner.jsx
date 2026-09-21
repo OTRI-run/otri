@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/compat'
+import { useEffect, useState } from 'react'
 
 // "Built from commit … · API last restarted …" — the same strip on the bottom of every page.
 // Commit facts are injected at build time by vite.config.js; the API's start time comes from
@@ -60,17 +60,17 @@ export default function BuildBanner() {
   }, [apiStartedAt])
 
   return (
-    <div className="build-strip">
+    <div className="bg-[#0b1220] px-4 text-center font-mono text-[10px] leading-7 text-slate-300">
       Built from commit{' '}
       {COMMIT_URL ? (
-        <a href={COMMIT_URL} target="_blank" rel="noreferrer">
+        <a href={COMMIT_URL} target="_blank" rel="noreferrer" className="font-semibold text-white underline underline-offset-2">
           {COMMIT}
         </a>
       ) : (
-        <b>{COMMIT}</b>
+        <span className="font-semibold text-white">{COMMIT}</span>
       )}
       {timeAgo ? ` · ${timeAgo}` : ''}
-      {apiStartedAt && <span className="hide-sm">{` · API last restarted ${apiTimeAgo}`}</span>}
+      {apiStartedAt && <span className="hidden sm:inline">{` · API last restarted ${apiTimeAgo}`}</span>}
       {apiUnreachable && ' · API unreachable'}
     </div>
   )

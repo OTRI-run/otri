@@ -39,9 +39,9 @@ export default function Flag({ code, showCode = true, className = '' }) {
   const alpha2 = alpha2For(code)
   const upper = String(code).trim().toUpperCase()
   return (
-    <span className={`flag ${className}`} title={countryName(upper)}>
-      {alpha2 && <span className={`fi fi-${alpha2}`} aria-hidden="true" />}
-      {showCode && <span className="flag__code">{upper}</span>}
+    <span className={`inline-flex items-center gap-1.5 ${className}`} title={countryName(upper)}>
+      {alpha2 && <span className={`fi fi-${alpha2} shrink-0 rounded-[2px] text-[13px] shadow-[0_0_0_1px_rgba(15,23,42,.08)]`} aria-hidden="true" />}
+      {showCode && <span className="font-mono text-[10px] text-slate-500">{upper}</span>}
     </span>
   )
 }

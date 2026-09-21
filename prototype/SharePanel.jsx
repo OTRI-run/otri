@@ -1,6 +1,5 @@
-import './SharePanel.css'
-import { useEffect, useMemo, useRef, useState } from 'preact/compat'
-import { Check, Copy, Download, Share } from '../src/ui/icons'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Check, Copy, Download, Share2 } from 'lucide-react'
 import { FORMATS, canvasToBlob, drawLeaderboard, drawRunnerCard, drawScoreCard } from './shareImage'
 
 // Sharing, for the two people who have something to show: an organizer with scored results (a
@@ -16,19 +15,18 @@ function formatHms(totalSeconds) {
 // A race name as a hashtag, when it makes a usable one: long names and names that are mostly
 // digits read as noise, and a post is better without them.
 function hashtag(text) {
-  const tag = `#${String(text).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\b(19|20)\d\d\b/g, '').replace(/[^A-Za-z0-9]+/g, '')}`
+  const tag = `#${String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\b(19|20)\d\d\b/g, '').replace(/[^A-Za-z0-9]+/g, '')}`
   return tag.length > 2 && tag.length <= 28 && (tag.match(/[0-9]/g) ?? []).length <= 6 ? tag : ''
 }
 const slug = (text) => String(text).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'otri'
 
-// A small choice: a label over a segmented control, one option pressed.
 function Choice({ label, options, value, onChange }) {
   return (
-    <div className="share-choice">
-      <p className="eyebrow eyebrow--plain eyebrow--sm">{label}</p>
-      <div className="seg seg--sm mt-2">
+    <div className="min-w-0">
+      <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">{label}</p>
+      <div className="mt-1.5 inline-flex flex-wrap overflow-hidden rounded-lg border border-slate-300 bg-white">
         {options.map(([id, text, title]) => (
-          <button key={id} type="button" title={title} onClick={() => onChange(id)} aria-pressed={value === id}>
+          <button key={id} type="button" title={title} onClick={() => onChange(id)} aria-pressed={value === id} className={`px-3 py-1.5 text-xs font-semibold transition ${value === id ? 'bg-[#0b1220] text-white' : 'text-slate-500 hover:bg-slate-50 hover:text-[#0b1220]'}`}>
             {text}
           </button>
         ))}
@@ -87,48 +85,46 @@ function Panel({ draw, fileName, suggestedText, url, children }) {
 
   const ratio = FORMATS[format].width / FORMATS[format].height
   return (
-    <div className="share-panel">
-      <div className="share-preview">
-        <canvas ref={canvasRef} aria-label="Preview of the share image" className="share-preview__canvas" style={{ aspectRatio: String(ratio) }} />
-        <p className="tiny muted mono center mt-2">{FORMATS[format].width} × {FORMATS[format].height} · {FORMATS[format].hint}</p>
+    <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
+      <div className="min-w-0">
+        <canvas ref={canvasRef} aria-label="Preview of the share image" className="mx-auto block w-full max-w-[300px] rounded-xl shadow-[0_18px_44px_rgba(15,23,42,.18)]" style={{ aspectRatio: String(ratio) }} />
+        <p className="mt-2 text-center font-mono text-[10px] text-slate-500">{FORMATS[format].width} × {FORMATS[format].height} · {FORMATS[format].hint}</p>
       </div>
-      <div className="stack min0">
-        <div className="cluster cluster--loose cluster--top">
+      <div className="min-w-0">
+        <div className="flex flex-wrap gap-x-5 gap-y-3">
           {children}
           <Choice label="FORMAT" value={format} onChange={setFormat} options={Object.entries(FORMATS).map(([id, f]) => [id, f.label, f.hint])} />
         </div>
-        <label className="field">
-          <span className="field__label">Text for your post <span className="optional">· edit it freely</span></span>
-          <textarea value={text} onChange={(event) => { setText(event.target.value); setEdited(true) }} rows={9} className="input share-text" />
+        <label className="mt-4 block font-mono text-[9px] tracking-[.08em] text-slate-500">
+          TEXT FOR YOUR POST · EDIT IT FREELY
+          <textarea value={text} onChange={(event) => { setText(event.target.value); setEdited(true) }} rows={9} className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 font-sans text-sm leading-6 tracking-normal text-[#0b1220] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
         </label>
         {edited && (
-          <p>
-            <button type="button" onClick={() => setEdited(false)} className="link small">Write it again from the selection</button>
-          </p>
+          <button type="button" onClick={() => setEdited(false)} className="mt-1 text-xs font-semibold text-blue-600 hover:underline">Write it again from the selection</button>
         )}
-        <div className="cluster cluster--tight">
-          <button type="button" onClick={download} className="btn btn--dark btn--sm">
-            <Download size={15} /> Download image
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button type="button" onClick={download} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-[#0b1220] px-4 text-xs font-semibold text-white">
+            <Download size={14} /> Download image
           </button>
-          <button type="button" onClick={copy} className="btn btn--secondary btn--sm">
-            {copied ? <Check size={15} /> : <Copy size={15} />} {copied ? 'Text copied' : 'Copy text'}
+          <button type="button" onClick={copy} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-xs font-semibold text-[#0b1220] hover:border-blue-300">
+            {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Text copied' : 'Copy text'}
           </button>
           {(canShareFiles || typeof navigator?.share === 'function') && (
-            <button type="button" onClick={share} className="btn btn--secondary btn--sm">
-              <Share size={15} /> Share…
+            <button type="button" onClick={share} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-xs font-semibold text-[#0b1220] hover:border-blue-300">
+              <Share2 size={14} /> Share…
             </button>
           )}
         </div>
         {url && (
-          <p className="cluster cluster--tight small muted">
+          <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
             Or post the link:
-            <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`} target="_blank" rel="noreferrer" className="link link--quiet">Facebook</a>
-            <a href={`https://wa.me/?text=${encodeURIComponent(`${text}`)}`} target="_blank" rel="noreferrer" className="link link--quiet">WhatsApp</a>
-            <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(text.slice(0, 240))}`} target="_blank" rel="noreferrer" className="link link--quiet">X</a>
+            <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`} target="_blank" rel="noreferrer" className="font-semibold text-blue-600 no-underline hover:underline">Facebook</a>
+            <a href={`https://wa.me/?text=${encodeURIComponent(`${text}`)}`} target="_blank" rel="noreferrer" className="font-semibold text-blue-600 no-underline hover:underline">WhatsApp</a>
+            <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(text.slice(0, 240))}`} target="_blank" rel="noreferrer" className="font-semibold text-blue-600 no-underline hover:underline">X</a>
           </p>
         )}
-        {error && <p className="notice notice--warning notice--plain">{error}</p>}
-        <p className="tiny muted">Facebook and Instagram take the image as an attachment: download it, then paste the text. On a phone, Share… hands both to the app.</p>
+        {error && <p className="mt-2 text-xs text-amber-700">{error}</p>}
+        <p className="mt-3 text-[11px] leading-5 text-slate-500">Facebook and Instagram take the image as an attachment: download it, then paste the text. On a phone, Share… hands both to the app.</p>
       </div>
     </div>
   )

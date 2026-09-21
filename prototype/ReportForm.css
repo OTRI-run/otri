@@ -1,5 +1,0 @@
-/* "Report a problem": one quiet line under a page, and a small card when it is opened. */
-
-.report-form { margin-top: var(--s-8); }
-.report-form__form { max-width: 560px; }
-.report-form__details { min-height: 96px; }

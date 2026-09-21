@@ -1,10 +1,8 @@
-import '../src/styles.css'
-import './main.css'
 import RankBadge from '../src/components/RankBadge'
 import { fitFontSize } from '../src/lib/fitText'
-import React, { useEffect, useMemo, useState, lazy, Suspense } from 'preact/compat'
-import { createRoot } from 'preact/compat/client'
-import { ArrowLeft, ArrowRight, ArrowUpRight, Calculator, Download, Mail, Play, Upload } from '../src/ui/icons'
+import React, { useEffect, useMemo, useState } from 'react'
+import { createRoot } from 'react-dom/client'
+import { ArrowLeft, ArrowUpRight, Mail, Download, Upload, Play, ArrowRight, Calculator as CalculatorIcon } from 'lucide-react'
 import { countryName } from '../src/components/CountrySelect'
 import Logo from '../src/components/Logo'
 import UnitsMenu from '../src/components/UnitsMenu'
@@ -13,14 +11,13 @@ import Home from './Home'
 import NextSteps from './NextSteps'
 import RaceCard, { DemoBadge, VerticalBadge } from './RaceCard'
 import RaceListing, { ListingBadge } from './RaceListing'
-const ScoreCalculator = lazy(() => import('./ScoreCalculator'))
-const ScoreRace = lazy(() => import('./ScoreRace'))
-const ApiDocs = lazy(() => import('./ApiDocs'))
-const Media = lazy(() => import('./Media'))
-const FaqPage = lazy(() => import('./Faq'))
-const RunnersPage = lazy(() => import('./Runners').then((m) => ({ default: m.RunnersPage })))
-const RunnerProfilePage = lazy(() => import('./Runners').then((m) => ({ default: m.RunnerProfilePage })))
-import CourseMap from '../src/components/LazyCourseMap'
+import ScoreCalculator from './ScoreCalculator'
+import ScoreRace from './ScoreRace'
+import ApiDocs from './ApiDocs'
+import Media from './Media'
+import FaqPage from './Faq'
+import { RunnerProfilePage, RunnersPage } from './Runners'
+import CourseMap from '../src/components/CourseMap'
 import ReportForm from './ReportForm'
 import { ShareResults } from './SharePanel'
 import Flag from '../src/components/Flag'
@@ -29,18 +26,8 @@ import { RACE_NAMES } from '../src/lib/raceNames'
 import { knownButNotHere } from '../src/lib/suggest'
 import { initMonitoring } from '../src/lib/monitoring'
 import { useDocumentTitle } from '../src/lib/title'
-import { fetchRaceGpxFile, getRace, getRaceMeasurement, getRaceResults, listRaces, raceGpxDownloadUrl } from './apiClient'
-import BuildBanner from '../src/components/BuildBanner'
-import ErrorBoundary from '../src/components/ErrorBoundary'
-import NotFound from '../src/components/NotFound'
-import { modelLabel, notScoredReason } from '../src/lib/model'
-import BackToTop from '../src/components/BackToTop'
-import { installDropGuard, installScrollMemory, installSearchShortcut, willNavigate } from '../src/lib/comfort'
 
 initMonitoring()
-installScrollMemory()
-installDropGuard()
-installSearchShortcut()
 
 const PAGE_TITLES = {
   home: 'OTRI — Open Trail Running Index',
@@ -53,6 +40,18 @@ const PAGE_TITLES = {
   media: 'Media and brand · OTRI',
   notfound: 'Page not found · OTRI',
 }
+import { fetchRaceGpxFile, getRace, getRaceMeasurement, getRaceResults, listRaces, raceGpxDownloadUrl } from './apiClient'
+import BuildBanner from '../src/components/BuildBanner'
+import ErrorBoundary from '../src/components/ErrorBoundary'
+import NotFound from '../src/components/NotFound'
+import { modelLabel, notScoredReason } from '../src/lib/model'
+import BackToTop from '../src/components/BackToTop'
+import { installDropGuard, installScrollMemory, installSearchShortcut, willNavigate } from '../src/lib/comfort'
+import '../src/styles.css'
+
+installScrollMemory()
+installDropGuard()
+installSearchShortcut()
 
 const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 
@@ -96,7 +95,8 @@ function navigate(hash) {
 
 // ------------------------------------------------------------------------------------- shell
 
-// The header carries what a visitor came to do; the API page and GitHub are in the footer.
+// The header carries what a visitor came to do; the API page and GitHub are in the footer (GitHub
+// also sits in the home page's opening, next to what OTRI is).
 const NAV = [
   { id: 'calculator', label: 'Calculator', href: '#calculator' },
   { id: 'score', label: 'Score a race', short: 'Score', href: '#score' },
@@ -105,9 +105,13 @@ const NAV = [
   { id: 'faq', label: 'FAQ', href: '#faq' },
 ]
 
-function NavLink({ item, active, short = false }) {
+function NavLink({ item, active, className = '', short = false }) {
   return (
-    <a href={item.href} aria-current={active ? 'page' : undefined} className="site-nav__link">
+    <a
+      href={item.href}
+      aria-current={active ? 'page' : undefined}
+      className={`text-[13px] font-medium no-underline ${active ? 'text-[#0b1220]' : 'text-slate-500 hover:text-slate-950'} ${className}`}
+    >
       {short ? item.short ?? item.label : item.label}
     </a>
   )
@@ -116,75 +120,65 @@ function NavLink({ item, active, short = false }) {
 function Header({ tab }) {
   return (
     <>
-      <header className="site-header">
-        <div className="wrap site-header__inner">
+      <header className="sticky top-0 z-50 h-[68px] border-b border-slate-200/90 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex h-full min-w-0 w-[min(1120px,calc(100%-28px))] items-center">
           <Logo href="#home" />
-          <nav className="site-nav" aria-label="Main">
+          <nav className="ml-auto hidden shrink-0 items-center gap-5 md:flex lg:gap-7">
             {NAV.map((item) => (
               <NavLink key={item.id} item={item} active={tab === item.id} />
             ))}
-            <span className="site-nav__sep" aria-hidden="true" />
             <UnitsMenu compact />
-            <a href="organizer/" className="btn btn--secondary btn--sm" style={{ marginLeft: 8 }}>
-              For organizers <ArrowUpRight size={15} />
+            <a href="organizer/" className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-300 px-3 text-[13px] font-semibold text-[#0b1220] no-underline hover:border-blue-300">
+              For organizers <ArrowUpRight size={13} />
             </a>
           </nav>
-          <div className="site-header__mobile">
-            <a className="btn btn--secondary btn--sm" href="organizer/">
-              Organizers <ArrowUpRight size={14} />
-            </a>
-          </div>
+          <a
+            className="ml-auto flex shrink-0 items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white no-underline md:hidden"
+            href="organizer/"
+          >
+            Organizers <ArrowUpRight size={13} />
+          </a>
         </div>
       </header>
-      <nav className="site-subnav" aria-label="Pages">
-        <div className="wrap site-subnav__inner">
+      {/* Small screens: the section links live in their own row under the header. */}
+      <div className="border-b border-slate-200 bg-white md:hidden">
+        <div className="mx-auto flex w-[min(1120px,calc(100%-28px))] items-center gap-4 overflow-x-auto">
           {NAV.map((item) => (
-            <NavLink key={item.id} item={item} active={tab === item.id} short />
+            <NavLink
+              key={item.id}
+              item={item}
+              active={tab === item.id}
+              short
+              className={`whitespace-nowrap border-b-2 py-3 ${tab === item.id ? 'border-blue-600' : 'border-transparent'}`}
+            />
           ))}
-          <div className="push">
+          <div className="ml-auto py-1.5">
             <UnitsMenu compact />
           </div>
         </div>
-      </nav>
+      </div>
     </>
   )
 }
 
 function Footer() {
   return (
-    <footer className="site-footer">
-      <div className="wrap site-footer__inner">
-        <div>
-          <Logo href="#home" dark />
-          <p className="site-footer__tag">One open, versioned score for a finish time on any trail course. A calculator, not a governing body: free, no account, nobody's approval.</p>
+    <footer className="border-t border-slate-200 bg-white py-6">
+      <div className="mx-auto flex w-[min(1120px,calc(100%-28px))] flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+        <Logo href="../" />
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <a href="#api" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">API and embed</a>
+          <a href={GITHUB_URL} className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">GitHub</a>
+          <a href="#contribute" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Contribute</a>
+          <a href="#faq" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">FAQ</a>
+          <a href="#media" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Media and logo</a>
+          <a href="https://github.com/OTRI-run/otri/blob/main/PRIVACY.md" className="text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">Privacy</a>
+          <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">
+            <Mail size={14} />
+            hello@otri.run
+          </a>
         </div>
-        <div className="site-footer__col">
-          <h4>Use OTRI</h4>
-          <ul>
-            <li><a href="#calculator">Calculator</a></li>
-            <li><a href="#score">Score a race</a></li>
-            <li><a href="#races">Scored races</a></li>
-            <li><a href="#runners">Runners</a></li>
-            <li><a href="#api">API and embed</a></li>
-            <li><a href="organizer/">For organizers <ArrowUpRight size={13} /></a></li>
-          </ul>
-        </div>
-        <div className="site-footer__col">
-          <h4>The project</h4>
-          <ul>
-            <li><a href={GITHUB_URL}>Source on GitHub <ArrowUpRight size={13} /></a></li>
-            <li><a href={`${GITHUB_URL}/blob/main/docs/methodology/0.1.0/HOW-OTRI-SCORES.md`}>How a score is made <ArrowUpRight size={13} /></a></li>
-            <li><a href="#contribute">Contribute</a></li>
-            <li><a href="#faq">FAQ</a></li>
-            <li><a href="#media">Media and logo</a></li>
-            <li><a href={`${GITHUB_URL}/blob/main/PRIVACY.md`}>Privacy <ArrowUpRight size={13} /></a></li>
-            <li><a href="mailto:hello@otri.run"><Mail size={14} /> hello@otri.run</a></li>
-          </ul>
-        </div>
-      </div>
-      <div className="wrap site-footer__bottom">
-        <span>Open · Transparent · Reproducible · Independent</span>
-        <a href="https://otri.run">otri.run</a>
+        <span className="font-mono text-[8px] tracking-[.08em] text-slate-500">OPEN · TRANSPARENT · REPRODUCIBLE · INDEPENDENT</span>
       </div>
     </footer>
   )
@@ -241,56 +235,55 @@ function Leaderboard({ raceId, onBack }) {
 
   return (
     <div>
-      <button onClick={onBack} className="back">
-        <ArrowLeft size={16} /> All races
+      <button onClick={onBack} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600">
+        <ArrowLeft size={13} /> All races
       </button>
       {error && error.status === 404 && (
-        <NotFound eyebrow="Race not found" title="No race with that id." where={raceId} home="#races" homeLabel="All races" note="It may have been unpublished by its organizer or removed after a report." />
+        <NotFound eyebrow="RACE NOT FOUND" title="No race with that id." where={raceId} home="#races" homeLabel="All races" note="It may have been unpublished by its organizer or removed after a report." />
       )}
-      {error && error.status !== 404 && <p className="notice notice--warning notice--plain mt-6">{error.message}</p>}
-      {!race && !error && <p className="loading mt-6"><span className="spinner" /> Loading the race…</p>}
+      {error && error.status !== 404 && <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error.message}</p>}
+      {!race && !error && <p className="mt-6 text-sm text-slate-500">Loading…</p>}
       {race && (
         <>
-          <div className="facts mt-6">
+          <p className="mt-6 flex flex-wrap items-center gap-3 font-mono text-[9px] tracking-[.08em] text-blue-600">
             <span>{race.event_date}</span>
             {(race.event_location || race.event_country) && (
-              <span className="ink">
+              <span className="flex items-center gap-2 text-[#0b1220]">
                 {race.event_country && <Flag code={race.event_country} showCode={false} />}
-                {[race.event_location, race.event_country].filter(Boolean).join(' · ')}
+                {[race.event_location, race.event_country].filter(Boolean).join(' · ').toUpperCase()}
               </span>
             )}
-          </div>
-          <div className="cluster cluster--tight mt-3">
             <ListingBadge status={race.listing_status} />
             {race.is_vertical && <VerticalBadge />}
             {race.is_demo && <DemoBadge />}
-            {race.has_gpx && <span className="badge badge--mint">Measured course</span>}
-          </div>
-          <h1 className="otri-fit mt-3" style={{ fontSize: fitFontSize(race.event_name, { min: 34, vw: 5.5, max: 72 }) }}>{race.event_name}</h1>
-          <p className="lead mt-3">
+          </p>
+          <h2 className="otri-fit mt-2 font-bold leading-[1.04] tracking-[-.045em] text-[#0b1220]" style={{ fontSize: fitFontSize(race.event_name, { min: 28, vw: 4.5, max: 52 }) }}>{race.event_name}</h2>
+          <p className="mt-3 text-sm text-slate-500">
             {race.course_name} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
-            {race.has_gpx ? '. Measured from the course file.' : '. Official figures, no course file.'}
+            {race.has_gpx ? ' · Measured from the course file' : ' · Official figures, no course file'}
           </p>
           {race.organizer_display && (
-            <p className="small muted mt-2">
+            <p className="mt-2 text-xs text-slate-500">
               Organized by{' '}
               {race.organizer_website ? (
-                <a href={race.organizer_website} target="_blank" rel="noreferrer" className="link">
+                <a href={race.organizer_website} target="_blank" rel="noreferrer" className="font-semibold text-blue-600 no-underline hover:underline">
                   {race.organizer_display} ↗
                 </a>
               ) : (
-                <span className="ink" style={{ fontWeight: 600 }}>{race.organizer_display}</span>
+                <span className="font-semibold text-[#0b1220]">{race.organizer_display}</span>
               )}
             </p>
           )}
-          {race.is_demo && <p className="small muted mt-2">Demo data: synthetic runners and results, here to show what a scored race looks like.</p>}
+          {race.is_demo && (
+            <p className="mt-2 text-xs text-slate-500">Demo data: synthetic runners and results, here to show what a scored race looks like.</p>
+          )}
           {course && (
-            <div className="card card--flush mt-8">
-              <CourseMap gpxText={course.gpxText} measurement={course.measurement} className="card__body" />
-              <div className="card__foot">
-                <p className="small muted min0">The course as a GPX file for your watch or app: the track and its elevations, nothing else from the original file.</p>
-                <a href={raceGpxDownloadUrl(race.race_id)} className="btn btn--secondary btn--sm">
-                  <Download size={15} /> Download the GPX
+            <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+              <CourseMap gpxText={course.gpxText} measurement={course.measurement} className="p-3" />
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-slate-200 px-4 py-3">
+                <p className="min-w-0 text-xs leading-5 text-slate-500">The course as a GPX file for your watch or app: the track and its elevations, nothing else from the original file.</p>
+                <a href={raceGpxDownloadUrl(race.race_id)} className="inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-[#0b1220] no-underline hover:border-blue-300">
+                  <Download size={14} /> Download the GPX
                 </a>
               </div>
             </div>
@@ -298,74 +291,73 @@ function Leaderboard({ raceId, onBack }) {
           {!race.is_published && <RaceListing race={race} />}
           {race.is_published && (
             <>
-              {notScoredReason(results) && (
-                <div className="notice notice--info notice--plain mt-8">
-                  <div className="notice__body">
-                    <p className="notice__title">Finish times only.</p>
-                    <p>{notScoredReason(results)}</p>
-                  </div>
-                </div>
-              )}
-              <div className="table-wrap mt-8">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Rank</th>
-                      <th>Runner</th>
-                      <th className="hide-sm">Country</th>
-                      <th className="hide-sm">Gender</th>
-                      <th className="num">Time</th>
-                      <th className="num right">OTRI score</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(results ?? []).map((row) => (
-                      <tr key={`${row.rank}-${row.bib_number ?? row.family_name}-${row.first_name}`} className={row.status !== 'finisher' ? 'is-muted' : ''}>
-                        <td className="num"><RankBadge rank={row.rank} /></td>
-                        <td>
-                          {row.runner_id ? (
-                            <a href={`#runners/${encodeURIComponent(row.runner_id)}`}>
-                              {row.first_name} {row.family_name}
-                            </a>
-                          ) : (
-                            <span style={{ fontWeight: 600 }}>
-                              {row.first_name} {row.family_name}
-                            </span>
-                          )}
-                          <span className="cluster cluster--tight tiny muted only-sm mt-1">
-                            {row.nationality && <Flag code={row.nationality} />}
-                            {row.gender && <span className="mono">{row.gender}</span>}
-                          </span>
-                        </td>
-                        <td className="hide-sm">{row.nationality ? <Flag code={row.nationality} /> : <span className="muted">—</span>}</td>
-                        <td className="hide-sm mono">{row.gender ?? '—'}</td>
-                        <td className="num">{formatHms(row.finish_time_seconds)}</td>
-                        <td className="right"><span className="score">{row.otri_score ?? <span className="muted">—</span>}</span></td>
-                      </tr>
-                    ))}
-                    {results?.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="table__empty">No results published yet.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-              <p className="tiny muted mono mt-3">
-                {modelLabel(race.scoring_version)} · depends only on the course and each runner's own finish time, never the field
+            {notScoredReason(results) && (
+              <p className="mt-6 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-6 text-slate-700">
+                <strong className="text-[#0b1220]">Finish times only.</strong> {notScoredReason(results)}
               </p>
-              {results?.some((row) => row.status === 'finisher') && (
-                <div className="mt-6">
-                  <button type="button" onClick={() => setSharing((open) => !open)} aria-expanded={sharing} className="btn btn--secondary">
-                    {sharing ? 'Close sharing' : 'Share these results: image and post text'}
-                  </button>
-                  {sharing && (
-                    <div className="card mt-3">
-                      <ShareResults raceName={`${race.event_name} ${race.course_name}`} distanceKm={race.distance_km} elevationGainM={race.elevation_gain_m} scores={results} url={window.location.href} />
-                    </div>
+            )}
+            <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+              <table className="w-full border-collapse text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
+                    <th className="px-4 py-3">Rank</th>
+                    <th className="px-4 py-3">Runner</th>
+                    <th className="hidden px-4 py-3 sm:table-cell">Country</th>
+                    <th className="hidden px-4 py-3 sm:table-cell">Gender</th>
+                    <th className="px-4 py-3">Time</th>
+                    <th className="px-4 py-3">OTRI score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(results ?? []).map((row) => (
+                    <tr key={`${row.rank}-${row.bib_number ?? row.family_name}-${row.first_name}`} className={`border-b border-slate-100 last:border-0 hover:bg-blue-50/50 ${row.status !== 'finisher' ? 'bg-slate-50/60 text-slate-500' : 'even:bg-slate-50/70'}`}>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-500"><RankBadge rank={row.rank} /></td>
+                      <td className="px-4 py-3 font-medium text-[#0b1220]">
+                        {row.runner_id ? (
+                          <a href={`#runners/${encodeURIComponent(row.runner_id)}`} className="no-underline hover:underline">
+                            {row.first_name} {row.family_name}
+                          </a>
+                        ) : (
+                          <>
+                            {row.first_name} {row.family_name}
+                          </>
+                        )}
+                        <span className="mt-0.5 flex items-center gap-2 font-mono text-[10px] font-normal text-slate-500 sm:hidden">
+                          {row.nationality && <Flag code={row.nationality} />}
+                          {row.gender && <span>{row.gender}</span>}
+                        </span>
+                      </td>
+                      <td className="hidden px-4 py-3 sm:table-cell">{row.nationality ? <Flag code={row.nationality} /> : <span className="text-slate-300">—</span>}</td>
+                      <td className="hidden px-4 py-3 font-mono text-xs text-slate-500 sm:table-cell">{row.gender ?? '—'}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-500">{formatHms(row.finish_time_seconds)}</td>
+                      <td className="px-4 py-3 font-mono text-sm font-bold text-blue-600">{row.otri_score ?? <span className="text-slate-300">—</span>}</td>
+                    </tr>
+                  ))}
+                  {results?.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">
+                        No results published yet.
+                      </td>
+                    </tr>
                   )}
-                </div>
-              )}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-3 font-mono text-[10px] tracking-[.05em] text-slate-400">
+              {modelLabel(race.scoring_version)} · depends only on the course and each runner's own finish time, never the field
+            </p>
+            {results?.some((row) => row.status === 'finisher') && (
+              <div className="mt-5">
+                <button type="button" onClick={() => setSharing((open) => !open)} aria-expanded={sharing} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-xs font-semibold text-[#0b1220] hover:border-blue-300">
+                  {sharing ? 'Close sharing' : 'Share these results: image and post text'}
+                </button>
+                {sharing && (
+                  <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-5">
+                    <ShareResults raceName={`${race.event_name} ${race.course_name}`} distanceKm={race.distance_km} elevationGainM={race.elevation_gain_m} scores={results} url={window.location.href} />
+                  </div>
+                )}
+              </div>
+            )}
             </>
           )}
           <ReportForm kind="race" subjectId={race.race_id} subjectLabel={`${race.event_name} · ${race.course_name}`} prompt={race.is_published ? 'Wrong result, wrong course, or your name should not be here?' : 'Wrong details, or should this race not be listed?'} />
@@ -417,7 +409,6 @@ const RACE_SORTS = {
   climb: { label: 'Most climb', by: (a, b) => (b.elevation_gain_m ?? 0) - (a.elevation_gain_m ?? 0) },
   name: { label: 'Name A–Z', by: (a, b) => `${a.event_name} ${a.course_name}`.localeCompare(`${b.event_name} ${b.course_name}`) },
 }
-
 // The races page before anyone has published: not an empty room, but what fills it and what a
 // visitor can do meanwhile. Races come from their organizers, so the first thing offered is a way
 // to ask one.
@@ -434,28 +425,31 @@ function NoRacesYet() {
     [Mail, 'Ask your organizer', 'Races appear here when their organizers publish results. A prepared email explains what OTRI is and that it is free.', mail, 'Write to them'],
     [Upload, 'Have the results yourself?', 'A course file and a results file are enough: every finisher scored in a minute, no account, and one click to publish.', '#score', 'Score a race'],
     [Play, 'See what a scored race looks like', 'The example race: its course on the map, the elevation profile and 100 finishers with their scores.', '#score?example=1', 'Open the example'],
-    [Calculator, 'Just curious about a time?', 'Pick a course or upload a GPX and see what a finish time is worth, before or after race day.', '#calculator', 'Open the calculator'],
+    [CalculatorIcon, 'Just curious about a time?', 'Pick a course or upload a GPX and see what a finish time is worth, before or after race day.', '#calculator', 'Open the calculator'],
   ]
   return (
-    <div className="card card--flush mt-8">
-      <div className="card__body topo--faint stack">
-        <p className="eyebrow">No races published yet</p>
-        <h2 className="h-1">The first race here could be yours.</h2>
-        <p className="muted measure">
-          OTRI keeps no list of every race: a race appears when its organizer publishes the results, free and without anyone's approval. Until then, here is what you can do.
+    <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+      <div className="bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] px-5 py-6 sm:px-7">
+        <p className="font-mono text-[10px] tracking-[.08em] text-blue-600">NO RACES PUBLISHED YET</p>
+        <h2 className="mt-2 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">The first race here could be yours.</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+          OTRI keeps no list of every race: a race appears when its organizer publishes the results, free and without anyone's approval. Until then, here is
+          what you can do.
         </p>
       </div>
-      <div className="grid grid--2 grid--flush" style={{ borderRadius: 0, borderInline: 0, borderBottom: 0 }}>
-        {ways.map(([IconC, title, text, href, action]) => (
-          <a key={title} href={href} className="card card--link" style={{ border: 0, borderRadius: 0 }}>
-            <div className="cluster cluster--top" style={{ flexWrap: 'nowrap' }}>
-              <span className="icon-box"><IconC size={20} /></span>
-              <span className="min0 stack stack--tight">
-                <b className="h-4">{title}</b>
-                <span className="small muted">{text}</span>
-                <span className="link link--arrow small mt-1">{action} <ArrowRight size={15} /></span>
+      <div className="grid gap-px bg-slate-200 sm:grid-cols-2">
+        {ways.map(([Icon, title, text, href, action]) => (
+          <a key={title} href={href} className="group flex min-w-0 gap-3 bg-white p-5 text-inherit no-underline transition hover:bg-blue-50/40 sm:p-6">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+              <Icon size={17} />
+            </span>
+            <span className="min-w-0">
+              <b className="block text-[15px] text-[#0b1220]">{title}</b>
+              <span className="mt-1 block text-sm leading-6 text-slate-500">{text}</span>
+              <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-blue-600">
+                {action} <ArrowRight size={14} className="transition group-hover:translate-x-0.5" />
               </span>
-            </div>
+            </span>
           </a>
         ))}
       </div>
@@ -463,7 +457,7 @@ function NoRacesYet() {
   )
 }
 
-const normalise = (text) => String(text ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+const normalise = (text) => String(text ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
 // The races page's state as it appears in the address, defaults left out.
 const RACES_DEFAULTS = { q: '', distance: 'all', country: 'all', status: 'all', sort: 'featured' }
@@ -544,34 +538,35 @@ function RacesPage({ raceId }) {
   const hasDemo = races?.some((race) => race.is_demo)
 
   return (
-    <section className="section">
-      <div className="wrap">
+    <section className="bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] py-14 sm:py-20">
+      <div className="mx-auto w-[min(1120px,calc(100%-28px))]">
         {raceId ? (
           <Leaderboard raceId={raceId} onBack={() => navigate(address)} />
         ) : (
           <>
-            <div className="grid grid--head">
-              <div className="stack">
-                <p className="eyebrow">Races</p>
-                <h1 className="display-2">
+            <div className="grid min-w-0 items-end gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,.8fr)]">
+              <div className="min-w-0">
+                <p className="mb-3 font-mono text-[10px] tracking-[.08em] text-slate-500">RACES</p>
+                <h1 className="text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
                   Scored races.
                   <br />
-                  <span className="accent">Every number explained.</span>
+                  <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">Every number explained.</span>
                 </h1>
               </div>
-              <p className="lead">
-                Races their organizers have published, all scored with the same open model. Each score depends only on the course and the runner's own finish time, never on who else raced.
-                {hasListings ? ' Races marked upcoming or awaiting results are listed by their organizer ahead of the results: open one to try a target time on its course.' : ''}
-                {hasDemo ? ' Races marked demo data are synthetic examples.' : ''}
+              <p className="min-w-0 text-sm leading-7 text-slate-500">
+                Races their organizers have published, all scored with the same open model. Each score depends only on the
+                course and the runner's own finish time — never on who else raced.
+                {hasListings ? ' Races marked UPCOMING or AWAITING RESULTS are listed by their organizer ahead of the results: open one to try a target time on its course.' : ''}
+                {hasDemo ? ' Races marked DEMO DATA are synthetic examples.' : ''}
               </p>
             </div>
-            {error && <p className="notice notice--warning notice--plain mt-8">{error}</p>}
-            {races === null && !error && <p className="loading mt-8"><span className="spinner" /> Loading races…</p>}
+            {error && <p className="mt-8 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</p>}
+            {races === null && !error && <p className="mt-8 text-sm text-slate-500">Loading races…</p>}
             {races?.length === 0 && <NoRacesYet />}
             {races?.length > 0 && (
-              <div className="toolbar mt-8">
+              <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center">
                 <SearchSuggest
-                  className="grow"
+                  className="min-w-0 flex-1"
                   value={query}
                   onChange={setQuery}
                   placeholder="Search by race, place or year…"
@@ -587,62 +582,75 @@ function RacesPage({ raceId }) {
                     ...knownButNotHere(RACE_NAMES, query, races.map((race) => race.event_name), 3).map((name) => ({ key: `known-${name}`, label: name, detail: 'not on OTRI yet' })),
                   ]}
                 />
-                <div className="seg" role="group" aria-label="Distance">
-                  {DISTANCE_BUCKETS.map((b) => (
-                    <button key={b.id} type="button" onClick={() => setBucket(b.id)} aria-pressed={bucket === b.id}>
-                      {b.label}
-                    </button>
-                  ))}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="inline-flex max-w-full overflow-x-auto rounded-lg border border-slate-300 bg-white" role="group" aria-label="Distance">
+                    {DISTANCE_BUCKETS.map((b) => (
+                      <button
+                        key={b.id}
+                        type="button"
+                        onClick={() => setBucket(b.id)}
+                        aria-pressed={bucket === b.id}
+                        className={`whitespace-nowrap px-3 py-2 text-xs font-semibold ${bucket === b.id ? 'bg-[#0b1220] text-white' : 'text-slate-500 hover:text-[#0b1220]'}`}
+                      >
+                        {b.label}
+                      </button>
+                    ))}
+                  </div>
+                  {countryOptions.length > 1 && (
+                    <select value={country} onChange={(event) => setCountry(event.target.value)} aria-label="Country" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-[#0b1220]">
+                      <option value="all">All countries</option>
+                      {countryOptions.map((option) => (
+                        <option key={option.code} value={option.code}>{option.name}</option>
+                      ))}
+                    </select>
+                  )}
+                  {hasListings && (
+                    <select value={status} onChange={(event) => setStatus(event.target.value)} aria-label="Status" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-[#0b1220]">
+                      {RACE_STATUSES.map(([id, label]) => (
+                        <option key={id} value={id}>{label}</option>
+                      ))}
+                    </select>
+                  )}
+                  <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort races" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-[#0b1220]">
+                    {Object.entries(RACE_SORTS).map(([id, option]) => (
+                      <option key={id} value={id}>{option.label}</option>
+                    ))}
+                  </select>
                 </div>
-                {countryOptions.length > 1 && (
-                  <select value={country} onChange={(event) => setCountry(event.target.value)} aria-label="Country" className="input input--sm" style={{ width: 'auto' }}>
-                    <option value="all">All countries</option>
-                    {countryOptions.map((option) => (
-                      <option key={option.code} value={option.code}>{option.name}</option>
-                    ))}
-                  </select>
-                )}
-                {hasListings && (
-                  <select value={status} onChange={(event) => setStatus(event.target.value)} aria-label="Status" className="input input--sm" style={{ width: 'auto' }}>
-                    {RACE_STATUSES.map(([id, label]) => (
-                      <option key={id} value={id}>{label}</option>
-                    ))}
-                  </select>
-                )}
-                <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Sort races" className="input input--sm" style={{ width: 'auto' }}>
-                  {Object.entries(RACE_SORTS).map(([id, option]) => (
-                    <option key={id} value={id}>{option.label}</option>
-                  ))}
-                </select>
               </div>
             )}
             {races?.length > 0 && (
-              <p className="tiny muted mono mt-3" aria-live="polite">
+              <p className="mt-3 font-mono text-[11px] text-slate-500" aria-live="polite">
                 {shown.length === races.length ? `${races.length} races` : `${shown.length} of ${races.length} races match`}
               </p>
             )}
             {races?.length > 0 && shown.length === 0 && (
-              <div className="empty mt-6">
-                <p className="empty__title">{query.trim() ? `“${query.trim()}” is not on OTRI yet.` : 'No race matches.'}</p>
-                <p className="empty__text">
+              <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 text-sm leading-6 text-slate-600">
+                <p className="font-semibold text-[#0b1220]">{query.trim() ? `“${query.trim()}” is not on OTRI yet.` : 'No race matches.'}</p>
+                <p className="mt-1">
                   OTRI shows the races their organizers have published here; it keeps no list of every race. Try fewer words, another distance, or{' '}
-                  <button type="button" onClick={() => { setQuery(''); setBucket('all'); setCountry('all'); setStatus('all') }} className="link">clear the filters</button>.
+                  <button type="button" onClick={() => { setQuery(''); setBucket('all'); setCountry('all'); setStatus('all') }} className="font-semibold text-blue-600 hover:underline">clear the filters</button>.
                 </p>
-                <p className="empty__text mt-3">
-                  Have its course as a GPX? <a href="#calculator" className="link">Work out what a time there is worth</a>. Have the results too? <a href="#score" className="link">Score the whole race</a>, free and without an account.
+                <p className="mt-3">
+                  Have its course as a GPX? <a href="#calculator" className="font-semibold text-blue-600 no-underline hover:underline">Work out what a time there is worth</a>.
+                  Have the results too? <a href="#score" className="font-semibold text-blue-600 no-underline hover:underline">Score the whole race</a>, free and without an account.
                 </p>
               </div>
             )}
-            <div className="grid grid--3 mt-5">
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {shown.slice(0, visible).map((race) => (
                 <RaceCard key={race.race_id} race={race} />
               ))}
             </div>
             {shown.length > 0 && (
-              <div className="cluster cluster--between mt-5">
-                <p className="tiny muted mono">Showing {Math.min(visible, shown.length)} of {shown.length}</p>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <p className="font-mono text-[11px] text-slate-500">Showing {Math.min(visible, shown.length)} of {shown.length}</p>
                 {shown.length > visible && (
-                  <button type="button" onClick={() => setVisible((n) => n + RACE_PAGE_SIZE)} className="btn btn--secondary">
+                  <button
+                    type="button"
+                    onClick={() => setVisible((n) => n + RACE_PAGE_SIZE)}
+                    className="inline-flex min-h-[40px] items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-[#0b1220] hover:border-blue-300"
+                  >
                     Show {Math.min(RACE_PAGE_SIZE, shown.length - visible)} more
                   </button>
                 )}
@@ -673,38 +681,24 @@ function redirectAuthLinks() {
 }
 redirectAuthLinks()
 
-function RouteLoading() {
-  return (
-    <div role="status" className="loading" style={{ minHeight: '50vh', justifyContent: 'center' }}>
-      <span className="spinner spinner--lg" /> Loading…
-    </div>
-  )
-}
-
 function App() {
   const route = useRoute()
   // Race and runner pages set a more specific title once their data has loaded.
   useDocumentTitle(route.raceId || route.runnerId ? null : PAGE_TITLES[route.tab] ?? PAGE_TITLES.home)
 
   return (
-    <div id="top" className="site">
+    <div id="top" className="min-h-screen max-w-full overflow-x-clip bg-[#f7f9fc] text-[#0b1220]">
       <Header tab={route.tab} />
       <main>
-        <Suspense fallback={<RouteLoading />}>
-          {route.tab === 'home' && <Home />}
-          {route.tab === 'races' && <RacesPage raceId={route.raceId} />}
-          {route.tab === 'runners' && (route.runnerId ? <RunnerProfilePage runnerId={route.runnerId} onBack={() => navigate('#runners')} /> : <RunnersPage />)}
-          {route.tab === 'calculator' && <ScoreCalculator />}
-          {route.tab === 'score' && <ScoreRace />}
-          {route.tab === 'api' && <ApiDocs />}
-          {route.tab === 'media' && <Media />}
-          {route.tab === 'faq' && <FaqPage initialQuery={route.faqQuery} />}
-          {route.tab === 'notfound' && (
-            <div className="wrap">
-              <NotFound where={window.location.hash} home="#home" />
-            </div>
-          )}
-        </Suspense>
+        {route.tab === 'home' && <Home />}
+        {route.tab === 'races' && <RacesPage raceId={route.raceId} />}
+        {route.tab === 'runners' && (route.runnerId ? <RunnerProfilePage runnerId={route.runnerId} onBack={() => navigate('#runners')} /> : <RunnersPage />)}
+        {route.tab === 'calculator' && <ScoreCalculator />}
+        {route.tab === 'score' && <ScoreRace />}
+        {route.tab === 'api' && <ApiDocs />}
+        {route.tab === 'media' && <Media />}
+        {route.tab === 'faq' && <FaqPage initialQuery={route.faqQuery} />}
+        {route.tab === 'notfound' && <NotFound where={window.location.hash} home="#home" />}
       </main>
       <Footer />
       <BackToTop />

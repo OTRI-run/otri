@@ -1,11 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/compat'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FullscreenControl, LngLatBounds, Map as MapLibreMap, NavigationControl, ScaleControl, addProtocol, setWorkerUrl } from 'maplibre-gl'
 import mlcontour from 'maplibre-contour'
 import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
-// After MapLibre's stylesheet on purpose: CourseMap.css dresses its controls, and a tie in specificity goes to the later sheet.
-import './CourseMap.css'
-import identity from '../brand/identity.json'
 import { buildElevationProfile, parseGpxTrackPoints, toGeoJsonLine } from '../lib/gpx'
 import { distanceUnit, elevationUnit, kmToUnit, metresToUnit, useUnits } from '../lib/units'
 import { GRADE_CLASSES, lineGradientExpression, steepnessStretches, steepnessSummary } from '../lib/steepness'
@@ -68,29 +65,22 @@ function contours() {
   return contourSource
 }
 
-// Colours for what cannot read a CSS variable: MapLibre paint properties and the marker SVGs built as
-// strings. The brand values come from identity.json; anything else mirrors src/ui/tokens.css.
-const { graphite: GRAPHITE, surface: SURFACE, chalk: CHALK, muted: MUTED, volt: VOLT, cyanDeep: CYAN_DEEP } = identity.colours
-const LINE_STRONG = '#aebdc7' // --line-strong in src/ui/tokens.css: the quietest rule that still carries, for contour lines
-const withAlpha = (hex, alpha) => `rgba(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)}, ${alpha})`
-
-// The route is the signal: a volt line inside a graphite casing, the one thing on the map you are
-// meant to read first. The hover point is the same volt, so profile and map answer in one colour.
-const ROUTE_ACCENT = VOLT
-const HOVER_ACCENT = VOLT
-// Which way the course is run: a small chevron lying on the route every so often, cut out of a
-// graphite shadow so it reads on volt as well as on the steepness ramp. Drawn pointing east, because
-// a symbol placed along a line is turned to the line's direction from there.
-const DIRECTION_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M8 5l8 7-8 7" fill="none" stroke="${GRAPHITE}" stroke-opacity=".62" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 5l8 7-8 7" fill="none" stroke="${SURFACE}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`
-// A summit: a graphite triangle on a surface edge, the same sharp geometry as the mark.
-const PEAK_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><path d="M14 5 25 23H3z" fill="${GRAPHITE}" stroke="${SURFACE}" stroke-width="2.5" stroke-linejoin="round"/></svg>`
+const INK = '#0b1220'
+const TRAIL_BROWN = '#7c2d12'
+const CONTOUR_BROWN = '#92400e'
+// Which way the course is run: a small white chevron lying on the route every so often. Drawn pointing
+// east, because a symbol placed along a line is turned to the line's direction from there.
+const DIRECTION_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M8 5l8 7-8 7" fill="none" stroke="#0b1220" stroke-opacity=".55" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 5l8 7-8 7" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+const PEAK_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><path d="M14 5 25 23H3z" fill="#57534e" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/></svg>`
+const ROUTE_BLUE = '#2563eb'
+const START_GREEN = '#16a34a'
+const HOVER_CYAN = '#06b6d4'
 const LABEL_FONT = ['Noto Sans Bold']
 const KM_PER_MI = 1.609344
 
-// Start (cyan-deep, an open flag) and finish (graphite, a chequered flag), drawn at 2x for crisp
-// rendering: the two ends of the reading, cool where it begins and dark where it stops.
-const START_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="${CYAN_DEEP}" stroke="${SURFACE}" stroke-width="4"/><path d="M18 14v22" stroke="${CHALK}" stroke-width="3.5" stroke-linecap="round"/><path d="M19.5 15h13l-3.5 5.5 3.5 5.5h-13z" fill="${CHALK}"/></svg>`
-const FINISH_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="${GRAPHITE}" stroke="${SURFACE}" stroke-width="4"/><path d="M17 14v22" stroke="${CHALK}" stroke-width="3.5" stroke-linecap="round"/><rect x="18.5" y="15" width="15" height="11" fill="${CHALK}"/><g fill="${GRAPHITE}"><rect x="18.5" y="15" width="5" height="3.67"/><rect x="28.5" y="15" width="5" height="3.67"/><rect x="23.5" y="18.67" width="5" height="3.67"/><rect x="18.5" y="22.33" width="5" height="3.67"/><rect x="28.5" y="22.33" width="5" height="3.67"/></g></svg>`
+// Start (green, flag) and finish (dark, chequered flag) icons, drawn at 2x for crisp rendering.
+const START_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="${START_GREEN}" stroke="#ffffff" stroke-width="4"/><path d="M18 14v22" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/><path d="M19.5 15h13l-3.5 5.5 3.5 5.5h-13z" fill="#ffffff"/></svg>`
+const FINISH_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="${INK}" stroke="#ffffff" stroke-width="4"/><path d="M17 14v22" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/><rect x="18.5" y="15" width="15" height="11" fill="#ffffff"/><g fill="${INK}"><rect x="18.5" y="15" width="5" height="3.67"/><rect x="28.5" y="15" width="5" height="3.67"/><rect x="23.5" y="18.67" width="5" height="3.67"/><rect x="18.5" y="22.33" width="5" height="3.67"/><rect x="28.5" y="22.33" width="5" height="3.67"/></g></svg>`
 
 const iconImages = {}
 function loadIcon(name, svg, size = 48) {
@@ -181,9 +171,8 @@ function firstLineLayerId(map) {
   return map.getStyle().layers.find((layer) => layer.type === 'line' || layer.type === 'symbol')?.id
 }
 
-// What turns the street map into terrain read by an instrument: contour lines as hairlines, footpaths
-// and tracks picked out as dashed cyan (on the base style they are hair-thin and grey), and summits
-// with their height.
+// What turns the street map into a trail map: contour lines, footpaths and tracks picked out as
+// dashed brown lines (on the base style they are hair-thin and grey), and summits with their height.
 function addOutdoorLayers(map) {
   const before = firstSymbolLayerId(map)
   const dem = contours()
@@ -208,7 +197,7 @@ function addOutdoorLayers(map) {
         source: 'contours',
         'source-layer': 'contours',
         minzoom: 9,
-        paint: { 'line-color': LINE_STRONG, 'line-opacity': ['match', ['get', 'level'], 1, 0.9, 0.5], 'line-width': ['match', ['get', 'level'], 1, 1.1, 0.7] },
+        paint: { 'line-color': CONTOUR_BROWN, 'line-opacity': ['match', ['get', 'level'], 1, 0.55, 0.3], 'line-width': ['match', ['get', 'level'], 1, 1.1, 0.7] },
       },
       before,
     )
@@ -220,7 +209,7 @@ function addOutdoorLayers(map) {
       minzoom: 11,
       filter: ['==', ['get', 'level'], 1],
       layout: { 'symbol-placement': 'line', 'text-field': ['concat', ['number-format', ['get', 'ele'], {}], ' m'], 'text-font': ['Noto Sans Regular'], 'text-size': 9, 'symbol-spacing': 420 },
-      paint: { 'text-color': MUTED, 'text-halo-color': withAlpha(SURFACE, 0.85), 'text-halo-width': 1.2, 'text-opacity': 0.9 },
+      paint: { 'text-color': CONTOUR_BROWN, 'text-halo-color': 'rgba(255,255,255,.85)', 'text-halo-width': 1.2, 'text-opacity': 0.8 },
     })
   }
   const vector = Object.entries(map.getStyle().sources).find(([, source]) => source.type === 'vector' && source.url)?.[0]
@@ -234,7 +223,7 @@ function addOutdoorLayers(map) {
         minzoom: 11,
         filter: ['in', ['get', 'class'], ['literal', ['path', 'track']]],
         layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': CYAN_DEEP, 'line-opacity': 0.72, 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.7, 15, 1.8], 'line-dasharray': [2.5, 1.5] },
+        paint: { 'line-color': TRAIL_BROWN, 'line-opacity': 0.7, 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 0.7, 15, 1.8], 'line-dasharray': [2.5, 1.5] },
       },
       before,
     )
@@ -260,7 +249,7 @@ function addOutdoorLayers(map) {
             'text-optional': true,
             'symbol-sort-key': ['-', 0, ['coalesce', ['to-number', ['get', 'ele']], 0]],
           },
-          paint: { 'text-color': GRAPHITE, 'text-halo-color': withAlpha(SURFACE, 0.9), 'text-halo-width': 1.3 },
+          paint: { 'text-color': '#44403c', 'text-halo-color': 'rgba(255,255,255,.9)', 'text-halo-width': 1.3 },
         })
         for (const id of ['route-start', 'route-finish', 'route-hover']) if (map.getLayer(id)) map.moveLayer(id)
       })
@@ -288,9 +277,9 @@ function addCourseLayers(map, { line, markers, gradient }, { includeHillshade })
         source: 'terrain-dem',
         paint: {
           'hillshade-exaggeration': 0.5,
-          'hillshade-shadow-color': withAlpha(GRAPHITE, 0.45),
-          'hillshade-highlight-color': SURFACE,
-          'hillshade-accent-color': MUTED,
+          'hillshade-shadow-color': '#334155',
+          'hillshade-highlight-color': '#ffffff',
+          'hillshade-accent-color': '#64748b',
         },
       },
       firstLineLayerId(map),
@@ -310,7 +299,7 @@ function addCourseLayers(map, { line, markers, gradient }, { includeHillshade })
         type: 'line',
         source: 'route',
         layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': gradient ? SURFACE : GRAPHITE, 'line-width': 8, 'line-opacity': 0.9 },
+        paint: { 'line-color': '#ffffff', 'line-width': 8, 'line-opacity': 0.95 },
       },
       beforeLabels,
     )
@@ -320,7 +309,7 @@ function addCourseLayers(map, { line, markers, gradient }, { includeHillshade })
         type: 'line',
         source: 'route',
         layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: gradient ? { 'line-gradient': gradient, 'line-width': 4.5 } : { 'line-color': ROUTE_ACCENT, 'line-width': 4 },
+        paint: gradient ? { 'line-gradient': gradient, 'line-width': 4.5 } : { 'line-color': ROUTE_BLUE, 'line-width': 4 },
       },
       beforeLabels,
     )
@@ -333,7 +322,7 @@ function addCourseLayers(map, { line, markers, gradient }, { includeHillshade })
       type: 'circle',
       source: 'route-markers',
       filter: ['==', ['get', 'kind'], 'km'],
-      paint: { 'circle-radius': 9, 'circle-color': SURFACE, 'circle-stroke-color': GRAPHITE, 'circle-stroke-width': 1.5 },
+      paint: { 'circle-radius': 9, 'circle-color': '#ffffff', 'circle-stroke-color': INK, 'circle-stroke-width': 1.5 },
     })
     map.addLayer({
       id: 'route-km-label',
@@ -341,7 +330,7 @@ function addCourseLayers(map, { line, markers, gradient }, { includeHillshade })
       source: 'route-markers',
       filter: ['==', ['get', 'kind'], 'km'],
       layout: { 'text-field': ['get', 'label'], 'text-font': LABEL_FONT, 'text-size': 10, 'text-allow-overlap': true },
-      paint: { 'text-color': GRAPHITE },
+      paint: { 'text-color': INK },
     })
   }
 
@@ -351,7 +340,7 @@ function addCourseLayers(map, { line, markers, gradient }, { includeHillshade })
       id: 'route-hover',
       type: 'circle',
       source: 'route-hover',
-      paint: { 'circle-radius': 7, 'circle-color': HOVER_ACCENT, 'circle-stroke-color': GRAPHITE, 'circle-stroke-width': 2.5 },
+      paint: { 'circle-radius': 7, 'circle-color': HOVER_CYAN, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2.5 },
     })
   }
 
@@ -459,7 +448,7 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
     [points, cumulativeKm, stepKm, kmPerUnit, totalKm],
   )
   // Read at load time by the map effects, so a units change never rebuilds the map.
-  const gradient = useMemo(() => (showSteepness && stretches.length ? lineGradientExpression(stretches, ROUTE_ACCENT) : null), [showSteepness, stretches])
+  const gradient = useMemo(() => (showSteepness && stretches.length ? lineGradientExpression(stretches, ROUTE_BLUE) : null), [showSteepness, stretches])
   const courseDataRef = useRef({ line, markers, gradient })
   courseDataRef.current = { line, markers, gradient }
 
@@ -472,12 +461,9 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
       map.setPaintProperty('route-line', 'line-width', 4.5)
     } else {
       map.setPaintProperty('route-line', 'line-gradient', undefined)
-      map.setPaintProperty('route-line', 'line-color', ROUTE_ACCENT)
+      map.setPaintProperty('route-line', 'line-color', ROUTE_BLUE)
       map.setPaintProperty('route-line', 'line-width', 4)
     }
-    // The casing: light under the steepness ramp, so its cool classes stay legible; graphite under
-    // the plain volt line, so the signal has something dark to sit on.
-    if (map.getLayer('route-casing')) map.setPaintProperty('route-casing', 'line-color', gradient ? SURFACE : GRAPHITE)
   }, [gradient])
 
   useEffect(() => {
@@ -604,27 +590,37 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
   }
 
   return (
-    <div className={`course-map ${className}`.trim()}>
-      <div className="course-map__frame">
-        <div ref={mapContainerRef} className="course-map__canvas" />
-        {/* The view toggles: each one pressed or not, in one segmented control over the map. */}
-        <div className="seg seg--sm course-map__views" role="group" aria-label="Map view">
+    <div className={className}>
+      <div className="relative">
+        <div ref={mapContainerRef} className="h-[360px] w-full overflow-hidden rounded-xl sm:h-[460px]" />
+        <div className="absolute right-2 top-2 flex gap-1.5">
           {stretches.length > 0 && (
-            <button type="button" onClick={() => setShowSteepness((value) => !value)} aria-pressed={showSteepness} title="Colour the route by how steep it is">
+            <button
+              onClick={() => setShowSteepness((value) => !value)}
+              aria-pressed={showSteepness}
+              title="Colour the route by how steep it is"
+              className={`rounded-md px-2.5 py-1.5 text-[10px] font-semibold shadow-sm ${showSteepness ? 'bg-[#0b1220] text-white' : 'bg-white/95 text-slate-700 hover:bg-white'}`}
+            >
               Steepness
             </button>
           )}
-          <button type="button" onClick={() => setIs3D((value) => !value)} aria-pressed={is3D} title="Tilt the map and raise the terrain">
-            3D
+          <button
+            onClick={() => setIs3D((value) => !value)}
+            className="rounded-md bg-white/95 px-2.5 py-1.5 text-[10px] font-semibold text-slate-700 shadow-sm hover:bg-white"
+          >
+            {is3D ? '2D' : '3D'}
           </button>
-          <button type="button" onClick={() => setIsSatellite((value) => !value)} aria-pressed={isSatellite} title="Satellite imagery instead of the map">
-            Satellite
+          <button
+            onClick={() => setIsSatellite((value) => !value)}
+            className="rounded-md bg-white/95 px-2.5 py-1.5 text-[10px] font-semibold text-slate-700 shadow-sm hover:bg-white"
+          >
+            {isSatellite ? 'Map' : 'Satellite'}
           </button>
         </div>
       </div>
       <ElevationProfile profile={profile} stretches={showSteepness ? stretches : []} stepUnit={stepUnit} units={units} onHover={handleProfileHover} />
       {stretches.length > 0 && <SteepnessFigures stretches={stretches} profile={profile} units={units} shown={showSteepness} />}
-      <p className="course-map__caption tiny muted">{measurement ? elevationCaption(measurement) : 'Route preview. Analyze the GPX to calculate its elevation profile.'}</p>
+      <p className="mt-2 text-xs text-slate-500">{measurement ? elevationCaption(measurement) : 'Route preview. Analyze the GPX to calculate its elevation profile.'}</p>
     </div>
   )
 }
@@ -661,33 +657,33 @@ function SteepnessFigures({ stretches, profile, units, shown }) {
   const percent = (value) => `${Math.round(value * 100)}%`
   const elevationLabel = elevationUnit(units)
   const figures = [
-    ['Climbing', percent(summary.climbShare)],
-    ['Flat', percent(summary.share.flat)],
-    ['Descending', percent(summary.descentShare)],
-    ['Steep ground · 20%+', percent(summary.steepShare)],
-    ...(extremes ? [['Low · high', `${formatNumber(metresToUnit(extremes.low, units))} · ${formatNumber(metresToUnit(extremes.high, units))} ${elevationLabel}`]] : []),
+    ['CLIMBING', percent(summary.climbShare)],
+    ['FLAT', percent(summary.share.flat)],
+    ['DESCENDING', percent(summary.descentShare)],
+    ['STEEP GROUND · 20%+', percent(summary.steepShare)],
+    ...(extremes ? [['LOW · HIGH', `${formatNumber(metresToUnit(extremes.low, units))} · ${formatNumber(metresToUnit(extremes.high, units))} ${elevationLabel}`]] : []),
   ]
   return (
-    <div className="course-map__figures">
+    <div className="mt-3">
       {/* The whole course as one bar: where the climbing and the steep ground sit. */}
-      <div className="course-map__bar" aria-hidden="true">
+      <div className="flex h-2 w-full overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
         {GRADE_CLASSES.filter((entry) => summary.share[entry.id] > 0).map((entry) => (
           <span key={entry.id} style={{ width: `${summary.share[entry.id] * 100}%`, background: entry.color }} title={`${entry.label}: ${percent(summary.share[entry.id])}`} />
         ))}
       </div>
-      <dl className="kv">
+      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-5">
         {figures.map(([label, value]) => (
-          <div key={label}>
-            <dt>{label}</dt>
-            <dd className="mono">{value}</dd>
+          <div key={label} className="min-w-0">
+            <dt className="font-mono text-[8px] tracking-[.08em] text-slate-500">{label}</dt>
+            <dd className="mt-0.5 truncate font-mono text-[13px] font-semibold text-[#0b1220]">{value}</dd>
           </div>
         ))}
       </dl>
       {shown && (
-        <ul className="course-map__legend" aria-label="What the colours mean">
+        <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5" aria-label="What the colours mean">
           {GRADE_CLASSES.map((entry) => (
-            <li key={entry.id} title={entry.label}>
-              <span className="course-map__swatch" style={{ background: entry.color }} />
+            <li key={entry.id} className="flex items-center gap-1.5 font-mono text-[9px] text-slate-500" title={entry.label}>
+              <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: entry.color }} />
               {entry.range}
             </li>
           ))}
@@ -700,7 +696,7 @@ function SteepnessFigures({ stretches, profile, units, shown }) {
 // ---------------------------------------------------------------------------- elevation profile
 
 const PROFILE_HEIGHT = 220
-const PAD = { top: 22, right: 18, bottom: 30, left: 66 } // room on the left for "2,500 ft" at 11.5px mono
+const PAD = { top: 22, right: 18, bottom: 30, left: 56 }
 
 function formatNumber(value) {
   return Math.round(value).toLocaleString('en-US')
@@ -812,14 +808,8 @@ function ElevationProfile({ profile, stretches = [], stepUnit, units, onHover })
     for (let distance = 0; distance <= maxDistance + 1e-9; distance += stepUnit) {
       xTicks.push({ x: toX(distance), label: distance === 0 ? `0 ${distanceLabel}` : String(Math.round(distance * 10) / 10) })
     }
-    // The fine mesh between the labelled ticks: fifths of a step up, halves of a step across, so the
-    // grid is a real subdivision of the reading rather than decoration.
-    const yGrid = []
-    for (let elevation = yMin; elevation <= yMax + 1e-9; elevation += subStep) yGrid.push(toY(elevation))
-    const xGrid = []
-    for (let distance = 0; distance <= maxDistance + 1e-9; distance += stepUnit / 2) xGrid.push(toX(distance))
 
-    return { chartWidth, chartHeight, maxDistance, toX, toY, baselineY, paths, yTicks, xTicks, yGrid, xGrid, peak, yMax }
+    return { chartWidth, chartHeight, maxDistance, toX, toY, baselineY, paths, yTicks, xTicks, peak, yMax }
   }, [valid, width, stepUnit, units.elevation, distanceLabel, elevationLabel])
 
   const distances = useMemo(() => valid.map((point) => point.distance), [valid])
@@ -853,22 +843,29 @@ function ElevationProfile({ profile, stretches = [], stepUnit, units, onHover })
   const tooltipAlign = hover && geometry && hover.x > width - 140 ? 'translateX(-100%)' : 'none'
 
   return (
-    <div ref={wrapperRef} className="course-map__profile">
+    <div ref={wrapperRef} className="relative mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
       {geometry ? (
         <>
           <svg
             width={width}
             height={PROFILE_HEIGHT}
             viewBox={`0 0 ${width} ${PROFILE_HEIGHT}`}
-            className="course-map__chart"
+            className="block select-none"
             role="img"
             aria-label="Elevation profile"
             onMouseMove={updateHover}
             onMouseLeave={clearHover}
           >
             <defs>
-              {/* The plot area. Everything drawn below takes its colour from a CSS variable, because SVG
-                  presentation attributes read them, so the chart and the page never drift apart. */}
+              <linearGradient id="elevation-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.55" />
+                <stop offset="60%" stopColor="#60a5fa" stopOpacity="0.22" />
+                <stop offset="100%" stopColor="#93c5fd" stopOpacity="0.04" />
+              </linearGradient>
+              <linearGradient id="elevation-fade" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#ffffff" stopOpacity="0" />
+                <stop offset="100%" stopColor="#ffffff" stopOpacity="0.55" />
+              </linearGradient>
               <clipPath id="elevation-clip">
                 <rect x={PAD.left} y={PAD.top} width={geometry.chartWidth} height={geometry.chartHeight} />
               </clipPath>
@@ -880,40 +877,30 @@ function ElevationProfile({ profile, stretches = [], stepUnit, units, onHover })
               </clipPath>
             </defs>
 
-            {/* The plot's own ruling: a fine mesh, then the ticks that carry a figure, then the two axes. */}
-            <g className="course-map__grid" aria-hidden="true">
-              {geometry.yGrid.map((y, index) => (
-                <line key={`h${index}`} x1={PAD.left} x2={width - PAD.right} y1={y} y2={y} />
-              ))}
-              {geometry.xGrid.map((x, index) => (
-                <line key={`v${index}`} x1={x} x2={x} y1={PAD.top} y2={geometry.baselineY} />
-              ))}
-            </g>
-            <g className="course-map__rule" aria-hidden="true">
-              {geometry.yTicks.map((tick) => (
-                <line key={`y${tick.label}`} x1={PAD.left} x2={width - PAD.right} y1={tick.y} y2={tick.y} />
-              ))}
-              {geometry.xTicks.map((tick, index) => (
-                <line key={`x${index}`} x1={tick.x} x2={tick.x} y1={PAD.top} y2={geometry.baselineY} />
-              ))}
-            </g>
-            <g className="course-map__axis" aria-hidden="true">
-              <line x1={PAD.left} x2={width - PAD.right} y1={geometry.baselineY} y2={geometry.baselineY} />
-              <line x1={PAD.left} x2={PAD.left} y1={PAD.top} y2={geometry.baselineY} />
-              {geometry.xTicks.map((tick, index) => (
-                <line key={index} x1={tick.x} x2={tick.x} y1={geometry.baselineY} y2={geometry.baselineY + 5} />
-              ))}
-            </g>
-
+            <line x1={PAD.left} x2={width - PAD.right} y1={geometry.baselineY} y2={geometry.baselineY} stroke="#cbd5e1" strokeWidth="1" />
             {geometry.yTicks.map((tick) => (
-              <text key={tick.label} x={PAD.left - 8} y={tick.y + 4} textAnchor="end">
-                {tick.label}
-              </text>
+              <g key={tick.label}>
+                <line x1={PAD.left} x2={width - PAD.right} y1={tick.y} y2={tick.y} stroke="#e2e8f0" strokeWidth="1" strokeDasharray={tick.y === geometry.baselineY ? undefined : '2 3'} />
+                <text x={PAD.left - 8} y={tick.y + 3} textAnchor="end" fontSize="10" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#64748b">
+                  {tick.label}
+                </text>
+              </g>
             ))}
+
             {geometry.xTicks.map((tick, index) => (
-              <text key={index} x={tick.x} y={PROFILE_HEIGHT - 8} textAnchor={index === 0 ? 'start' : index === geometry.xTicks.length - 1 && tick.x > width - PAD.right - 12 ? 'end' : 'middle'}>
-                {tick.label}
-              </text>
+              <g key={index}>
+                <line x1={tick.x} x2={tick.x} y1={geometry.baselineY} y2={geometry.baselineY + 5} stroke="#cbd5e1" strokeWidth="1" />
+                <text
+                  x={tick.x}
+                  y={PROFILE_HEIGHT - 9}
+                  textAnchor={index === 0 ? 'start' : index === geometry.xTicks.length - 1 && tick.x > width - PAD.right - 12 ? 'end' : 'middle'}
+                  fontSize="10"
+                  fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
+                  fill="#64748b"
+                >
+                  {tick.label}
+                </text>
+              </g>
             ))}
 
             <g clipPath="url(#elevation-clip)">
@@ -922,25 +909,30 @@ function ElevationProfile({ profile, stretches = [], stepUnit, units, onHover })
                   {stretches.map((stretch, index) => {
                     const x1 = geometry.toX(kmToUnit(stretch.fromKm, units))
                     const x2 = geometry.toX(kmToUnit(stretch.toKm, units))
-                    return <rect key={index} x={x1} y={PAD.top} width={Math.max(0.5, x2 - x1 + 0.5)} height={geometry.chartHeight} fill={stretch.cls.color} fillOpacity="0.72" />
+                    return <rect key={index} x={x1} y={PAD.top} width={Math.max(0.5, x2 - x1 + 0.5)} height={geometry.chartHeight} fill={stretch.cls.color} fillOpacity="0.78" />
                   })}
+                  {/* Fades the colour out towards the baseline, so the line above it carries the shape. */}
+                  <rect x={PAD.left} y={PAD.top} width={geometry.chartWidth} height={geometry.chartHeight} fill="url(#elevation-fade)" />
                 </g>
               ) : (
-                geometry.paths.map((path, index) => <polygon key={index} points={path.area} fill="var(--course-map-plot)" fillOpacity="0.14" />)
+                geometry.paths.map((path, index) => <polygon key={index} points={path.area} fill="url(#elevation-fill)" />)
               )}
               {geometry.paths.map((path, index) => (
-                <polyline key={index} points={path.line} fill="none" stroke={stretches.length > 0 ? 'var(--text)' : 'var(--course-map-plot)'} strokeWidth={stretches.length > 0 ? 1.6 : 1.75} strokeLinejoin="round" strokeLinecap="round" />
+                <polyline key={index} points={path.line} fill="none" stroke={stretches.length > 0 ? INK : '#1d4ed8'} strokeWidth={stretches.length > 0 ? 1.6 : 2} strokeLinejoin="round" strokeLinecap="round" />
               ))}
             </g>
 
             {/* Highest point */}
             <g>
-              <circle cx={geometry.toX(geometry.peak.distance)} cy={geometry.toY(geometry.peak.elevation)} r="3.5" fill="var(--surface)" stroke="var(--text)" strokeWidth="2" />
+              <circle cx={geometry.toX(geometry.peak.distance)} cy={geometry.toY(geometry.peak.elevation)} r="3.5" fill="#ffffff" stroke="#1d4ed8" strokeWidth="2" />
               <text
-                className="course-map__peak"
                 x={geometry.toX(geometry.peak.distance)}
                 y={geometry.toY(geometry.peak.elevation) - 9}
                 textAnchor={geometry.toX(geometry.peak.distance) > width - 80 ? 'end' : geometry.toX(geometry.peak.distance) < PAD.left + 60 ? 'start' : 'middle'}
+                fontSize="10"
+                fontWeight="700"
+                fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
+                fill={INK}
               >
                 {formatNumber(geometry.peak.elevation)} {elevationLabel}
               </text>
@@ -948,32 +940,35 @@ function ElevationProfile({ profile, stretches = [], stepUnit, units, onHover })
 
             {hover && (
               <g pointerEvents="none">
-                <line x1={hover.x} x2={hover.x} y1={PAD.top} y2={geometry.baselineY} stroke="var(--text)" strokeWidth="1" strokeOpacity="0.3" />
-                <circle cx={hover.x} cy={hover.y} r="5" fill="var(--volt)" stroke="var(--surface)" strokeWidth="2" />
+                <line x1={hover.x} x2={hover.x} y1={PAD.top} y2={geometry.baselineY} stroke={INK} strokeWidth="1" strokeOpacity="0.35" />
+                <circle cx={hover.x} cy={hover.y} r="5" fill={HOVER_CYAN} stroke="#ffffff" strokeWidth="2" />
               </g>
             )}
           </svg>
 
           {hover && (
-            <div className="tooltip course-map__tip" style={{ left: tooltipLeft, transform: tooltipAlign }}>
-              <b>
+            <div
+              className="pointer-events-none absolute top-2 rounded-lg bg-[#0b1220] px-2.5 py-1.5 font-mono text-[10px] leading-4 text-white shadow-lg"
+              style={{ left: tooltipLeft, transform: tooltipAlign }}
+            >
+              <div className="font-semibold">
                 {(Math.round(hover.distance * 10) / 10).toFixed(1)} {distanceLabel}
-              </b>
-              <span>
+              </div>
+              <div className="text-slate-300">
                 {formatNumber(hover.elevation)} {elevationLabel}
                 {hover.grade != null && (
-                  <em className={hover.grade >= 0 ? 'is-up' : 'is-down'}>
+                  <span className={hover.grade >= 0 ? 'text-cyan-300' : 'text-blue-300'}>
                     {' '}
                     · {hover.grade >= 0 ? '+' : ''}
                     {hover.grade.toFixed(0)}%
-                  </em>
+                  </span>
                 )}
-              </span>
+              </div>
             </div>
           )}
         </>
       ) : (
-        <div style={{ height: PROFILE_HEIGHT }} className="course-map__empty">
+        <div style={{ height: PROFILE_HEIGHT }} className="flex items-center justify-center text-xs text-slate-400">
           {valid.length < 2 ? 'No elevation data in this profile.' : ''}
         </div>
       )}

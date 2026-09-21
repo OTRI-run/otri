@@ -1,11 +1,11 @@
-import './ApiDocs.css'
-import { useState } from 'preact/compat'
-import { ArrowUpRight, Check, Copy } from '../src/ui/icons'
+import { useState } from 'react'
+import { ArrowUpRight, Check, Copy } from 'lucide-react'
 import { API_BASE_URL } from './apiClient'
 
 // The public contract of the scoring tool: the three calls that need no account, and the
 // calculator as an iframe. The full, generated reference is the API's own /docs.
 
+const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
 const EMBED_URL = new URL('./embed/', window.location.href.split('#')[0]).href
 
 const SCORE_CURL = `curl -X POST ${API_BASE_URL}/score \\
@@ -62,24 +62,6 @@ const EMBED_SNIPPET = `<iframe id="otri-calculator" title="OTRI score calculator
   })
 </script>`
 
-// Comments in a sample are set quieter: a whole line starting with # or //, or a trailing // note
-// set off by two or more spaces. The text itself is untouched; the copy button copies the string.
-function highlight(text) {
-  return text.split('\n').flatMap((line, index, lines) => {
-    const trimmed = line.trimStart()
-    const nodes = []
-    if (trimmed.startsWith('#') || trimmed.startsWith('//')) {
-      nodes.push(<span key={`c${index}`} className="c">{line}</span>)
-    } else {
-      const at = line.search(/\s{2,}\/\/.*$/)
-      if (at >= 0) nodes.push(line.slice(0, at), <span key={`c${index}`} className="c">{line.slice(at)}</span>)
-      else nodes.push(line)
-    }
-    if (index < lines.length - 1) nodes.push('\n')
-    return nodes
-  })
-}
-
 function Code({ children, label }) {
   const [copied, setCopied] = useState(false)
   async function copy() {
@@ -92,26 +74,26 @@ function Code({ children, label }) {
     }
   }
   return (
-    <div className="api-code">
-      <div className="api-code__bar">
-        <span className="eyebrow eyebrow--plain eyebrow--sm">{label}</span>
-        <button type="button" onClick={copy} className="btn btn--ghost btn--sm">
-          {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'copied' : 'copy'}
+    <div className="relative mt-3 min-w-0 overflow-hidden rounded-xl border border-slate-800 bg-[#0b1220]">
+      <div className="flex items-center justify-between border-b border-slate-800 px-4 py-2">
+        <span className="font-mono text-[9px] uppercase tracking-[.08em] text-slate-400">{label}</span>
+        <button type="button" onClick={copy} className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-300 hover:text-white">
+          {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? 'copied' : 'copy'}
         </button>
       </div>
-      <pre className="code-block"><code>{highlight(children)}</code></pre>
+      <pre className="overflow-x-auto px-4 py-3 text-[12px] leading-5 text-slate-100"><code>{children}</code></pre>
     </div>
   )
 }
 
 function Endpoint({ method, path, children }) {
   return (
-    <section className="card api-endpoint" id={path.replace(/\W+/g, '-').replace(/^-/, '')}>
-      <h2 className="h-2 cluster cluster--tight">
-        <span className="badge badge--volt badge--lg">{method}</span>
-        <code className="api-endpoint__path">{path}</code>
+    <section className="mt-10 min-w-0 scroll-mt-24" id={path.replace(/\W+/g, '-').replace(/^-/, '')}>
+      <h2 className="flex flex-wrap items-center gap-2 text-xl font-bold tracking-[-.02em] text-[#0b1220]">
+        <span className="rounded-md bg-blue-600 px-2 py-0.5 font-mono text-[11px] font-semibold text-white">{method}</span>
+        <code className="font-mono text-lg">{path}</code>
       </h2>
-      <div className="prose small mt-4">{children}</div>
+      <div className="mt-2 text-sm leading-7 text-slate-600">{children}</div>
     </section>
   )
 }
@@ -119,98 +101,90 @@ function Endpoint({ method, path, children }) {
 export default function ApiDocs() {
   return (
     <>
-      <section className="section section--tight section--line-bottom topo">
-        <div className="wrap">
-          <div className="page-head">
-            <p className="eyebrow">
-              Open Trail Running Index <span className="sep">·</span> API and embed
-            </p>
-            <h1 className="display-2">
-              Scoring as a tool,
-              <br />
-              <em className="accent">not a gatekeeper.</em>
-            </h1>
-            <p className="lead">
-              Everything the site does with a course and a results file is a public HTTP call: free, with no key, no account and no approval. Use it from a timing system, a race website or a notebook. The model is open source, so a score from the API can be recomputed by anyone.
-            </p>
-            <div className="cluster cluster--tight">
-              {['FREE', 'NO API KEY', 'ANY ORIGIN (CORS)', 'VERSIONED MODEL'].map((tag) => (
-                <span key={tag} className="badge badge--lg">{tag}</span>
-              ))}
-            </div>
+      <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
+        <div className={`${CONTAINER} py-12 sm:py-14`}>
+          <div className="font-mono text-[10px] font-medium tracking-[.1em] text-blue-600">
+            OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> API AND EMBED
+          </div>
+          <h1 className="mt-5 max-w-[760px] text-[clamp(34px,5vw,56px)] font-bold leading-[1.02] tracking-[-.06em] text-[#0b1220]">
+            Scoring as a tool,
+            <br />
+            <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">not a gatekeeper.</em>
+          </h1>
+          <p className="mt-5 max-w-[680px] text-base leading-7 text-slate-600">
+            Everything the site does with a course and a results file is a public HTTP call: free, with no key, no account and no approval. Use it from a timing system, a race website or a notebook. The model is open source, so a score from the API can be recomputed by anyone.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-2 font-mono text-[10px] tracking-[.06em] text-slate-600">
+            {['FREE', 'NO API KEY', 'ANY ORIGIN (CORS)', 'VERSIONED MODEL'].map((tag) => (
+              <span key={tag} className="rounded-full border border-slate-200 bg-white px-3 py-1">{tag}</span>
+            ))}
           </div>
         </div>
       </section>
 
-      <section className="section section--tight">
-        <div className="wrap grid grid--aside-narrow">
-          <div className="stack stack--loose">
-            <Endpoint method="POST" path="/score">
-              <p>
-                A results file validated and scored against a course. Send <code>results</code> (CSV or Excel) and the course as <code>gpx</code>. Both are required: a score rests on where the climbing is, which a distance and a climb figure cannot say. Optional: <code>race_name</code>, <code>scoring_version</code>, and <code>?format=csv</code> for a download instead of JSON. The GUI for this call is <a href="#score">Score my race</a>.
-              </p>
-              <Code label="curl">{SCORE_CURL}</Code>
-              <Code label="curl · CSV back">{SCORE_CSV_CURL}</Code>
-              <Code label="javascript · from any website">{SCORE_JS}</Code>
-              <Code label="response (shortened)">{SCORE_RESPONSE}</Code>
-              <ul>
-                <li>A results file with errors answers <code>200</code> with <code>is_valid: false</code>, the <code>errors</code> by row and field, and no scores. A file that cannot be read at all, or a broken course file, answers <code>422</code>.</li>
-                <li><code>course.confidence</code> is <code>High</code> only when the course was measured against verified terrain data; otherwise <code>Low</code>, with the reasons in <code>course.quality_flags</code>. An uphill-only course comes back with finish times and <code>otri_score: null</code>, and <code>course.not_scored_reason</code> says why.</li>
-                <li>The results file is the export you already have (timing company, ITRA or UTMB sheet): CSV, TSV or XLSX, with a finish time and a name. Position, gender (also from a category such as SEH or M40-44), status, bib, nationality and birth year are read where present; headers are matched in eight languages. The answer's <code>columns</code> and <code>ignored_columns</code> say how the file was read.</li>
-              </ul>
-            </Endpoint>
+      <div className={`${CONTAINER} grid min-w-0 gap-10 pb-20 lg:grid-cols-[minmax(0,1fr)_300px]`}>
+        <div className="min-w-0">
+          <Endpoint method="POST" path="/score">
+            <p>
+              A results file validated and scored against a course. Send <code>results</code> (CSV or Excel) and the course as <code>gpx</code>. Both are required: a score rests on where the climbing is, which a distance and a climb figure cannot say. Optional: <code>race_name</code>, <code>scoring_version</code>, and <code>?format=csv</code> for a download instead of JSON. The GUI for this call is <a href="#score" className="font-semibold text-blue-600 no-underline hover:underline">Score my race</a>.
+            </p>
+            <Code label="curl">{SCORE_CURL}</Code>
+            <Code label="curl · CSV back">{SCORE_CSV_CURL}</Code>
+            <Code label="javascript · from any website">{SCORE_JS}</Code>
+            <Code label="response (shortened)">{SCORE_RESPONSE}</Code>
+            <ul className="mt-4 list-disc space-y-1.5 pl-5">
+              <li>A results file with errors answers <code>200</code> with <code>is_valid: false</code>, the <code>errors</code> by row and field, and no scores. A file that cannot be read at all, or a broken course file, answers <code>422</code>.</li>
+              <li><code>course.confidence</code> is <code>High</code> only when the course was measured against verified terrain data; otherwise <code>Low</code>, with the reasons in <code>course.quality_flags</code>. An uphill-only course comes back with finish times and <code>otri_score: null</code>, and <code>course.not_scored_reason</code> says why.</li>
+              <li>The results file is the export you already have (timing company, ITRA or UTMB sheet): CSV, TSV or XLSX, with a finish time and a name. Position, gender (also from a category such as SEH or M40-44), status, bib, nationality and birth year are read where present; headers are matched in eight languages. The answer's <code>columns</code> and <code>ignored_columns</code> say how the file was read.</li>
+            </ul>
+          </Endpoint>
 
-            <Endpoint method="POST" path="/gpx/analyze">
-              <p>
-                One course measured, and with <code>finish_time_seconds</code> one time scored on it: the call behind the <a href="#calculator">calculator</a>. The answer carries the measured course (<code>features</code>, <code>measurement</code>) and the <code>estimate</code> with every intermediate of the score in <code>breakdown</code>.
-              </p>
-              <Code label="curl">{ANALYZE_CURL}</Code>
-            </Endpoint>
+          <Endpoint method="POST" path="/gpx/analyze">
+            <p>
+              One course measured, and with <code>finish_time_seconds</code> one time scored on it: the call behind the <a href="#calculator" className="font-semibold text-blue-600 no-underline hover:underline">calculator</a>. The answer carries the measured course (<code>features</code>, <code>measurement</code>) and the <code>estimate</code> with every intermediate of the score in <code>breakdown</code>.
+            </p>
+            <Code label="curl">{ANALYZE_CURL}</Code>
+          </Endpoint>
 
-            <Endpoint method="GET" path="/scoring/models">
-              <p>The scoring model versions this API can score with: today one, OTRI model 0.1.0. Every score names its <code>scoring_version</code>, and a published version never changes its output, so a score can be recomputed next year.</p>
-            </Endpoint>
+          <Endpoint method="GET" path="/scoring/models">
+            <p>The scoring model versions this API can score with: today one, OTRI model 0.1.0. Every score names its <code>scoring_version</code>, and a published version never changes its output, so a score can be recomputed next year.</p>
+          </Endpoint>
 
-            <section className="card api-endpoint" id="embed">
-              <h2 className="h-2">The calculator on your website</h2>
-              <div className="prose small mt-4">
-                <p>
-                  Runners try a target time on your course before race day. Paste the snippet where the calculator should appear. <code>?race=</code> takes the id of a race published on OTRI (it is in the race page's address); <code>?gpx=</code> takes a course shared from the calculator's Share button; with neither, the visitor uploads a course. <code>&amp;t=16200</code> presets a time in seconds.
-                </p>
-                <Code label="html">{EMBED_SNIPPET}</Code>
-              </div>
-              <a href={EMBED_URL} target="_blank" rel="noreferrer" className="link link--arrow link--up small mt-4">
-                Open the embedded calculator on its own <ArrowUpRight size={14} />
+          <section className="mt-12 min-w-0 scroll-mt-24" id="embed">
+            <h2 className="text-xl font-bold tracking-[-.02em] text-[#0b1220]">The calculator on your website</h2>
+            <p className="mt-2 text-sm leading-7 text-slate-600">
+              Runners try a target time on your course before race day. Paste the snippet where the calculator should appear. <code>?race=</code> takes the id of a race published on OTRI (it is in the race page's address); <code>?gpx=</code> takes a course shared from the calculator's Share button; with neither, the visitor uploads a course. <code>&amp;t=16200</code> presets a time in seconds.
+            </p>
+            <Code label="html">{EMBED_SNIPPET}</Code>
+            <p className="mt-3 text-sm">
+              <a href={EMBED_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-blue-600 no-underline hover:underline">
+                Open the embedded calculator on its own <ArrowUpRight size={13} />
               </a>
-            </section>
-          </div>
-
-          <aside>
-            <div className="card api-aside">
-              <dl>
-                <dt className="eyebrow eyebrow--plain eyebrow--sm">BASE URL</dt>
-                <dd className="mono small break">{API_BASE_URL}</dd>
-                <dt className="eyebrow eyebrow--plain eyebrow--sm">FAIR USE</dt>
-                <dd>
-                  <ul className="stack stack--tight small muted">
-                    <li><code>/score</code>: 10 calls a minute per address</li>
-                    <li><code>/gpx/analyze</code>: 60 a minute</li>
-                    <li>20 MB per request, 50,000 result rows</li>
-                    <li>Over the limit answers <code>429</code> with <code>Retry-After</code></li>
-                  </ul>
-                </dd>
-                <dt className="eyebrow eyebrow--plain eyebrow--sm">YOUR FILES</dt>
-                <dd className="small muted"><code>/score</code> answers and forgets: the files are not kept and no race is created. To keep a race and show it to runners, publish it from an organizer account.</dd>
-                <dt className="eyebrow eyebrow--plain eyebrow--sm">STABILITY</dt>
-                <dd className="small muted">The project is pre-1.0. Fields are added, not renamed; a change to how scores are computed is always a new <code>scoring_version</code>, never a silent change to an old one.</dd>
-              </dl>
-              <a href={`${API_BASE_URL}/docs`} target="_blank" rel="noreferrer" className="link link--arrow link--up small mt-5">
-                Full reference (OpenAPI) <ArrowUpRight size={14} />
-              </a>
-            </div>
-          </aside>
+            </p>
+          </section>
         </div>
-      </section>
+
+        <aside className="min-w-0 lg:pt-10">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm leading-6 text-slate-600 lg:sticky lg:top-24">
+            <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">BASE URL</p>
+            <p className="mt-1 break-all font-mono text-xs text-[#0b1220]">{API_BASE_URL}</p>
+            <p className="mt-4 font-mono text-[9px] tracking-[.08em] text-slate-500">FAIR USE</p>
+            <ul className="mt-1 space-y-1.5">
+              <li><code>/score</code>: 10 calls a minute per address</li>
+              <li><code>/gpx/analyze</code>: 60 a minute</li>
+              <li>20 MB per request, 50,000 result rows</li>
+              <li>Over the limit answers <code>429</code> with <code>Retry-After</code></li>
+            </ul>
+            <p className="mt-4 font-mono text-[9px] tracking-[.08em] text-slate-500">YOUR FILES</p>
+            <p className="mt-1"><code>/score</code> answers and forgets: the files are not kept and no race is created. To keep a race and show it to runners, publish it from an organizer account.</p>
+            <p className="mt-4 font-mono text-[9px] tracking-[.08em] text-slate-500">STABILITY</p>
+            <p className="mt-1">The project is pre-1.0. Fields are added, not renamed; a change to how scores are computed is always a new <code>scoring_version</code>, never a silent change to an old one.</p>
+            <a href={`${API_BASE_URL}/docs`} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1 font-semibold text-blue-600 no-underline hover:underline">
+              Full reference (OpenAPI) <ArrowUpRight size={13} />
+            </a>
+          </div>
+        </aside>
+      </div>
     </>
   )
 }

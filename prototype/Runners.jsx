@@ -1,9 +1,8 @@
-import './Runners.css'
 import RankBadge from '../src/components/RankBadge'
 import { fitFontSize } from '../src/lib/fitText'
-import { useEffect, useMemo, useState } from 'preact/compat'
+import { useEffect, useMemo, useState } from 'react'
 import { useDocumentTitle } from '../src/lib/title'
-import { ArrowLeft, Check, Image as ImageIcon, Info, Link as LinkIcon } from '../src/ui/icons'
+import { ArrowLeft, ArrowUpRight, Check, Image as ImageIcon, Link2 } from 'lucide-react'
 import { ShareRunner } from './SharePanel'
 import { revealElement } from '../src/lib/comfort'
 import NextSteps from './NextSteps'
@@ -18,6 +17,7 @@ import NotFound from '../src/components/NotFound'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import Flag from '../src/components/Flag'
 
+const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
 const METHOD_URL = 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/runner-index/RUNNER-INDEX-v1.md'
 
 function formatHms(totalSeconds) {
@@ -33,34 +33,38 @@ function runnerName(runner) {
 }
 
 function IndexBadge({ index, provisional, size = 'sm' }) {
-  if (index == null) return <span className="muted">—</span>
+  if (index == null) return <span className="font-mono text-xs text-slate-400">—</span>
   return (
-    <span className={`score ${size === 'lg' ? 'runners-index-badge--lg' : ''}`}>
+    <span className={`inline-flex items-baseline gap-1 font-mono font-bold tabular-nums text-blue-600 ${size === 'lg' ? 'text-3xl' : 'text-base'}`}>
       {index}
-      {size === 'lg' && provisional && <span className="badge badge--amber">PROV.</span>}
+      {size === 'lg' && provisional && <span className="font-mono text-[10px] font-medium tracking-[.08em] text-amber-600">PROV.</span>}
     </span>
   )
 }
 
 function RunnerRow({ runner, rank }) {
   return (
-    <tr>
-      <td className="num muted">{rank}</td>
-      <td>
-        <a href={`#runners/${encodeURIComponent(runner.runner_id)}`}>{runnerName(runner)}</a>
-        <span className="cluster cluster--tight tiny muted mt-1">
+    <a
+      href={`#runners/${encodeURIComponent(runner.runner_id)}`}
+      className="group grid grid-cols-[32px_minmax(0,1fr)_80px] items-center gap-3 px-4 py-3 no-underline transition odd:bg-white even:bg-slate-50/70 hover:bg-blue-50/60 sm:grid-cols-[32px_minmax(0,1fr)_88px_96px_80px]"
+    >
+      <span className="font-mono text-xs text-slate-400">{rank}</span>
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-semibold text-[#0b1220]">{runnerName(runner)}</span>
+        <span className="flex items-center gap-2 font-mono text-[10px] text-slate-500">
           {runner.nationality && <Flag code={runner.nationality} />}
-          <span className="mono">{[runner.gender, runner.age_category].filter(Boolean).join(' · ')}</span>
+          <span>{[runner.gender, runner.age_category].filter(Boolean).join(' · ')}</span>
         </span>
-      </td>
-      <td className="hide-sm num right">
+      </span>
+      <span className="hidden text-right font-mono text-[11px] tabular-nums text-slate-500 sm:block">
         {runner.result_count} result{runner.result_count === 1 ? '' : 's'}
-      </td>
-      <td className="hide-sm num right">{runner.last_race_date ?? ''}</td>
-      <td className="right">
+      </span>
+      <span className="hidden text-right font-mono text-[11px] tabular-nums text-slate-500 sm:block">{runner.last_race_date ?? ''}</span>
+      <span className="flex items-center justify-end gap-2">
         <IndexBadge index={runner.index} provisional={runner.provisional} />
-      </td>
-    </tr>
+        <ArrowUpRight size={14} className="shrink-0 text-slate-300 transition group-hover:text-blue-600" />
+      </span>
+    </a>
   )
 }
 
@@ -92,30 +96,31 @@ export function RunnersPage({ initialQuery = '' }) {
   const shown = useMemo(() => (runners ?? []).filter((r) => gender === 'all' || r.gender === gender), [runners, gender])
 
   return (
-    <section className="section">
-      <div className="wrap">
-        <div className="grid grid--head">
-          <div className="stack">
-            <p className="eyebrow">Runners</p>
-            <h1 className="display-2">
+    <section className="bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] py-14 sm:py-20">
+      <div className={CONTAINER}>
+        <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
+          <div className="font-mono text-xs text-blue-600">02</div>
+          <div className="min-w-0">
+            <p className="mb-3 font-mono text-[10px] tracking-[.08em] text-slate-500">RUNNERS</p>
+            <h1 className="text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
               Every runner.
               <br />
-              <span className="accent">One honest number.</span>
+              <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">One honest number.</span>
             </h1>
           </div>
-          <p className="lead">
+          <p className="min-w-0 text-sm leading-7 text-slate-500">
             A runner's index is the recency-weighted mean of their best three race scores from the last 24 months, built
             only from results organizers have published. Fewer than three results gives a provisional index.{' '}
-            <a href={METHOD_URL} className="link">
+            <a href={METHOD_URL} className="font-semibold text-blue-600 no-underline hover:underline">
               How it is calculated
             </a>
             .
           </p>
         </div>
 
-        <div className="toolbar mt-8">
+        <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
           <SearchSuggest
-            className="grow"
+            className="flex-1"
             value={query}
             onChange={setQuery}
             placeholder="Search a runner by name…"
@@ -131,61 +136,65 @@ export function RunnersPage({ initialQuery = '' }) {
               ...knownButNotHere(RUNNER_NAMES, query, shown.map((runner) => `${runner.first_name} ${runner.family_name}`), 3).map((name) => ({ key: `known-${name}`, label: name, detail: 'no results on OTRI yet' })),
             ]}
           />
-          <div className="seg" role="group" aria-label="Gender">
+          <div className="inline-flex overflow-hidden rounded-lg border border-slate-300 bg-white">
             {[
               ['all', 'All'],
               ['F', 'Women'],
               ['M', 'Men'],
             ].map(([value, label]) => (
-              <button key={value} type="button" onClick={() => setGender(value)} aria-pressed={gender === value}>
+              <button
+                key={value}
+                type="button"
+                onClick={() => setGender(value)}
+                aria-pressed={gender === value}
+                className={`px-3 py-2 text-xs font-semibold ${gender === value ? 'bg-[#0b1220] text-white' : 'text-slate-500 hover:text-[#0b1220]'}`}
+              >
                 {label}
               </button>
             ))}
           </div>
         </div>
-        <p className="tiny muted mono mt-3" aria-live="polite">
+        <p className="mt-2 font-mono text-[9px] tracking-[.08em] text-slate-400">
           {query ? 'SEARCH RESULTS' : 'ALL RUNNERS WITH PUBLISHED RESULTS · BY INDEX'}
           {runners ? ` · ${shown.length}` : ''}
         </p>
 
-        {error && <p className="notice notice--warning notice--plain mt-6">{error}</p>}
-        {runners === null && !error && <p className="loading mt-6"><span className="spinner" /> Loading…</p>}
+        {error && <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</p>}
+        {runners === null && !error && <p className="mt-6 text-sm text-slate-500">Loading…</p>}
         {runners && shown.length === 0 && (
-          <div className="empty mt-6">
-            <p className="empty__title">{query.trim() ? `No published results for “${query.trim()}” on OTRI yet.` : 'No runners yet.'}</p>
-            <p className="empty__text">
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 text-sm leading-6 text-slate-600">
+            <p className="font-semibold text-[#0b1220]">{query.trim() ? `No published results for “${query.trim()}” on OTRI yet.` : 'No runners yet.'}</p>
+            <p className="mt-1">
               A runner appears here when an organizer publishes a race they finished; OTRI keeps no list of every runner. Looking for your own
-              score? <a href="#calculator" className="link">Work out what your time was worth</a> with the course as a GPX.
+              score? <a href="#calculator" className="font-semibold text-blue-600 no-underline hover:underline">Work out what your time was worth</a> with the course as a GPX.
             </p>
           </div>
         )}
-        {shown.length > 0 && (
-          <div className="table-wrap mt-5">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th className="num">#</th>
-                  <th>Runner</th>
-                  <th className="hide-sm right">Results</th>
-                  <th className="hide-sm right">Last race</th>
-                  <th className="right">Index</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shown.slice(0, visible).map((runner, index) => (
-                  <RunnerRow key={runner.runner_id} runner={runner} rank={index + 1} />
-                ))}
-              </tbody>
-            </table>
+        <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+          <div className="hidden grid-cols-[32px_minmax(0,1fr)_88px_96px_80px] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500 sm:grid">
+            <span>#</span>
+            <span>Runner</span>
+            <span className="text-right">Results</span>
+            <span className="text-right">Last race</span>
+            <span className="text-right">Index</span>
           </div>
-        )}
+          <div className="divide-y divide-slate-100">
+            {shown.slice(0, visible).map((runner, index) => (
+              <RunnerRow key={runner.runner_id} runner={runner} rank={index + 1} />
+            ))}
+          </div>
+        </div>
         {shown.length > 0 && (
-          <div className="cluster cluster--between mt-5">
-            <p className="tiny muted mono">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="font-mono text-[11px] text-slate-500">
               Showing {Math.min(visible, shown.length)} of {shown.length}
             </p>
             {shown.length > visible && (
-              <button type="button" onClick={() => setVisible((n) => n + PAGE_SIZE)} className="btn btn--secondary">
+              <button
+                type="button"
+                onClick={() => setVisible((n) => n + PAGE_SIZE)}
+                className="inline-flex min-h-[40px] items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-[#0b1220] hover:border-blue-300"
+              >
                 Show {Math.min(PAGE_SIZE, shown.length - visible)} more
               </button>
             )}
@@ -205,38 +214,37 @@ export function RunnersPage({ initialQuery = '' }) {
 }
 
 function ResultRow({ result, units }) {
+  const tone = result.status === 'counting' ? 'text-[#0b1220]' : result.status === 'expired' ? 'text-slate-400' : 'text-slate-600'
   return (
-    <tr className={result.status === 'expired' ? 'is-muted' : ''}>
-      <td className="hide-md num">{result.event_date}</td>
-      <td className={result.status === 'eligible' ? 'muted' : ''}>
-        <a href={`#races/${encodeURIComponent(result.race_id)}`}>
+    <tr className={`border-b border-slate-100 last:border-0 ${result.status === 'expired' ? 'opacity-70' : ''}`}>
+      <td className="hidden px-4 py-3 font-mono text-xs text-slate-500 md:table-cell">{result.event_date}</td>
+      <td className={`px-4 py-3 ${tone}`}>
+        <a href={`#races/${encodeURIComponent(result.race_id)}`} className="font-medium no-underline hover:underline">
           {result.event_name}
         </a>
-        <span className="block tiny muted mono">
+        <span className="block font-mono text-[10px] text-slate-500">
           {result.course_name} · {formatDistance(result.distance_km, units)} · {formatElevation(result.elevation_gain_m, units, { sign: '+' })}
           {result.is_demo ? ' · demo' : ''}{modelShort(result.scoring_version) !== '0.1.0' ? ` · ${modelShort(result.scoring_version)}` : ''}
         </span>
-        <span className="block tiny muted mono only-md mt-1">
+        <span className="mt-1 block font-mono text-[10px] text-slate-500 md:hidden">
           {result.event_date} ·{' '}
           {result.status === 'counting' ? `counts ${Math.round(result.weight * 100)}%` : result.status === 'eligible' ? 'eligible' : 'expired'}
         </span>
       </td>
-      <td className="num">
+      <td className="px-4 py-3 font-mono text-xs text-slate-500">
         <RankBadge rank={result.rank} />
-        <span className="muted"> · {formatHms(result.finish_time_seconds)}</span>
+        <span className="text-slate-400"> · {formatHms(result.finish_time_seconds)}</span>
       </td>
-      <td className="right">
-        <span className={`score ${result.status === 'counting' ? '' : 'runners-score--out'}`}>{result.otri_score}</span>
-      </td>
-      <td className="hide-md tiny">
+      <td className={`px-4 py-3 font-mono text-sm font-bold ${result.status === 'counting' ? 'text-blue-600' : 'text-slate-500'}`}>{result.otri_score}</td>
+      <td className="hidden px-4 py-3 font-mono text-[10px] text-slate-500 md:table-cell">
         {result.status === 'counting' && (
-          <span className="badge badge--volt">
+          <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[.06em] text-white">
             counts · {Math.round(result.weight * 100)}%
           </span>
         )}
-        {result.status === 'eligible' && <span className="badge">eligible · {Math.round(result.weight * 100)}%</span>}
-        {result.status === 'expired' && <span className="badge">expired</span>}
-        <span className="block muted mono mt-1">
+        {result.status === 'eligible' && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-[.06em] text-slate-600">eligible · {Math.round(result.weight * 100)}%</span>}
+        {result.status === 'expired' && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] uppercase tracking-[.06em] text-slate-500">expired</span>}
+        <span className="mt-1 block">
           {result.status === 'expired' ? `expired ${result.expires_on}` : `full until ${result.full_until} · expires ${result.expires_on}`}
         </span>
       </td>
@@ -268,30 +276,30 @@ export function RunnerProfilePage({ runnerId, onBack }) {
   const details = profile?.index_details
 
   return (
-    <section className="section">
-      <div className="wrap">
-        <button onClick={onBack} className="back">
-          <ArrowLeft size={16} /> All runners
+    <section className="bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] py-14 sm:py-20">
+      <div className={CONTAINER}>
+        <button onClick={onBack} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600">
+          <ArrowLeft size={13} /> All runners
         </button>
         {error && error.status === 404 && (
           <NotFound eyebrow="RUNNER NOT FOUND" title="No runner with that id." where={runnerId} home="#runners" homeLabel="All runners" note="Runners appear here once an organizer publishes results that include them; profiles are removed on request." />
         )}
-        {error && error.status !== 404 && <p className="notice notice--warning notice--plain mt-6">{error.message}</p>}
-        {!profile && !error && <p className="loading mt-6"><span className="spinner" /> Loading…</p>}
+        {error && error.status !== 404 && <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error.message}</p>}
+        {!profile && !error && <p className="mt-6 text-sm text-slate-500">Loading…</p>}
         {profile && (
           <>
-            <div className="page-head page-head--split mt-6">
-              <div className="page-head__text">
-                <p className="eyebrow">
+            <div className="mt-6 grid min-w-0 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="min-w-0">
+                <p className="flex items-center gap-2 font-mono text-[9px] tracking-[.08em] text-blue-600">
                   {profile.nationality && <Flag code={profile.nationality} />}
                   <span>{[profile.gender === 'F' ? 'WOMAN' : profile.gender === 'M' ? 'MAN' : 'RUNNER', profile.age_category].filter(Boolean).join(' · ')}</span>
                 </p>
-                <h1 className="otri-fit" style={{ fontSize: fitFontSize(runnerName(profile), { min: 28, vw: 4.5, max: 52 }) }}>{runnerName(profile)}</h1>
-                <p className="lead">
+                <h1 className="otri-fit mt-2 font-bold leading-[1.04] tracking-[-.045em] text-[#0b1220]" style={{ fontSize: fitFontSize(runnerName(profile), { min: 28, vw: 4.5, max: 52 }) }}>{runnerName(profile)}</h1>
+                <p className="mt-3 text-sm text-slate-500">
                   {profile.result_count} published result{profile.result_count === 1 ? '' : 's'}
                   {profile.last_race_date ? ` · last race ${profile.last_race_date}` : ''}
                 </p>
-                <div className="cluster cluster--tight">
+                <div className="mt-5 flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -299,9 +307,9 @@ export function RunnerProfilePage({ runnerId, onBack }) {
                       if (!shareOpen) revealElement('runner-share')
                     }}
                     aria-expanded={shareOpen}
-                    className="btn btn--secondary"
+                    className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 px-4 text-[13px] font-semibold text-white shadow-[0_10px_28px_rgba(37,99,235,.2)] hover:from-blue-800 hover:to-blue-600"
                   >
-                    <ImageIcon size={16} /> {shareOpen ? 'Hide the image' : 'Share as an image'}
+                    <ImageIcon size={15} /> {shareOpen ? 'Hide the image' : 'Share as an image'}
                   </button>
                   <button
                     type="button"
@@ -311,47 +319,39 @@ export function RunnerProfilePage({ runnerId, onBack }) {
                         setTimeout(() => setLinkCopied(false), 2000)
                       })
                     }}
-                    className="btn btn--ghost"
+                    className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-[13px] font-semibold text-[#0b1220] hover:border-blue-300"
                   >
-                    {linkCopied ? <Check size={16} className="icon--accent" /> : <LinkIcon size={16} />} {linkCopied ? 'Link copied' : 'Copy the link'}
+                    {linkCopied ? <Check size={15} className="text-emerald-600" /> : <Link2 size={15} />} {linkCopied ? 'Link copied' : 'Copy the link'}
                   </button>
                 </div>
               </div>
-              <div className="panel stack">
-                <div className="cluster cluster--between panel__label">
+              <div className="min-w-0 overflow-hidden rounded-2xl bg-[linear-gradient(145deg,#08111f_0%,#0b1730_58%,#123b85_100%)] p-5 text-white shadow-[0_24px_70px_rgba(11,18,32,.2)]">
+                <div className="flex items-center justify-between font-mono text-[8px] tracking-[.08em] text-slate-400">
                   <span>OTRI / RUNNER INDEX</span>
                   <span>{details?.version?.toUpperCase()}</span>
                 </div>
-                <div className="stat stat--lg runners-index">
-                  <span className="stat__label">{profile.provisional ? 'PROVISIONAL INDEX' : 'INDEX'}</span>
-                  <span className="stat__value">{profile.index ?? '—'}</span>
-                  <span className="tiny mono muted mt-2">
+                <div className="py-6 text-center">
+                  <small className="font-mono text-[8px] tracking-[.08em] text-blue-300">{profile.provisional ? 'PROVISIONAL INDEX' : 'INDEX'}</small>
+                  <strong className="mt-1 block bg-gradient-to-r from-white to-blue-200 bg-clip-text pb-1 text-[72px] font-bold leading-none tracking-[-.06em] text-transparent">
+                    {profile.index ?? '—'}
+                  </strong>
+                  <span className="mt-2 block font-mono text-[10px] text-slate-400">
                     {details?.counted ?? 0} of {3} results counting · last {details?.window_months} months · as of {details?.as_of}
                   </span>
                 </div>
-                {!profile.provisional && (
-                  <p className="small muted panel__rule runners-index__note">
-                    Weighted mean of the best three results. Results count fully for 12 months, then fade to nothing at 24.
-                  </p>
-                )}
+                <p className="border-t border-slate-700/70 pt-3 text-[11px] leading-5 text-slate-400">
+                  {profile.provisional
+                    ? `Fewer than three results in the window. The index is the weighted mean of what is there; it firms up at three.`
+                    : `Weighted mean of the best three results. Results count fully for 12 months, then fade to nothing at 24.`}
+                </p>
               </div>
             </div>
 
-            {profile.provisional && (
-              <div className="notice notice--info mt-6">
-                <Info size={18} />
-                <div className="notice__body">
-                  <p className="notice__title">Provisional index</p>
-                  <p>Fewer than three results in the window. The index is the weighted mean of what is there; it firms up at three.</p>
-                </div>
-              </div>
-            )}
-
             {shareOpen && (
-              <div id="runner-share" className="card card--pad-lg mt-8 runners-share">
-                <p className="eyebrow">SHARE THIS PROFILE</p>
-                <h2 className="h-2 mt-2">An image and a post, ready for your feed</h2>
-                <p className="muted measure mt-2 mb-5">
+              <div id="runner-share" className="mt-8 scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] sm:p-6">
+                <p className="font-mono text-[10px] tracking-[.08em] text-blue-600">SHARE THIS PROFILE</p>
+                <h2 className="mt-2 text-xl font-bold tracking-[-.03em] text-[#0b1220]">An image and a post, ready for your feed</h2>
+                <p className="mt-1 mb-5 max-w-2xl text-sm leading-6 text-slate-600">
                   The index and the best three races as a picture, with a post written to go with it. Pick a format, change the words if you like,
                   then download the image or send both to an app. Nothing is posted or stored by OTRI.
                 </p>
@@ -366,15 +366,15 @@ export function RunnerProfilePage({ runnerId, onBack }) {
               </div>
             )}
 
-            <div className="table-wrap mt-8">
-              <table className="table">
+            <div className="mt-8 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+              <table className="w-full border-collapse text-left text-sm">
                 <thead>
-                  <tr>
-                    <th className="hide-md">Date</th>
-                    <th>Race</th>
-                    <th>Rank · time</th>
-                    <th className="right">Score</th>
-                    <th className="hide-md">In the index</th>
+                  <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
+                    <th className="hidden px-4 py-3 md:table-cell">Date</th>
+                    <th className="px-4 py-3">Race</th>
+                    <th className="px-4 py-3">Rank · time</th>
+                    <th className="px-4 py-3">Score</th>
+                    <th className="hidden px-4 py-3 md:table-cell">In the index</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -383,7 +383,7 @@ export function RunnerProfilePage({ runnerId, onBack }) {
                   ))}
                   {profile.results.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="table__empty">
+                      <td colSpan={5} className="px-4 py-6 text-center text-sm text-slate-500">
                         No scored results yet.
                       </td>
                     </tr>
@@ -392,7 +392,7 @@ export function RunnerProfilePage({ runnerId, onBack }) {
               </table>
             </div>
             {profile.results.some((r) => r.is_demo) && (
-              <p className="cluster cluster--tight small muted mt-3">
+              <p className="mt-3 flex items-center gap-2 text-xs text-slate-500">
                 <DemoBadge /> Some of these results are synthetic demo data.
               </p>
             )}

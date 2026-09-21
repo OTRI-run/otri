@@ -15,27 +15,27 @@ export const NOT_MEASURED =
   'What a score does not see: how technical the ground is, mud, snow, heat or darkness. Two courses with the same profile count the same. Altitude above 1,500 m is counted.'
 
 const MARK = {
-  yes: ['Yes', 'badge badge--mint'],
-  provisional: ['Provisional', 'badge badge--amber'],
-  no: ['No', 'badge'],
+  yes: ['Yes', 'bg-emerald-50 text-emerald-700 border-emerald-200'],
+  provisional: ['Provisional', 'bg-amber-50 text-amber-700 border-amber-200'],
+  no: ['No', 'bg-slate-100 text-slate-600 border-slate-200'],
 }
 
 export function WhatWeScoreTable({ className = '' }) {
   return (
     <div className={className}>
-      <ul className="stack stack--tight">
+      <ul className="divide-y divide-slate-100">
         {WHAT_WE_SCORE.map(([state, kind, note]) => (
-          <li key={kind} className="cluster cluster--top" style={{ gap: 12, paddingBlock: 6, borderBottom: 'var(--border)' }}>
+          <li key={kind} className="grid gap-x-3 gap-y-0.5 py-2.5 sm:grid-cols-[92px_minmax(0,1fr)]">
             <span>
-              <span className={MARK[state][1]} style={{ minWidth: 96, justifyContent: 'center' }}>{MARK[state][0]}</span>
+              <span className={`inline-block rounded-full border px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[.06em] ${MARK[state][1]}`}>{MARK[state][0]}</span>
             </span>
-            <span className="small muted grow">
-              <b className="ink">{kind}.</b> {note}
+            <span className="min-w-0 text-[13px] leading-5 text-slate-600">
+              <b className="text-[#0b1220]">{kind}.</b> {note}
             </span>
           </li>
         ))}
       </ul>
-      <p className="tiny muted mt-3">{NOT_MEASURED}</p>
+      <p className="mt-2 border-t border-slate-100 pt-3 text-xs leading-5 text-slate-500">{NOT_MEASURED}</p>
     </div>
   )
 }
@@ -43,11 +43,11 @@ export function WhatWeScoreTable({ className = '' }) {
 /** The table folded behind one line, for a page where it is a side question. */
 export default function WhatWeScore({ className = '' }) {
   return (
-    <details className={`details ${className}`}>
-      <summary>
-        <span>Which races can OTRI score? Trail, road, vertical…</span>
+    <details className={`group rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 ${className}`}>
+      <summary className="cursor-pointer list-none font-semibold text-[#0b1220]">
+        <span className="text-blue-600">Which races can OTRI score? Trail, road, vertical…</span>
       </summary>
-      <WhatWeScoreTable className="details__body" />
+      <WhatWeScoreTable className="mt-2" />
     </details>
   )
 }

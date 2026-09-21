@@ -1,5 +1,5 @@
-import { useId, useRef, useState } from 'preact/compat'
-import { Search } from '../ui/icons'
+import { useId, useRef, useState } from 'react'
+import { Search } from 'lucide-react'
 import { willNavigate } from '../lib/comfort'
 
 /**
@@ -42,8 +42,8 @@ export default function SearchSuggest({ value, onChange, suggestions, placeholde
   }
 
   return (
-    <div ref={rootRef} className={`input-wrap ${className}`} onBlur={(event) => { if (!rootRef.current?.contains(event.relatedTarget)) setOpen(false) }}>
-      <Search size={18} />
+    <div ref={rootRef} className={`relative ${className}`} onBlur={(event) => { if (!rootRef.current?.contains(event.relatedTarget)) setOpen(false) }}>
+      <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
       <input
         type="search"
         role="combobox"
@@ -58,10 +58,10 @@ export default function SearchSuggest({ value, onChange, suggestions, placeholde
         onChange={(event) => { onChange(event.target.value); setOpen(true); setActive(-1) }}
         onFocus={() => setOpen(true)}
         onKeyDown={onKeyDown}
-        className="input"
+        className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-sm text-[#0b1220] outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
       />
       {shown && (
-        <ul id={listId} role="listbox" className="listbox">
+        <ul id={listId} role="listbox" className="absolute left-0 right-0 top-full z-40 mt-1 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-[0_18px_44px_rgba(15,23,42,.14)]">
           {suggestions.map((suggestion, index) => (
             <li
               key={suggestion.key}
@@ -71,13 +71,13 @@ export default function SearchSuggest({ value, onChange, suggestions, placeholde
               tabIndex={-1}
               onMouseDown={(event) => { event.preventDefault(); go(suggestion) }}
               onMouseEnter={() => setActive(index)}
-              className={`listbox__item ${suggestion.href ? '' : 'is-quiet'}`}
+              className={`flex cursor-pointer items-baseline justify-between gap-3 px-3 py-2 text-sm ${index === active ? 'bg-blue-50' : ''}`}
             >
-              <span className="truncate" style={{ fontWeight: 600 }}>{suggestion.label}</span>
-              <span className="listbox__meta">{suggestion.detail}</span>
+              <span className={`min-w-0 truncate font-medium ${suggestion.href ? 'text-[#0b1220]' : 'text-slate-500'}`}>{suggestion.label}</span>
+              <span className="shrink-0 font-mono text-[10px] text-slate-500">{suggestion.detail}</span>
             </li>
           ))}
-          <li className="listbox__hint" aria-hidden="true">↑ ↓ TO CHOOSE · ENTER TO OPEN</li>
+          <li className="border-t border-slate-100 px-3 pt-1.5 pb-1 font-mono text-[9px] tracking-[.06em] text-slate-400" aria-hidden="true">↑ ↓ TO CHOOSE · ENTER TO OPEN</li>
         </ul>
       )}
     </div>

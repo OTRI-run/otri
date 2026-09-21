@@ -1,3 +1,0 @@
-/* The public site's shell. Everything here is the frame around the pages; the pages have their own files. */
-.site { min-height: 100vh; display: flex; flex-direction: column; }
-.site > main { flex: 1; }

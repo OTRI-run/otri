@@ -1,16 +1,15 @@
-import './ScoreRace.css'
 import RankBadge from '../src/components/RankBadge'
 import ColumnsRead from '../src/components/ColumnsRead'
 import WhatWeScore from '../src/components/WhatWeScore'
 import useFileDrop from '../src/lib/useFileDrop'
 import { revealElement } from '../src/lib/comfort'
-import { Fragment, useEffect, useMemo, useState } from 'preact/compat'
-import { Alert, ArrowRight, CheckCircle, Code, Download, FileSheet, MapIcon, Share, Timer, Trophy, XCircle } from '../src/ui/icons'
+import { Fragment, useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, ArrowRight, CheckCircle2, Code2, Download, Share2, FileSpreadsheet, Map as MapIcon, Timer, Trophy, XCircle } from 'lucide-react'
 import { scoreRace } from './apiClient'
 import { saveHandoff } from './publishHandoff'
 import { ShareResults } from './SharePanel'
 import RaceNameList, { RACE_NAME_LIST } from '../src/components/RaceNameList'
-import CourseMap from '../src/components/LazyCourseMap'
+import CourseMap from '../src/components/CourseMap'
 import Flag from '../src/components/Flag'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import { modelLabel } from '../src/lib/model'
@@ -18,7 +17,7 @@ import { modelLabel } from '../src/lib/model'
 // Score my race: a course and a results file in, the validated and scored result list out. No
 // account (POST /score); the same validation and scoring as a published race, which is one click further.
 
-const CONTAINER = 'wrap'
+const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
 // The example race: a synthetic course and 100 made-up finishers (scripts/generate_example_race.py).
 const EXAMPLE = {
   name: 'OTRI Example Trail 24K',
@@ -77,25 +76,26 @@ function download(name, type, content) {
   URL.revokeObjectURL(url)
 }
 
-// One of the two files: a dropzone that shows the chosen file's name once there is one.
 function FilePick({ icon: Icon, label, hint, accept, file, onFile, disabled }) {
   return (
-    <label className={`dropzone score-race-drop ${file ? 'has-file' : ''} ${disabled ? 'is-disabled' : ''}`}>
-      <Icon size={26} />
-      <span className="dropzone__title break">{file ? file.name : label}</span>
-      <span className="dropzone__hint">{file ? 'Choose another file' : hint}</span>
-      <input type="file" accept={accept} disabled={disabled} onChange={(event) => onFile(event.target.files?.[0] ?? null)} />
+    <label className={`flex min-w-0 cursor-pointer items-center gap-3 rounded-xl focus-within:ring-2 focus-within:ring-blue-500 border border-dashed px-4 py-3 transition ${file ? 'border-blue-300 bg-blue-50/50' : 'border-slate-300 bg-white hover:border-blue-300'} ${disabled ? 'opacity-60' : ''}`}>
+      <Icon size={18} className="shrink-0 text-blue-600" />
+      <span className="min-w-0">
+        <span className="block truncate text-base font-semibold text-[#0b1220]">{file ? file.name : label}</span>
+        <span className="block text-sm text-slate-500">{file ? 'Choose another file' : hint}</span>
+      </span>
+      <input type="file" accept={accept} className="sr-only" disabled={disabled} onChange={(event) => onFile(event.target.files?.[0] ?? null)} />
     </label>
   )
 }
 
 function Issues({ issues, kind }) {
   return (
-    <ul className={`score-race-issues score-race-issues--${kind}`}>
+    <ul className="mt-2 max-h-64 space-y-1.5 overflow-auto text-sm">
       {issues.map((issue, index) => (
-        <li key={index}>
-          {issue.row != null && <span className="score-race-issues__where">Row {issue.row}</span>}
-          {issue.field && <span className="score-race-issues__where">{issue.row != null ? ' · ' : ''}{issue.field.replace(/_/g, ' ')}</span>}
+        <li key={index} className={kind === 'error' ? 'text-red-700' : 'text-amber-800'}>
+          {issue.row != null && <span className="font-mono text-xs">Row {issue.row}</span>}
+          {issue.field && <span className="font-mono text-xs">{issue.row != null ? ' · ' : ''}{issue.field.replace(/_/g, ' ')}</span>}
           {issue.row != null || issue.field ? ': ' : ''}
           {issue.message}
         </li>
@@ -106,10 +106,10 @@ function Issues({ issues, kind }) {
 
 function Tile({ label, value, sub }) {
   return (
-    <div className="card card--pad-sm stat">
-      <span className="stat__label">{label}</span>
-      <span className="stat__value score-race-stat__value">{value}</span>
-      {sub && <span className="tiny muted break">{sub}</span>}
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4">
+      <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">{label}</p>
+      <p className="mt-1 truncate text-xl font-bold tracking-[-.03em] text-[#0b1220]">{value}</p>
+      {sub && <p className="mt-0.5 text-[11px] leading-4 text-slate-500">{sub}</p>}
     </div>
   )
 }
@@ -125,58 +125,54 @@ function Scored({ result, fileStem, gpxText, children }) {
   const name = `${fileStem || 'otri'}-scored`
 
   return (
-    <section className="stack stack--loose">
-      <div className="cluster cluster--between cluster--top">
-        <div className="min0 stack stack--tight">
-          <p>
-            <span className="badge badge--mint badge--lg">
-              <CheckCircle size={13} /> Valid · {summary.finishers} finisher{summary.finishers === 1 ? '' : 's'} scored
-            </span>
+    <section className="mt-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 font-mono text-[10px] tracking-[.08em] text-emerald-700">
+            <CheckCircle2 size={13} /> VALID · {summary.finishers} FINISHER{summary.finishers === 1 ? '' : 'S'} SCORED
           </p>
-          <h2 className="otri-fit">{course.name ?? 'Your race'}</h2>
+          <h2 className="otri-fit mt-1 text-2xl font-bold leading-7 tracking-[-.03em] text-[#0b1220]">{course.name ?? 'Your race'}</h2>
         </div>
-        <div className="cluster cluster--tight">
+        <div className="flex flex-wrap gap-2">
           {summary.finishers > 0 && (
-            <button type="button" onClick={() => setSharing((open) => !open)} aria-expanded={sharing} className="btn btn--secondary">
-              <Share size={16} /> {sharing ? 'Close sharing' : 'Share the podium'}
+            <button type="button" onClick={() => setSharing((open) => !open)} aria-expanded={sharing} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-blue-600 px-4 text-xs font-semibold text-white hover:bg-blue-700">
+              <Share2 size={14} /> {sharing ? 'Close sharing' : 'Share the podium'}
             </button>
           )}
-          <button type="button" onClick={() => download(`${name}.csv`, 'text/csv;charset=utf-8', scoresCsv(result))} className="btn btn--dark">
-            <Download size={16} /> Download CSV
+          <button type="button" onClick={() => download(`${name}.csv`, 'text/csv;charset=utf-8', scoresCsv(result))} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-[#0b1220] px-4 text-xs font-semibold text-white">
+            <Download size={14} /> Download CSV
           </button>
-          <button type="button" onClick={() => download(`${name}.json`, 'application/json', JSON.stringify(result, null, 2))} className="btn btn--ghost">
-            <Download size={16} /> JSON
+          <button type="button" onClick={() => download(`${name}.json`, 'application/json', JSON.stringify(result, null, 2))} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-xs font-semibold text-[#0b1220] hover:border-blue-300">
+            <Download size={14} /> JSON
           </button>
         </div>
       </div>
 
       {sharing && (
-        <div className="card card--pad-lg">
-          <p className="h-3">An image and a post for your race's channels</p>
-          <p className="small muted mt-1">Pick who to show. The picture and the text follow, ready for Facebook, Instagram or WhatsApp.</p>
-          <div className="mt-5">
-            <ShareResults raceName={course.name} distanceKm={course.distance_km} elevationGainM={course.elevation_gain_m} scores={scores} />
-          </div>
+        <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/40 p-5">
+          <p className="text-base font-bold tracking-[-.02em] text-[#0b1220]">An image and a post for your race's channels</p>
+          <p className="mt-1 mb-4 text-sm text-slate-600">Pick who to show. The picture and the text follow, ready for Facebook, Instagram or WhatsApp.</p>
+          <ShareResults raceName={course.name} distanceKm={course.distance_km} elevationGainM={course.elevation_gain_m} scores={scores} />
         </div>
       )}
 
-      <div className="grid grid--4 grid--tight">
-        <Tile label="Course" value={`${formatDistance(course.distance_km, units)} · ${formatElevation(course.elevation_gain_m, units, { sign: '+' })}`} sub="measured from your course file" />
-        <Tile label="Confidence" value={course.confidence ?? 'n/a'} sub={course.confidence === 'High' ? 'course verified against terrain data' : 'see the notes below'} />
-        <Tile label="Best · median" value={summary.best_score != null ? `${summary.best_score} · ${summary.median_score}` : 'not scored'} sub={summary.non_finishers > 0 ? `${summary.non_finishers} did not finish` : 'every listed runner finished'} />
-        <Tile label="Model" value={modelLabel(result.scoring_version)} sub={result.scoring_version} />
+      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Tile label="COURSE" value={`${formatDistance(course.distance_km, units)} · ${formatElevation(course.elevation_gain_m, units, { sign: '+' })}`} sub="measured from your course file" />
+        <Tile label="CONFIDENCE" value={course.confidence ?? 'n/a'} sub={course.confidence === 'High' ? 'course verified against terrain data' : 'see the notes below'} />
+        <Tile label="BEST · MEDIAN" value={summary.best_score != null ? `${summary.best_score} · ${summary.median_score}` : 'not scored'} sub={summary.non_finishers > 0 ? `${summary.non_finishers} did not finish` : 'every listed runner finished'} />
+        <Tile label="MODEL" value={modelLabel(result.scoring_version)} sub={result.scoring_version} />
       </div>
 
       {gpxText && (
-        <div className="card card--flush">
-          <CourseMap gpxText={gpxText} measurement={result.measurement} className="card__body" />
+        <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <CourseMap gpxText={gpxText} measurement={result.measurement} className="p-3" />
         </div>
       )}
 
       {reasons.length > 0 && (
-        <div className="notice notice--warning">
-          <Alert size={18} />
-          <ul className="notice__body score-race-reasons">
+        <div className="mt-3 flex gap-3 rounded-xl border border-amber-100 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
+          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+          <ul className="min-w-0 space-y-1">
             {reasons.map((reason) => (
               <li key={reason}>{reason}</li>
             ))}
@@ -184,62 +180,56 @@ function Scored({ result, fileStem, gpxText, children }) {
         </div>
       )}
       {flags.length > 0 && (
-        <details className="details details--quiet">
-          <summary>{flags.length} quality flag{flags.length === 1 ? '' : 's'} from the course measurement and the model</summary>
-          <ul className="details__body score-race-flags">
+        <details className="mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
+          <summary className="cursor-pointer font-semibold text-[#0b1220]">{flags.length} quality flag{flags.length === 1 ? '' : 's'} from the course measurement and the model</summary>
+          <ul className="mt-2 space-y-1 font-mono text-[11px] text-slate-500">
             {flags.map((flag) => (
-              <li key={flag}>{flag}</li>
+              <li key={flag} className="break-words">{flag}</li>
             ))}
           </ul>
         </details>
       )}
       {result.warnings.length > 0 && (
-        <section className="notice notice--warning notice--plain">
-          <div className="notice__body">
-            <h3 className="notice__title">{result.warnings.length} note{result.warnings.length === 1 ? '' : 's'} on the results file (nothing that blocks scoring)</h3>
-            <Issues issues={result.warnings} kind="warning" />
-          </div>
-        </section>
+        <details className="mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
+          <summary className="cursor-pointer font-semibold text-[#0b1220]">{result.warnings.length} note{result.warnings.length === 1 ? '' : 's'} on the results file (nothing that blocks scoring)</summary>
+          <Issues issues={result.warnings} kind="warning" />
+        </details>
       )}
-      <ColumnsRead columns={result.columns} ignored={result.ignored_columns} />
+      <ColumnsRead columns={result.columns} ignored={result.ignored_columns} className="mt-3" />
 
       {children}
 
-      <div>
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Runner</th>
-                <th>Country</th>
-                <th>Gender</th>
-                <th>Bib</th>
-                <th className="num">Time</th>
-                <th className="num right">OTRI</th>
+      <div className="mt-8 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+        <table className="w-full min-w-[680px] text-left text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
+              <th className="px-3 py-2">Rank</th>
+              <th className="px-3 py-2">Runner</th>
+              <th className="px-3 py-2">Country</th>
+              <th className="px-3 py-2">Gender</th>
+              <th className="px-3 py-2">Bib</th>
+              <th className="px-3 py-2">Time</th>
+              <th className="px-3 py-2 text-right">OTRI</th>
+            </tr>
+          </thead>
+          <tbody>
+            {scores.slice(0, visible).map((row, index) => (
+              <tr key={`${index}-${row.rank}`} className="border-b border-slate-100 last:border-0 odd:bg-white even:bg-slate-50/70 hover:bg-blue-50/50">
+                <td className="px-3 py-2 font-mono text-xs text-slate-500"><RankBadge rank={row.rank} /></td>
+                <td className="px-3 py-2 font-medium text-[#0b1220]">{row.first_name} {row.family_name}</td>
+                <td className="px-3 py-2">{row.nationality ? <Flag code={row.nationality} /> : <span className="text-slate-300">—</span>}</td>
+                <td className="px-3 py-2 font-mono text-xs text-slate-500">{row.gender || '—'}</td>
+                <td className="px-3 py-2 font-mono text-xs text-slate-500">{row.bib_number ?? '—'}</td>
+                <td className="px-3 py-2 font-mono text-xs text-slate-600">{formatHms(row.finish_time_seconds) || '—'}</td>
+                <td className="px-3 py-2 text-right font-mono font-bold text-blue-600">{row.otri_score ?? <span className="font-normal text-slate-400">{row.status === 'finisher' ? 'not scored' : row.status}</span>}</td>
               </tr>
-            </thead>
-            <tbody>
-              {scores.slice(0, visible).map((row, index) => (
-                <tr key={`${index}-${row.rank}`} className={row.status !== 'finisher' ? 'is-muted' : ''}>
-                  <td className="num"><RankBadge rank={row.rank} /></td>
-                  <td className="score-race-runner">{row.first_name} {row.family_name}</td>
-                  <td>{row.nationality ? <Flag code={row.nationality} /> : <span className="muted">—</span>}</td>
-                  <td className="mono">{row.gender || '—'}</td>
-                  <td className="mono">{row.bib_number ?? '—'}</td>
-                  <td className="num">{formatHms(row.finish_time_seconds) || '—'}</td>
-                  <td className="right">{row.otri_score != null ? <span className="score">{row.otri_score}</span> : <span className="tiny muted mono">{row.status === 'finisher' ? 'not scored' : row.status}</span>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
         {scores.length > visible && (
-          <div className="cluster cluster--center mt-4">
-            <button type="button" onClick={() => setVisible((n) => n + 500)} className="btn btn--secondary">
-              Show more · {scores.length - visible} rows left (the download has them all)
-            </button>
-          </div>
+          <button type="button" onClick={() => setVisible((n) => n + 500)} className="w-full border-t border-slate-100 px-3 py-2.5 text-xs font-semibold text-blue-600 hover:bg-slate-50">
+            Show more · {scores.length - visible} rows left (the download has them all)
+          </button>
         )}
       </div>
     </section>
@@ -264,29 +254,29 @@ function ExampleRace({ onUse, busy, rowsOpen, onToggleRows }) {
 
   // Sits in the form, under "Validate and score": the place someone looks when they have no files.
   return (
-    <div className="score-race-example">
-      <p className="eyebrow eyebrow--plain eyebrow--sm">Just trying it out?</p>
+    <div className="mt-4 border-t border-slate-200 pt-4">
+      <p className="text-center font-mono text-[9px] tracking-[.08em] text-slate-500">JUST TRYING IT OUT?</p>
       <button
         type="button"
         onClick={use}
         disabled={busy || state === 'loading'}
-        className="btn btn--secondary btn--sm mt-2"
+        className="mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-[13px] font-semibold text-[#0b1220] transition hover:border-blue-300 disabled:opacity-60"
       >
         {state === 'loading' ? 'Loading the example…' : 'Try with sample files'}
       </button>
-      <section className="mt-3">
-        <h3 className="h-4">Preview or download sample files</h3>
-        <p className="small muted">Demo course · 100 sample finishers.{' '}
-        <button type="button" onClick={onToggleRows} aria-expanded={rowsOpen} aria-controls="example-rows" className="link">
+      <details className="mt-2 text-center text-xs leading-5 text-slate-500">
+        <summary className="cursor-pointer">Preview or download sample files</summary>
+        <p className="mt-2">Demo course · 100 sample finishers.{' '}
+        <button type="button" onClick={onToggleRows} aria-expanded={rowsOpen} aria-controls="example-rows" className="font-semibold text-blue-600 hover:underline">
           {rowsOpen ? 'Hide' : 'Show'} rows
         </button>
         {' · '}
-        <a href={EXAMPLE.results.url} download={EXAMPLE.results.file} className="link">CSV</a>
+        <a href={EXAMPLE.results.url} download={EXAMPLE.results.file} className="font-semibold text-blue-600 no-underline hover:underline">CSV</a>
         {' · '}
-        <a href={EXAMPLE.course.url} download={EXAMPLE.course.file} className="link">GPX</a>
+        <a href={EXAMPLE.course.url} download={EXAMPLE.course.file} className="font-semibold text-blue-600 no-underline hover:underline">GPX</a>
         </p>
-      </section>
-      {state === 'failed' && <p className="field__error mt-2">The example files could not be loaded. Try again in a moment.</p>}
+      </details>
+      {state === 'failed' && <p className="mt-2 text-center text-xs text-red-600">The example files could not be loaded. Try again in a moment.</p>}
     </div>
   )
 }
@@ -305,25 +295,25 @@ function ExampleRows({ onClose }) {
   const body = rows?.slice(1) ?? []
   const shown = [...body.slice(0, EXAMPLE_ROWS_SHOWN), ...body.slice(-2)]
   return (
-    <div id="example-rows" className="card card--flush mt-8">
-      <div className="card__head">
-        <div className="min0">
-          <p className="eyebrow eyebrow--plain">The example results file · {EXAMPLE.results.file}</p>
-          <p className="small muted mt-1">A finisher needs a rank, a time, a name and a gender; DNF and DNS rows carry their status instead of a time. Any file laid out like this passes.</p>
+    <div id="example-rows" className="min-w-0 scroll-mt-24 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)] lg:col-span-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-3">
+        <div className="min-w-0">
+          <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">THE EXAMPLE RESULTS FILE · {EXAMPLE.results.file}</p>
+          <p className="mt-0.5 text-sm text-slate-600">A finisher needs a rank, a time, a name and a gender; DNF and DNS rows carry their status instead of a time. Any file laid out like this passes.</p>
         </div>
-        <button type="button" onClick={onClose} className="btn btn--ghost btn--sm">Hide rows</button>
+        <button type="button" onClick={onClose} className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-[#0b1220] hover:border-blue-300">Hide rows</button>
       </div>
       {rows === null ? (
-        <p className="loading card__body"><span className="spinner" /> Loading the rows…</p>
+        <p className="px-5 py-4 text-sm text-slate-500">Loading the rows…</p>
       ) : rows.length === 0 ? (
-        <p className="card__body muted small">The example file could not be loaded. Try again in a moment.</p>
+        <p className="px-5 py-4 text-sm text-red-600">The example file could not be loaded. Try again in a moment.</p>
       ) : (
-        <div className="score-race-rows">
-          <table className="table table--tight table--flush">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left font-mono text-[12px]">
             <thead>
-              <tr>
+              <tr className="bg-slate-50 text-[10px] uppercase tracking-[.06em] text-slate-500">
                 {header.map((cell) => (
-                  <th key={cell}>{cell}</th>
+                  <th key={cell} className="whitespace-nowrap px-4 py-2.5 font-semibold">{cell}</th>
                 ))}
               </tr>
             </thead>
@@ -331,13 +321,13 @@ function ExampleRows({ onClose }) {
               {shown.map((row, index) => (
                 <Fragment key={index}>
                   {index === EXAMPLE_ROWS_SHOWN && (
-                    <tr className="is-muted">
-                      <td colSpan={header.length} className="center mono tiny">… {body.length - shown.length} more rows …</td>
+                    <tr className="border-t border-slate-100 bg-white text-slate-400">
+                      <td colSpan={header.length} className="px-4 py-2 text-center">… {body.length - shown.length} more rows …</td>
                     </tr>
                   )}
-                  <tr>
+                  <tr className="border-t border-slate-100 text-[#0b1220] odd:bg-white even:bg-slate-50/70">
                     {row.map((cell, column) => (
-                      <td key={column} className="mono nowrap">{cell || <span className="muted">—</span>}</td>
+                      <td key={column} className="whitespace-nowrap px-4 py-2">{cell || <span className="text-slate-300">—</span>}</td>
                     ))}
                   </tr>
                 </Fragment>
@@ -368,37 +358,37 @@ function PublishInvite({ result, files }) {
   }
 
   return (
-    <section className="card card--strong card--pad-lg topo--faint score-race-publish">
-      <div className="grid grid--aside">
-        <div className="stack">
-          <p className="eyebrow">The hard part is done</p>
-          <h2 className="h-1">
+    <section className="mt-8 overflow-hidden rounded-2xl bg-gradient-to-br from-[#0b1220] via-[#10204a] to-blue-700 p-6 text-white shadow-[0_18px_44px_rgba(15,23,42,.18)] sm:p-8">
+      <div className="grid min-w-0 items-center gap-8 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] tracking-[.1em] text-blue-200">THE HARD PART IS DONE</p>
+          <h2 className="mt-2 text-[clamp(24px,3.2vw,34px)] font-bold leading-[1.1] tracking-[-.04em]">
             Give every runner a page to find their score.
           </h2>
-          <p className="muted">
+          <p className="mt-3 max-w-[620px] text-sm leading-6 text-blue-100">
             Publish this race on OTRI: the course and these results come with you, so there is nothing to upload again. It is free, there is no approval to wait for, and you can take it down whenever you like.
           </p>
-          <ul className="score-race-publish__list">
+          <ul className="mt-5 grid gap-x-6 gap-y-2 text-sm text-white sm:grid-cols-2">
             {[
               [Trophy, 'A public leaderboard with every score explained'],
               [MapIcon, 'Your course on a map, measured and verified'],
               [Timer, 'Runners try a target time for next year'],
-              [Code, 'The calculator on your own website, one line of HTML'],
+              [Code2, 'The calculator on your own website, one line of HTML'],
             ].map(([Icon, text]) => (
-              <li key={text}>
-                <span className="icon-box icon-box--quiet icon-box--sm"><Icon size={16} /></span> {text}
+              <li key={text} className="flex items-start gap-2">
+                <Icon size={16} className="mt-0.5 shrink-0 text-cyan-300" /> {text}
               </li>
             ))}
           </ul>
         </div>
-        <div className="stack score-race-publish__action">
-          <button type="button" onClick={publish} disabled={state === 'saving'} className="btn btn--primary btn--lg score-race-publish__button">
-            {state === 'saving' ? 'One moment…' : <>Publish this race <ArrowRight size={18} /></>}
+        <div className="min-w-0 lg:w-[270px]">
+          <button type="button" onClick={publish} disabled={state === 'saving'} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#0b1220] shadow-lg transition hover:bg-blue-50 disabled:opacity-70">
+            {state === 'saving' ? 'One moment…' : <>Publish this race <ArrowRight size={16} /></>}
           </button>
-          <p className="small muted">Two minutes: an email address, the race date, done. Nothing is public until you press Publish.</p>
+          <p className="mt-3 text-center text-xs leading-5 text-blue-200">Two minutes: an email address, the race date, done. Nothing is public until you press Publish.</p>
           {state === 'failed' && (
-            <p className="field__error">
-              This browser would not keep the files. <a href="organizer/" className="link">Create the account</a> and add the two files there.
+            <p className="mt-2 text-center text-xs text-amber-200">
+              This browser would not keep the files. <a href="organizer/" className="font-semibold text-white underline">Create the account</a> and add the two files there.
             </p>
           )}
         </div>
@@ -479,116 +469,102 @@ export default function ScoreRace() {
     onReject: setError,
   })
 
-  const input = 'input'
+  const input = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-[#0b1220] outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100'
 
   return (
     <>
-      <section className="section topo" data-tool-page="score">
-        <div className={CONTAINER}>
-          <div className="section-head">
-            <span className="waypoint waypoint--volt section-head__no">02</span>
-            <div className="stack">
-              <p className="eyebrow">For organizers / every finisher</p>
-              <h1 className="display-2">Score all finishers</h1>
-            </div>
-            <div className="stack stack--tight">
-              <p className="lead">Add your course and results. Get a score for every finisher.</p>
-              <p className="facts"><span>Free · No account needed</span></p>
-            </div>
+      <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
+        <div className={`${CONTAINER} py-8 sm:py-12`}>
+          <div className="mx-auto max-w-[680px]">
+          <div className="mb-6 text-center">
+            <h1 className="text-[clamp(30px,5vw,44px)] font-bold leading-tight tracking-[-.04em] text-[#0b1220]">Score all finishers</h1>
+            <p className="mt-2 text-base text-slate-600">Add your course and results. Get a score for every finisher.</p>
+            <p className="mt-3 text-xs text-slate-500">Free · No account needed</p>
           </div>
 
-          <div className="grid grid--aside-narrow mt-10">
-            <form onSubmit={submit} {...dropProps} className={`card card--pad-lg score-race-form ${dragging ? 'is-dragging' : ''}`}>
-              {dragging && <p className="score-race-form__drop">Drop the course (.gpx) and the results (.csv, .xlsx) here, together or one at a time</p>}
-              <div className="grid grid--2">
-                <div className="stack stack--tight">
-                  <p className="eyebrow eyebrow--plain">1 · Add the course</p>
-                  <FilePick icon={MapIcon} label="Upload course" hint="GPX route file · Up to 20 MB" accept=".gpx,application/gpx+xml" file={gpx} onFile={setGpx} disabled={busy} />
-                </div>
-                <div className="stack stack--tight">
-                  <p className="eyebrow eyebrow--plain">2 · Add the results</p>
-                  <FilePick icon={FileSheet} label="Upload results" hint="CSV or Excel · Runner names and finish times" accept=".csv,.tsv,.txt,.xlsx,.xlsm,text/csv" file={results} onFile={setResults} disabled={busy} />
-                </div>
-              </div>
-              <div className="field mt-6">
-                <label htmlFor="score-race-name" className="field__label">
-                  Race name <span className="optional">(optional)</span>
-                </label>
-                <input id="score-race-name" value={raceName} onChange={(e) => setRaceName(e.target.value)} maxLength={200} list={RACE_NAME_LIST} autoComplete="off" className={input} placeholder="Doi Suthep Trail 30K" />
-                <RaceNameList />
-              </div>
+          <form onSubmit={submit} {...dropProps} className={`min-w-0 rounded-2xl border bg-white p-5 shadow-[0_18px_44px_rgba(15,23,42,.07)] transition sm:p-6 ${dragging ? 'border-blue-500 ring-4 ring-blue-100' : 'border-slate-200'}`}>
+            {dragging && <p className="mb-3 rounded-lg bg-blue-50 px-3 py-2 text-center text-xs font-semibold text-blue-700">Drop the course (.gpx) and the results (.csv, .xlsx) here, together or one at a time</p>}
+            <p className="text-base font-semibold text-blue-700">1 · Add the course</p>
+            <div className="mt-2">
+              <FilePick icon={MapIcon} label="Upload course" hint="GPX route file · Up to 20 MB" accept=".gpx,application/gpx+xml" file={gpx} onFile={setGpx} disabled={busy} />
+            </div>
 
-              {error && (
-                <div id="score-error" role="alert" className="notice notice--error mt-5">
-                  <XCircle size={18} />
-                  <div className="notice__body">{error}</div>
-                </div>
-              )}
-              <div className="cluster mt-6">
-                <button type="submit" disabled={busy || Boolean(missing)} aria-busy={busy || undefined} className="btn btn--primary btn--lg">
-                  {busy && <span aria-hidden="true" className="spinner" />}
-                  {busy ? 'Calculating scores…' : <>Calculate scores <ArrowRight size={18} /></>}
-                </button>
-                {!busy && missing && <p className="small muted">{missing}</p>}
+            <p className="mt-5 text-base font-semibold text-blue-700">2 · Add the results</p>
+            <div className="mt-2">
+              <FilePick icon={FileSpreadsheet} label="Upload results" hint="CSV or Excel · Runner names and finish times" accept=".csv,.tsv,.txt,.xlsx,.xlsm,text/csv" file={results} onFile={setResults} disabled={busy} />
+            </div>
+
+            <details className="mt-4">
+              <summary className="cursor-pointer text-xs font-semibold text-slate-600">Add a race name (optional)</summary>
+            <label className="mt-3 block font-mono text-[9px] tracking-[.08em] text-slate-500">
+              RACE NAME
+              <input value={raceName} onChange={(e) => setRaceName(e.target.value)} maxLength={200} list={RACE_NAME_LIST} autoComplete="off" className={`${input} mt-2 font-sans tracking-normal`} placeholder="Doi Suthep Trail 30K" />
+              <RaceNameList />
+            </label>
+            </details>
+
+            {error && (
+              <div id="score-error" role="alert" className="mt-4 flex gap-2 rounded-xl border border-red-100 bg-red-50/70 px-3 py-2.5 text-sm text-red-900">
+                <XCircle size={16} className="mt-0.5 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
               </div>
-              <ExampleRace onUse={useExample} busy={busy} rowsOpen={rowsOpen} onToggleRows={() => setRowsOpen((open) => !open)} />
-            </form>
-            <aside className="stack">
-              <section className="card">
-                <h3 className="h-3">Need help with your files?</h3>
-                <p className="small mt-3"><b>Course:</b> upload the route as a GPX file. Distance and elevation totals alone are not enough.</p>
-                <p className="small mt-2"><b>Results:</b> upload your timing export or spreadsheet with runner names and finish times. CSV, TSV and Excel (.xlsx or .xlsm) are supported.</p>
-                <p className="small muted mt-2">You can also drop both files onto the form. After scoring, download the scores or choose to publish a race page.</p>
-              </section>
-              <WhatWeScore />
-            </aside>
+            )}
+            <button type="submit" disabled={busy || Boolean(missing)} className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 px-4 text-[13px] font-semibold text-white shadow-[0_10px_28px_rgba(37,99,235,.2)] transition hover:from-blue-800 hover:to-blue-600 disabled:cursor-not-allowed disabled:opacity-50">
+              {busy ? 'Calculating scores…' : <>Calculate scores <ArrowRight size={15} /></>}
+            </button>
+            {!busy && missing && <p className="mt-2 text-center text-xs text-slate-500">{missing}</p>}
+            <ExampleRace onUse={useExample} busy={busy} rowsOpen={rowsOpen} onToggleRows={() => setRowsOpen((open) => !open)} />
+          </form>
+          <details className="mt-4 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+            <summary className="cursor-pointer font-semibold text-blue-700">Need help with your files?</summary>
+            <p className="mt-3 leading-6"><b>Course:</b> upload the route as a GPX file. Distance and elevation totals alone are not enough.</p>
+            <p className="mt-2 leading-6"><b>Results:</b> upload your timing export or spreadsheet with runner names and finish times. CSV, TSV and Excel (.xlsx or .xlsm) are supported.</p>
+            <p className="mt-2 leading-6">You can also drop both files onto the form. After scoring, download the scores or choose to publish a race page.</p>
+          </details>
+          <WhatWeScore className="mt-2" />
           </div>
           {rowsOpen && <ExampleRows onClose={() => setRowsOpen(false)} />}
         </div>
       </section>
 
-      <section className="section section--tight">
-        <div id="score-result" className={`${CONTAINER} stack stack--loose`}>
-          {result && !result.is_valid && (
-            <section className="card card--pad-lg stack">
-              <div className="notice notice--error">
-                <XCircle size={18} />
-                <p className="notice__body notice__title">The results file needs {result.errors.length} fix{result.errors.length === 1 ? '' : 'es'} before it can be scored.</p>
-              </div>
-              <Issues issues={result.errors} kind="error" />
-              {result.warnings.length > 0 && <Issues issues={result.warnings} kind="warning" />}
-              <ColumnsRead columns={result.columns} ignored={result.ignored_columns} />
-              <p className="small muted">
-                Correct the file and score it again. If OTRI picked the wrong column of your export, or did not recognise one,{' '}
-                <a href="https://github.com/OTRI-run/otri/issues/new" className="link">tell us the column names</a> and
-                we will add them.
-              </p>
-            </section>
-          )}
-          {result?.is_valid && (
-            <Scored result={result} gpxText={scoredFiles?.gpxText} fileStem={(result.course.name ?? results?.name ?? '').replace(/\.[a-z]+$/i, '').replace(/[^\w-]+/g, '-').toLowerCase()}>
-              {result.summary.finishers > 0 && scoredFiles && <PublishInvite result={result} files={scoredFiles} />}
-            </Scored>
-          )}
-
-          <section className="score-race-more">
-            <h3 className="h-3">Publishing, website tools and scoring help</h3>
-            <div className="grid grid--3 mt-5">
-              {[
-                ['Want a public race page?', 'Score the race here first, then press Publish this race: the course and the results come with you into a free organizer account. No approval, and you decide when it goes public.', 'organizer/', 'Or start with an account'],
-                ['Put the calculator on your site', 'Runners try a target time on your course before race day. One line of HTML, no account, free.', '#api', 'Embed the calculator'],
-                ['How is a score worked out?', 'Course demand from the measured track, against a published human ceiling. Every step is documented and versioned.', '#faq', 'Read the answers'],
-              ].map(([title, text, href, cta]) => (
-                <a key={title} href={href} className="card card--link stack stack--tight">
-                  <strong className="h-4">{title}</strong>
-                  <span className="small muted">{text}</span>
-                  <span className="link link--arrow small mt-1">{cta} <ArrowRight size={15} /></span>
-                </a>
-              ))}
-            </div>
+      <div id="score-result" className={`${CONTAINER} scroll-mt-20 pb-20`}>
+        {result && !result.is_valid && (
+          <section className="mt-8 rounded-2xl border border-red-100 bg-white p-5">
+            <p className="flex items-center gap-2 text-sm font-semibold text-red-800">
+              <XCircle size={16} /> The results file needs {result.errors.length} fix{result.errors.length === 1 ? '' : 'es'} before it can be scored.
+            </p>
+            <Issues issues={result.errors} kind="error" />
+            {result.warnings.length > 0 && <Issues issues={result.warnings} kind="warning" />}
+            <ColumnsRead columns={result.columns} ignored={result.ignored_columns} className="mt-4" />
+            <p className="mt-3 text-xs text-slate-500">
+              Correct the file and score it again. If OTRI picked the wrong column of your export, or did not recognise one,{' '}
+              <a href="https://github.com/OTRI-run/otri/issues/new" className="font-semibold text-blue-600 no-underline hover:underline">tell us the column names</a> and
+              we will add them.
+            </p>
           </section>
-        </div>
-      </section>
+        )}
+        {result?.is_valid && (
+          <Scored result={result} gpxText={scoredFiles?.gpxText} fileStem={(result.course.name ?? results?.name ?? '').replace(/\.[a-z]+$/i, '').replace(/[^\w-]+/g, '-').toLowerCase()}>
+            {result.summary.finishers > 0 && scoredFiles && <PublishInvite result={result} files={scoredFiles} />}
+          </Scored>
+        )}
+
+        <details className="mt-6">
+          <summary className="cursor-pointer text-sm font-semibold text-blue-700">Publishing, website tools and scoring help</summary>
+        <section className="mt-4 grid gap-4 md:grid-cols-3">
+          {[
+            ['Want a public race page?', 'Score the race here first, then press Publish this race: the course and the results come with you into a free organizer account. No approval, and you decide when it goes public.', 'organizer/', 'Or start with an account'],
+            ['Put the calculator on your site', 'Runners try a target time on your course before race day. One line of HTML, no account, free.', '#api', 'Embed the calculator'],
+            ['How is a score worked out?', 'Course demand from the measured track, against a published human ceiling. Every step is documented and versioned.', '#faq', 'Read the answers'],
+          ].map(([title, text, href, cta]) => (
+            <a key={title} href={href} className="group block rounded-2xl border border-slate-200 bg-white p-5 no-underline transition hover:border-blue-300">
+              <p className="text-base font-bold tracking-[-.02em] text-[#0b1220]">{title}</p>
+              <p className="mt-1.5 text-sm leading-6 text-slate-600">{text}</p>
+              <p className="mt-3 flex items-center gap-1 text-xs font-semibold text-blue-600">{cta} <ArrowRight size={13} className="transition group-hover:translate-x-0.5" /></p>
+            </a>
+          ))}
+        </section>
+        </details>
+      </div>
     </>
   )
 }

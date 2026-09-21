@@ -1,4 +1,4 @@
-import { useRef, useState } from 'preact/compat'
+import { useRef, useState } from 'react'
 import { fileMatches } from './comfort'
 
 /**

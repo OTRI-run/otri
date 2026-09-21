@@ -1,33 +1,16 @@
 {
-  "name": "OTRI \u00b7 Open Trail Running Index",
+  "name": "OTRI · Open Trail Running Index",
   "short_name": "OTRI",
   "description": "One comparable score for any trail race: open, transparent, reproducible.",
   "start_url": "/prototype/",
   "scope": "/",
   "display": "browser",
-  "background_color": "#0b131a",
-  "theme_color": "#0b131a",
+  "background_color": "#f7f9fc",
+  "theme_color": "#0b1220",
   "icons": [
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon-maskable-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml"
-    }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
   ]
 }

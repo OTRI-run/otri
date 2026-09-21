@@ -31,20 +31,20 @@ export function assessPassword(password, email) {
 export default function PasswordStrength({ password, email }) {
   const { score, label, problems } = assessPassword(password, email)
   if (!password) {
-    return <p className="field__hint">At least {PASSWORD_MIN} characters. A few unrelated words beat a short jumble; length is what counts.</p>
+    return <p className="mt-1 text-xs text-slate-500">At least {PASSWORD_MIN} characters. A few unrelated words beat a short jumble; length is what counts.</p>
   }
-  const colors = ['', 'var(--rose-deep)', 'var(--amber-deep)', 'var(--cyan-deep)', 'var(--cyan-deep)']
+  const colors = ['bg-slate-300', 'bg-red-500', 'bg-amber-500', 'bg-blue-500', 'bg-emerald-500']
   return (
-    <div className="stack stack--tight mt-1" aria-live="polite">
-      <div className="meter meter--bands meter--thin" aria-hidden="true">
+    <div className="mt-2" aria-live="polite">
+      <div className="flex gap-1" aria-hidden="true">
         {[1, 2, 3, 4].map((step) => (
-          <span key={step} className={step <= score ? 'is-on' : ''} style={step <= score ? { background: colors[score] } : undefined} />
+          <span key={step} className={`h-1.5 flex-1 rounded-full ${step <= score ? colors[score] : 'bg-slate-200'}`} />
         ))}
       </div>
-      <p className="tiny">
-        <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{label}</span>
-        {problems.length > 0 && <span className="muted"> · {problems[0]}</span>}
-        {problems.length === 0 && score < 3 && <span className="muted"> · longer is stronger</span>}
+      <p className="mt-1 text-xs text-slate-600">
+        <span className="font-semibold capitalize">{label}</span>
+        {problems.length > 0 && <span className="text-slate-500"> · {problems[0]}</span>}
+        {problems.length === 0 && score < 3 && <span className="text-slate-500"> · longer is stronger</span>}
       </p>
     </div>
   )

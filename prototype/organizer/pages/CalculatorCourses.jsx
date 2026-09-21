@@ -1,6 +1,5 @@
-import './CalculatorCourses.css'
-import { useEffect, useState } from 'preact/compat'
-import { ArrowUpRight, Pencil, Trash } from '../../../src/ui/icons'
+import { useEffect, useState } from 'react'
+import { ArrowUpRight, Pencil, Trash2 } from 'lucide-react'
 import { addCalculatorCourse, deleteCalculatorCourse, listCalculatorCourses, updateCalculatorCourse } from '../../apiClient'
 import { revealElement } from '../../../src/lib/comfort'
 import CountrySelect from '../../../src/components/CountrySelect'
@@ -87,24 +86,24 @@ export default function CalculatorCourses({ session }) {
   const missing = !file && !editing ? 'Choose the GPX file.' : !form.event_name.trim() ? 'Enter the race name.' : !form.course_name.trim() ? 'Enter the distance name.' : null
 
   return (
-    <div className="courses-layout">
+    <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
       <Card>
-        <div id="cc-form" className="courses-anchor">
+        <div id="cc-form" className="scroll-mt-24 outline-none">
           <Eyebrow>{editing ? 'EDIT THE COURSE' : 'ADD A COURSE TO THE CALCULATOR'}</Eyebrow>
         </div>
         {editing ? (
-          <p className="small muted mt-1">
-            Changing <b className="ink">{editing.event_name} · {editing.course_name}</b>. Leave the file empty to keep its course
+          <p className="mt-1 text-sm leading-6 text-slate-600">
+            Changing <b className="text-[#0b1220]">{editing.event_name} · {editing.course_name}</b>. Leave the file empty to keep its course
             ({formatDistance(editing.distance_km, units)}, {formatElevation(editing.elevation_gain_m, units, { sign: '+' })}); drop a GPX to replace it, and it is
             measured again. An emptied field is cleared.
           </p>
         ) : (
-          <p className="small muted mt-1">
+          <p className="mt-1 text-sm leading-6 text-slate-600">
             A race name and its GPX. The course is measured and appears under “Pick a race” in the calculator for every visitor. It does not
             appear on the races page and nobody is asked for results. Use course files their organizers publish, and say where you got it.
           </p>
         )}
-        <form onSubmit={submit} className="stack mt-4" noValidate>
+        <form onSubmit={submit} className="mt-4 grid gap-4" noValidate>
           <Dropzone
             id="cc-file"
             accept=".gpx"
@@ -123,7 +122,7 @@ export default function CalculatorCourses({ session }) {
             <input id="cc-course" required value={form.course_name} onChange={set('course_name')} list={DISTANCE_NAME_LIST} autoComplete="off" className={inputClass} placeholder="120K" />
             <DistanceNameList />
           </Field>
-          <div className="grid grid--2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Location" htmlFor="cc-location" hint="Optional.">
               <input
                 id="cc-location"
@@ -147,44 +146,44 @@ export default function CalculatorCourses({ session }) {
           {added && (
             <Notice kind="success" title={`${added.wasEdit ? 'Saved' : 'Added'}: ${added.event_name} · ${added.course_name}`}>
               Measured at {formatDistance(added.distance_km, units)} and {formatElevation(added.elevation_gain_m, units, { sign: '+' })}.{' '}
-              <a href={`../#calculator?race=${encodeURIComponent(added.race_id)}`} className="link">Open it in the calculator</a>
+              <a href={`../#calculator?race=${encodeURIComponent(added.race_id)}`} className="font-semibold text-blue-600">Open it in the calculator</a>
             </Notice>
           )}
           <div>
-            <div className="cluster">
+            <div className="flex flex-wrap gap-3">
               <Button type="submit" busy={busy} disabled={Boolean(missing)}>{editing ? (file ? 'Measure and save' : 'Save changes') : 'Measure and add'}</Button>
               {editing && <Button type="button" variant="secondary" onClick={stopEditing}>Cancel</Button>}
             </div>
-            {!busy && missing && <p className="tiny muted mt-2">{missing}</p>}
+            {!busy && missing && <p className="mt-2 text-xs text-slate-500">{missing}</p>}
           </div>
         </form>
       </Card>
 
-      <div className="min0">
-        <p className="eyebrow eyebrow--plain">{rows ? `${rows.length} COURSE${rows.length === 1 ? '' : 'S'} IN THE CALCULATOR` : 'LOADING…'}</p>
-        {rows?.length === 0 && <p className="small muted mt-3">None yet. Races their organizers published or listed are offered in the calculator as well; these are the ones you add by hand.</p>}
-        <ul className="courses-list mt-3">
+      <div className="min-w-0">
+        <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">{rows ? `${rows.length} COURSE${rows.length === 1 ? '' : 'S'} IN THE CALCULATOR` : 'LOADING…'}</p>
+        {rows?.length === 0 && <p className="mt-3 text-sm text-slate-500">None yet. Races their organizers published or listed are offered in the calculator as well; these are the ones you add by hand.</p>}
+        <ul className="mt-3 divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white">
           {(rows ?? []).map((row) => (
-            <li key={row.race_id} className={`courses-row ${editing?.race_id === row.race_id ? 'is-editing' : ''}`}>
-              <div className="min0">
-                <p className="small truncate courses-row__name">{row.event_name} · {row.course_name}</p>
-                <p className="card__meta mt-1">
+            <li key={row.race_id} className={`flex min-w-0 flex-wrap items-center justify-between gap-3 px-4 py-3 ${editing?.race_id === row.race_id ? 'bg-blue-50/60' : ''}`}>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-[#0b1220]">{row.event_name} · {row.course_name}</p>
+                <p className="mt-0.5 font-mono text-[10px] text-slate-500">
                   {formatDistance(row.distance_km, units)} · {formatElevation(row.elevation_gain_m, units, { sign: '+' })}
                   {row.event_location ? ` · ${row.event_location}` : ''}{row.event_country ? ` · ${row.event_country}` : ''}
                 </p>
                 {row.source_url && (
-                  <a href={row.source_url} target="_blank" rel="noreferrer" className="link link--quiet tiny courses-row__source">
+                  <a href={row.source_url} target="_blank" rel="noreferrer" className="mt-0.5 inline-flex max-w-full items-center gap-1 truncate text-[11px] text-blue-600 no-underline hover:underline">
                     {row.source_url.replace(/^https?:\/\//, '')} <ArrowUpRight size={11} />
                   </a>
                 )}
               </div>
-              <div className="cluster cluster--tight courses-row__actions">
-                <a href={`../#calculator?race=${encodeURIComponent(row.race_id)}`} className="btn btn--secondary btn--sm">Open</a>
-                <Button variant="secondary" className="btn--sm" onClick={() => startEditing(row)}>
+              <div className="flex shrink-0 items-center gap-2">
+                <a href={`../#calculator?race=${encodeURIComponent(row.race_id)}`} className="inline-flex min-h-9 items-center rounded-lg border border-slate-300 px-3 text-xs font-semibold text-[#0b1220] no-underline hover:border-blue-300">Open</a>
+                <Button variant="secondary" className="min-h-9 px-3 text-xs" onClick={() => startEditing(row)}>
                   <Pencil size={13} /> Edit
                 </Button>
-                <Button variant="secondary" busy={busyId === row.race_id} className="btn--sm" onClick={() => remove(row)}>
-                  <Trash size={13} /> Remove
+                <Button variant="secondary" busy={busyId === row.race_id} className="min-h-9 px-3 text-xs" onClick={() => remove(row)}>
+                  <Trash2 size={13} /> Remove
                 </Button>
               </div>
             </li>

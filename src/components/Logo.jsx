@@ -1,44 +1,16 @@
-import identity from '../brand/identity.json'
+import React from 'react'
 
-/**
- * The OTRI mark: a closed ring — the O — with a ridge inside it and a volt dot on the summit.
- * The ring and the ridge take the current text colour and the summit is always volt, so one
- * drawing works on the light reading surfaces and on the graphite chrome. It is a symbol, never
- * a letter: the wordmark beside it always spells the name in full.
- */
-export function Mark({ size = 40, tone = 'brand', className = '', title }) {
-  const { ring, ridge, ridgeWidth, summit } = identity.mark
-  const summitFill = tone === 'mono' ? 'currentColor' : identity.colours.volt
+// Keep all four letters together: the terrain motif must never replace the O.
+export default function Logo({ dark = false, href = '#top' }) {
   return (
-    <svg className={className} width={size} height={size} viewBox="0 0 48 48" fill="none" role={title ? 'img' : undefined} aria-hidden={title ? undefined : 'true'} focusable="false">
-      {title && <title>{title}</title>}
-      <circle cx={ring.cx} cy={ring.cy} r={ring.r} stroke="currentColor" strokeWidth={ring.width} />
-      <path d={ridge} stroke="currentColor" strokeWidth={ridgeWidth} strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={summit.cx} cy={summit.cy} r={summit.r} fill={summitFill} />
-    </svg>
-  )
-}
-
-/** OTRI, all four letters, as outlines from Space Grotesk Bold: it never waits for a font. */
-export function Wordmark({ className = '' }) {
-  const [width, height] = identity.wordmark.box
-  return (
-    <svg className={className} viewBox={`0 0 ${width} ${height}`} width={width} height={height} fill="currentColor" aria-hidden="true" focusable="false">
-      <path d={identity.wordmark.path} />
-    </svg>
-  )
-}
-
-/** The lockup in every header and footer: mark, the name in full, then what the name stands for. */
-export default function Logo({ dark = false, onLight = false, compact = false, href = '#top' }) {
-  return (
-    <a href={href} className={`logo ${dark ? 'logo--dark' : ''} ${onLight ? 'logo--on-light' : ''} ${compact ? 'logo--compact' : ''}`} aria-label="OTRI home">
-      <Mark className="logo__mark" />
-      <Wordmark className="logo__word" />
-      <span className="logo__name" aria-hidden="true">
-        Open Trail
-        <br />
-        Running Index
+    <a href={href} className="group flex min-w-0 shrink-0 items-center no-underline" aria-label="OTRI home">
+      <span className={`otri-wordmark ${dark ? 'text-white' : 'text-[#0b1220]'}`}>
+        <span className={dark ? 'text-sky-300' : 'text-blue-600'}>O</span>TRI
+        <svg className="otri-wordmark-terrain" viewBox="0 0 100 12" fill="none" aria-hidden="true">
+          <path d="M1 10 19 8 31 3 43 7 61 1 75 6 99 4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+          <path d="M1 12 19 11 31 7 43 10 61 5 75 10 99 8" stroke="currentColor" strokeOpacity=".3" />
+          <circle cx="61" cy="1" r="1.5" fill="currentColor" />
+        </svg>
       </span>
     </a>
   )

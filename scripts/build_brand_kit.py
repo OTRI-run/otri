@@ -1,175 +1,174 @@
-"""Writes OTRI's logo files from src/brand/identity.json: the mark, the compact logo, the full
-logo, the "Scored with OTRI" badge, the favicon, the share card and the copies in media/brand.
+"""Builds the logo files of the media page (public/brand/*.svg) from the site's own lockup.
 
-The mark is a closed ring — the letter O — with a ridge inside it and a volt dot on the summit.
-It is a symbol, never a letter: the wordmark always spells OTRI in full, drawn once as outlines
-from Space Grotesk Bold (SIL OFL) so a file looks the same wherever it is opened and needs no
-font. Render the PNGs and the ZIP with scripts/build_brand_png.mjs.
+On the site the wordmark is live text in the visitor's system font (src/components/Logo.jsx and
+src/styles.css), which is fine on a page and useless as a file: it looks different on every
+machine. Here the letters are drawn as outlines, from two open-licence fonts (SIL OFL), so a file
+looks the same wherever it is opened and needs no font:
 
-Usage:  python scripts/build_brand_kit.py
+    Inter Bold            https://github.com/rsms/inter            (the wordmark, "TRI")
+    JetBrains Mono Bold   https://github.com/JetBrains/JetBrainsMono   (the full name, the badge)
+
+Usage:  python scripts/build_brand_kit.py <Inter-Bold.ttf> <JetBrainsMono-Bold.ttf>
+Needs fonttools (pip install fonttools). The PNGs and the zip are made from these SVGs by
+scripts/build_brand_png.mjs, which needs Chrome.
 """
 
 from __future__ import annotations
 
-import json
+import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "public" / "brand"
-IDENTITY = json.loads((ROOT / "src" / "brand" / "identity.json").read_text(encoding="utf-8"))
-C = IDENTITY["colours"]
-INK, VOLT, CHALK, NIGHT = C["ink"], C["volt"], C["chalk"], C["night"]
-GRAPHITE, BG, MUTED, CHALK_MUTED, CYAN = C["graphite"], C["bg"], C["muted"], C["chalkMuted"], C["cyan"]
+from fontTools.pens.svgPathPen import SVGPathPen
+from fontTools.pens.transformPen import TransformPen
+from fontTools.ttLib import TTFont
+
+OUT = Path(__file__).resolve().parents[1] / "public" / "brand"
+
+INK = "#0b1220"
+BLUE = "#2563eb"
 WHITE = "#ffffff"
-BLACK = "#000000"
-TITLE = "OTRI — Open Trail Running Index"
-MARK, WORD = IDENTITY["mark"], IDENTITY["wordmark"]
+GRADIENT_MARK = ("#60a5fa", "#2563eb", "#1d4ed8")  # as in Logo.jsx
+GRADIENT_NAME = ("#2563eb", "#06b6d4")  # as in styles.css
+
+# The mark, in the 40-unit box of Logo.jsx.
+RING = '<circle cx="20" cy="20" r="17" fill="none" stroke="{a}" stroke-width="5"/>'
+RIDGE = '<path d="M7 26.5 15.5 20l4 2.7L26 16l7 6" fill="none" stroke="{a}" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>'
+TRAIL = '<path d="M9 30c5-6 10-7 17-10" fill="none" stroke="{b}" stroke-width="3.4" stroke-linecap="round"/>'
 
 
-def svg(width: float, height: float, body: str, title: str = TITLE) -> str:
-    return (
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width:g} {height:g}" width="{width:g}" height="{height:g}" '
-        f'role="img" aria-label="{title}"><title>{title}</title>{body}</svg>\n'
+class Face:
+    def __init__(self, path: str):
+        self.font = TTFont(path)
+        self.glyphs = self.font.getGlyphSet()
+        self.cmap = self.font.getBestCmap()
+        self.upm = self.font["head"].unitsPerEm
+        self.cap = getattr(self.font["OS/2"], "sCapHeight", 0) or int(self.upm * 0.72)
+
+    def outline(self, text: str, size: float, x: float, baseline: float, tracking_em: float = 0.0) -> tuple[str, float]:
+        """(path data, x where the text ends) for `text` set at `size` px from `x` on `baseline`."""
+        scale = size / self.upm
+        pen = SVGPathPen(self.glyphs, ntos=lambda value: f"{value:.2f}".rstrip("0").rstrip("."))
+        cursor = x
+        for character in text:
+            name = self.cmap[ord(character)]
+            self.glyphs[name].draw(TransformPen(pen, (scale, 0, 0, -scale, cursor, baseline)))
+            cursor += self.glyphs[name].width * scale + tracking_em * size
+        return pen.getCommands(), cursor
+
+    def cap_height(self, size: float) -> float:
+        return self.cap * size / self.upm
+
+
+def mark(colours: dict, scale: float = 1.0, x: float = 0.0, y: float = 0.0) -> str:
+    body = RING.format(a=colours["a"]) + RIDGE.format(a=colours["a"]) + TRAIL.format(b=colours["b"])
+    return f'<g transform="translate({x:g} {y:g}) scale({scale:g})">{body}</g>'
+
+
+def gradients(prefix: str, *, name_top: float = 0, name_bottom: float = 0) -> str:
+    a, b, c = GRADIENT_MARK
+    out = (
+        f'<linearGradient id="{prefix}m" x1="5" y1="4" x2="35" y2="37" gradientUnits="userSpaceOnUse">'
+        f'<stop stop-color="{a}"/><stop offset=".48" stop-color="{b}"/><stop offset="1" stop-color="{c}"/></linearGradient>'
     )
-
-
-def mark(stroke: str = INK, summit: str = VOLT, x: float = 0, y: float = 0, scale: float = 1) -> str:
-    ring = MARK["ring"]
-    s = MARK["summit"]
-    return (
-        f'<g transform="translate({x:g} {y:g}) scale({scale:g})" fill="none">'
-        f'<circle cx="{ring["cx"]}" cy="{ring["cy"]}" r="{ring["r"]}" stroke="{stroke}" stroke-width="{ring["width"]}"/>'
-        f'<path d="{MARK["ridge"]}" stroke="{stroke}" stroke-width="{MARK["ridgeWidth"]}" stroke-linecap="round" stroke-linejoin="round"/>'
-        f'<circle cx="{s["cx"]}" cy="{s["cy"]}" r="{s["r"]}" fill="{summit}"/></g>'
-    )
-
-
-def wordmark(colour: str, x: float, scale: float = 1) -> str:
-    return f'<g transform="translate({x:g} 0) scale({scale:g})" fill="{colour}"><path d="{WORD["path"]}"/></g>'
-
-
-def full_name(colour: str, rule: str, x: float) -> str:
-    """The two mono lines beside the name, as live text with a generous fallback stack: the kit's
-    PNGs are rendered with the real face, and an SVG opened elsewhere still reads correctly."""
-    style = 'font-family="IBM Plex Mono, ui-monospace, Consolas, monospace" font-size="9.5" font-weight="600" letter-spacing="1.6"'
-    return (
-        f'<rect x="{x - 14:g}" y="9" width="1.6" height="30" fill="{rule}"/>'
-        f'<text x="{x:g}" y="21" {style} fill="{colour}">OPEN TRAIL</text>'
-        f'<text x="{x:g}" y="34" {style} fill="{colour}">RUNNING INDEX</text>'
-    )
-
-
-def lockup(stroke: str, summit: str, letters: str, name: str | None, rule: str) -> tuple[str, float]:
-    gap, word_width = 10, WORD["box"][0]
-    body = mark(stroke, summit) + wordmark(letters, MARK["box"] + gap)
-    width = MARK["box"] + gap + word_width
-    if name:
-        name_x = width + 30
-        body += full_name(name, rule, name_x)
-        width = name_x + 92
-    return body, round(width + 2, 1)
-
-
-def main() -> None:
-    OUT.mkdir(parents=True, exist_ok=True)
-    variants = {
-        # suffix: ring and ridge, summit dot, letters, the full name, the rule
-        "": (INK, VOLT, INK, MUTED, VOLT),
-        "-on-dark": (CHALK, VOLT, CHALK, CHALK_MUTED, VOLT),
-        "-white": (WHITE, WHITE, WHITE, WHITE, WHITE),
-        "-black": (BLACK, BLACK, BLACK, BLACK, BLACK),
-    }
-    for suffix, (stroke, summit, letters, name, rule) in variants.items():
-        body, width = lockup(stroke, summit, letters, name, rule)
-        (OUT / f"otri-logo{suffix}.svg").write_text(svg(width, 48, body), encoding="utf-8")
-        body, width = lockup(stroke, summit, letters, None, rule)
-        (OUT / f"otri-logo-compact{suffix}.svg").write_text(svg(width, 48, body), encoding="utf-8")
-        (OUT / f"otri-mark{suffix}.svg").write_text(svg(48, 48, mark(stroke, summit), "OTRI mark"), encoding="utf-8")
-
-    # "Scored with OTRI": the badge a results page shows.
-    for suffix, ground, text_colour, stroke in [("", BG, INK, INK), ("-dark", NIGHT, CHALK, CHALK)]:
-        body = (
-            f'<rect width="232" height="48" rx="4" fill="{ground}"/>'
-            f'<rect x=".5" y=".5" width="231" height="47" rx="3.5" fill="none" stroke="{text_colour}" stroke-opacity=".2"/>'
-            f'<text x="14" y="29" font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif" font-size="14" font-weight="500" fill="{text_colour}">Scored with</text>'
-            f'{mark(stroke, VOLT, 104, 10, 0.58)}{wordmark(text_colour, 140, 0.58)}'
+    if name_bottom:
+        top, bottom = GRADIENT_NAME
+        out += (
+            f'<linearGradient id="{prefix}n" x1="0" y1="{name_top:g}" x2="0" y2="{name_bottom:g}" gradientUnits="userSpaceOnUse">'
+            f'<stop stop-color="{top}"/><stop offset="1" stop-color="{bottom}"/></linearGradient>'
         )
-        (OUT / f"otri-badge-scored{suffix}.svg").write_text(svg(232, 48, body, "Scored with OTRI"), encoding="utf-8")
+    return f"<defs>{out}</defs>"
 
-    (ROOT / "public" / "favicon.svg").write_text(svg(48, 48, mark(INK, VOLT)), encoding="utf-8")
 
-    # The share card: the dark instrument ground, the lockup, the promise.
-    grid = "".join(
-        f'<path d="M{x} 0V630" stroke="{CHALK}" stroke-opacity=".05" stroke-width="1"/>' for x in range(0, 1201, 40)
-    ) + "".join(
-        f'<path d="M0 {y}H1200" stroke="{CHALK}" stroke-opacity=".05" stroke-width="1"/>' for y in range(0, 631, 40)
-    )
-    rings = "".join(
-        f'<ellipse cx="1010" cy="300" rx="{r}" ry="{r * 0.78:.0f}" fill="none" stroke="{CYAN}" stroke-opacity=".16" stroke-width="1.2"/>'
-        for r in (300, 250, 200, 150, 100, 55)
-    )
-    body, _ = lockup(CHALK, VOLT, CHALK, CHALK_MUTED, VOLT)
-    share = (
-        f'<rect width="1200" height="630" fill="{GRAPHITE}"/>{grid}{rings}'
-        f'<g transform="translate(80 74) scale(1.35)">{body}</g>'
-        f'<text x="80" y="330" font-family="Space Grotesk, Arial, sans-serif" font-size="88" font-weight="700" letter-spacing="-4" fill="{CHALK}">One open score</text>'
-        f'<text x="80" y="424" font-family="Space Grotesk, Arial, sans-serif" font-size="88" font-weight="700" letter-spacing="-4" fill="{VOLT}">for any trail race.</text>'
-        f'<text x="82" y="492" font-family="IBM Plex Sans, Segoe UI, Arial, sans-serif" font-size="27" fill="{CHALK_MUTED}">Course + finish time = one explained, reproducible score. Free, open, no account.</text>'
-        f'<rect x="80" y="540" width="10" height="2" fill="{VOLT}"/>'
-        f'<text x="104" y="547" font-family="IBM Plex Mono, Consolas, monospace" font-size="17" font-weight="600" letter-spacing="3" fill="{CHALK_MUTED}">OTRI.RUN · OPEN TRAIL RUNNING INDEX</text>'
-    )
-    (OUT / "otri-share-card.svg").write_text(svg(1200, 630, share), encoding="utf-8")
-
-    (OUT / "README.txt").write_text(
-        "OTRI brand kit · Open Trail Running Index · https://otri.run\n\n"
-        "You may use these files to refer to OTRI: in an article, on a race's website next to results\n"
-        "scored with OTRI, in a talk, in an app that uses the OTRI API. You need not ask.\n\n"
-        "The mark is a closed ring — the letter O — with a ridge inside it and a volt dot on the summit.\n"
-        "It is a symbol, not a letter: the wordmark always spells OTRI in full, so the name can never be\n"
-        "read as \"TRI\". Use the mark alone only where OTRI is already named.\n\n"
-        "Please\n"
-        "- use the files as they are: do not redraw, recolour, stretch, rotate or add effects;\n"
-        "- keep clear space around the logo of at least half the height of the mark;\n"
-        "- do not show the mark below 20 px, or the logo with the full name below 160 px wide;\n"
-        "- use the colour logo on light backgrounds, the on-dark one on dark grounds and photographs,\n"
-        "  the white one on colour, the black one where only one ink prints.\n\n"
-        "Please do not\n"
-        "- suggest that OTRI approves, certifies, sanctions or sponsors a race, a product or a runner.\n"
-        "  OTRI scores courses and results with an open method; it approves nothing. \"Scored with OTRI\"\n"
-        "  says what happened. \"OTRI certified\" or \"OTRI approved\" does not exist;\n"
-        "- use the logo as, or as part of, your own logo, app icon or product name.\n\n"
-        "Files\n"
-        "  otri-logo*            the mark, the name and what it stands for\n"
-        "  otri-logo-compact*    the mark and the name, where space is tight\n"
-        "  otri-mark*            the mark alone: the ring, the ridge and the summit\n"
-        "  otri-avatar*          a square profile picture that survives being cut to a circle\n"
-        "  otri-badge-scored*    \"Scored with OTRI\", for results pages\n"
-        "  otri-share-card       the link preview image\n"
-        "  (no suffix) colour · -on-dark for dark grounds · -white · -black\n\n"
-        f"Colours   ink {INK} · graphite {GRAPHITE} · night {NIGHT} · paper {BG}\n"
-        f"          volt {VOLT} (the one action to press, always with ink on it) · cyan {CYAN} (data, links)\n"
-        "Letters   the wordmark is Space Grotesk Bold, the full name IBM Plex Mono (both SIL OFL);\n"
-        "          the wordmark is drawn as outlines, so it needs no font.\n\n"
-        "The OTRI code and methodology are open source (see the repository for their licences). The name\n"
-        "and the logo are not part of that licence: they identify the project.\n\n"
-        "Questions, other formats, press: hello@otri.run\n",
-        encoding="utf-8",
+def svg(width: float, height: float, title: str, body: str, pad: float = 0.0) -> str:
+    box = f"{-pad:g} {-pad:g} {width + 2 * pad:g} {height + 2 * pad:g}"
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{box}" width="{(width + 2 * pad) * 8:g}" height="{(height + 2 * pad) * 8:g}" role="img" aria-label="{title}">'
+        f"<title>{title}</title>{body}</svg>\n"
     )
 
-    media = ROOT / "media" / "brand"
-    media.mkdir(parents=True, exist_ok=True)
-    for dest, source in [
-        ("otri-logo.svg", "otri-logo.svg"),
-        ("otri-logo-dark.svg", "otri-logo-on-dark.svg"),
-        ("otri-mark.svg", "otri-mark.svg"),
-        ("otri-mark-dark.svg", "otri-mark-on-dark.svg"),
-    ]:
-        (media / dest).write_text((OUT / source).read_text(encoding="utf-8"), encoding="utf-8")
-    avatar = svg(64, 64, f'<rect width="64" height="64" rx="6" fill="{GRAPHITE}"/>{mark(CHALK, VOLT, 11.2, 11.2, 0.866)}')
-    for name in ["otri-github-avatar.svg", "otri-github-avatar-512.svg"]:
-        (media / name).write_text(avatar, encoding="utf-8")
-    print("SVG files written. Run `node scripts/build_brand_png.mjs` for the PNGs and the kit.")
+
+PALETTES = {
+    # a: ring and ridge, b: the trail under the ridge, word: "TRI", name: the full name, rule: the line before it
+    "": {"a": "url(#{p}m)", "b": BLUE, "word": INK, "name": "url(#{p}n)", "rule": BLUE},
+    "-white": {"a": WHITE, "b": WHITE, "word": WHITE, "name": WHITE, "rule": WHITE},
+    "-black": {"a": INK, "b": INK, "word": INK, "name": INK, "rule": INK},
+    # For dark pages that still want the colour: the site's own dark variant.
+    "-on-dark": {"a": "url(#{p}m)", "b": WHITE, "word": WHITE, "name": "url(#{p}n)", "rule": BLUE},
+}
+
+
+def build(inter_path: str, mono_path: str) -> list[Path]:
+    inter, mono = Face(inter_path), Face(mono_path)
+    OUT.mkdir(parents=True, exist_ok=True)
+    written = []
+
+    def write(name: str, text: str) -> None:
+        (OUT / name).write_text(text, encoding="utf-8", newline="\n")
+        written.append(OUT / name)
+
+    for suffix, palette in PALETTES.items():
+        prefix = "o" + (suffix.replace("-", "") or "c")
+        colours = {key: value.format(p=prefix) for key, value in palette.items()}
+
+        # --- the mark alone
+        write(f"otri-mark{suffix}.svg", svg(40, 40, "OTRI", gradients(prefix) + mark(colours), pad=4))
+
+        # --- the lockup, measured as on the site: a 36 px mark and "TRI" at 26 px. The site tracks it
+        # at -0.09em in a system font; Inter is wider, and at that its R and I run into each other.
+        height, size, tracking = 36.0, 26.0, -0.035
+        baseline = height / 2 + inter.cap_height(size) / 2
+        word, end = inter.outline("TRI", size, 36 + 5, baseline, tracking)
+        end -= tracking * size  # the last letter's tracking is not part of the word
+        compact = gradients(prefix) + mark(colours, 0.9) + f'<path d="{word}" fill="{colours["word"]}"/>'
+        write(f"otri-logo-compact{suffix}.svg", svg(end, height, "OTRI", compact, pad=4))
+
+        # --- with the full name: a 2 px rule, then two lines at 8 px, 1.45 line height, 0.12em tracking
+        name_size, line = 8.0, 8.0 * 1.45
+        top = (height - 2 * line) / 2
+        rule_x = end + 12
+        text_x = rule_x + 2 + 12
+        lines, right = [], text_x
+        for index, words in enumerate(("OPEN TRAIL", "RUNNING INDEX")):
+            base = top + index * line + line / 2 + mono.cap_height(name_size) / 2
+            data, line_end = mono.outline(words, name_size, text_x, base, 0.12)
+            lines.append(data)
+            right = max(right, line_end - 0.12 * name_size)
+        full = (
+            gradients(prefix, name_top=top, name_bottom=top + 2 * line)
+            + mark(colours, 0.9)
+            + f'<path d="{word}" fill="{colours["word"]}"/>'
+            + f'<rect x="{rule_x:g}" y="{top:g}" width="2" height="{2 * line:g}" fill="{colours["rule"]}"/>'
+            + f'<path d="{" ".join(lines)}" fill="{colours["name"]}"/>'
+        )
+        write(f"otri-logo{suffix}.svg", svg(right, height, "OTRI, Open Trail Running Index", full, pad=4))
+
+    # --- "Scored with OTRI": for a race's own site, next to results that were scored here. It says
+    # what was done, not that anybody approved anything: OTRI approves no races.
+    for suffix, (fill, border, text_colour, palette) in {
+        "": (WHITE, "#cbd5e1", INK, PALETTES[""]),
+        "-dark": (INK, INK, WHITE, PALETTES["-on-dark"]),
+    }.items():
+        prefix = "b" + (suffix.replace("-", "") or "l")
+        colours = {key: value.format(p=prefix) for key, value in palette.items()}
+        height, size = 32.0, 9.0
+        base = height / 2 + mono.cap_height(size) / 2
+        label, end = mono.outline("SCORED WITH", size, 12, base, 0.1)
+        mark_x = end + 5
+        word, word_end = inter.outline("TRI", 15, mark_x + 20 + 2.5, height / 2 + inter.cap_height(15) / 2, -0.035)
+        width = word_end + 0.035 * 15 + 12
+        body = (
+            gradients(prefix)
+            + f'<rect x=".5" y=".5" width="{width - 1:g}" height="{height - 1:g}" rx="{(height - 1) / 2:g}" fill="{fill}" stroke="{border}"/>'
+            + f'<path d="{label}" fill="{text_colour}" opacity=".72"/>'
+            + mark(colours, 0.5, mark_x, 6)
+            + f'<path d="{word}" fill="{text_colour}"/>'
+        )
+        write(f"otri-badge-scored{suffix}.svg", svg(width, height, "Scored with OTRI", body))
+    return written
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) != 3:
+        raise SystemExit(__doc__)
+    for path in build(sys.argv[1], sys.argv[2]):
+        print(path.relative_to(OUT.parents[1]))

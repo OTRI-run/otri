@@ -27,24 +27,24 @@ export default function ColumnsRead({ columns, ignored = [], className = '' }) {
   // A category column is only worth a line when the gender came from it.
   const shown = fields.filter((field) => field !== 'category' || !columns.gender)
   return (
-    <details className={`details ${className}`}>
-      <summary>
-        How your file was read <span className="muted" style={{ fontWeight: 400 }}>· {shown.length} column{shown.length === 1 ? '' : 's'} used{ignored.length ? `, ${ignored.length} left alone` : ''}</span>
+    <details className={`rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm ${className}`}>
+      <summary className="cursor-pointer font-semibold text-[#0b1220]">
+        How your file was read <span className="font-normal text-slate-500">· {shown.length} column{shown.length === 1 ? '' : 's'} used{ignored.length ? `, ${ignored.length} left alone` : ''}</span>
       </summary>
-      <div className="details__body"><dl className="kv kv--rows columns-read">
+      <dl className="mt-3 grid gap-x-6 gap-y-1.5 text-[13px] sm:grid-cols-2">
         {shown.map((field) => (
-          <div key={field}>
-            <dt>{LABELS[field]}</dt>
-            <dd className="mono small truncate" title={columns[field]}>{columns[field]}</dd>
+          <div key={field} className="flex min-w-0 items-baseline justify-between gap-3 border-b border-slate-100 pb-1.5">
+            <dt className="text-slate-500">{LABELS[field]}</dt>
+            <dd className="min-w-0 truncate font-mono text-[12px] font-semibold text-[#0b1220]" title={columns[field]}>{columns[field]}</dd>
           </div>
         ))}
       </dl>
-      {!columns.rank && <p className="tiny muted mt-3">No position column: positions were worked out from the finish times.</p>}
+      {!columns.rank && <p className="mt-3 text-xs text-slate-500">No position column: positions were worked out from the finish times.</p>}
       {ignored.length > 0 && (
-        <p className="tiny muted mt-3">
-          Not used: <span className="mono">{ignored.join(' · ')}</span>
+        <p className="mt-3 text-xs leading-5 text-slate-500">
+          Not used: <span className="font-mono">{ignored.join(' · ')}</span>
         </p>
       )}
-    </div></details>
+    </details>
   )
 }
