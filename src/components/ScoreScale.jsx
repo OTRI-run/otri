@@ -42,7 +42,7 @@ export default function ScoreScale({ score, share, exponent, targetSeconds, time
       <div
         className="relative mt-7"
         role="img"
-        aria-label={`Score ${score} on a scale from Beginner, below 300, to World class, 900 to 1000: ${level.name}.`}
+        aria-label={`Score ${score} on a scale from Beginner, below 300, through World class at 900, and open above 1000: ${level.name}.`}
       >
         <div className="pointer-events-none absolute -top-[22px] -translate-x-1/2 transition-[left] duration-300" style={{ left: position(score) }}>
           <span className="block rounded-md bg-white px-1.5 py-0.5 font-mono text-[10px] font-bold leading-none text-[#0b1220] shadow">{score}</span>
