@@ -152,16 +152,34 @@ def build_full(word: Face, mono: Face, name: str, letters: str, accent: str, rul
     (OUT / name).write_text(document(w, h, body, "OTRI — Open Trail Running Index"), encoding="utf-8")
 
 
-def build_mark(name: str, letters: str, accent: str, ground: str | None) -> None:
+def mark_body(arrow_colour: str, summit_colour: str, ground: str | None) -> str:
     """The icon: the summit and the arrow, the two drawn parts of the lockup, in a square."""
-    box = 128.0
-    body = (f'<rect width="128" height="128" rx="26" fill="{ground}"/>' if ground else "")
-    body += f'<path d="M64 34 96 90H32Z" fill="{accent}"/>'
+    body = f'<rect width="128" height="128" rx="26" fill="{ground}"/>' if ground else ""
+    body += f'<path d="M58 40 94 96H22Z" fill="{summit_colour}"/>'
     body += (
-        f'<g transform="translate(78 24)" fill="none" stroke="{letters}" stroke-width="9" '
+        f'<g transform="translate(80 22)" fill="none" stroke="{arrow_colour}" stroke-width="10" '
         f'stroke-linecap="round" stroke-linejoin="round"><path d="M2 26 26 2"/><path d="M7 2h19v19"/></g>'
     )
-    (OUT / name).write_text(document(box, box, body, "OTRI"), encoding="utf-8")
+    return body
+
+
+def build_mark(path: Path, arrow_colour: str, summit_colour: str, ground: str | None) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(document(128, 128, mark_body(arrow_colour, summit_colour, ground), "OTRI"), encoding="utf-8")
+
+
+def build_favicon(path: Path) -> None:
+    """The tab icon, drawn for its size rather than shrunk.
+
+    At sixteen pixels the arrow of the full mark is four pixels of stroke and turns to mush, so the
+    tab icon is the summit alone, as large as the tile allows, on the ink ground. One shape, filled,
+    which is what survives at that size.
+    """
+    body = (
+        f'<rect width="128" height="128" rx="26" fill="{INK}"/>'
+        f'<path d="M64 26 112 104H16Z" fill="{BLUE}"/>'
+    )
+    path.write_text(document(128, 128, body, "OTRI"), encoding="utf-8")
 
 
 def main() -> None:
@@ -179,10 +197,17 @@ def main() -> None:
     build_compact(word, "otri-logo-compact-white.svg", WHITE, WHITE, None)
     build_compact(word, "otri-logo-compact-black.svg", INK, INK, None)
 
-    build_mark("otri-mark.svg", INK, BLUE, None)
+    build_mark(OUT / "otri-mark.svg", INK, BLUE, None)
+    build_mark(OUT / "otri-mark-on-dark.svg", WHITE, BLUE, None)
+    build_mark(OUT / "otri-mark-white.svg", WHITE, WHITE, None)
+    build_mark(OUT / "otri-mark-black.svg", INK, INK, None)
 
-    for path in sorted(OUT.glob("otri-logo*.svg")) + [OUT / "otri-mark.svg"]:
-        print(f"{path.name:34} {path.stat().st_size:6} bytes")
+    build_favicon(ROOT / "public" / "favicon.svg")
+
+    written = sorted(OUT.glob("otri-logo*.svg")) + sorted(OUT.glob("otri-mark*.svg"))
+    for path in written + [ROOT / "public" / "favicon.svg"]:
+        if path.suffix == ".svg":
+            print(f"{path.name:34} {path.stat().st_size:6} bytes")
 
 
 if __name__ == "__main__":
