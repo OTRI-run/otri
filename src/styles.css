@@ -5,11 +5,6 @@ body{margin:0;font-synthesis:none;text-rendering:optimizeLegibility}
 *{box-sizing:border-box}
 
 
-/* Home card: scores scrolling by. The list is rendered twice so the loop is seamless. */
-@keyframes otri-ticker{from{transform:translateY(0)}to{transform:translateY(-50%)}}
-.otri-ticker{animation:otri-ticker 28s linear infinite}
-.otri-ticker:hover{animation-play-state:paused}
-@media (prefers-reduced-motion:reduce){.otri-ticker{animation:none}}
 /* Headlines that show a name someone typed: lines of even length, and a word is only broken when it
    alone is wider than the column. */
 .otri-fit{text-wrap:balance;overflow-wrap:anywhere}
