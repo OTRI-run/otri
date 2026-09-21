@@ -1,8 +1,9 @@
 import { scrollBehavior } from '../src/lib/comfort'
-import { ArrowRight, ArrowUpRight, Calculator, Database, FileText, GitBranch, Mountain, ShieldCheck, Timer, Upload, Users } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Calculator, Database, FileText, GitBranch, Mountain, Play, ShieldCheck, Timer, Upload, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import RaceCard from './RaceCard'
-import { listRaces } from './apiClient'
+import { getRaceResults, listRaces } from './apiClient'
+import { modelLabel } from '../src/lib/model'
 
 const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 const DOCS = {
@@ -32,8 +33,81 @@ const secondaryButton =
   'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white/90 px-4 text-[13px] font-semibold text-[#0b1220] no-underline hover:border-blue-300'
 const textLink = 'inline-flex items-center gap-1 text-xs font-semibold text-blue-600 no-underline hover:underline'
 
+// The landing page's dark "index engine" card, with every row a link into the prototype.
+// A handful of real (demo) scores scrolling by, each a link to the runner: the quickest way to
+// show what the index produces. Pauses for people who prefer reduced motion (see styles.css).
+function ScoreTicker({ entries }) {
+  if (!entries.length) return null
+  const rows = [...entries, ...entries]
+  return (
+    <div className="relative mt-1 h-[88px] overflow-hidden border-b border-slate-700/70" aria-label="Recent scores">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-4 bg-gradient-to-b from-[#0b1730] to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-4 bg-gradient-to-t from-[#0f2a5f] to-transparent" />
+      <ul className="otri-ticker">
+        {rows.map((entry, index) => (
+          <li key={`${entry.runner_id ?? entry.name}-${index}`} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-1 font-mono text-[10px]">
+            <a href={entry.runner_id ? `#runners/${encodeURIComponent(entry.runner_id)}` : `#races/${encodeURIComponent(entry.race_id)}`} className="min-w-0 truncate text-slate-300 no-underline hover:text-white">
+              {entry.name} <span className="text-slate-500">· {entry.race}</span>
+            </a>
+            <span className="font-bold text-blue-300">{entry.score}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function EngineCard({ raceCount, resultCount, scoringVersion, ticker }) {
+  const rows = [
+    [Calculator, 'What is my time worth?', 'RUNNERS · CALCULATOR', '#calculator'],
+    [Upload, 'Score my whole race', 'ORGANIZERS · NO ACCOUNT', '#score'],
+    [Database, 'Browse scored races', `${raceCount} RACES · ${resultCount} RESULTS`, '#races'],
+    [Users, 'Find a runner', 'SEARCH · PROFILES', '#runners'],
+  ]
+  return (
+    <div className="min-w-0 overflow-hidden rounded-2xl bg-[linear-gradient(145deg,#08111f_0%,#0b1730_58%,#123b85_100%)] p-4 text-white shadow-[0_24px_70px_rgba(11,18,32,.2)] sm:p-5">
+      <div className="flex items-center justify-between font-mono text-[8px] tracking-[.08em] text-slate-400">
+        <span>OTRI / OPEN SCORING</span>
+        <span className="flex items-center gap-1.5">
+          <i className="h-1.5 w-1.5 rounded-full bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,.9)]" />
+          LIVE API
+        </span>
+      </div>
+      <div className="border-b border-slate-700/70 py-7">
+        <small className="font-mono text-[8px] tracking-[.08em] text-blue-300">WHAT IS AN OTRI SCORE?</small>
+        <strong className="mt-2 block bg-gradient-to-r from-white to-blue-200 bg-clip-text pb-1 text-4xl font-bold leading-[1.25] tracking-[-.05em] text-transparent">
+          Course + time = score.
+        </strong>
+        <span className="mt-1 block text-xs leading-5 text-slate-400">
+          One number for a finish time on any trail course, so a hilly 25 km and a flat 50 km can be compared. 1000 is
+          world-record level, and your score never depends on who else raced.
+        </span>
+      </div>
+      <ScoreTicker entries={ticker} />
+      <div>
+        {rows.map(([Icon, title, desc, href]) => (
+          <a
+            key={title}
+            href={href}
+            className="group grid min-w-0 grid-cols-[22px_minmax(0,1fr)_auto_14px] items-center gap-2 border-b border-slate-700/70 py-4 text-white no-underline transition hover:bg-white/5"
+          >
+            <Icon size={16} className="text-blue-400" />
+            <span className="truncate text-xs font-semibold">{title}</span>
+            <small className="font-mono text-[8px] text-slate-500">{desc}</small>
+            <ArrowRight size={13} className="text-slate-600 transition group-hover:translate-x-0.5 group-hover:text-blue-300" />
+          </a>
+        ))}
+      </div>
+      <div className="flex justify-between gap-3 pt-4 font-mono text-[8px] tracking-[.08em]">
+        <b>OTRI INDEX</b>
+        <span className="text-right text-blue-300">{scoringVersion ? modelLabel(scoringVersion).toUpperCase() : 'VERSIONED · REPRODUCIBLE'}</span>
+      </div>
+    </div>
+  )
+}
+
 export default function Home() {
-  // #contribute (the footer's link or an address someone shared) is the block below.
+  // #contribute (the hero's link, the footer's, or an address someone shared) is the block below.
   useEffect(() => {
     const go = () => {
       if (window.location.hash === '#contribute') document.getElementById('contribute')?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' })
@@ -47,69 +121,126 @@ export default function Home() {
   }, [])
 
   const [races, setRaces] = useState([])
+  const [ticker, setTicker] = useState([])
   useEffect(() => {
     let cancelled = false
     listRaces()
-      .then((all) => {
+      .then(async (all) => {
         if (cancelled) return
-        // The home page previews scored races; listings without results live on the races page.
+        // The home page counts and previews scored races; listings without results live on the races page.
         const rows = all.filter((race) => race.is_published)
         setRaces(rows)
+        // A few scored finishers from the newest published races, for the card's ticker.
+        const sample = rows.filter((race) => (race.finisher_count ?? 0) > 0).slice(0, 4)
+        const lists = await Promise.all(sample.map((race) => getRaceResults(race.race_id).catch(() => [])))
+        // Top three of each race, interleaved round-robin so the list reads like a feed across races.
+        const perRace = sample.map((race, i) =>
+          lists[i]
+            .filter((row) => row.status === 'finisher' && row.otri_score != null)
+            .slice(0, 3)
+            .map((row) => ({ name: `${row.first_name} ${row.family_name}`, race: race.event_name, score: row.otri_score, runner_id: row.runner_id, race_id: race.race_id })),
+        )
+        const entries = []
+        for (let round = 0; round < 3; round += 1) perRace.forEach((rows) => rows[round] && entries.push(rows[round]))
+        if (!cancelled) setTicker(entries.slice(0, 12))
       })
       .catch(() => {})
     return () => {
       cancelled = true
     }
   }, [])
+  const resultCount = races.reduce((sum, race) => sum + (race.finisher_count ?? 0), 0)
+  const scoringVersion = races[0]?.scoring_version ?? ''
 
   return (
     <>
       {/* Hero */}
       <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
-        <div className={`${CONTAINER} py-9 sm:py-14 lg:py-16`}>
-          <div className="mx-auto max-w-[760px]">
+        <div className={`${CONTAINER} grid min-w-0 items-center gap-12 py-14 sm:py-20 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-20 lg:py-24`}>
+          <div className="min-w-0">
             <div className="font-mono text-[10px] font-medium tracking-[.1em] text-blue-600">
               OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> PROTOTYPE
             </div>
-            <h1 className="mt-4 text-[clamp(36px,6vw,64px)] font-bold leading-[1.08] tracking-[-.055em] text-[#0b1220]">
-              Your trail run. <Gradient>One clear score.</Gradient>
+            <h1 className="mt-5 max-w-[760px] text-[clamp(44px,7vw,84px)] font-bold leading-[1.08] tracking-[-.065em] text-[#0b1220]">
+              The open score
+              <br />
+              <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">for any trail race.</em>
             </h1>
-            <p className="mt-4 max-w-[620px] text-[16px] leading-6 text-slate-600 sm:text-[18px] sm:leading-7">
-              OTRI turns your course and finish time into a score you can compare across trail races.
+            {/* The words that carry the promise are set in ink and semibold; the rest stays grey, so the
+                paragraph can be read at a glance by its dark words alone. */}
+            <p className="mt-6 max-w-[620px] text-[15px] leading-7 text-slate-500 sm:text-[17px] [&_b]:whitespace-nowrap [&_b]:font-semibold [&_b]:text-[#0b1220]">
+              OTRI turns a <b>finish time</b> on <b>any trail course</b> into{' '}
+              <b className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text !text-transparent">one comparable score</b>. A <b>calculator</b>, not a
+              governing body, and <b>no black box</b>: every number <b>explains itself</b>. Made for the <b>local race</b> as much as the famous one:{' '}
+              <b>free</b>, <b>no account</b>, <b>no approval</b>.
             </p>
-            <div className="mt-6 grid gap-3 sm:mt-8 sm:grid-cols-2">
+            <div className="mt-7 grid max-w-[680px] gap-3 sm:grid-cols-2">
               {[
                 {
-                  Icon: Calculator,
-                  title: 'Index calculator',
-                  text: 'Choose a course and enter your finish time.',
+                  who: 'I run',
+                  Icon: Timer,
+                  title: 'What is my time worth?',
+                  text: 'Pick a race or upload a GPX, set a finish time and see the score, before or after race day.',
                   href: '#calculator',
+                  action: 'Open the calculator',
+                  more: ['Find my results', '#runners'],
                 },
                 {
+                  who: 'I organise a race',
                   Icon: Upload,
-                  title: 'Score a race',
-                  text: 'Upload a course and results to score every finisher.',
+                  title: 'Score my whole race',
+                  text: 'Upload the course and the results file: every finisher scored in a minute. Optional: publish it here as a race page.',
                   href: '#score',
+                  action: 'Score my race',
+                  more: ['See an example', '#score?example=1'],
                 },
-              ].map(({ Icon, title, text, href }) => (
-                <a
-                  key={href}
-                  href={href}
-                  className="group flex min-w-0 items-center gap-4 rounded-2xl border border-blue-200 bg-white p-5 text-inherit no-underline shadow-[0_10px_28px_rgba(15,23,42,.04)] transition hover:border-blue-500 hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 sm:items-start sm:p-6"
-                >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
-                    <Icon size={22} aria-hidden="true" />
+              ].map(({ who, Icon, title, text, href, action, more }) => (
+                <div key={who} className="flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+                  <span className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+                      <Icon size={18} />
+                    </span>
+                    <span className="text-[19px] font-bold uppercase leading-6 tracking-[-.01em] text-blue-700">{who}</span>
                   </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[20px] font-bold leading-6 tracking-[-.02em] text-blue-700">{title}</span>
-                    <span className="mt-2 block text-[13px] leading-5 text-slate-600">{text}</span>
-                  </span>
-                  <ArrowRight size={18} aria-hidden="true" className="mt-1 shrink-0 text-blue-600 transition group-hover:translate-x-1" />
-                </a>
+                  <b className="mt-3 block text-[16px] leading-6 tracking-[-.02em] text-[#0b1220]">{title}</b>
+                  <p className="mt-1 flex-1 text-[13px] leading-5 text-slate-500">{text}</p>
+                  <a className={`${primaryButton} mt-4`} href={href}>
+                    {action} <ArrowRight size={15} />
+                  </a>
+                  <a className={`${textLink} mt-3 justify-center`} href={more[1]}>
+                    {more[0]}
+                  </a>
+                </div>
               ))}
             </div>
-            <p className="mt-4 text-[12px] text-slate-500">Free to use · No account needed · Open scoring</p>
+            {/* The fastest way to understand OTRI is to see it: one press scores the example race. */}
+            <a
+              href="#score?example=1"
+              className="group mt-3 flex max-w-[680px] items-center gap-3 rounded-xl bg-[#0b1220] px-4 py-2.5 text-white no-underline transition hover:bg-[#13203a]"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-400">
+                <Play size={13} className="ml-0.5 fill-white text-white" />
+              </span>
+              <span className="min-w-0 flex-1 text-[13px] leading-5">
+                <b className="font-semibold">See a race scored, live.</b> <span className="text-slate-300">The course on the map and 100 finishers, in one click.</span>
+              </span>
+              <ArrowRight size={16} className="shrink-0 text-cyan-300 transition group-hover:translate-x-1" />
+            </a>
+            <p className="mt-4 text-sm text-slate-500">
+              Building something?{' '}
+              <a href="#api" className="font-semibold text-blue-600 no-underline hover:underline">
+                API and embeddable calculator →
+              </a>
+            </p>
+            <p className="mt-6 max-w-[620px] text-sm leading-6 text-slate-500">
+              One open, versioned model.{' '}
+              <a href={GITHUB_URL} className="inline-flex items-center gap-1 whitespace-nowrap font-semibold text-[#0b1220] no-underline hover:text-blue-600">
+                <GitBranch size={14} /> The code and the method are on GitHub <ArrowUpRight size={13} />
+              </a>{' '}
+              and <a href="#contribute" className="font-semibold text-blue-600 no-underline hover:underline">you can help improve both</a>.
+            </p>
           </div>
+          <EngineCard raceCount={races.length} resultCount={resultCount} scoringVersion={scoringVersion} ticker={ticker} />
         </div>
       </section>
 
