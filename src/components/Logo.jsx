@@ -26,11 +26,12 @@ export default function Logo({ dark = false, href = '#top', showName = true, siz
       <Wordmark tone={tone} size={size} />
       {showName ? (
         <span
-          className={`hidden shrink-0 border-l pl-3 font-mono text-[10px] leading-tight tracking-[.08em] sm:block ${
-            dark ? 'border-white/25 text-slate-300' : 'border-slate-300 text-slate-500'
+          className={`flex shrink-0 flex-col justify-center border-l pl-3 text-[13px] font-semibold leading-[1.12] tracking-[-.02em] sm:text-[16px] ${
+            dark ? 'border-white/30 text-white' : 'border-slate-300 text-[#17202c]'
           }`}
         >
-          Open Trail Running Index
+          <span>Open Trail</span>
+          <span>Running Index</span>
         </span>
       ) : null}
     </a>
