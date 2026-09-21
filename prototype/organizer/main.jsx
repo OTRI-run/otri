@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client'
 import { ArrowUpRight, ChevronDown, Mail } from 'lucide-react'
 import '../../src/styles.css'
 import Logo from '../../src/components/Logo'
+import GitHubMark from '../../src/components/GitHubMark'
 import UnitsMenu from '../../src/components/UnitsMenu'
 import { logoutOrganizer, getMe, resendVerification } from '../apiClient'
 import BuildBanner from '../../src/components/BuildBanner'
@@ -181,10 +182,16 @@ function Footer() {
     <footer className="border-t border-slate-200 bg-white py-6">
       <div className={`${CONTAINER} flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center`}>
         <Logo href="../#home" />
-        <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 text-[12px] font-medium text-slate-500 no-underline hover:text-blue-600">
-          <Mail size={14} />
-          hello@otri.run
-        </a>
+        <nav className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] font-medium text-slate-500">
+          <a href={GITHUB_URL} className="inline-flex items-center gap-1.5 font-semibold text-[#0b1220] no-underline hover:text-blue-600">
+            <GitHubMark size={15} />
+            GitHub
+          </a>
+          <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 no-underline hover:text-blue-600">
+            <Mail size={14} />
+            hello@otri.run
+          </a>
+        </nav>
         <span className="font-mono text-[8px] tracking-[.08em] text-slate-500">OPEN · TRANSPARENT · REPRODUCIBLE · INDEPENDENT</span>
       </div>
     </footer>
