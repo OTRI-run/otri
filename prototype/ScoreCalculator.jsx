@@ -411,7 +411,7 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
               {b && <Stat label="Terrain factor" value={`× ${b.terrain_factor}`} />}
               {b && <Stat label="Adjusted demand (scored)" value={`${b.adjusted_demand_km} demand-km`} />}
               <Stat label="Performance rate Q" value={`${estimate.performance_rate} demand-km/h`} />
-              {b?.reference_rate != null && <Stat label="Human ceiling at this demand" value={`${b.reference_rate} demand-km/h`} />}
+              {b?.reference_rate != null && <Stat label="World-record rate at this demand" value={`${b.reference_rate} demand-km/h`} />}
               {b?.fraction_of_ceiling != null && <Stat label="Fraction of ceiling" value={`${(b.fraction_of_ceiling * 100).toFixed(2)}%`} />}
               {b?.lookup_rate != null && <Stat label="Rate looked up in table" value={`${b.lookup_rate} demand-km/h`} />}
               <Stat label="Raw score (unrounded)" value={estimate.otri_raw} />

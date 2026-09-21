@@ -77,7 +77,7 @@ function TerrainMesh() {
           <rect x="0" y="286" width="1440" height="614" fill="url(#otri-mesh-fade)" />
         </mask>
       </defs>
-      <g mask="url(#otri-mesh-mask)" strokeWidth="1" opacity=".085">
+      <g mask="url(#otri-mesh-mask)" strokeWidth="1" opacity=".05">
         {columns.map((d, i) => (
           <path key={`c${i}`} d={d} />
         ))}
@@ -157,9 +157,9 @@ export default function Home() {
             {/* Plain sentences in one colour. Scattered bold and a second accent made this harder
                 to read, not easier. */}
             {/* Each sentence gets its own line, so a break never lands in the middle of a phrase. */}
-            <p className="mt-6 max-w-[68ch] text-[18px] leading-8 text-slate-700">
-              OTRI turns a finish time on any trail course into one comparable score.
-              <span className="block">Free, no account, and every number explains itself.</span>
+            <p className="mt-6 max-w-[64ch] text-[18px] leading-8 text-slate-700">
+              Finish time in. Score out.
+              <span className="block">A calculator, not a governing body. Free and no black box.</span>
             </p>
             <div className="mt-7 grid max-w-[680px] gap-3 sm:grid-cols-2">
               {[

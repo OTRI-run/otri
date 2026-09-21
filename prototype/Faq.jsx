@@ -14,7 +14,7 @@ const FAQ = [
     items: [
       {
         q: 'What is an OTRI score?',
-        a: 'A number for one performance on one course, where 1000 is the best a human has done over that much ground. It is your speed over the course, as a share of the fastest a human has ever sustained over a course of that demand, raised to a fixed power. Only two things go in: the course and your finish time.',
+        a: 'A number for one performance on one course. 1000 is world-record level for that much ground, and it is a reference line rather than a maximum: a run better than the record scores above it. It is your speed over the course, as a share of the fastest a human has ever sustained over a course of that demand, raised to a fixed power. Only two things go in: the course and your finish time.',
         tags: 'definition meaning number scale',
       },
       {
@@ -31,13 +31,13 @@ const FAQ = [
         tags: 'field competitors winner rank relative',
       },
       {
-        q: 'What does 1000 mean?',
-        a: 'The best rate a human has sustained over that much course demand, read from a curve through three public world-best performances: 5000 m, marathon and 24 hours. A 5 km world record and a 24-hour world record both score 1000. Everything else is a share of that. It is a reference point, not a cap: a performance faster than the curve scores above 1000 (the 1500 m world record scores 1020).',
+        q: 'What does 1000 mean? Is it the maximum?',
+        a: 'It is world-record level, not a maximum, and there is no maximum. It is the best rate a human has sustained over that much course demand, read from a curve through three public world-best performances: 5000 m, marathon and 24 hours. A 5 km world record and a 24-hour world record both score 1000. Everything else is a share of that. It is a reference point, not a cap: a performance faster than the curve scores above 1000 (the 1500 m world record scores 1020).',
         tags: 'maximum world record best ceiling',
       },
       {
-        q: 'Can a score be higher than 1000? Is that a bug?',
-        a: 'It can, and it is not a bug. 1000 is not a maximum: it is the line drawn through three world records (5000 m, marathon, 24 hours), and it says what world-record level looks like on a course of any length. A performance better than that line scores more than 1000, and the score says so instead of being cut off at 1000. It is rare and it happens in two ways. A real record can sit a little above the line: the 1500 m world record scores 1020 and the half marathon 1005, because the line is a smooth curve and records are not. Or the input is off: in the calculator you can type any target time, including one no human has run, and a results file can carry a wrong time or a course file that is too short. So a published score above 1000 is either a historic run or a reason to look at the time and the course again.',
+        q: 'Can a score be higher than 1000?',
+        a: 'It can, and it is not a bug. There is no ceiling. 1000 is not a maximum: it is the line drawn through three world records (5000 m, marathon, 24 hours), and it says what world-record level looks like on a course of any length. A performance better than that line scores more than 1000, and the score says so instead of being cut off at 1000. It is rare and it happens in two ways. A real record can sit a little above the line: the 1500 m world record scores 1020 and the half marathon 1005, because the line is a smooth curve and records are not. Or the input is off: in the calculator you can type any target time, including one no human has run, and a results file can carry a wrong time or a course file that is too short. So a published score above 1000 is either a historic run or a reason to look at the time and the course again.',
         tags: 'above over more than 1000 1100 higher maximum cap capped bug error impossible world record',
       },
       {
@@ -52,12 +52,12 @@ const FAQ = [
       },
       {
         q: 'What do the levels mean: Beginner, Advanced, Elite, World class?',
-        a: 'They are names for ranges of the score, shown in the calculator so you can see where a number stands: Beginner below 300, Recreational from 300, Intermediate from 400, Trained from 500, Advanced from 600, Expert from 700, Elite from 800, World class from 900, and anything above 1000 is beyond the record. The names are a reading aid and not part of the model; what they stand for is exact. A score is a share of the fastest pace a human has held on a course that demanding, so every score is also a time on a flat road marathon at that same share of the world best (2:00:35): 700 is 3:03, 600 is 3:40, 500 is 4:33, 400 is 5:54. It is one scale for everyone, men and women, every age. OTRI does not say how many runners are in each level, because it does not have the data to say so honestly. On technical trails expect to score a little under your road times: footing is not measured yet.',
+        a: 'They are names for ranges of the score, shown in the calculator so you can see where a number stands: Beginner below 300, Recreational from 300, Intermediate from 400, Trained from 500, Advanced from 600, Expert from 700, Elite from 800, World class from 900, and there is nothing above that but more of it: a score over 1000 is beyond world-record level, which is exceptional and rare. The names are a reading aid and not part of the model; what they stand for is exact. A score is a share of the fastest pace a human has held on a course that demanding, so every score is also a time on a flat road marathon at that same share of the world best (2:00:35): 700 is 3:03, 600 is 3:40, 500 is 4:33, 400 is 5:54. It is one scale for everyone, men and women, every age. OTRI does not say how many runners are in each level, because it does not have the data to say so honestly. On technical trails expect to score a little under your road times: footing is not measured yet.',
         tags: 'levels scale range beginner recreational intermediate trained advanced expert elite world class superhuman good score what is a good score where am I',
       },
       {
-        q: 'Why does a 100-mile mountain winner score 984 and not 1000?',
-        a: 'Because the ceiling is built from road and track records, and a mountain course costs more than its gradient profile says: rock, roots, mud and exposure are invisible to a GPX file. The model prices sustained steep ground and altitude; it cannot price footing. That limitation is written down, not hidden.',
+        q: 'Why does a 100-mile mountain winner score 984 rather than above 1000?',
+        a: 'Because the reference line is built from road and track records, and a mountain course costs more than its gradient profile says: rock, roots, mud and exposure are invisible to a GPX file. The model prices sustained steep ground and altitude; it cannot price footing. That limitation is written down, not hidden.',
         tags: 'ultra mountain technical footing limit',
       },
       {
