@@ -123,6 +123,9 @@ export default function Home() {
   }, [])
 
   const [races, setRaces] = useState([])
+  // The course the "I run" door offers to try: one public course with a track, chosen at random
+  // each visit. It was one race, by name, forever; every other course on the site got no turn.
+  const [tryRace, setTryRace] = useState(null)
   useEffect(() => {
     let cancelled = false
     listRaces()
@@ -131,6 +134,8 @@ export default function Home() {
         // The home page counts and previews scored races; listings without results live on the races page.
         const rows = all.filter((race) => race.is_published)
         setRaces(rows)
+        const tryable = all.filter((race) => race.has_gpx && (race.is_published || race.is_listed))
+        if (tryable.length) setTryRace(tryable[Math.floor(Math.random() * tryable.length)])
       })
       .catch(() => {})
     return () => {
@@ -172,7 +177,10 @@ export default function Home() {
                   href: '#calculator',
                   action: 'Open the calculator',
                   dark: false,
-                  more: ['Try it on Phuket Trail 55K', '#calculator?race=race-d8d0c2c5&t=37260'],
+                  // Until the list arrives, or if nothing is tryable, the calculator itself.
+                  more: tryRace
+                    ? [`Try it on ${tryRace.event_name} · ${tryRace.course_name}`, `#calculator?race=${encodeURIComponent(tryRace.race_id)}`]
+                    : ['Try it on a race', '#calculator'],
                 },
                 {
                   who: 'I organise a race',
