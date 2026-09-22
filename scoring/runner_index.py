@@ -76,6 +76,13 @@ def add_months(day: date, months: int) -> date:
     year = day.year + month_index // 12
     month = month_index % 12 + 1
     last_day = [31, 29 if (year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)) else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1]
+    # A date stored before event dates were bounded can still push this past what a date can hold.
+    # An index that says "this result never expires" is a wrong answer; a page that will not load
+    # is a worse one, and this function is on the path of every public runner profile.
+    if year > date.max.year:
+        return date.max
+    if year < date.min.year:
+        return date.min
     return date(year, month, min(day.day, last_day))
 
 

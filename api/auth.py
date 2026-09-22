@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import hmac
 import os
 import secrets
 import time
@@ -571,6 +572,39 @@ def revoke_all_sessions(organizer_id: int, password: str) -> None:
         _check_password(connection, organizer_id, password)
         connection.execute("UPDATE organizers SET session_version = session_version + 1 WHERE id = %s", (organizer_id,))
         _end_pending_access(connection, organizer_id)
+
+
+def unsubscribe_token(email: str) -> str:
+    """A link that stops the news email, without signing anybody in.
+
+    TERMS.md promises every marketing email carries an unsubscribe link, and there was nothing to
+    put in one: withdrawing consent meant signing in and finding a checkbox. This is a signature
+    over the address rather than a stored row, so it survives an audience exported to an outside
+    mail tool, needs no lookup, and cannot be turned into a way in: all it can do is set one
+    boolean to false for the address it names.
+    """
+    address = email.strip().lower()
+    signature = hmac.new(JWT_SECRET.encode("utf-8"), f"unsubscribe|{address}".encode("utf-8"), hashlib.sha256).hexdigest()[:32]
+    return f"{base64.urlsafe_b64encode(address.encode('utf-8')).decode('ascii').rstrip('=')}.{signature}"
+
+
+def unsubscribe(token: str) -> bool:
+    """Turn the news off for whoever that token names. True if anything changed."""
+    encoded, _, signature = (token or "").partition(".")
+    if not encoded or not signature:
+        return False
+    try:
+        address = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4)).decode("utf-8")
+    except Exception:  # noqa: BLE001 - any malformed token is simply not a token
+        return False
+    if not hmac.compare_digest(unsubscribe_token(address).partition(".")[2], signature):
+        return False
+    with get_connection() as connection:
+        return connection.execute(
+            "UPDATE organizers SET marketing_opt_in = FALSE, marketing_opt_in_at = NULL "
+            "WHERE email = %s AND marketing_opt_in",
+            (address,),
+        ).rowcount > 0
 
 
 def confirm_password(organizer_id: int, password: str) -> None:

@@ -1351,6 +1351,24 @@ def delete_organizer(organizer_id: int) -> bool:
         runners = _runner_ids(
             connection, "res.race_id IN (SELECT ra.race_id FROM races ra JOIN events e ON e.event_id = ra.event_id WHERE e.organizer_id = %s)", (organizer_id,)
         )
+        # The delivery log is keyed on the address rather than the account, so it survived a
+        # deletion and kept a list of everyone who had ever had an account, readable by any admin.
+        # Its purpose -- answering "I never got the email" -- ends with the account, so the address
+        # goes and the row stays as a delivery statistic belonging to nobody.
+        address = connection.execute("SELECT email FROM organizers WHERE id = %s", (organizer_id,)).fetchone()
+        if address is not None:
+            connection.execute(
+                "UPDATE email_log SET to_email = %s, error = NULL WHERE to_email = %s",
+                ("(deleted account)", address["email"]),
+            )
+            # The abuse counters are keyed on the address too: wrong passwords, wrong codes, the
+            # confirm-password lock. They exist to slow an attacker down on a live account.
+            escaped = address["email"].replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            connection.execute(
+                "DELETE FROM login_failures WHERE email = %s OR email LIKE %s ESCAPE '\' "
+                "OR email = %s OR email = %s",
+                (address["email"], escaped + "|%", f"confirm|{address['email']}", f"2fa|{address['email']}"),
+            )
         connection.execute("DELETE FROM events WHERE organizer_id = %s", (organizer_id,))
         cursor = connection.execute("DELETE FROM organizers WHERE id = %s", (organizer_id,))
         _drop_runners_without_results(connection, runners)

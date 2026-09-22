@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class EventSummary(BaseModel):
@@ -20,11 +20,31 @@ class EventSummary(BaseModel):
     country: str | None = None
 
 
+# A race happened, or is going to happen, within a human span of years. Anything outside this is a
+# typo or a probe, and it does not stay harmless: a runner's index weights a result by how long ago
+# it was, and the arithmetic that does it (scoring/runner_index.add_months) adds two years to the
+# event date, so an event in the year 9999 took every public page that runner appears on down with
+# a ValueError. Refused where it arrives instead.
+EARLIEST_EVENT = date(1900, 1, 1)
+EVENT_YEARS_AHEAD = 5
+
+
+def _plausible_event_date(value: date | None) -> date | None:
+    if value is None:
+        return value
+    latest = date(date.today().year + EVENT_YEARS_AHEAD, 12, 31)
+    if value < EARLIEST_EVENT or value > latest:
+        raise ValueError(f"event_date must be between {EARLIEST_EVENT.isoformat()} and {latest.isoformat()}")
+    return value
+
+
 class EventCreate(BaseModel):
     event_name: str = Field(max_length=200)
     event_date: date
     location: str | None = Field(default=None, max_length=200)
     country: str | None = Field(default=None, max_length=8)
+
+    _check_date = field_validator("event_date")(_plausible_event_date)
 
 
 class EventUpdate(BaseModel):
@@ -32,6 +52,8 @@ class EventUpdate(BaseModel):
     event_date: date | None = None
     location: str | None = Field(default=None, max_length=200)
     country: str | None = Field(default=None, max_length=8)
+
+    _check_date = field_validator("event_date")(_plausible_event_date)
 
 
 class RaceSummary(BaseModel):

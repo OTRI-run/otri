@@ -453,7 +453,7 @@ function SessionsCard({ onSignedOut }) {
   )
 }
 
-function DataCard({ email, onDeleted }) {
+function DataCard({ email, onDeleted, hasPassword = true }) {
   const [password, setPassword] = useState('')
   const [confirmText, setConfirmText] = useState('')
   const [open, setOpen] = useState(false)
@@ -495,6 +495,27 @@ function DataCard({ email, onDeleted }) {
       setBusy(false)
     }
   }
+  if (!hasPassword) {
+    return (
+      <Card>
+        <Eyebrow as="h2">YOUR DATA</Eyebrow>
+        <div className="mt-3">
+          <Notice kind="info" title="Set a password first.">
+            <p>
+              Downloading your data and deleting your account both ask for a password, because both hand over or destroy
+              everything the account holds — and this account signs in with Google, so it has none yet.
+            </p>
+            <p className="mt-2">
+              Use <strong className="font-semibold">Email me a link to set a password</strong> in the Password card above. Once
+              you have one, both come back here. You can also ask us at{' '}
+              <a href="mailto:hello@otri.run" className="font-semibold underline">hello@otri.run</a> and we will do either by hand.
+            </p>
+          </Notice>
+        </div>
+      </Card>
+    )
+  }
+
   return (
     <Card>
       <Eyebrow as="h2">YOUR DATA</Eyebrow>
@@ -631,7 +652,7 @@ export function AccountPage({ session, onToken, onSignOut }) {
               )}
             </div>
           </Card>
-          <DataCard email={session.email} onDeleted={onSignOut} />
+          <DataCard email={session.email} onDeleted={onSignOut} hasPassword={me?.has_password !== false} />
         </div>
       </div>
     </Page>

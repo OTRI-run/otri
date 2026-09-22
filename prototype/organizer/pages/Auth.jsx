@@ -102,7 +102,7 @@ const STEPS = [
   [ShieldCheck, 'REVIEW', 'Check the summary and the leaderboard before it counts.'],
 ]
 
-export function Welcome() {
+export function Welcome({ onSignedIn }) {
   return (
     <>
       <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
@@ -120,14 +120,6 @@ export function Welcome() {
               Bring your course file and your results. OTRI measures the course, validates the file and gives every finisher a
               score that depends only on the course and their own time. Free, open, and the whole method is on the record.
             </p>
-            <div className="mt-7 flex flex-col gap-2 sm:flex-row">
-              <Button onClick={() => navigate('/register')}>
-                Create organizer account <ArrowRight size={15} />
-              </Button>
-              <Button variant="secondary" onClick={() => navigate('/login')}>
-                Sign in
-              </Button>
-            </div>
             <p className="mt-4 max-w-[620px] text-sm leading-6 text-slate-600">
               Rather see your scores first?{' '}
               <a href="../#score" className="font-semibold text-blue-600 no-underline hover:underline">Score your race without an account</a>, then publish it with one click: the course and the results come along.
@@ -139,36 +131,20 @@ export function Welcome() {
             </div>
           </div>
 
-          <div className="min-w-0 overflow-hidden rounded-2xl bg-[linear-gradient(145deg,#08111f_0%,#0b1730_58%,#123b85_100%)] p-4 text-white shadow-[0_24px_70px_rgba(11,18,32,.2)] sm:p-5">
-            <div className="flex items-center justify-between font-mono text-[8px] tracking-[.08em] text-slate-400">
-              <span>OTRI / ORGANIZERS</span>
-              <span className="flex items-center gap-1.5">
-                <i className="h-1.5 w-1.5 rounded-full bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,.9)]" />
-                FOUR STEPS
-              </span>
+          <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_24px_70px_rgba(11,18,32,.10)] sm:p-6">
+            <h2 className="font-mono text-[10px] tracking-[.08em] text-slate-500">CREATE YOUR ORGANIZER ACCOUNT</h2>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Free, and you can build your race straight away — confirming your email is only needed to make it public.
+            </p>
+            <div className="mt-4">
+              <SignupForm onSignedIn={onSignedIn} idPrefix="hero" />
             </div>
-            <div className="border-b border-slate-700/70 py-8">
-              <small className="font-mono text-[8px] tracking-[.08em] text-blue-300">YOUR RACE, SCORED</small>
-              <strong className="mt-2 block bg-gradient-to-r from-white to-blue-200 bg-clip-text pb-1 text-4xl font-bold leading-[1.25] tracking-[-.05em] text-transparent">
-                Course in. Scores out.
-              </strong>
-              <span className="mt-1 block text-xs text-slate-400">Stop at any step and come back. Everything is saved as you go.</span>
-            </div>
-            <div>
-              {STEPS.map(([Icon, title, desc], index) => (
-                <div key={title} className="grid min-w-0 grid-cols-[18px_22px_minmax(0,1fr)] items-center gap-2 border-b border-slate-700/70 py-3.5">
-                  <b className="font-mono text-[9px] text-slate-500">0{index + 1}</b>
-                  <Icon size={15} className="text-blue-400" />
-                  <span className="truncate text-xs font-semibold">
-                    {title} <small className="ml-1 font-mono text-[8px] font-normal text-slate-500">{desc.split('.')[0].toLowerCase()}</small>
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-between gap-3 pt-4 font-mono text-[8px] tracking-[.08em]">
-              <b>OTRI INDEX</b>
-              <span className="text-right text-blue-300">COURSE + TIME + VERSION = SCORE</span>
-            </div>
+            <p className="mt-4 text-center text-[13px] text-slate-600">
+              Already have an account?{' '}
+              <Link to="/login" className="font-semibold text-blue-600">
+                Sign in
+              </Link>
+            </p>
           </div>
         </div>
       </section>
@@ -299,8 +275,16 @@ function AuthCard({ title, intro, children, footer, eyebrow = 'FOR ORGANIZERS' }
   )
 }
 
-export function Register({ onSignedIn, query = {} }) {
-  const [email, setEmail] = useState('')
+/** The sign-up form itself, so a page can carry it rather than link to one.
+ *
+ *  Arriving at the organizer site used to mean: read the page, press "Create organizer account",
+ *  then choose Google or email on the next page, and only then reach a form -- three presses
+ *  before you could start typing. Both ways in are on the first page now, and /register keeps the
+ *  same form for anyone who arrives there directly or comes back from Google without an account.
+ */
+export function SignupForm({ onSignedIn, initialEmail = '', autoFocus = false, idPrefix = 'reg' }) {
+  const providers = useProviders()
+  const [email, setEmail] = useState(initialEmail)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState(null)
@@ -309,6 +293,10 @@ export function Register({ onSignedIn, query = {} }) {
   const check = assessPassword(password, email)
   const tooShort = password.length > 0 && !check.ok
   const mismatch = confirm.length > 0 && confirm !== password
+
+  useEffect(() => {
+    if (initialEmail) setEmail(initialEmail)
+  }, [initialEmail])
 
   async function submit(event) {
     event.preventDefault()
@@ -328,57 +316,70 @@ export function Register({ onSignedIn, query = {} }) {
     }
   }
 
-  // Signing up starts with how, not with a form. The page used to open on the password fields
-  // with Google underneath them, so the quicker way in was the one you had to read past a form to
-  // find. A visitor sent here by a Google sign-in that found no account has already chosen, so
-  // the form opens with their address in it; the address comes from a one-read cookie rather than
-  // the URL, which is why it arrives a moment after the page does.
-  const [chosen, setChosen] = useState(query.google === 'no-account' ? 'email' : null)
+  return (
+    <form onSubmit={submit} className="grid gap-4" noValidate>
+      <GoogleButton intent="register" acceptTerms marketingOptIn={news} label="Sign up with Google" divider={false} />
+      {/* Only when there is something to be "or" from: this deployment may have no Google client
+          configured, and then the button above renders nothing. */}
+      {providers.google && (
+        <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[.12em] text-slate-500">
+          <span className="h-px flex-1 bg-slate-200" />
+          or with an email
+          <span className="h-px flex-1 bg-slate-200" />
+        </div>
+      )}
+      <Field label="Email" htmlFor={`${idPrefix}-email`} hint="We send the verification link and race notifications here.">
+        <input id={`${idPrefix}-email`} autoFocus={autoFocus && autoFocusOnDesktop} type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
+      </Field>
+      <Field label="Password" htmlFor={`${idPrefix}-pw`}>
+        <PasswordInput id={`${idPrefix}-pw`} required autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+        <PasswordStrength password={password} email={email} />
+      </Field>
+      <Field label="Confirm password" htmlFor={`${idPrefix}-pw2`} error={mismatch ? 'Passwords do not match.' : null}>
+        <PasswordInput id={`${idPrefix}-pw2`} required autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inputClass} />
+      </Field>
+      <div className="grid gap-2 rounded-xl bg-slate-50 px-4 py-3">
+        <label className="flex items-start gap-2 text-sm text-slate-700">
+          <input id={`${idPrefix}-news`} type="checkbox" checked={news} onChange={(e) => setNews(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600" />
+          <span>
+            Email me OTRI news: new features, scoring-model updates, organizer tips. A few times a year, unsubscribe any time in your account settings.{' '}
+            <span className="text-slate-500">Optional.</span>
+          </span>
+        </label>
+      </div>
+      {error && <Notice kind="error">{error}</Notice>}
+      <Button type="submit" busy={busy} disabled={!email || !password || tooShort || mismatch}>
+        Create account <ArrowRight size={15} />
+      </Button>
+      {!busy && (!email || !password || tooShort || mismatch) && (
+        <p className="text-xs text-slate-500">
+          {!email
+            ? 'Enter your email to continue.'
+            : !password || tooShort
+              ? 'Choose a password of at least 10 characters.'
+              : 'The two passwords do not match yet.'}
+        </p>
+      )}
+      <TermsLine />
+    </form>
+  )
+}
+
+export function Register({ onSignedIn, query = {} }) {
+  // A visitor sent here by a Google sign-in that found no account has already chosen, so the form
+  // opens with their address in it. The address comes from a one-read cookie rather than the URL,
+  // which is why it arrives a moment after the page does.
+  const [fromGoogle, setFromGoogle] = useState('')
 
   useEffect(() => {
     if (query.google !== 'no-account') return
     let live = true
     fetchPendingGoogleAddress().then((address) => {
-      if (live && address) setEmail(address)
+      if (live && address) setFromGoogle(address)
     })
     return () => { live = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  if (chosen !== 'email') {
-    return (
-      <AuthCard
-        eyebrow="ORGANIZER ACCOUNT"
-        title={
-          <>
-            Create your
-            <br />
-            <Gradient>organizer account.</Gradient>
-          </>
-        }
-        intro="You can build your race straight away; confirming your email is only needed to make it public. One account can hold every event you organize."
-      >
-        <div className="grid gap-3">
-          {query.google === 'no-account' && (
-            <Notice kind="info" title="No OTRI account for that Google address yet.">
-              Create one here: continue with Google again, or choose a password instead.
-            </Notice>
-          )}
-          <p className="text-center text-[13px] text-slate-600">
-            Already have an account?{' '}
-            <Link to="/login" className="font-semibold text-blue-600">
-              Sign in
-            </Link>
-          </p>
-          <GoogleButton intent="register" acceptTerms marketingOptIn={news} label="Sign up with Google" divider={false} />
-          <Button type="button" onClick={() => setChosen('email')} className="min-h-12 text-[14px]">
-            Sign up with email
-          </Button>
-          <TermsLine />
-        </div>
-      </AuthCard>
-    )
-  }
 
   return (
     <AuthCard
@@ -400,47 +401,18 @@ export function Register({ onSignedIn, query = {} }) {
         </>
       }
     >
-      <form onSubmit={submit} className="grid gap-4" noValidate>
-        <Field label="Email" htmlFor="reg-email" hint="We send the verification link and race notifications here.">
-          <input id="reg-email" autoFocus={autoFocusOnDesktop} type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
-        </Field>
-        <Field label="Password" htmlFor="reg-pw">
-          <PasswordInput id="reg-pw" required autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
-          <PasswordStrength password={password} email={email} />
-        </Field>
-        <Field label="Confirm password" htmlFor="reg-pw2" error={mismatch ? 'Passwords do not match.' : null}>
-          <PasswordInput id="reg-pw2" required autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inputClass} />
-        </Field>
-        <div className="grid gap-2 rounded-xl bg-slate-50 px-4 py-3">
-          <label className="flex items-start gap-2 text-sm text-slate-700">
-            <input id="reg-news" type="checkbox" checked={news} onChange={(e) => setNews(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600" />
-            <span>
-              Email me OTRI news: new features, scoring-model updates, organizer tips. A few times a year, unsubscribe any time in your account settings.{' '}
-              <span className="text-slate-500">Optional.</span>
-            </span>
-          </label>
+      {query.google === 'no-account' && (
+        <div className="mb-4">
+          <Notice kind="info" title="No OTRI account for that Google address yet.">
+            Create one here: continue with Google again, or choose a password instead.
+          </Notice>
         </div>
-        {error && <Notice kind="error">{error}</Notice>}
-        <Button type="submit" busy={busy} disabled={!email || !password || tooShort || mismatch}>
-          Create account <ArrowRight size={15} />
-        </Button>
-        {!busy && (!email || !password || tooShort || mismatch) && (
-          <p className="text-xs text-slate-500">
-            {!email
-              ? 'Enter your email to continue.'
-              : !password || tooShort
-                ? 'Choose a password of at least 10 characters.'
-                : 'The two passwords do not match yet.'}
-          </p>
-        )}
-        <TermsLine />
-        <button type="button" onClick={() => setChosen(null)} className="justify-self-center text-[13px] font-semibold text-blue-600 hover:underline">
-          Back to the other ways in
-        </button>
-      </form>
+      )}
+      <SignupForm onSignedIn={onSignedIn} initialEmail={fromGoogle} autoFocus />
     </AuthCard>
   )
 }
+
 
 export function CheckEmail({ email }) {
   const [sent, setSent] = useState(false)

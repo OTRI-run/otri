@@ -318,7 +318,7 @@ function App() {
 
   let page = null
   let params
-  if (route.path === '/') page = session ? null : <Welcome />
+  if (route.path === '/') page = session ? null : <Welcome onSignedIn={signIn} />
   else if (route.path === '/publish') page = <PublishScoredRace session={session} />
   else if (route.path === '/register') page = <Register onSignedIn={signIn} query={route.query} />
   else if (route.path === '/login') page = <Login onSignedIn={signIn} afterReset={Boolean(route.query?.reset)} sessionEnded={sessionEnded} query={route.query} />
