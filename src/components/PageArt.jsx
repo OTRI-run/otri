@@ -32,9 +32,9 @@ const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
 /** The size and tone of a drawing that sits beside a page title. */
 export const TITLE_ART = 'h-14 w-14 shrink-0 text-blue-700 opacity-[.55] sm:h-[76px] sm:w-[76px]'
 
-/** A trail runner climbing: leaning into the slope under a cap, arms and legs swinging from the
- *  shoulder and the hip in opposite phase, the body dipping with each footfall, and the trail
- *  streaming back downhill under him. */
+/** A trail runner climbing: leaning into the slope, arms and legs swinging from the shoulder and
+ *  the hip in opposite phase, the body dipping with each footfall, and the trail streaming back
+ *  downhill under him. */
 export function RunnerArt({ className = '' }) {
   const bob = { transformOrigin: '60px 60px', animationDuration: '.72s' }
   return (
@@ -43,9 +43,8 @@ export function RunnerArt({ className = '' }) {
       <path d="M2 112 L118 68" strokeWidth="5" opacity=".35" />
       <path d="M2 112 L118 68" strokeWidth="5" opacity=".6" strokeDasharray="7 11" className="otri-run" />
       <g className="otri-bob" style={bob}>
-        {/* Head and cap, torso leaning into the hill. */}
+        {/* Head, and the torso leaning into the hill. */}
         <circle cx="78" cy="22" r="8" />
-        <path d="M84 16 L95 14" strokeWidth="5" />
         <path d="M71 34 L55 62" />
         {/* Arms swing from the shoulder, one forward as the other goes back. */}
         <g className="otri-swing" style={{ transformOrigin: '70px 40px' }}>
