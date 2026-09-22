@@ -41,6 +41,18 @@ const ABS_MAX_SECONDS = 200 * 3600
 const SLIDER_MIN_SCORE = 200
 const SLIDER_MAX_SCORE = 1100
 
+// A different order of the same list each visit. The API sends races newest first, so the
+// "Pick a race" panel opened on the same few every time and the rest were never seen without
+// scrolling; shuffled once on arrival, each course gets its turn at the top.
+function shuffled(items) {
+  const out = [...items]
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[out[i], out[j]] = [out[j], out[i]]
+  }
+  return out
+}
+
 function clampSeconds(seconds) {
   return Math.min(ABS_MAX_SECONDS, Math.max(ABS_MIN_SECONDS, Math.round(seconds / 30) * 30))
 }
@@ -1140,7 +1152,9 @@ export default function ScoreCalculator({ embedded = false }) {
     let cancelled = false
     listRaces()
       .then((all) => {
-        if (!cancelled) setRaces(all.filter((race) => race.has_gpx))
+        // Shuffled here, once, not in the filter: a search still ranks by how well the name
+        // matches, which is the one order that should not be random.
+        if (!cancelled) setRaces(shuffled(all.filter((race) => race.has_gpx)))
       })
       .catch((err) => {
         if (!cancelled) setRacesError(err.message)
