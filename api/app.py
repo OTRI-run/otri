@@ -959,6 +959,11 @@ def change_password(payload: ChangePassword, request: Request, response: Respons
     """Changes the password and signs out every other device; returns a fresh token for this one."""
     with _password_confirmed(request, organizer):
         version = _auth.change_password(organizer.id, payload.current_password, payload.new_password)
+    # The address is told, always. Changing the password is how somebody who has got in keeps the
+    # owner out, and the mailbox is the one thing they may not have. Not rate limited on purpose:
+    # a security notice that can be suppressed by making it happen often is not one. The endpoint
+    # itself is capped (five password checks a minute per account), which bounds this.
+    _email.send_password_changed_email(organizer.email)
     return _finish_session(response, request, _fresh_token(organizer, version), False)
 
 
@@ -1142,6 +1147,9 @@ def confirm_password_reset(payload: PasswordResetConfirm, request: Request, resp
         organizer = reset_password(payload.token, payload.new_password)
     except AuthError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    # Said to the address even though the link came from it: a reset link that somebody else opened
+    # first is exactly the case worth telling the owner about, and it is one token, used once.
+    _email.send_password_changed_email(organizer.email, after_reset=True)
     # The owner is back: the wrong passwords somebody piled up against the account no longer lock
     # it. The count of wrong second-factor codes stays, a mailbox does not answer for those.
     _limits.clear_all_locks(organizer.email)
