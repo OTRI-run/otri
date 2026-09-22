@@ -73,6 +73,9 @@ server {
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
+        # Never forwarded. A client can send it, nginx does not set it, and the API must not be
+        # handed a host of the caller's choosing for a link it is about to email.
+        proxy_set_header X-Forwarded-Host "";
 
         # Reasonable limit for GPX/CSV/XLSX uploads
         client_max_body_size 20m;

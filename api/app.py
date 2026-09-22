@@ -708,13 +708,14 @@ def _api_base(request: Request) -> str:
     """This API's own origin: where Google must send the browser back, and where a link we email
     points. It has to match the URI registered in the Google console exactly.
 
-    OTRI_API_BASE_URL decides it. Without that it is read from the request, which is right for a
-    local run and wrong behind a proxy: nginx passes X-Forwarded-Host through from whoever sent
-    it, so the address would be the caller's to choose."""
+    OTRI_API_BASE_URL decides it, and the deploy script always sets it. Without it the origin is
+    read from the request, for a local run. Only the Host header is read for that, never
+    X-Forwarded-Host: nginx sets Host itself, whereas X-Forwarded-Host arrived from whoever sent
+    the request, and this value goes into links that are emailed."""
     if _API_BASE_URL:
         return _API_BASE_URL
     scheme = request.headers.get("x-forwarded-proto", request.url.scheme).split(",")[0].strip()
-    host = request.headers.get("x-forwarded-host", request.headers.get("host", request.url.netloc)).split(",")[0].strip()
+    host = request.headers.get("host", request.url.netloc).split(",")[0].strip()
     return f"{scheme}://{host}"
 
 
