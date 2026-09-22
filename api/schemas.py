@@ -107,6 +107,13 @@ class RunnerScoreOut(BaseModel):
     nationality: str | None = None
 
 
+class RunnerDeletedOut(BaseModel):
+    """What removing a runner actually did, including to races the admin was not looking at."""
+
+    results_removed: int
+    unpublished_races: list[str] = []
+
+
 class ValidationIssueOut(BaseModel):
     severity: str
     row: int | None

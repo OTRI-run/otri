@@ -71,7 +71,7 @@ MIGRATIONS: tuple[Migration, ...] = (
         "0004_single_scoring_model",
         """
         UPDATE races SET scoring_version = '0.9.0-course-standard-domain-gated', updated_at = now()
-        WHERE scoring_version <> '0.9.0-course-standard-domain-gated';
+        WHERE scoring_version <> '0.9.0-course-standard-domain-gated' AND published_at IS NULL;
         ALTER TABLE races ALTER COLUMN scoring_version SET DEFAULT '0.9.0-course-standard-domain-gated';
         """,
         "The development builds before OTRI model 0.1.0 were removed from the code; a race stored under one "
@@ -81,7 +81,7 @@ MIGRATIONS: tuple[Migration, ...] = (
         "0005_vertical_build",
         """
         UPDATE races SET scoring_version = '0.10.0-course-standard-vertical', updated_at = now()
-        WHERE scoring_version <> '0.10.0-course-standard-vertical';
+        WHERE scoring_version <> '0.10.0-course-standard-vertical' AND published_at IS NULL;
         ALTER TABLE races ALTER COLUMN scoring_version SET DEFAULT '0.10.0-course-standard-vertical';
         """,
         "Build 0.10.0 scores uphill-only courses (OEP-003) and gives every other course the same score as "

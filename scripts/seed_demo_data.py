@@ -70,7 +70,7 @@ def main(publish: bool | None = None) -> None:
             # Demo races are synthetic and carry no course file, so they can always follow the
             # model in production; otherwise the public demo leaderboards would keep showing a
             # retired build's numbers after every model change.
-            db.update_race(race.race_id, scoring_version=DEFAULT_SCORING_VERSION)
+            db.update_race(race.race_id, scoring_version=DEFAULT_SCORING_VERSION, allow_published=True)
 
         result_path = RESULTS_DIR / f"{race.race_id}.csv"
         if result_path.exists():

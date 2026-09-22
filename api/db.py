@@ -568,9 +568,16 @@ def set_race_published(race_id: str, published: bool) -> Race:
     return race
 
 
-def count_races_by_event() -> dict[str, int]:
+def count_races_by_event(*, public_only: bool = False) -> dict[str, int]:
+    """How many races each event holds. `public_only` counts the ones a stranger could open.
+
+    The public list used to show the total, which told anyone reading how many distances an
+    organizer was still preparing -- the same thing the filter that builds the list exists to keep
+    private, and a number that disagreed with the event's own page.
+    """
+    where = " WHERE published_at IS NOT NULL OR listed_at IS NOT NULL" if public_only else ""
     with get_connection() as connection:
-        rows = connection.execute("SELECT event_id, COUNT(*) AS n FROM races GROUP BY event_id").fetchall()
+        rows = connection.execute(f"SELECT event_id, COUNT(*) AS n FROM races{where} GROUP BY event_id").fetchall()
     return {row["event_id"]: int(row["n"]) for row in rows}
 
 
@@ -628,8 +635,28 @@ def update_race(
     distance_km: float | None = None,
     elevation_gain_m: float | None = None,
     scoring_version: str | None = None,
+    allow_published: bool = False,
 ) -> Race:
+    """Change a race's name, its course figures or its scoring model.
+
+    The figures and the model are what a score means, so on a published race they are frozen for
+    the reason given in replace_results, and the refusal is here rather than only in the handler
+    that called this. The handler reads the race and then calls this on another connection; a
+    publish committing between those two was enough for the change to land on a race that is now
+    public. Inside this transaction the row is already held, so there is no such moment. Renaming
+    stays open either way: the freeze is on what the numbers mean, not on the words around them.
+    """
+    restated = distance_km is not None or elevation_gain_m is not None or scoring_version is not None
     with get_connection() as connection:
+        if restated and not allow_published:
+            current = connection.execute("SELECT published_at, scoring_version FROM races WHERE race_id = %s FOR UPDATE", (race_id,)).fetchone()
+            if current is None:
+                raise NotFoundError(f"race {race_id!r} not found")
+            # A scoring_version that is already what the race carries changes nothing, so it is not
+            # a restatement and should not be refused.
+            moves_model = scoring_version is not None and scoring_version != current["scoring_version"]
+            if current["published_at"] is not None and (distance_km is not None or elevation_gain_m is not None or moves_model):
+                raise RacePublished(race_id)
         cursor = connection.execute(
             "UPDATE races SET course_name = COALESCE(%s, course_name), "
             "distance_km = COALESCE(%s, distance_km), "
@@ -1153,12 +1180,36 @@ def delete_report(report_id: int) -> bool:
         return connection.execute("DELETE FROM reports WHERE id = %s", (report_id,)).rowcount > 0
 
 
-def delete_runner(runner_id: str) -> int:
-    """Remove a runner and every result attached to them. Returns how many results went."""
+def delete_runner(runner_id: str) -> tuple[int, list[str]]:
+    """Remove a runner and every result attached to them.
+
+    Returns how many results went and which published races were taken down because of it.
+
+    A runner's results are spread across whatever races they ran, which belong to whatever
+    organizers held them. Removing the runner therefore reaches into other people's published
+    leaderboards, and a race that loses its last finisher this way used to stay public, still
+    listed as scored, with a results page that answered 404. A race with nobody left in it is
+    unpublished here, in the same transaction, so the public record is never left saying something
+    that is not so. The race itself and its course are untouched: the organizer can look at it,
+    see what is left and decide.
+    """
     with get_connection() as connection:
+        affected = [
+            row["race_id"]
+            for row in connection.execute("SELECT DISTINCT race_id FROM results WHERE runner_id = %s", (runner_id,)).fetchall()
+        ]
         removed = connection.execute("DELETE FROM results WHERE runner_id = %s", (runner_id,)).rowcount
         connection.execute("DELETE FROM runners WHERE runner_id = %s", (runner_id,))
-    return removed
+        unpublished: list[str] = []
+        if affected:
+            rows = connection.execute(
+                "UPDATE races SET published_at = NULL, updated_at = now() WHERE race_id = ANY(%s) AND published_at IS NOT NULL "
+                "AND NOT EXISTS (SELECT 1 FROM results res WHERE res.race_id = races.race_id AND res.finish_time_seconds IS NOT NULL) "
+                "RETURNING race_id",
+                (affected,),
+            ).fetchall()
+            unpublished = [row["race_id"] for row in rows]
+    return removed, unpublished
 
 
 # --- Admin: accounts and platform statistics ---------------------------------

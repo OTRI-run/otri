@@ -1148,7 +1148,10 @@ def test_admin_can_delete_a_runner_and_their_results(monkeypatch):
     race_id = _publish_results(headers, "Rank,Time,Last name,First name,Gender\n1,2:00:00,Gone,Greta,F\n2,2:05:00,Stays,Sam,M\n")
     runner = client.get("/runners", params={"q": "greta gone"}).json()[0]
     admin = _admin_headers(monkeypatch)
-    assert client.delete(f"/admin/runners/{runner['runner_id']}", headers=admin).status_code == 204
+    answer = client.delete(f"/admin/runners/{runner['runner_id']}", headers=admin)
+    assert answer.status_code == 200
+    # Somebody was left in this race, so it stays up; the admin is told that nothing else moved.
+    assert answer.json() == {"results_removed": 1, "unpublished_races": []}
     assert client.get(f"/runners/{runner['runner_id']}").status_code == 404
     rows = client.get(f"/races/{race_id}/results").json()
     assert [r["family_name"] for r in rows] == ["Stays"], "only that runner's results are gone"

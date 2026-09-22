@@ -56,7 +56,7 @@ if not os.environ.get("OTRI_DEM_MANIFEST"):
     )
 from ingestion import result_records, validate_result_file
 from ingestion.records import RaceRecord
-from scoring import DEFAULT_SCORING_VERSION, available_scoring_models, estimate_score, get_scoring_model_info, score_race
+from scoring import DEFAULT_SCORING_VERSION, UnknownScoringModel, available_scoring_models, estimate_score, get_scoring_model_info, score_race
 from scoring.runner_index import IndexInput, compute_runner_index
 
 from . import db
@@ -129,6 +129,7 @@ from .schemas import (
     RaceSummary,
     RaceUpdate,
     ResendVerificationRequest,
+    RunnerDeletedOut,
     RunnerScoreOut,
     ScoringModelOut,
     SubmissionResult,
@@ -1188,7 +1189,10 @@ def list_events(mine: bool = False, organizer: Organizer | None = Depends(_optio
         # prepared, a race not published yet) are theirs until they publish: not their names either.
         public_events = {race.event_id for race in db.list_races(published_only=True)}
         events = [event for event in events if event.event_id in public_events]
-    race_counts = db.count_races_by_event()
+    # The count follows the same rule as the list: an owner and an admin see everything, a stranger
+    # sees only what is public, so this number agrees with the event's own page either way.
+    own_view = mine or (organizer is not None and organizer.is_admin)
+    race_counts = db.count_races_by_event(public_only=not own_view)
     return [
         EventSummary(
             event_id=event.event_id,
@@ -1403,6 +1407,25 @@ def publish_race(race_id: str, organizer: Organizer = Depends(require_organizer)
     require_verified(organizer)
     if not db.has_results(race_id):
         raise HTTPException(status_code=422, detail="upload results before publishing")
+
+    # What is about to become public is scored once more, here, against the course as it stands
+    # now. The check on the way in is not enough on its own: a race scored from typed figures can
+    # have those figures edited afterwards, and the file that passed the check is then scored
+    # against a course nobody checked. Publishing is the moment the numbers stop being the
+    # organizer's own and start being somebody's runner index, so it is the right place to look.
+    try:
+        scored = _score_results(race, db.get_results(race_id))
+        _refuse_impossible_scores(scored)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    if not any(row.status == "finisher" for row in scored):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "This race has no finishers: every row on file is a DNF, DSQ or DNS. A race is "
+                "published so that runners can read a leaderboard, and there is nothing to read here."
+            ),
+        )
     _analytics.count("race_published")
     return _race_summary(db.set_race_published(race_id, True), db.count_results_by_race().get(race_id, 0))
 
@@ -1503,13 +1526,17 @@ def edit_race(race_id: str, payload: RaceUpdate, organizer: Organizer = Depends(
     if changes_scoring or (payload.distance_km is not None or payload.elevation_gain_m is not None):
         _require_not_public(race, "scoring model" if changes_scoring else "course figures")
 
-    updated = db.update_race(
-        race_id,
-        course_name=payload.course_name.strip() if payload.course_name else None,
-        distance_km=payload.distance_km,
-        elevation_gain_m=payload.elevation_gain_m,
-        scoring_version=payload.scoring_version,
-    )
+    try:
+        updated = db.update_race(
+            race_id,
+            course_name=payload.course_name.strip() if payload.course_name else None,
+            distance_km=payload.distance_km,
+            elevation_gain_m=payload.elevation_gain_m,
+            scoring_version=payload.scoring_version,
+        )
+    except db.RacePublished as error:
+        # Checked above too; the race was published between that read and this write.
+        raise _published_conflict("scoring model" if changes_scoring else "course figures") from error
     return _race_summary(updated)
 
 
@@ -1948,11 +1975,28 @@ def _scored_rows(race: RaceRecord, results: list, scoring_version: str, gpx_poin
     stateless `POST /score` are the same computation."""
     scores = score_race(race, results, model_version=scoring_version, gpx_points=gpx_points, measurement=measurement)
     # Finish times ride along for the public leaderboard; scores carry the runner's identity only.
-    by_key = {(str(r.rank), r.family_name, r.first_name): r for r in results}
+    #
+    # One source row per score, and the right one. A rank and a name are not unique -- the same
+    # runner is listed twice often enough in an exported file, and two people do share a name --
+    # so keying a dict on them collapsed the duplicates and every score in the group was handed
+    # the last row's finish time. A leaderboard then showed a time that its own score contradicted.
+    # Keep every row that shares a key, in the order the model scores them (it sorts finishers by
+    # time, then bib), and take them one at a time as their scores come back.
+    by_key: dict[tuple[str, str, str], list] = {}
+    for record in results:
+        by_key.setdefault((str(record.rank), record.family_name, record.first_name), []).append(record)
+    for group in by_key.values():
+        if len(group) > 1:
+            group.sort(key=lambda r: (r.finish_time_seconds if r.finish_time_seconds is not None else 0, r.bib_number or ""))
+    taken: dict[tuple[str, str, str], int] = {}
     out = []
     for score in scores:
         data = score.to_dict()
-        source = by_key.get((str(data.get("rank")), data.get("family_name"), data.get("first_name")))
+        key = (str(data.get("rank")), data.get("family_name"), data.get("first_name"))
+        group = by_key.get(key, [])
+        position = taken.get(key, 0)
+        source = group[position] if position < len(group) else None
+        taken[key] = position + 1
         out.append(
             RunnerScoreOut(
                 **data,
@@ -1982,6 +2026,31 @@ def _scored_rows(race: RaceRecord, results: list, scoring_version: str, gpx_poin
     return out
 
 
+def _unscored_rows(results: list, scoring_version: str) -> list[RunnerScoreOut]:
+    """A leaderboard with the times and no scores, for a race whose model this build has dropped."""
+    rows = [
+        RunnerScoreOut(
+            rank=result.rank,
+            bib_number=result.bib_number,
+            family_name=result.family_name,
+            first_name=result.first_name,
+            otri_score=None,
+            confidence="n/a",
+            scoring_version=scoring_version,
+            status="finisher" if result.is_finisher and result.finish_time_seconds is not None else str(result.rank),
+            quality_flags=["scoring_model_retired"],
+            finish_time_seconds=result.finish_time_seconds,
+            runner_id=result.runner_id,
+            gender=result.gender,
+            nationality=result.nationality,
+        )
+        for result in results
+        if not (isinstance(result.rank, str) and result.rank == "DNS")
+    ]
+    rows.sort(key=lambda row: (row.finish_time_seconds is None, row.finish_time_seconds or 0))
+    return rows
+
+
 @app.get("/races/{race_id}/results", response_model=list[RunnerScoreOut])
 def get_race_results(race_id: str, organizer: Organizer | None = Depends(_optional_organizer)) -> list[RunnerScoreOut]:
     race = _visible_race(race_id, organizer, results=True)
@@ -1991,6 +2060,12 @@ def get_race_results(race_id: str, organizer: Organizer | None = Depends(_option
 
     try:
         return _score_results(race, db.get_results(race_id))
+    except UnknownScoringModel:
+        # The model this race was scored under is not in this build. The race is public and people
+        # are reading it, so it answers with what does not depend on the model -- who finished and
+        # in what time -- rather than failing the page. A score that cannot be reproduced is not
+        # shown at all, which is the same rule the rest of the project follows.
+        return _unscored_rows(db.get_results(race_id), race.scoring_version)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
 
@@ -2108,10 +2183,20 @@ def _runner_profile(runner: db.Runner, as_of: date) -> RunnerProfile:
     scored_by_race = {race_id: _scored_rows_for_race(race_id) for race_id in {e["race_id"] for e in entries}}
     inputs = []
     details = {}
+    counted_races = set()
     for entry in entries:
         row = scored_by_race.get(entry["race_id"], {}).get(runner.runner_id)
         if row is None:
             continue  # DNF/DNS/DSQ rows have no score and no place in the index
+        # One race, one entry. A runner listed twice in the same file -- a duplicated row is an
+        # ordinary export artefact, and the validator lets it through as a warning -- used to put
+        # two entries into an index that counts the best three, so their best race crowded out
+        # their weaker ones and, with three copies, a single race could stop the index being
+        # provisional. Scoring already resolves a runner to one row per race; the index now counts
+        # that row once.
+        if entry["race_id"] in counted_races:
+            continue
+        counted_races.add(entry["race_id"])
         result_id = str(entry["result_id"])
         inputs.append(IndexInput(result_id=result_id, event_date=entry["event_date"], score=row.otri_score))
         details[result_id] = (entry["race_id"], row)
@@ -2176,9 +2261,11 @@ def _runner_summaries(runners: list[db.Runner], as_of: date) -> list[RunnerSumma
         if not any(entry["runner_id"] in wanted for entry in entries):
             continue
         scored = _scored_rows_for_race(race_id)
+        counted_here = set()  # one entry per runner per race, for the reason given in _runner_profile
         for entry in entries:
             row = scored.get(entry["runner_id"])
-            if row is not None and entry["runner_id"] in wanted:
+            if row is not None and entry["runner_id"] in wanted and entry["runner_id"] not in counted_here:
+                counted_here.add(entry["runner_id"])
                 inputs[entry["runner_id"]].append(IndexInput(result_id=str(entry["result_id"]), event_date=entry["event_date"], score=row.otri_score))
     out = []
     for runner in runners:
@@ -2877,10 +2964,16 @@ def admin_delete_report(report_id: int, organizer: Organizer = Depends(require_a
     return Response(status_code=204)
 
 
-@app.delete("/admin/runners/{runner_id}", status_code=204)
-def admin_delete_runner(runner_id: str, organizer: Organizer = Depends(require_admin)) -> Response:
-    """Remove a runner's profile and every result attached to it (a removal request, or a bad merge)."""
-    if db.find_runner(runner_id) is None and not db.delete_runner(runner_id):
+@app.delete("/admin/runners/{runner_id}", response_model=RunnerDeletedOut)
+def admin_delete_runner(runner_id: str, organizer: Organizer = Depends(require_admin)) -> RunnerDeletedOut:
+    """Remove a runner's profile and every result attached to it (a removal request, or a bad merge).
+
+    Answers with what it reached. A runner's results sit in other organizers' races, so this can
+    empty a published leaderboard that belongs to somebody who was never part of the request; those
+    races are unpublished rather than left advertising results that are gone, and they are named
+    here so the admin knows what else changed.
+    """
+    removed, unpublished = db.delete_runner(runner_id)
+    if removed == 0 and db.find_runner(runner_id) is None:
         raise HTTPException(status_code=404, detail="no runner with that id")
-    db.delete_runner(runner_id)
-    return Response(status_code=204)
+    return RunnerDeletedOut(results_removed=removed, unpublished_races=unpublished)
