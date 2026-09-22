@@ -58,13 +58,26 @@ export function PodiumArt({ className = '' }) {
   )
 }
 
-export function RouteArt({ className = '' }) {
+/** A finish line: two poles, the banner across them, and the checkered strip on the ground. */
+export function FinishArt({ className = '' }) {
   return (
     <svg viewBox="0 0 120 120" className={className} strokeWidth="6" {...STROKE}>
-      <path d="M16 102 C30 60 50 116 66 72 S98 34 104 18" strokeWidth="5" strokeDasharray="1 11" />
-      <circle cx="16" cy="102" r="7" fill="currentColor" />
-      <path d="M104 18 V4" />
-      <path d="M104 4 H122 L116 10 L122 16 H104 Z" fill="currentColor" transform="translate(-2 0)" />
+      <path d="M18 24 V110 M102 24 V110" />
+      <rect x="10" y="18" width="100" height="28" rx="5" />
+      <text x="60" y="38" textAnchor="middle" fontSize="15" fontWeight="800" letterSpacing="2" fill="currentColor" stroke="none" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">
+        FINISH
+      </text>
+      <g fill="currentColor" stroke="none">
+        <rect x="8" y="96" width="13" height="8" />
+        <rect x="34" y="96" width="13" height="8" />
+        <rect x="60" y="96" width="13" height="8" />
+        <rect x="86" y="96" width="13" height="8" />
+        <rect x="21" y="104" width="13" height="8" />
+        <rect x="47" y="104" width="13" height="8" />
+        <rect x="73" y="104" width="13" height="8" />
+        <rect x="99" y="104" width="13" height="8" />
+      </g>
+      <rect x="8" y="96" width="104" height="16" strokeWidth="3" />
     </svg>
   )
 }
