@@ -11,6 +11,7 @@ import { logoutOrganizer, getMe, resendVerification } from '../apiClient'
 import BuildBanner from '../../src/components/BuildBanner'
 import ErrorBoundary from '../../src/components/ErrorBoundary'
 import { initMonitoring } from '../../src/lib/monitoring'
+import { countPages } from '../../src/lib/analytics'
 import { useDocumentTitle } from '../../src/lib/title'
 import SharedNotFound from '../../src/components/NotFound'
 import { AccountPage } from './pages/Account'
@@ -199,6 +200,7 @@ function Footer() {
 }
 
 initMonitoring()
+countPages()
 
 function organizerTitle(path) {
   if (path.startsWith('/publish')) return 'Publish your scored race · OTRI organizers'

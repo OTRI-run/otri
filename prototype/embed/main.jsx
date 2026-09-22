@@ -4,6 +4,7 @@ import { ArrowUpRight } from 'lucide-react'
 import ScoreCalculator from '../ScoreCalculator'
 import ErrorBoundary from '../../src/components/ErrorBoundary'
 import '../../src/styles.css'
+import { action } from '../../src/lib/analytics'
 
 // The score calculator for another website's page:
 //   <iframe src="https://otri.run/prototype/embed/?race=RACE_ID" ...>
@@ -42,6 +43,8 @@ function Embed() {
     </div>
   )
 }
+
+action('embed_loaded')
 
 createRoot(document.getElementById('root')).render(
   <ErrorBoundary home="./">

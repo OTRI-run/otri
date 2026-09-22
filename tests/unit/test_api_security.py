@@ -28,6 +28,7 @@ PUBLIC_MUTATIONS = {
     "/auth/register", "/auth/login", "/auth/login/2fa", "/auth/logout", "/auth/verify-email",
     "/auth/resend-verification", "/auth/request-password-reset", "/auth/reset-password", "/gpx/analyze", "/gpx/share", "/reports",
     "/score",  # validate and score a results file, nothing stored: rate limited
+    "/site/hit",  # the site counting its own page views: no session, nothing personal, rate limited
 }
 
 

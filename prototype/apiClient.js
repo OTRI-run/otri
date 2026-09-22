@@ -362,6 +362,11 @@ export function getRunner(runnerId) {
   return request(`/runners/${encodeURIComponent(runnerId)}`)
 }
 
+/** Site traffic for the admin dashboard: visits, visitors and what they had in common. */
+export function getTraffic(days, token) {
+  return request(`/admin/traffic?days=${encodeURIComponent(days || 30)}`, { headers: authHeaders(token) })
+}
+
 export function getAdminOverview(token) {
   return request('/admin/overview', { headers: authHeaders(token) })
 }

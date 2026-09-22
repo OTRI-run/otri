@@ -29,6 +29,12 @@ If you then press **Publish this race**, the two files are kept in your own brow
 
 The only cookie is `otri_session`, set by the API when an organizer signs in on the organizer site and needed for that sign-in to work (strictly necessary; HttpOnly, so page scripts cannot read it; it expires with the session). We do not use third-party analytics or advertising trackers.
 
+**Counting visits**: OTRI counts how many people use the site, with its own code (`api/analytics.py`), and hands nothing to anybody else. Opening a page tells the API the path you are on, the site you came from if any (its address only, never a search you typed), your browser's time zone setting, and what the browser says it is. Nothing is written to your browser: no cookie, no stored identifier, nothing that is still there when you come back.
+
+So that the same person is not counted twice in a day, the API makes a number out of the date, a secret, your network address and your browser's description, keeps only that number, and throws the rest away. The date is inside it, so the number is different tomorrow and today's visit cannot be joined to any other day's. Those numbers are deleted after three days; what is left is the count itself, which is nobody's. If your browser sends "Do Not Track" or Global Privacy Control, nothing is sent at all.
+
+Alongside the counts the API keeps a tally of what was done: how many courses were measured, results files scored, races published and accounts made, per day. Those are totals with nothing attached to them.
+
 ## Why we collect it
 
 - **Email + password**: to authenticate organizers and let them manage their races/results.

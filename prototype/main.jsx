@@ -26,9 +26,11 @@ import SearchSuggest from '../src/components/SearchSuggest'
 import { RACE_NAMES } from '../src/lib/raceNames'
 import { knownButNotHere } from '../src/lib/suggest'
 import { initMonitoring } from '../src/lib/monitoring'
+import { countPages } from '../src/lib/analytics'
 import { useDocumentTitle } from '../src/lib/title'
 
 initMonitoring()
+countPages()
 
 const PAGE_TITLES = {
   home: 'OTRI — Open Trail Running Index',

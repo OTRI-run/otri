@@ -316,6 +316,27 @@ class AdminOverview(BaseModel):
     recent_races: list[RaceSummary] = []
 
 
+class SiteHit(BaseModel):
+    """What a page sends when it is opened. Short names because this goes out on every view, and
+    nothing in it identifies anybody: see api/analytics.py."""
+
+    p: str = Field(default="/", max_length=200)     # the path, without any id in it
+    r: str = Field(default="", max_length=500)      # the referring address; only its host is kept
+    tz: str = Field(default="", max_length=60)      # the browser's time zone, as coarse a "where" as this gets
+    e: str | None = Field(default=None, max_length=40)  # a named action instead of a page view
+
+
+class TrafficSummary(BaseModel):
+    by_day: list[dict] = []
+    pages: list[dict] = []
+    sources: list[dict] = []
+    zones: list[dict] = []
+    devices: list[dict] = []
+    browsers: list[dict] = []
+    actions: list[dict] = []
+    totals: dict = {}
+
+
 class ProfileOut(BaseModel):
     display_name: str | None = None
     organization: str | None = None
