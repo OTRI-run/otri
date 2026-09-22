@@ -1,4 +1,4 @@
-import RankBadge from '../src/components/RankBadge'
+import ResultsTable from '../src/components/ResultsTable'
 import ColumnsRead from '../src/components/ColumnsRead'
 import WhatWeScore from '../src/components/WhatWeScore'
 import useFileDrop from '../src/lib/useFileDrop'
@@ -10,7 +10,6 @@ import { saveHandoff } from './publishHandoff'
 import { ShareResults } from './SharePanel'
 import RaceNameList, { RACE_NAME_LIST } from '../src/components/RaceNameList'
 import CourseMap from '../src/components/CourseMap'
-import Flag from '../src/components/Flag'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import { modelLabel } from '../src/lib/model'
 
@@ -54,8 +53,6 @@ async function fetchExample({ url, file, type }) {
   const text = await response.text()
   return { text, file: new File([text], file, { type }) }
 }
-const ROWS_AT_ONCE = 100
-
 function formatHms(totalSeconds) {
   if (totalSeconds == null) return ''
   const pad = (n) => String(n).padStart(2, '0')
@@ -138,7 +135,6 @@ function Tile({ label, value, sub }) {
 
 function Scored({ result, fileStem, gpxText, children }) {
   const units = useUnits()
-  const [visible, setVisible] = useState(ROWS_AT_ONCE)
   const [sharing, setSharing] = useState(false)
   const { course, summary, scores } = result
   // The reasons in words; the full machine-readable list stays one click away.
@@ -221,38 +217,8 @@ function Scored({ result, fileStem, gpxText, children }) {
 
       {children}
 
-      <div className="mt-8 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-        <table className="w-full min-w-[680px] text-left text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
-              <th className="px-3 py-2">Rank</th>
-              <th className="px-3 py-2">Runner</th>
-              <th className="px-3 py-2">Country</th>
-              <th className="px-3 py-2">Gender</th>
-              <th className="px-3 py-2">Bib</th>
-              <th className="px-3 py-2">Time</th>
-              <th className="px-3 py-2 text-right">OTRI</th>
-            </tr>
-          </thead>
-          <tbody>
-            {scores.slice(0, visible).map((row, index) => (
-              <tr key={`${index}-${row.rank}`} className="border-b border-slate-100 last:border-0 odd:bg-white even:bg-slate-50/70 hover:bg-blue-50/50">
-                <td className="px-3 py-2 font-mono text-xs text-slate-500"><RankBadge rank={row.rank} /></td>
-                <td className="px-3 py-2 font-medium text-[#0b1220]">{row.first_name} {row.family_name}</td>
-                <td className="px-3 py-2">{row.nationality ? <Flag code={row.nationality} /> : <span className="text-slate-300">—</span>}</td>
-                <td className="px-3 py-2 font-mono text-xs text-slate-500">{row.gender || '—'}</td>
-                <td className="px-3 py-2 font-mono text-xs text-slate-500">{row.bib_number ?? '—'}</td>
-                <td className="px-3 py-2 font-mono text-xs text-slate-600">{formatHms(row.finish_time_seconds) || '—'}</td>
-                <td className="px-3 py-2 text-right font-mono font-bold text-blue-600">{row.otri_score ?? <span className="font-normal text-slate-400">{row.status === 'finisher' ? 'not scored' : row.status}</span>}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {scores.length > visible && (
-          <button type="button" onClick={() => setVisible((n) => n + 500)} className="w-full border-t border-slate-100 px-3 py-2.5 text-xs font-semibold text-blue-600 hover:bg-slate-50">
-            Show more · {scores.length - visible} rows left (the download has them all)
-          </button>
-        )}
+      <div className="mt-8">
+        <ResultsTable rows={scores} />
       </div>
     </section>
   )
