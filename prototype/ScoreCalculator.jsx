@@ -628,6 +628,33 @@ function NoCourseHelp({ name, onClose }) {
   )
 }
 
+// While a course is being fetched and measured, this stands in for the picker. The picker used to
+// stay on screen throughout, with a spinner buried inside one of its two panels: the visitor had
+// already chosen, so a page still asking them to choose, and still offering a race list to scroll,
+// was answering a question they had finished with.
+function CourseLoading({ name }) {
+  return (
+    <section className="border-b border-slate-200 bg-white py-10 sm:py-14">
+      <div className={CONTAINER}>
+        <div
+          role="status"
+          aria-live="polite"
+          className="mx-auto flex max-w-[520px] flex-col items-center gap-4 rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-[0_10px_28px_rgba(15,23,42,.04)]"
+        >
+          <Spinner className="h-9 w-9 border-4" />
+          <div>
+            <p className="text-lg font-bold tracking-[-.02em] text-[#0b1220]">{name ? `Measuring ${name}…` : 'Measuring the course…'}</p>
+            <p className="mt-1.5 text-[13px] leading-6 text-slate-500">
+              Every 10 m of the track is measured, with elevation from terrain data where there is any. A long or hilly
+              course takes a few seconds.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuery, onChooseRace, onUpload, loadingCourse, loadError }) {
   const units = useUnits()
   const [missing, setMissing] = useState(null) // a well-known race the visitor picked that has no course here
@@ -1083,6 +1110,9 @@ export default function ScoreCalculator({ embedded = false }) {
   const [gpxText, setGpxText] = useState('')
   const [courseLabel, setCourseLabel] = useState(null)
   const [loadingCourse, setLoadingCourse] = useState(false)
+  // The name of the course being fetched, known when the load starts but not stored on the page
+  // until it finishes, so the waiting panel can say which course it is measuring.
+  const [loadingName, setLoadingName] = useState(null)
   const [loadError, setLoadError] = useState(null)
   const [features, setFeatures] = useState(null)
   const [measurement, setMeasurement] = useState(null)
@@ -1161,6 +1191,7 @@ export default function ScoreCalculator({ embedded = false }) {
 
   async function loadCourse(loader, label, initialSeconds = null) {
     setLoadError(null)
+    setLoadingName(label?.name ?? null)
     setLoadingCourse(true)
     try {
       const file = await loader()
@@ -1268,6 +1299,8 @@ export default function ScoreCalculator({ embedded = false }) {
     <div id="calculator-course" className="scroll-mt-[68px]">
       {hasCourse ? (
         <CourseDetails gpxText={gpxText} measurement={measurement} features={features} courseLabel={courseLabel} onChangeCourse={startOver} shareId={shareId} />
+      ) : loadingCourse ? (
+        <CourseLoading name={loadingName} />
       ) : (
         <CoursePicker
           races={filteredRaces}
@@ -1364,7 +1397,9 @@ export default function ScoreCalculator({ embedded = false }) {
               </>
             )}
           </div>
-          <ScorePanel estimate={estimate} scoring={scoring} targetSeconds={targetSeconds} features={features} />
+          {/* Loading a course counts as calculating: the panel then shows its spinner instead of
+              inviting the visitor to pick a course they have already picked. */}
+          <ScorePanel estimate={estimate} scoring={scoring || loadingCourse} targetSeconds={targetSeconds} features={features} />
         </div>
       </section>
 
