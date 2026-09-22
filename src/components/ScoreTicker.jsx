@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Flag from './Flag'
-import { Timer } from 'lucide-react'
+import { Timer, Trophy } from 'lucide-react'
 
 // A slow vertical ticker over the landing headline: one well-known performance at a time, with
 // its flag and the score it would carry. Decorative. Nothing here is a link, and it is hidden
@@ -47,7 +47,7 @@ function Row({ item }) {
     <div className="flex min-w-0 flex-col justify-center gap-1.5 px-3.5 text-center sm:px-4" style={{ height: ROW_PX }}>
       <span className="flex min-w-0 items-center justify-center gap-2">
         <Flag code={item.country} showCode={false} className="shrink-0 [&>span]:text-[16px]" />
-        <span className="min-w-0 text-[14px] font-semibold leading-tight tracking-[-.01em] text-[#0b1220]">{item.name}</span>
+        <span className="min-w-0 text-[15px] font-bold leading-tight tracking-[-.02em] text-[#0b1220]">{item.name}</span>
       </span>
       <span className="text-[12px] leading-tight text-slate-500">
         {item.race} {item.year}
@@ -111,16 +111,19 @@ export default function ScoreTicker({ className = '' }) {
       aria-hidden="true"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
-      className={`w-full max-w-[400px] select-none ${className}`}
+      className={`w-full max-w-[300px] select-none ${className}`}
     >
-      <div
-        className="overflow-hidden rounded-2xl border border-slate-200 bg-white/85 shadow-[0_10px_28px_rgba(15,23,42,.05)] backdrop-blur"
-        style={{ height: ROW_PX }}
-      >
-        <div style={{ transform: `translateY(-${index * ROW_PX}px)`, transition }}>
-          {rows.map((item, i) => (
-            <Row key={`${item.name}-${i}`} item={item} />
-          ))}
+      <div className="overflow-hidden rounded-2xl border border-[#d8c59e] bg-linear-to-b from-[#fffdf7] to-white shadow-[0_6px_20px_rgba(110,83,35,.08)]">
+        <div className="mx-5 flex items-center justify-center gap-2 border-b border-[#e9dfca] pb-2 pt-3 text-[#8a682c]">
+          <Trophy size={13} strokeWidth={1.6} aria-hidden="true" />
+          <span className="text-[9px] font-semibold uppercase tracking-[.2em]">Race winner</span>
+        </div>
+        <div className="overflow-hidden" style={{ height: ROW_PX }}>
+          <div style={{ transform: `translateY(-${index * ROW_PX}px)`, transition }}>
+            {rows.map((item, i) => (
+              <Row key={`${item.name}-${i}`} item={item} />
+            ))}
+          </div>
         </div>
       </div>
       <p className="mt-1.5 text-center font-mono text-[10px] uppercase tracking-[.12em] text-slate-400">Illustrative example scores</p>
