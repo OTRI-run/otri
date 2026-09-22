@@ -44,15 +44,15 @@ function EqualsIcon() {
 
 function Row({ item }) {
   return (
-    <div className="flex min-w-0 flex-col justify-center gap-1.5 px-3.5 text-left sm:px-4" style={{ height: ROW_PX }}>
-      <span className="flex min-w-0 items-center gap-2">
+    <div className="flex min-w-0 flex-col justify-center gap-1.5 px-3.5 text-center sm:px-4" style={{ height: ROW_PX }}>
+      <span className="flex min-w-0 items-center justify-center gap-2">
         <Flag code={item.country} showCode={false} className="shrink-0 [&>span]:text-[16px]" />
         <span className="min-w-0 text-[14px] font-semibold leading-tight tracking-[-.01em] text-[#0b1220]">{item.name}</span>
       </span>
       <span className="text-[12px] leading-tight text-slate-500">
         {item.race} {item.year}
       </span>
-      <span className="flex min-w-0 items-center gap-2 font-mono text-[12px] tabular-nums">
+      <span className="flex min-w-0 items-center justify-center gap-2 font-mono text-[12px] tabular-nums">
         <span className="inline-flex items-center gap-1 whitespace-nowrap text-slate-600" title="Finish time">
           <Timer size={13} className="shrink-0" aria-hidden="true" />
           <span>{item.time}</span>
