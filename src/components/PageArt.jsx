@@ -10,25 +10,58 @@
 // is always the fallback. Transform origins are in viewBox units: an SVG element's origin is
 // resolved against the view box by default.
 
+import { useEffect, useState } from 'react'
+
 const STROKE = { fill: 'none', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': 'true', focusable: 'false' }
+
+/** Whether the visitor has asked for reduced motion. The CSS animations honour that on their own;
+ *  this is for motion that CSS cannot switch off, such as an SVG motion path. */
+function useReducedMotion() {
+  const [reduced, setReduced] = useState(() => typeof window !== 'undefined' && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches))
+  useEffect(() => {
+    const query = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    if (!query) return undefined
+    const onChange = (event) => setReduced(event.matches)
+    query.addEventListener?.('change', onChange)
+    return () => query.removeEventListener?.('change', onChange)
+  }, [])
+  return reduced
+}
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
 
 /** The size and tone of a drawing that sits beside a page title. */
 export const TITLE_ART = 'h-14 w-14 shrink-0 text-blue-700 opacity-[.55] sm:h-[76px] sm:w-[76px]'
 
-/** Mid-stride: the body bobs with each step and the ground streams back under the feet. */
+/** A trail runner climbing: leaning into the slope under a cap, arms and legs swinging from the
+ *  shoulder and the hip in opposite phase, the body dipping with each footfall, and the trail
+ *  streaming back downhill under him. */
 export function RunnerArt({ className = '' }) {
+  const bob = { transformOrigin: '60px 60px', animationDuration: '.72s' }
   return (
     <svg viewBox="0 0 120 120" className={className} strokeWidth="7" {...STROKE}>
-      <g className="otri-bob" style={{ transformOrigin: '60px 60px' }}>
-        <circle cx="80" cy="20" r="9" />
-        <path d="M72 33 L57 62" />
-        <path d="M69 41 L85 51 L97 43" />
-        <path d="M69 41 L53 45 L41 58" />
-        <path d="M57 62 L75 79 L69 102" />
-        <path d="M57 62 L42 76 L26 71" />
+      {/* The slope, rising to the right, with the trail's dashes running back down it. */}
+      <path d="M2 112 L118 68" strokeWidth="5" opacity=".35" />
+      <path d="M2 112 L118 68" strokeWidth="5" opacity=".6" strokeDasharray="7 11" className="otri-run" />
+      <g className="otri-bob" style={bob}>
+        {/* Head and cap, torso leaning into the hill. */}
+        <circle cx="78" cy="22" r="8" />
+        <path d="M84 16 L95 14" strokeWidth="5" />
+        <path d="M71 34 L55 62" />
+        {/* Arms swing from the shoulder, one forward as the other goes back. */}
+        <g className="otri-swing" style={{ transformOrigin: '70px 40px' }}>
+          <path d="M70 40 L84 50 L96 42" />
+        </g>
+        <g className="otri-swing-back" style={{ transformOrigin: '70px 40px' }}>
+          <path d="M70 40 L56 46 L46 58" />
+        </g>
+        {/* Legs swing from the hip, opposite to the arm on the same side. */}
+        <g className="otri-swing-back" style={{ transformOrigin: '55px 62px' }}>
+          <path d="M55 62 L73 78 L68 100" />
+        </g>
+        <g className="otri-swing" style={{ transformOrigin: '55px 62px' }}>
+          <path d="M55 62 L42 78 L28 74" />
+        </g>
       </g>
-      <path d="M8 106 H56" strokeWidth="5" opacity=".5" strokeDasharray="9 9" className="otri-run" />
     </svg>
   )
 }
@@ -50,14 +83,26 @@ export function SheetArt({ className = '', face = '#ffffff' }) {
   )
 }
 
-/** The dotted trail climbs toward the summit and the flag stirs in the wind. */
+/** A climber's marker makes its way up the ridge to the flag, pauses at the top, and starts again
+ *  from the foot of the mountain. The flag stirs. With reduced motion the marker rests at the
+ *  summit. The dotted trail this used to have moved oddly at title size and is gone. */
+const RIDGE = 'M6 104 L40 46 L58 72 L82 28'
+
 export function SummitArt({ className = '' }) {
+  const reduced = useReducedMotion()
   return (
     <svg viewBox="0 0 120 120" className={className} strokeWidth="6" {...STROKE}>
-      <path d="M6 104 L40 46 L58 72 L82 28 L114 104" />
-      <path d="M22 104 C36 86 46 92 54 82 S70 52 82 34" strokeWidth="4" strokeDasharray="1 9" opacity=".7" className="otri-travel" />
+      <path d={`${RIDGE} L114 104`} />
       <path d="M82 28 V8" />
       <path d="M82 8 L102 14 L82 20 Z" fill="currentColor" className="otri-wave" style={{ transformOrigin: '82px 14px' }} />
+      {reduced ? (
+        <circle cx="82" cy="28" r="6" fill="currentColor" stroke="none" />
+      ) : (
+        <circle r="6" fill="currentColor" stroke="none">
+          {/* Along the ridge in 3.4 s, held at the summit for the last stretch of each cycle. */}
+          <animateMotion dur="4.4s" repeatCount="indefinite" path={RIDGE} calcMode="linear" keyPoints="0;1;1" keyTimes="0;0.78;1" />
+        </circle>
+      )}
     </svg>
   )
 }

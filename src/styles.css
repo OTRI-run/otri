@@ -44,22 +44,25 @@ body{margin:0;font-synthesis:none;text-rendering:optimizeLegibility}
    the fallback. Dash offsets are in user units, so a pattern advances by exactly one period. */
 @keyframes otri-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 @keyframes otri-run{to{stroke-dashoffset:18}}
-@keyframes otri-travel{to{stroke-dashoffset:-20}}
 @keyframes otri-wave{0%,100%{transform:skewX(-4deg)}50%{transform:skewX(4deg)}}
 @keyframes otri-tick{to{transform:rotate(360deg)}}
 @keyframes otri-write{0%{stroke-dashoffset:50}35%,80%{stroke-dashoffset:0}100%{stroke-dashoffset:50}}
 @keyframes otri-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
 @keyframes otri-flow{to{transform:translateX(-26px)}}
 @keyframes otri-pop{0%,100%{opacity:.3}50%{opacity:1}}
+/* A limb swinging from its joint; the opposite limb runs the same swing in reverse, so arms and
+   legs cross as they do in a stride. Two swings make one stride, and the body dips once a step. */
+@keyframes otri-swing{0%{transform:rotate(-24deg)}100%{transform:rotate(24deg)}}
 @media (prefers-reduced-motion:no-preference){
   .otri-float{animation:otri-float 4.2s ease-out infinite}
   .otri-bob{animation:otri-bob 1.6s ease-in-out infinite}
   .otri-run{animation:otri-run .9s linear infinite}
-  .otri-travel{animation:otri-travel 1.4s linear infinite}
   .otri-wave{animation:otri-wave 2.4s ease-in-out infinite}
   .otri-tick{animation:otri-tick 8s linear infinite}
   .otri-write{animation:otri-write 4s ease-in-out infinite}
   .otri-pulse{animation:otri-pulse 2.2s ease-in-out infinite}
   .otri-flow{animation:otri-flow 1.3s linear infinite}
   .otri-pop{animation:otri-pop 2.7s ease-in-out infinite}
+  .otri-swing{animation:otri-swing .72s ease-in-out infinite alternate}
+  .otri-swing-back{animation:otri-swing .72s ease-in-out infinite alternate-reverse}
 }

@@ -1,5 +1,5 @@
 import { scrollBehavior } from '../src/lib/comfort'
-import { ArrowRight, ArrowUpRight, ClipboardList, Database, FileText, Footprints, GitBranch, Mountain, ShieldCheck, Timer, Upload, Users } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Database, FileText, GitBranch, Mountain, ShieldCheck, Timer, Upload, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import RaceCard from './RaceCard'
 import ScoreTicker from '../src/components/ScoreTicker'
@@ -172,9 +172,6 @@ export default function Home() {
               {[
                 {
                   who: 'I run',
-                  // Footprints, not a stopwatch: the door is about running a course, and the
-                  // stopwatch said "timing", which is the organiser's side of it.
-                  Icon: Footprints,
                   href: '#calculator',
                   action: 'Open the calculator',
                   dark: false,
@@ -185,15 +182,12 @@ export default function Home() {
                 },
                 {
                   who: 'I organise a race',
-                  // A results sheet, not an upload arrow: what an organiser holds is the list of
-                  // finishers, and an arrow said "file transfer" rather than "race".
-                  Icon: ClipboardList,
                   href: '#score',
                   action: 'Score my race',
                   dark: true,
                   more: ['See an example', '#score?example=1'],
                 },
-              ].map(({ who, Icon, href, action, more, dark }) => (
+              ].map(({ who, href, action, more, dark }) => (
                 <div
                   key={who}
                   /* The light card is tinted, not white: the hero behind it is white, so a white
@@ -203,17 +197,8 @@ export default function Home() {
                     dark ? 'border-[#17202c] bg-[#17202c]' : 'border-blue-200 bg-[#eef4ff] shadow-[0_10px_28px_rgba(37,99,235,.08)]'
                   }`}
                 >
-                  <span className="flex items-center gap-2.5">
-                    <span
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                        dark ? 'bg-white/10 text-white' : 'bg-white text-blue-700 shadow-[0_1px_2px_rgba(15,23,42,.06)]'
-                      }`}
-                    >
-                      <Icon size={18} />
-                    </span>
-                    <span className={`font-mono text-[15px] font-bold uppercase tracking-[.12em] ${dark ? 'text-white' : 'text-[#0b1220]'}`}>
-                      {who}
-                    </span>
+                  <span className={`font-mono text-[15px] font-bold uppercase tracking-[.12em] ${dark ? 'text-white' : 'text-[#0b1220]'}`}>
+                    {who}
                   </span>
                   {/* The drawing is a real column beside the buttons, not a background under them:
                       tucked behind, the buttons covered it and there was nothing to see. */}
