@@ -1375,7 +1375,7 @@ export default function ScoreCalculator({ embedded = false }) {
                 </h1>
                 <p className="mt-6 max-w-[620px] text-[15px] leading-7 text-slate-500 sm:text-[17px]">
                   Choose a course and a target finish time. OTRI measures the course, works out how hard it is, and tells
-                  you how close that time would be to the best a human has ever run over that much ground.
+                  you how close that time would be to a record run on that course.
                 </p>
                 <div className="mt-7 flex flex-col gap-2 sm:flex-row">
                   {/* target="_self" because the embed page sets <base target="_blank"> so that

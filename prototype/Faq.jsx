@@ -14,7 +14,7 @@ const FAQ = [
     items: [
       {
         q: 'What is an OTRI score?',
-        a: 'A number for one performance on one course. 1000 is record-run level for that much ground, and it is a reference line rather than a maximum: a run better than the record scores above it. It is your speed over the course, as a share of the fastest a human has ever sustained over a course of that demand, raised to a fixed power. Only two things go in: the course and your finish time.',
+        a: 'A number for one performance on one course. 1000 is record-run level for that much ground, and it is a reference line rather than a maximum: a run better than the record scores above it. It is your speed over the course as a share of record-run speed for a course that hard, raised to a fixed power. Only two things go in: the course and your finish time.',
         tags: 'definition meaning number scale',
       },
       {
