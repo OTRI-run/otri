@@ -79,6 +79,23 @@ export function QuestionArt({ className = '' }) {
   )
 }
 
+/** A calculator with scores rising out of its screen, up to 1000. The digits drift upward slowly
+ *  (styles.css `.otri-float`), and hold still for anyone who has asked for reduced motion. */
+export function CalculatorArt({ className = '' }) {
+  return (
+    <svg viewBox="0 0 120 120" className={className} strokeWidth="6" {...STROKE}>
+      <rect x="24" y="40" width="64" height="76" rx="9" />
+      <rect x="34" y="50" width="44" height="16" rx="3" />
+      <path d="M38 78 H46 M56 78 H64 M74 78 H82 M38 92 H46 M56 92 H64 M74 92 H82 M38 106 H46 M56 106 H64 M74 106 H82" strokeWidth="5" />
+      <g fill="currentColor" stroke="none" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace" fontWeight="700">
+        <text x="30" y="34" fontSize="13" className="otri-float" style={{ animationDelay: '0s' }}>499</text>
+        <text x="66" y="24" fontSize="12" opacity=".7" className="otri-float" style={{ animationDelay: '-1.4s' }}>720</text>
+        <text x="46" y="12" fontSize="14" className="otri-float" style={{ animationDelay: '-2.8s' }}>1000</text>
+      </g>
+    </svg>
+  )
+}
+
 export function CalendarArt({ className = '' }) {
   return (
     <svg viewBox="0 0 120 120" className={className} strokeWidth="6" {...STROKE}>
