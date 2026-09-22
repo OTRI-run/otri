@@ -49,8 +49,10 @@ export default function ReportForm({ kind, subjectId, subjectLabel, prompt = 'Is
 
   if (state === 'sent') {
     return (
-      <p className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-xs text-emerald-900">
-        Thanks. An admin will look at it{email ? ` and reply to ${email}` : ''}. Removal requests are handled first.
+      <p role="status" className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-xs leading-5 text-emerald-900">
+        Thanks — this has reached the OTRI admins, and requests to remove data are at the front of their queue.
+        {email ? ` If a reply is needed, it will come to ${email}.` : ''} There is no page to come back to: this note is
+        the only receipt, so keep a copy if you want one, and write to hello@otri.run if you hear nothing.
       </p>
     )
   }

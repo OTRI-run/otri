@@ -235,7 +235,7 @@ def send_report_email(to: str, kind: str, subject_label: str, message: str, page
         ]
         + ([f"Page: {safe_page}"] if safe_page else []),
         cta=("Open the admin dashboard", link),
-        after=["Reports are best answered within a few days; the reporter is waiting on the public page."],
+        after=["Reports are best answered within a few days. The reporter has no page to check and gets no further word unless an admin writes to them, so a removal request needs a reply as well as an action."],
         reason="You received this email because you are an OTRI admin.",
     )
     _send(to, f"New report: {kind} · {subject_label}"[:150], html, text)

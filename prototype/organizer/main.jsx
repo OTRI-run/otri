@@ -307,9 +307,14 @@ function App() {
   useEffect(() => {
     if (!unconfirmed) return undefined
     const refresh = () => getMe('').then((me) => setSession((current) => (current ? { ...current, emailVerified: me.email_verified } : current))).catch(() => {})
+    // On focus, for the usual case: the link was opened in another tab. And on every route change,
+    // for the case it missed -- confirming in this tab and pressing Continue is an in-app hash
+    // navigation, which fires no focus event, so the amber "confirm your email" bar stayed up
+    // contradicting the success the visitor had just been shown.
+    refresh()
     window.addEventListener('focus', refresh)
     return () => window.removeEventListener('focus', refresh)
-  }, [unconfirmed])
+  }, [unconfirmed, route.path])
 
   let page = null
   let params

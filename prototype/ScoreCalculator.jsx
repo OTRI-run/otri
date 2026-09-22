@@ -1290,9 +1290,14 @@ export default function ScoreCalculator({ embedded = false }) {
                   you how close that time would be to the best a human has ever run over that much ground.
                 </p>
                 <div className="mt-7 flex flex-col gap-2 sm:flex-row">
+                  {/* target="_self" because the embed page sets <base target="_blank"> so that
+                      links leave the frame. This one does not leave: it scrolls to the picker on
+                      this same page, and inheriting the base opened a new tab with a bare copy of
+                      the embed in it. The #races link below is already guarded the other way. */}
                   <a
                     className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 px-4 text-[13px] font-semibold text-white no-underline shadow-[0_10px_28px_rgba(37,99,235,.2)] hover:from-blue-800 hover:to-blue-600"
                     href="#calculator-course"
+                    target="_self"
                   >
                     Choose a course <Mountain size={15} />
                   </a>

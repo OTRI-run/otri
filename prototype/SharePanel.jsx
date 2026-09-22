@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Copy, Download, Share2 } from 'lucide-react'
 import { FORMATS, canvasToBlob, drawLeaderboard, drawRunnerCard, drawScoreCard } from './shareImage'
+import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 
 // Sharing, for the two people who have something to show: an organizer with scored results (a
 // podium image and a post written for them) and a runner with a target time. The image is drawn in
@@ -139,6 +140,7 @@ const MEDAL_EMOJI = ['🥇', '🥈', '🥉']
 
 /** For an organizer: the podium of a scored race. `scores` are the API's rows; `url` when the race has a public page. */
 export function ShareResults({ raceName, distanceKm, elevationGainM, scores, url }) {
+  const units = useUnits()
   const [count, setCount] = useState(3)
   const [group, setGroup] = useState('all')
   const finishers = useMemo(() => scores.filter((row) => row.status === 'finisher' && row.finish_time_seconds != null).sort((a, b) => a.finish_time_seconds - b.finish_time_seconds), [scores])
@@ -154,7 +156,7 @@ export function ShareResults({ raceName, distanceKm, elevationGainM, scores, url
   const name = raceName || 'Our race'
   const groupWord = group === 'F' ? ' women' : group === 'M' ? ' men' : ''
   const heading = `Top ${rows.length}${groupWord}`
-  const facts = `${distanceKm.toFixed(1)} km · +${Math.round(elevationGainM)} m · ${finishers.length} finishers`
+  const facts = `${formatDistance(distanceKm, units)} · ${formatElevation(elevationGainM, units, { sign: '+' })} · ${finishers.length} finishers`
   const scored = rows.some((row) => row.score != null)
 
   const draw = useMemo(
@@ -189,8 +191,9 @@ export function ShareResults({ raceName, distanceKm, elevationGainM, scores, url
 
 /** For a runner: a target time on a course and what it is worth. */
 export function ShareTarget({ courseName, distanceKm, elevationGainM, seconds, score, fractionOfCeiling, url }) {
+  const units = useUnits()
   const time = formatHms(seconds)
-  const facts = `${distanceKm.toFixed(1)} km · +${Math.round(elevationGainM)} m`
+  const facts = `${formatDistance(distanceKm, units)} · ${formatElevation(elevationGainM, units, { sign: '+' })}`
   const percent = fractionOfCeiling != null ? Math.round(fractionOfCeiling * 100) : null
   const draw = useMemo(
     () => (canvas, format) =>

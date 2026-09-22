@@ -711,7 +711,13 @@ export function ReviewStep({ session, raceId }) {
   }
 
   async function remove() {
-    if (!window.confirm(`Delete "${race.course_name}" and its results? This cannot be undone.`)) return
+    // Deleting a published race is allowed and deliberate, but the confirm used to say only "this
+    // cannot be undone", which does not tell the organizer that a public leaderboard disappears
+    // and every runner on it loses those index points. The account-deletion card says as much.
+    const published = race.is_published
+      ? ' Its public leaderboard disappears, and every runner on it loses the index points it gave them.'
+      : ''
+    if (!window.confirm(`Delete "${race.course_name}" and its results?${published} This cannot be undone.`)) return
     setBusy(true)
     try {
       await deleteRace(raceId, session.token)

@@ -1235,7 +1235,14 @@ def list_reports(status: str | None = "open") -> list[Report]:
         if status:
             rows = connection.execute(f"SELECT {_REPORT_COLUMNS} FROM reports WHERE status = %s ORDER BY created_at DESC", (status,)).fetchall()
         else:
-            rows = connection.execute(f"SELECT {_REPORT_COLUMNS} FROM reports ORDER BY (status = 'open') DESC, created_at DESC").fetchall()
+            # Open first, then removal requests before anything else: somebody asking for their
+            # own data to come down is waiting on a person, and the form tells them this is how it
+            # is ordered. Within that, oldest open first, so nothing is left at the bottom forever.
+            rows = connection.execute(
+                f"SELECT {_REPORT_COLUMNS} FROM reports "
+                "ORDER BY (status = 'open') DESC, (reason = 'remove_my_data') DESC, "
+                "CASE WHEN status = 'open' THEN created_at END ASC, created_at DESC"
+            ).fetchall()
     return [Report(**row) for row in rows]
 
 
