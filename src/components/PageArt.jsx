@@ -32,19 +32,36 @@ const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
 /** The size and tone of a drawing that sits beside a page title. */
 export const TITLE_ART = 'h-14 w-14 shrink-0 text-blue-700 opacity-[.55] sm:h-[76px] sm:w-[76px]'
 
-/** Mid-stride: the body bobs with each step and the ground streams back under the feet. */
+/** A trail runner climbing: leaning into the slope under a cap, arms and legs swinging from the
+ *  shoulder and the hip in opposite phase, the body dipping with each footfall, and the trail
+ *  streaming back downhill under him. */
 export function RunnerArt({ className = '' }) {
+  const bob = { transformOrigin: '60px 60px', animationDuration: '.72s' }
   return (
     <svg viewBox="0 0 120 120" className={className} strokeWidth="7" {...STROKE}>
-      <g className="otri-bob" style={{ transformOrigin: '60px 60px' }}>
-        <circle cx="80" cy="20" r="9" />
-        <path d="M72 33 L57 62" />
-        <path d="M69 41 L85 51 L97 43" />
-        <path d="M69 41 L53 45 L41 58" />
-        <path d="M57 62 L75 79 L69 102" />
-        <path d="M57 62 L42 76 L26 71" />
+      {/* The slope, rising to the right, with the trail's dashes running back down it. */}
+      <path d="M2 112 L118 68" strokeWidth="5" opacity=".35" />
+      <path d="M2 112 L118 68" strokeWidth="5" opacity=".6" strokeDasharray="7 11" className="otri-run" />
+      <g className="otri-bob" style={bob}>
+        {/* Head and cap, torso leaning into the hill. */}
+        <circle cx="78" cy="22" r="8" />
+        <path d="M84 16 L95 14" strokeWidth="5" />
+        <path d="M71 34 L55 62" />
+        {/* Arms swing from the shoulder, one forward as the other goes back. */}
+        <g className="otri-swing" style={{ transformOrigin: '70px 40px' }}>
+          <path d="M70 40 L84 50 L96 42" />
+        </g>
+        <g className="otri-swing-back" style={{ transformOrigin: '70px 40px' }}>
+          <path d="M70 40 L56 46 L46 58" />
+        </g>
+        {/* Legs swing from the hip, opposite to the arm on the same side. */}
+        <g className="otri-swing-back" style={{ transformOrigin: '55px 62px' }}>
+          <path d="M55 62 L73 78 L68 100" />
+        </g>
+        <g className="otri-swing" style={{ transformOrigin: '55px 62px' }}>
+          <path d="M55 62 L42 78 L28 74" />
+        </g>
       </g>
-      <path d="M8 106 H56" strokeWidth="5" opacity=".5" strokeDasharray="9 9" className="otri-run" />
     </svg>
   )
 }

@@ -50,6 +50,9 @@ body{margin:0;font-synthesis:none;text-rendering:optimizeLegibility}
 @keyframes otri-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
 @keyframes otri-flow{to{transform:translateX(-26px)}}
 @keyframes otri-pop{0%,100%{opacity:.3}50%{opacity:1}}
+/* A limb swinging from its joint; the opposite limb runs the same swing in reverse, so arms and
+   legs cross as they do in a stride. Two swings make one stride, and the body dips once a step. */
+@keyframes otri-swing{0%{transform:rotate(-24deg)}100%{transform:rotate(24deg)}}
 @media (prefers-reduced-motion:no-preference){
   .otri-float{animation:otri-float 4.2s ease-out infinite}
   .otri-bob{animation:otri-bob 1.6s ease-in-out infinite}
@@ -60,4 +63,6 @@ body{margin:0;font-synthesis:none;text-rendering:optimizeLegibility}
   .otri-pulse{animation:otri-pulse 2.2s ease-in-out infinite}
   .otri-flow{animation:otri-flow 1.3s linear infinite}
   .otri-pop{animation:otri-pop 2.7s ease-in-out infinite}
+  .otri-swing{animation:otri-swing .72s ease-in-out infinite alternate}
+  .otri-swing-back{animation:otri-swing .72s ease-in-out infinite alternate-reverse}
 }
