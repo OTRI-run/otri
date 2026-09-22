@@ -20,6 +20,7 @@ import base64
 import gzip
 import json
 import os
+from html import escape
 from urllib.parse import quote, urlencode, urlsplit
 from dataclasses import asdict, replace
 from hashlib import sha256
@@ -31,7 +32,7 @@ import unicodedata
 from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 
-from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi import FastAPI, Form, HTTPException, Request, Response, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -1427,6 +1428,18 @@ def remove_event(event_id: str, organizer: Organizer = Depends(require_organizer
     if event is None:
         raise HTTPException(status_code=404, detail=f"event {event_id!r} not found")
     _require_event_owner(event, organizer)
+    # Deleting an event takes every race under it, so the same rule applies (see remove_race).
+    published = [race for race in db.list_races_for_event(event_id) if race.published_at is not None]
+    if published:
+        names = ", ".join(sorted(race.course_name for race in published)[:4])
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"This event still has published races ({names}), so it cannot be deleted. Unpublish them "
+                "first: their leaderboards are something runners have read, and every finisher on them holds "
+                "index points that come from these races."
+            ),
+        )
     db.delete_event(event_id)
     return Response(status_code=204)
 
@@ -1605,6 +1618,19 @@ def remove_race(race_id: str, organizer: Organizer = Depends(require_organizer))
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
+    # The strongest form of the rule the rest of this file follows: a published race's results and
+    # course cannot be replaced, so they certainly cannot be taken away. Unpublishing first makes
+    # the leaderboard's disappearance something the organizer did on purpose, in two steps, rather
+    # than one press that removes a public record and every index point it gave.
+    if race.published_at is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "This race is published, so it cannot be deleted while it is public. Unpublish it first, "
+                "then delete it: its leaderboard is something runners have read, and every finisher on it "
+                "holds index points that come from this race."
+            ),
+        )
     db.delete_race(race_id)
     return Response(status_code=204)
 
@@ -2812,8 +2838,34 @@ def admin_newsletter(organizer: Organizer = Depends(require_admin)) -> list[News
     return [NewsletterSubscriber(**row) for row in db.list_newsletter_subscribers()]
 
 
+@app.get("/auth/unsubscribe", response_class=HTMLResponse)
+def unsubscribe_from_news(token: str = "") -> HTMLResponse:
+    """The link in a news email. Turns the news off and signs nobody in.
+
+    A GET, because that is what a link in an email is, and safe to prefetch: the worst an email
+    client can do by following it early is stop email the reader had already decided to stop.
+    """
+    done = _auth.unsubscribe(token)
+    heading = "You are unsubscribed." if done else "Nothing to do."
+    body = (
+        "We will not send you OTRI news again. Transactional email about your own races and your account still comes."
+        if done
+        else "That link is not valid, or the news was already off for that address. You can always check in your account settings."
+    )
+    return HTMLResponse(
+        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+        "<title>OTRI</title><style>body{margin:0;display:grid;place-items:center;min-height:100vh;"
+        "font:16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f3f6fb;color:#0b1220}"
+        "main{max-width:34rem;padding:2rem;text-align:center}a{color:#2563eb}</style></head><body><main>"
+        f"<h1 style=\"font-size:1.5rem\">{escape(heading)}</h1><p style=\"color:#475569\">{escape(body)}</p>"
+        f"<p><a href=\"{escape(_email.SITE_URL, quote=True)}\">otri.run</a></p></main></body></html>",
+        status_code=200,
+    )
+
+
 @app.get("/admin/newsletter.csv")
-def admin_newsletter_csv(organizer: Organizer = Depends(require_admin)) -> Response:
+def admin_newsletter_csv(request: Request, organizer: Organizer = Depends(require_admin)) -> Response:
     """The same audience as a CSV (email, name, organization, country, consented_at) for a Resend
     audience import or any mail tool."""
     import csv
@@ -2821,10 +2873,13 @@ def admin_newsletter_csv(organizer: Organizer = Depends(require_admin)) -> Respo
 
     buffer = io.StringIO()
     writer = csv.writer(buffer)
-    writer.writerow(["email", "name", "organization", "country", "consented_at"])
+    # The unsubscribe link travels with the address, so whichever tool sends the mail can put it in
+    # every message -- which is what TERMS.md promises -- without that tool needing an account here.
+    writer.writerow(["email", "name", "organization", "country", "consented_at", "unsubscribe_url"])
     for row in db.list_newsletter_subscribers():
         # Name and organization are whatever the organizer typed: never a formula in the admin's spreadsheet.
-        cells = [row["email"], row.get("display_name") or "", row.get("organization") or "", row.get("country") or "", row["marketing_opt_in_at"].isoformat() if row.get("marketing_opt_in_at") else ""]
+        unsubscribe = f"{_api_base(request)}/auth/unsubscribe?token={quote(_auth.unsubscribe_token(row['email']), safe='')}"
+        cells = [row["email"], row.get("display_name") or "", row.get("organization") or "", row.get("country") or "", row["marketing_opt_in_at"].isoformat() if row.get("marketing_opt_in_at") else "", unsubscribe]
         writer.writerow([_csv_cell(cell) for cell in cells])
     return Response(
         content=buffer.getvalue(),

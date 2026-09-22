@@ -65,7 +65,7 @@ Alongside the counts the API keeps a tally of what was done: how many courses we
 - Password reset tokens: expire after 1 hour and are deleted once expired, the next time any reset is requested; used tokens are marked and rejected on reuse.
 - Email verification tokens: expire after 2 days, and are deleted on the same occasion.
 - Visit counting: the per-visitor number described above is deleted after three days. The daily totals it was counted into are kept, and they are nobody's.
-- Email delivery log (who was sent what, and whether it arrived): kept indefinitely, admin-only. This has no retention schedule yet.
+- Email delivery log (who was sent what, and whether it arrived): kept indefinitely, admin-only, and the address is removed from it when the account is deleted. There is no retention schedule for the rest yet.
 - Reports sent with the "Report a problem" form, including the reporter's address if they gave one: kept until an admin deletes them. This has no retention schedule yet.
 - Server logs: kept for as long as the server's own log rotation keeps them; OTRI sets no separate period.
 - Database backups: a nightly copy of everything, kept 30 days. A deletion therefore takes up to a month to work its way out of the backups.
@@ -81,7 +81,7 @@ You can ask us to:
 Organizers can do the last two themselves on the account page, and both ask for the password first:
 
 - **Download my data** gives a JSON file with the account, its consents, any sign-in linked to it, the events and races it owns, every result row in them, and the most recent 200 emails we sent. The file says what it leaves out: the password hash, any two-factor secret and the recovery codes, which exist to protect the account and are not handed out. Stored course files are not in it; ask at `hello@otri.run` and we will send them.
-- **Delete my account** removes everything the account owns. An account that signs in with Google has no password: the account page will email a link to set one, and it says so. What survives a deletion, and why: rows in the email delivery log and in the abuse counters are keyed to the address so that delivery problems and lockouts can still be explained, and the nightly backups keep a copy of everything for 30 days.
+- **Delete my account** removes everything the account owns, and takes the address out of the email delivery log and the abuse counters as it goes. An account that signs in with Google has no password: the account page offers to email a link to set one, and says so where it is needed. The one thing a deletion cannot reach immediately is the nightly backups, which keep a copy of everything for 30 days.
 
 For anything else, or as a runner, contact `hello@otri.run`.
 

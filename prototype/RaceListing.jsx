@@ -8,6 +8,9 @@ const DAY_MS = 24 * 60 * 60 * 1000
 // "in 12 days": how far off race day is, or null once it has passed.
 function countdown(iso, now = new Date()) {
   const days = Math.round((new Date(`${iso}T00:00:00`) - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / DAY_MS)
+  // A missing or unparseable date gives NaN, and every comparison below is false for NaN, so it
+  // fell all the way through to the last line and the badge read "Race day is in NaN months".
+  if (!Number.isFinite(days)) return null
   if (days < 0) return null
   if (days === 0) return 'today'
   if (days === 1) return 'tomorrow'

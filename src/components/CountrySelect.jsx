@@ -94,8 +94,14 @@ export default function CountrySelect({ id, value, onChange, className = '', pla
       return
     }
     if (text === selected?.name) return
-    const best = search(text)[0]
-    if (best) choose(best)
+    // Leaving the field is not the same as choosing. Taking the first suggestion for whatever was
+    // typed turned "Ind" into India when Indonesia was meant, without anybody confirming it. Only
+    // an exact name or a single remaining candidate is unambiguous enough to settle on; anything
+    // else puts back what was there, so a half-typed country is never silently recorded.
+    const matches = search(text)
+    const exact = matches.find((country) => fold(country.name) === fold(text))
+    if (exact) choose(exact)
+    else if (matches.length === 1) choose(matches[0])
     else setText(selected?.name ?? '')
   }
 

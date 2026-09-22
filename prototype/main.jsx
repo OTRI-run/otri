@@ -277,6 +277,7 @@ function Leaderboard({ raceId, onBack }) {
   const [results, setResults] = useState(null)
   const [course, setCourse] = useState(null)
   const [error, setError] = useState(null)
+  const [resultsError, setResultsError] = useState(null)
   const [sharing, setSharing] = useState(false)
   useDocumentTitle(race ? `${race.event_name} · ${race.course_name} · OTRI` : 'Race · OTRI')
 
@@ -286,12 +287,21 @@ function Leaderboard({ raceId, onBack }) {
     setResults(null)
     setCourse(null)
     setError(null)
+    setResultsError(null)
+    // The race and its results are fetched separately on purpose. They used to be one chain, so a
+    // results request that failed rejected the whole thing -- and a 404 from it rendered "no race
+    // with that id" over a race that had loaded perfectly well, hiding its course and its map.
     getRace(raceId)
-      .then(async (loaded) => [loaded, loaded.is_published ? await getRaceResults(raceId) : []])
-      .then(([loaded, rows]) => {
+      .then((loaded) => {
         if (cancelled) return
         setRace(loaded)
-        setResults(rows)
+        if (loaded.is_published) {
+          getRaceResults(raceId)
+            .then((rows) => !cancelled && setResults(rows))
+            .catch((err) => !cancelled && setResultsError(err))
+        } else {
+          setResults([])
+        }
         if (loaded.has_gpx) {
           Promise.all([fetchRaceGpxFile(raceId), getRaceMeasurement(raceId)])
             .then(async ([file, measurement]) => {
@@ -409,10 +419,25 @@ function Leaderboard({ raceId, onBack }) {
                       <td className="px-4 py-3 font-mono text-sm font-bold text-blue-600">{row.otri_score ?? <span className="text-slate-300">—</span>}</td>
                     </tr>
                   ))}
-                  {results?.length === 0 && (
+                  {results?.length === 0 && !resultsError && (
                     <tr>
                       <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">
                         No results published yet.
+                      </td>
+                    </tr>
+                  )}
+                  {/* The leaderboard alone failed; the race, its course and its map are above. */}
+                  {resultsError && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-6 text-center text-sm text-amber-800" role="alert">
+                        The leaderboard could not be loaded. {resultsError.message}
+                      </td>
+                    </tr>
+                  )}
+                  {results === null && !resultsError && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500" role="status">
+                        Loading the leaderboard…
                       </td>
                     </tr>
                   )}

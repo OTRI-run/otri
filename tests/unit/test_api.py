@@ -1287,7 +1287,15 @@ def test_newsletter_consent_is_recorded_and_revocable(monkeypatch):
     subscribers = client.get("/admin/newsletter", headers=admin_headers).json()
     assert [row["email"] for row in subscribers] == ["news@example.com"]
     csv_body = client.get("/admin/newsletter.csv", headers=admin_headers).text
-    assert csv_body.splitlines()[0] == "email,name,organization,country,consented_at"
+    assert csv_body.splitlines()[0] == "email,name,organization,country,consented_at,unsubscribe_url"
+    # The link travels with the address, so whichever tool sends the mail can carry it in every
+    # message -- which is what TERMS.md promises -- and it works without signing anybody in.
+    unsubscribe_url = csv_body.splitlines()[1].split(",")[-1]
+    assert "/auth/unsubscribe?token=" in unsubscribe_url
+    assert client.get(unsubscribe_url.split("/auth/")[0] and "/auth/unsubscribe", params={"token": unsubscribe_url.split("token=")[1]}).status_code == 200
+    with db.get_connection() as connection:
+        row = connection.execute("SELECT marketing_opt_in, marketing_opt_in_at FROM organizers WHERE email = %s", ("news@example.com",)).fetchone()
+    assert row["marketing_opt_in"] is False and row["marketing_opt_in_at"] is None, "the unsubscribe link did nothing"
     assert "news@example.com" in csv_body
 
     updated = client.patch("/auth/profile", json={"marketing_opt_in": False}, headers=headers).json()["profile"]

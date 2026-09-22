@@ -24,7 +24,7 @@ By uploading a course (GPX) or a results file you confirm that:
 - The data is accurate to the best of your knowledge, and you will correct it (or ask us to) when you learn it is wrong.
 - The file does not contain more personal data than OTRI asks for. OTRI keeps names, gender, finish time and status, and, when supplied, bib number, year of birth and country; delete anything else before uploading. See `DATA_POLICY.md`.
 
-You keep whatever rights you have in the data you upload. You grant OTRI a worldwide, royalty-free licence to store, process, publish and redistribute the results, course measurements and scores derived from it, for as long as the race stays published on OTRI, and to keep an archival copy for reproducibility afterwards. Unpublishing a race removes its results from every public page. If the race was also listed, the race page and its course stay public until the listing is removed as well; the review screen says so and offers both.
+You keep whatever rights you have in the data you upload. You grant OTRI a worldwide, royalty-free licence to store, process, publish and redistribute the results, course measurements and scores derived from it, for as long as the race stays published on OTRI, and to keep an archival copy for reproducibility afterwards. Unpublishing a race removes its results from every public page, and a published race cannot be deleted until it is unpublished. If the race was also listed, the race page and its course stay public until the listing is removed as well; the review screen says so and offers both.
 
 ## 4. Acceptable use
 
@@ -43,7 +43,7 @@ Anyone may report a problem with a race, a runner profile or a shared course usi
 
 ## 6. Email
 
-We send transactional email you cannot opt out of while you have an account: verification, password reset, sign-in codes if you choose email two-factor, and notices about your races or these terms. Marketing email (news about OTRI) is sent only if you ticked the news box at sign-up or in your account settings; you can untick it at any time and every such email carries an unsubscribe link.
+We send transactional email you cannot opt out of while you have an account: verification, password reset, sign-in codes if you choose email two-factor, and notices about your races or these terms. Marketing email (news about OTRI) is sent only if you ticked the news box at sign-up or in your account settings; you can untick it at any time in your account settings, and every such email carries an unsubscribe link that works without signing in.
 
 ## 7. Liability
 
