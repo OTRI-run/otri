@@ -1290,7 +1290,12 @@ export default function ScoreCalculator({ embedded = false }) {
     <>
       {!hasCourse && course}
       <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
-        <div className={`${CONTAINER} grid min-w-0 items-center gap-12 py-14 sm:py-16 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-20 lg:py-20`}>
+        {/* With a course loaded the left column ends in the target-time card and the right is the
+            score panel, so the two are bottom-aligned and sit on one line. Centred, as they were,
+            neither edge met and the pair looked unplaced. The empty state keeps the centring: its
+            panel is a short "Pick a course" against a tall column, and hanging it from the bottom
+            would leave a hole above it. */}
+        <div className={`${CONTAINER} grid min-w-0 items-center gap-12 py-14 sm:py-16 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-20 lg:py-20 ${hasCourse ? 'lg:items-end' : ''}`}>
           <div className="min-w-0">
             <div className="text-[11px] font-semibold uppercase tracking-[.08em] text-blue-600">
               OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> SCORE CALCULATOR
