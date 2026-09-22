@@ -114,11 +114,10 @@ function Spinner({ className = '' }) {
 // The dark "index engine" panel from the landing page, now showing a live number. It is rendered
 // in every state — empty, calculating, live — so the hero never jumps when a course arrives.
 
-function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel }) {
+function ScorePanel({ estimate, scoring, targetSeconds, features }) {
   const units = useUnits()
   const b = estimate?.breakdown
   const pct = b?.fraction_of_ceiling != null ? Math.round(b.fraction_of_ceiling * 100) : null
-  const status = scoring ? 'Calculating' : estimate ? 'Live' : courseLabel ? 'Ready' : 'Waiting'
 
   // Label left, value right, and the value is the larger of the two. It used to be the other way
   // round: the course and the time were 8px slate-500 and truncated, so the two facts a reader
@@ -142,12 +141,16 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
       aria-busy={scoring}
       className="min-w-0 overflow-hidden rounded-2xl bg-[linear-gradient(145deg,#08111f_0%,#0b1730_58%,#123b85_100%)] p-4 text-white shadow-[0_24px_70px_rgba(11,18,32,.2)] sm:p-5"
     >
-      <div className="flex items-center justify-between text-[11px] text-slate-400">
+      {/* Only while the score is being worked out. A permanent "Live" badge told the reader
+          nothing they could act on and competed with the number underneath it. */}
+      <div className="flex min-h-[22px] items-center justify-between text-[11px] text-slate-400">
         <span className="font-semibold uppercase tracking-[.08em]">OTRI score</span>
-        <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-2 py-0.5 font-medium text-slate-200">
-          <i className={`h-1.5 w-1.5 rounded-full ${scoring ? 'animate-pulse bg-cyan-300' : 'bg-blue-400'} shadow-[0_0_10px_rgba(96,165,250,.9)]`} />
-          {status}
-        </span>
+        {scoring && (
+          <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-2 py-0.5 font-medium text-slate-200">
+            <i className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(96,165,250,.9)]" />
+            Calculating
+          </span>
+        )}
       </div>
 
       <div className="border-b border-slate-700/70 py-8 text-center">
@@ -950,8 +953,11 @@ function TimePart({ id, label, value, max, onCommit, nextId, wide = false }) {
             commit(shown, true)
           }
         }}
-        className={`${wide ? 'w-[2.1ch]' : 'w-[2.1ch]'} rounded-lg border border-transparent bg-transparent p-0 text-center font-mono text-[44px] font-bold leading-none tracking-[-.04em] text-[#0b1220] outline-none hover:border-slate-200 focus:border-blue-500 focus:bg-blue-50/50`}
-        style={{ width: `${Math.max(shown.length, wide ? 1 : 2) + 0.35}ch` }}
+        className="rounded-lg border border-transparent bg-transparent p-0 text-center font-mono text-[44px] font-bold leading-none tracking-[-.04em] text-[#0b1220] outline-none hover:border-slate-200 focus:border-blue-500 focus:bg-blue-50/50"
+        // At least two digits wide, hours included: a one-digit hour made a box narrower than the
+        // word HOURS underneath it, so the three columns did not line up and the row shifted
+        // sideways whenever the hour crossed ten.
+        style={{ width: `${Math.max(shown.length, 2) + 0.35}ch` }}
       />
       <span className="mt-1.5 text-[11px] font-semibold uppercase tracking-[.06em] text-slate-500">{label}</span>
     </label>
@@ -970,30 +976,41 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
   const set = (h, m, s) => onChange(h * 3600 + m * 60 + s)
   // The time that scores `target` here, from the model's ceiling for this course.
   const timeFor = (target) => (ceilingSeconds ? Math.round(ceilingSeconds / Math.pow(target / 1000, 1 / POWER_EXPONENT)) : null)
+  const pace = formatPace(targetSeconds, distanceKm, units)
   const chip = 'inline-flex min-h-9 items-center rounded-full border px-3.5 font-mono text-[13px] font-semibold transition'
 
   return (
     <div className="mt-8 rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] backdrop-blur sm:p-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="text-[15px] font-bold tracking-[-.02em] text-[#0b1220]">Your target finish time</h2>
-        <p className="text-[13px] text-slate-500">Type it, drag it, or jump to a score.</p>
-      </div>
-      <div className="mt-4 flex flex-wrap items-start gap-x-5 gap-y-3">
+      <h2 className="text-[15px] font-bold tracking-[-.02em] text-[#0b1220]">Your target finish time</h2>
+      <p className="mt-1 text-[13px] text-slate-500">Type it, drag it, or jump to a score.</p>
+
+      {/* The time and the pace are one row of columns that share a baseline and a label line: the
+          pace sits in a 44px box bottom-aligned like the digits, so its caption lines up with
+          HOURS, MIN and SEC instead of floating at some height of its own. */}
+      <div className="mt-5 flex flex-wrap items-start gap-x-7 gap-y-4">
         <div className="flex items-start gap-1" role="group" aria-label="Target finish time">
           <TimePart id="calc-hours" label="HOURS" value={hours} max={199} wide onCommit={(h) => set(h, minutes, seconds)} nextId="calc-minutes" />
-          <span className="font-mono text-[44px] font-bold leading-none text-slate-300">:</span>
+          <span className="flex h-[44px] items-center font-mono text-[40px] font-bold leading-none text-slate-300">:</span>
           <TimePart id="calc-minutes" label="MIN" value={minutes} max={59} onCommit={(m) => set(hours, m, seconds)} nextId="calc-seconds" />
-          <span className="font-mono text-[44px] font-bold leading-none text-slate-300">:</span>
+          <span className="flex h-[44px] items-center font-mono text-[40px] font-bold leading-none text-slate-300">:</span>
           <TimePart id="calc-seconds" label="SEC" value={seconds} max={59} onCommit={(s) => set(hours, minutes, s)} />
         </div>
-        <p className="pt-2.5 font-mono text-[14px] font-semibold text-slate-600">{formatPace(targetSeconds, distanceKm, units)}</p>
-        <div className="flex flex-wrap gap-2 pt-1 sm:ml-auto" role="group" aria-label="Adjust the target time">
-          {NUDGES.map((delta) => (
-            <button key={delta} type="button" onClick={() => onChange(targetSeconds + delta)} className={`${chip} border-slate-300 bg-white text-[#0b1220] hover:border-blue-400 hover:bg-blue-50`}>
-              {delta > 0 ? '+' : '−'}{Math.abs(delta) / 60} min
-            </button>
-          ))}
-        </div>
+        {pace && (
+          <div className="flex flex-col items-start">
+            <span className="flex h-[44px] items-end font-mono text-[22px] font-semibold leading-none text-slate-500">{pace}</span>
+            <span className="mt-1.5 text-[11px] font-semibold uppercase tracking-[.06em] text-slate-400">Pace</span>
+          </div>
+        )}
+      </div>
+
+      {/* Their own row, on the same left edge as everything else. Pushed to the right of the time
+          row they wrapped at this column width and ended up right-aligned against nothing. */}
+      <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label="Adjust the target time">
+        {NUDGES.map((delta) => (
+          <button key={delta} type="button" onClick={() => onChange(targetSeconds + delta)} className={`${chip} border-slate-300 bg-white text-[#0b1220] hover:border-blue-400 hover:bg-blue-50`}>
+            {delta > 0 ? '+' : '−'}{Math.abs(delta) / 60} min
+          </button>
+        ))}
       </div>
       <input
         type="range"
@@ -1343,7 +1360,7 @@ export default function ScoreCalculator({ embedded = false }) {
               </>
             )}
           </div>
-          <ScorePanel estimate={estimate} scoring={scoring} targetSeconds={targetSeconds} features={features} courseLabel={courseLabel} />
+          <ScorePanel estimate={estimate} scoring={scoring} targetSeconds={targetSeconds} features={features} />
         </div>
       </section>
 
