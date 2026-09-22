@@ -25,12 +25,10 @@ EMAIL_FROM = os.environ.get("OTRI_EMAIL_FROM", "OTRI <noreply@otri.run>")
 EMAIL_REPLY_TO = os.environ.get("OTRI_EMAIL_REPLY_TO", "hello@otri.run")
 APP_BASE_URL = os.environ.get("OTRI_APP_BASE_URL", "http://localhost:5173")
 SITE_URL = os.environ.get("OTRI_SITE_URL", "https://otri.run")
-# The mark is rendered from public/brand/otri-mark.svg by scripts/build_brand_png.mjs, like every
-# other icon, so a brand change reaches email too. The version is a cache-buster, not a path: mail
-# clients proxy and cache images by URL (Gmail keeps them for a long time), so without it a
-# recipient who had an older OTRI email could go on being served the retired logo. The file itself
-# keeps its name, so the images in mail already delivered do not break.
-LOGO_URL = f"{SITE_URL}/email/otri-mark.png?v=2"
+# No logo image. The header is the wordmark as text, which every client renders: most block remote
+# images until the reader allows them, so the mark was a blank box on first open, and a remote
+# image is also what tells a sender the message was opened. public/email/otri-mark.png stays in
+# place, unreferenced, so the images in mail already delivered do not turn into broken ones.
 
 if RESEND_API_KEY:
     resend.api_key = RESEND_API_KEY
@@ -104,7 +102,6 @@ def _render(
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px">
 <tr><td style="padding:0 4px 18px">
   <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>
-    <td style="vertical-align:middle;padding-right:10px"><img src="{escape(LOGO_URL, quote=True)}" width="36" height="36" alt="OTRI" style="display:block;border:0"></td>
     <td style="vertical-align:middle;padding-right:12px;font-family:{_FONT};font-size:22px;font-weight:800;letter-spacing:-1px;color:#0b1220">OTRI</td>
     <td style="vertical-align:middle;padding-right:12px"><div style="width:1px;height:26px;background:#cbd5e1;font-size:0;line-height:0">&nbsp;</div></td>
     <td style="vertical-align:middle;font-family:{_MONO};font-size:10px;letter-spacing:1.5px;line-height:14px;color:#2563eb">OPEN TRAIL<br>RUNNING INDEX</td>
@@ -262,6 +259,39 @@ def send_security_alert_email(to: str) -> None:
         reason="You received this email because of repeated failed sign-in attempts on your OTRI organizer account.",
     )
     _send(to, "Someone may know your OTRI password", html, text)
+
+
+def send_password_changed_email(to: str, *, after_reset: bool = False) -> None:
+    """The account's password just changed, so the address it belongs to is told.
+
+    Changing the password is how somebody who has got into an account keeps the owner out of it:
+    the old password stops working and every other session ends. Until now that happened in
+    silence, and the owner found out when they next failed to sign in. This is the warning, and it
+    goes to the mailbox, which is the one thing the intruder may not have.
+
+    `after_reset` is the reset-link path. The owner asked for that one from this mailbox, so the
+    wording says so rather than implying something went wrong.
+    """
+    lead = (
+        "The password for your OTRI organizer account was just reset, from the link we sent to this address."
+        if after_reset
+        else "The password for your OTRI organizer account was just changed."
+    )
+    html, text = _render(
+        preheader="The password on your OTRI account has changed.",
+        heading="Your password was changed",
+        paragraphs=[
+            f"{lead} Everywhere else that was signed in has been signed out.",
+            "If that was you, there is nothing to do.",
+        ],
+        cta=("Set a new password", f"{APP_BASE_URL}/prototype/organizer/#/forgot"),
+        after=[
+            "If it was not you, somebody else is in your account. Set a new password from this mailbox with the button "
+            "above, which signs them out, and then turn on two-factor sign-in from the account page.",
+        ],
+        reason="You received this email because the password on your OTRI organizer account changed.",
+    )
+    _send(to, "Your OTRI password was changed", html, text)
 
 
 def send_google_linked_email(to: str, *, reclaimed: bool) -> None:
