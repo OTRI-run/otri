@@ -516,7 +516,7 @@ function ShareBox({ courseLabel, courseFile, targetSeconds, shareId, onShared, i
   }
 
   return (
-    <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 sm:p-5">
+    <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4 sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <button
           type="button"
@@ -561,13 +561,13 @@ function ShareBox({ courseLabel, courseFile, targetSeconds, shareId, onShared, i
       {url ? (
         <div className="mt-3 flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
           <Link2 size={14} className="shrink-0 text-blue-600" />
-          <input readOnly value={url} onFocus={(event) => event.target.select()} aria-label="Share link" className="min-w-0 flex-1 bg-transparent font-mono text-[11px] text-slate-600 outline-none" />
+          <input readOnly value={url} onFocus={(event) => event.target.select()} aria-label="Share link" className="min-w-0 flex-1 bg-transparent font-mono text-[13px] text-slate-600 outline-none" />
           <button type="button" onClick={() => copy(url)} className="-mr-2 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-blue-600 hover:bg-blue-50" aria-label="Copy link">
             <Copy size={16} />
           </button>
         </div>
       ) : null}
-      <p className="mt-2 text-xs leading-5 text-slate-500">
+      <p className="mt-2.5 max-w-3xl text-[13px] leading-[1.6] text-slate-600">
         {raceId
           ? 'The link opens this race with your target time. Change the time and the link updates.'
           : shareId
@@ -1297,7 +1297,6 @@ export default function ScoreCalculator({ embedded = false }) {
                   ceilingSeconds={estimate?.breakdown?.world_best_time_seconds}
                   score={estimate?.predicted_score}
                 />
-                {!embedded && <ShareBox courseLabel={courseLabel} courseFile={courseFile} targetSeconds={targetSeconds} shareId={shareId} onShared={setShareId} imageOpen={shareImageOpen} onToggleImage={estimate ? () => setShareImageOpen((open) => !open) : null} />}
               </>
             ) : (
               <>
@@ -1347,6 +1346,25 @@ export default function ScoreCalculator({ embedded = false }) {
           <ScorePanel estimate={estimate} scoring={scoring} targetSeconds={targetSeconds} features={features} courseLabel={courseLabel} />
         </div>
       </section>
+
+      {/* Sharing lives under the hero rather than in it. In the hero's left column it sat directly
+          beneath the target time and took the room the time controls needed; full width it also
+          shows the whole link instead of a truncated one. */}
+      {!embedded && hasCourse && (
+        <section className="border-b border-slate-200 bg-[#f8fbff] py-6">
+          <div className={CONTAINER}>
+            <ShareBox
+              courseLabel={courseLabel}
+              courseFile={courseFile}
+              targetSeconds={targetSeconds}
+              shareId={shareId}
+              onShared={setShareId}
+              imageOpen={shareImageOpen}
+              onToggleImage={estimate ? () => setShareImageOpen((open) => !open) : null}
+            />
+          </div>
+        </section>
+      )}
 
       {!embedded && hasCourse && estimate && shareImageOpen && (
         <section id="calculator-share" className="scroll-mt-[68px] border-b border-slate-200 bg-white py-10">
