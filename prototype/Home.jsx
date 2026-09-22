@@ -26,11 +26,13 @@ function RunnerArt({ className = '' }) {
 function SheetArt({ className = '' }) {
   return (
     <svg viewBox="0 0 120 120" className={className} fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      <rect x="18" y="16" width="72" height="94" rx="9" />
-      <rect x="40" y="8" width="28" height="15" rx="4" />
-      <path d="M32 42 H76 M32 58 H76 M32 74 H64" />
-      <circle cx="92" cy="94" r="17" fill="currentColor" fillOpacity=".06" />
-      <path d="M92 84 V94 H99 M88 74 V80 M85 78 L88 75" />
+      {/* The sheet sits low and the stopwatch stands clear above its top-right corner. Drawn
+          over the corner, the two sets of strokes merged and the watch could not be made out. */}
+      <rect x="12" y="34" width="70" height="80" rx="9" />
+      <rect x="32" y="26" width="30" height="15" rx="4" />
+      <path d="M26 62 H68 M26 78 H68 M26 94 H56" />
+      <circle cx="94" cy="26" r="17" fill="#17202c" />
+      <path d="M94 16 V26 H101 M94 5 V9 M106 12 L103 15" />
     </svg>
   )
 }
