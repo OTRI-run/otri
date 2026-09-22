@@ -197,12 +197,12 @@ export function ShareTarget({ courseName, distanceKm, elevationGainM, seconds, s
   const percent = fractionOfCeiling != null ? Math.round(fractionOfCeiling * 100) : null
   const draw = useMemo(
     () => (canvas, format) =>
-      drawScoreCard(canvas, { format, heading: 'My target', courseName, facts, time, score, detail: percent != null ? `${percent}% of the best a human has run over that much ground` : null, note: 'What is your time worth? · otri.run' }),
+      drawScoreCard(canvas, { format, heading: 'My target', courseName, facts, time, score, detail: percent != null ? `${percent}% of record-run speed on this course` : null, note: 'What is your time worth? · otri.run' }),
     [courseName, facts, time, score, percent],
   )
   const suggestedText = [
     `🎯 My target for ${courseName}: ${time}.`,
-    `That would be worth ${score} OTRI points${percent != null ? `, ${percent}% of the best a human has run over that much ground` : ''}.`,
+    `That would be worth ${score} OTRI points${percent != null ? `, ${percent}% of record-run speed on this course` : ''}.`,
     '',
     url ? `What would your time be worth? Try it: ${url}` : 'What would your time be worth? Try any course at otri.run',
     '',

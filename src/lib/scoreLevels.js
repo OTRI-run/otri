@@ -15,7 +15,7 @@ export const MARATHON_WORLD_BEST_SECONDS = 2 * 3600 + 35 // 2:00:35, one of the 
 export const MODEL_EXPONENT = 0.85
 
 export const LEVELS = [
-  { id: 'beyond', from: 1000, name: 'Beyond the record', short: 'Record+', blurb: 'Faster than the best a human has ever done on a course like this. For a target, a dream; for a result, check the course and the time.' },
+  { id: 'beyond', from: 1000, name: 'Beyond the record', short: 'Record+', blurb: 'Faster than a record run on a course like this. For a target, a dream; for a result, check the course and the time.' },
   { id: 'world', from: 900, name: 'World class', short: 'World', blurb: 'The pace of the best in the world. A winning 100-mile mountain run scored 984.' },
   { id: 'elite', from: 800, name: 'Elite', short: 'Elite', blurb: 'Professional and national-level pace.' },
   { id: 'expert', from: 700, name: 'Expert', short: 'Expert', blurb: 'Years of structured training: the pace of a three-hour road marathoner and faster.' },

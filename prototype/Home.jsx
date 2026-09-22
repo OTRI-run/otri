@@ -1,5 +1,5 @@
 import { scrollBehavior } from '../src/lib/comfort'
-import { ArrowRight, ArrowUpRight, Database, FileText, GitBranch, Mountain, ShieldCheck, Timer, Upload, Users } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, ClipboardList, Database, FileText, Footprints, GitBranch, Mountain, ShieldCheck, Timer, Upload, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import RaceCard from './RaceCard'
 import ScoreTicker from '../src/components/ScoreTicker'
@@ -155,10 +155,10 @@ export default function Home() {
         <div
           className={`${CONTAINER} flex min-w-0 flex-col items-center justify-center py-14 text-center sm:py-20 min-h-[calc(100svh-112px)] md:min-h-[calc(100svh-68px)]`}>
           <div className="flex min-w-0 flex-col items-center">
-            <h1 className="mt-5 max-w-[760px] text-[clamp(44px,7vw,84px)] font-bold leading-[1.08] tracking-[-.065em] text-[#0b1220]">
+            <h1 className="mt-5 max-w-[760px] bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text pb-1 text-[clamp(44px,7vw,84px)] font-bold leading-[1.08] tracking-[-.065em] text-transparent">
               The open score
               <br />
-              <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">for any trail race.</em>
+              <em className="not-italic">for any trail race.</em>
             </h1>
             {/* Plain sentences in one colour. Scattered bold and a second accent made this harder
                 to read, not easier. */}
@@ -171,7 +171,9 @@ export default function Home() {
               {[
                 {
                   who: 'I run',
-                  Icon: Timer,
+                  // Footprints, not a stopwatch: the door is about running a course, and the
+                  // stopwatch said "timing", which is the organiser's side of it.
+                  Icon: Footprints,
                   title: 'What is my time worth?',
                   text: 'A race or your own GPX, and a finish time.',
                   href: '#calculator',
@@ -184,7 +186,9 @@ export default function Home() {
                 },
                 {
                   who: 'I organise a race',
-                  Icon: Upload,
+                  // A results sheet, not an upload arrow: what an organiser holds is the list of
+                  // finishers, and an arrow said "file transfer" rather than "race".
+                  Icon: ClipboardList,
                   title: 'Score my whole race',
                   text: 'The course and the results file. Every finisher scored.',
                   href: '#score',
@@ -270,7 +274,7 @@ export default function Home() {
             {[
               [Mountain, 'COURSE', 'Distance, climb and steepness, measured on the server.', '#calculator'],
               [Timer, 'TIME', 'A target, not a result. Drag it and see what it is worth.', '#calculator'],
-              [GitBranch, 'SCORE', 'Your share of the best a human has run over that much ground.', DOCS.how],
+              [GitBranch, 'SCORE', 'How close your time is to a record run on that course. 1000 is record pace.', DOCS.how],
             ].map(([Icon, title, desc, href], index) => (
               <a
                 key={title}
