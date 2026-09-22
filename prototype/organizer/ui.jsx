@@ -26,7 +26,13 @@ export function Gradient({ children }) {
  * A page in the landing design: eyebrow, large heading, intro. With `aside`, the heading sits
  * on the left and the aside (usually a form card) on the right, like the landing's 04 section.
  */
-export function Page({ title, eyebrow, intro, back, children, aside, headline }) {
+export function Page({ title, eyebrow, intro, back, children, aside, headline, art: Art }) {
+  // A `title` is a name someone typed (an event, a distance): it is sized by its length. A
+  // `headline` is written for the page and keeps the designed size. `art` is a drawing to sit
+  // beside it (src/components/PageArt.jsx).
+  const h1 = (headline || title) && (
+    <h1 className="otri-fit mt-3 min-w-0 font-bold leading-[1.02] tracking-[-.05em] text-[#0b1220]" style={{ fontSize: headline ? 'clamp(32px, 4.5vw, 52px)' : fitFontSize(title, { min: 28, vw: 4.5, max: 52 }) }}>{headline ?? title}</h1>
+  )
   const heading = (
     <div className="min-w-0">
       {back && (
@@ -35,10 +41,13 @@ export function Page({ title, eyebrow, intro, back, children, aside, headline })
         </Link>
       )}
       {eyebrow && <Eyebrow className={back ? 'mt-5' : ''}>{eyebrow}</Eyebrow>}
-      {(headline || title) && (
-        // A `title` is a name someone typed (an event, a distance): it is sized by its length. A
-        // `headline` is written for the page and keeps the designed size.
-        <h1 className="otri-fit mt-3 font-bold leading-[1.02] tracking-[-.05em] text-[#0b1220]" style={{ fontSize: headline ? 'clamp(32px, 4.5vw, 52px)' : fitFontSize(title, { min: 28, vw: 4.5, max: 52 }) }}>{headline ?? title}</h1>
+      {Art && h1 ? (
+        <div className="flex items-center gap-4 sm:gap-6">
+          <Art className="mt-3 h-14 w-14 shrink-0 text-blue-700 opacity-[.55] sm:h-[72px] sm:w-[72px]" />
+          {h1}
+        </div>
+      ) : (
+        h1
       )}
       {intro && <p className="mt-4 max-w-[560px] text-sm leading-7 text-slate-500">{intro}</p>}
     </div>

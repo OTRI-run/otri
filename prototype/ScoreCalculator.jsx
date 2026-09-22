@@ -9,6 +9,7 @@ import { ShareTarget } from './SharePanel'
 import NextSteps from './NextSteps'
 import ReportForm from './ReportForm'
 import { modelLabel, modelShort } from '../src/lib/model'
+import { SummitArt, TITLE_ART } from '../src/components/PageArt'
 import { RACE_NAMES } from '../src/lib/raceNames'
 import WhatWeScore from '../src/components/WhatWeScore'
 import useFileDrop from '../src/lib/useFileDrop'
@@ -1363,11 +1364,14 @@ export default function ScoreCalculator({ embedded = false }) {
             </div>
             {hasCourse ? (
               <>
-                <h1 className="otri-fit mt-5 max-w-[760px] font-bold leading-[1.06] tracking-[-.05em] text-[#0b1220]" style={{ fontSize: fitFontSize(courseLabel.name, { min: 30, vw: 5, max: 56 }) }}>
-                  Your score on
-                  <br />
-                  <em className="otri-gradient-text not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent"><HeadlineName name={courseLabel.name} /></em>
-                </h1>
+                <div className="mt-5 flex items-center gap-4 sm:gap-6">
+                  <SummitArt className={TITLE_ART} />
+                  <h1 className="otri-fit min-w-0 max-w-[760px] font-bold leading-[1.06] tracking-[-.05em] text-[#0b1220]" style={{ fontSize: fitFontSize(courseLabel.name, { min: 30, vw: 5, max: 56 }) }}>
+                    Your score on
+                    <br />
+                    <em className="otri-gradient-text not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent"><HeadlineName name={courseLabel.name} /></em>
+                  </h1>
+                </div>
                 <p className="mt-4 max-w-[620px] text-[15px] leading-7 text-slate-600">
                   It starts at the time that scores {DEFAULT_TARGET_SCORE} here. Set your own target: type it, drag the slider, or pick
                   a score to see the time it takes. The same code scores official results.
@@ -1383,11 +1387,14 @@ export default function ScoreCalculator({ embedded = false }) {
               </>
             ) : (
               <>
-                <h1 className="mt-5 max-w-[760px] text-[clamp(40px,6.5vw,76px)] font-bold leading-[1.06] tracking-[-.065em] text-[#0b1220]">
-                  Know your score
-                  <br />
-                  <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">before you race.</em>
-                </h1>
+                <div className="mt-5 flex items-center gap-4 sm:gap-6">
+                  <SummitArt className={TITLE_ART} />
+                  <h1 className="min-w-0 max-w-[760px] text-[clamp(40px,6.5vw,76px)] font-bold leading-[1.06] tracking-[-.065em] text-[#0b1220]">
+                    Know your score
+                    <br />
+                    <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">before you race.</em>
+                  </h1>
+                </div>
                 <p className="mt-6 max-w-[620px] text-[15px] leading-7 text-slate-500 sm:text-[17px]">
                   Choose a course and a target finish time. OTRI measures the course, works out how hard it is, and tells
                   you how close that time would be to a record run on that course.

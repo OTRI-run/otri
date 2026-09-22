@@ -50,6 +50,7 @@ import ErrorBoundary from '../src/components/ErrorBoundary'
 import NotFound from '../src/components/NotFound'
 import { modelLabel, notScoredReason } from '../src/lib/model'
 import BackToTop from '../src/components/BackToTop'
+import { RouteArt, TITLE_ART } from '../src/components/PageArt'
 import { installDropGuard, installScrollMemory, installSearchShortcut, willNavigate } from '../src/lib/comfort'
 import '../src/styles.css'
 
@@ -1000,11 +1001,14 @@ function RacesPage({ raceId, raceQuery }) {
             <div className="grid min-w-0 items-end gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,.8fr)]">
               <div className="min-w-0">
                 <p className="mb-3 font-mono text-[10px] tracking-[.08em] text-slate-500">RACES</p>
-                <h1 className="text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
-                  Scored races.
-                  <br />
-                  <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">Every number explained.</span>
-                </h1>
+                <div className="flex items-center gap-4 sm:gap-6">
+                  <RouteArt className={TITLE_ART} />
+                  <h1 className="min-w-0 text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
+                    Scored races.
+                    <br />
+                    <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">Every number explained.</span>
+                  </h1>
+                </div>
               </div>
               <p className="min-w-0 text-sm leading-7 text-slate-500">
                 Races their organizers have published, all scored with the same open model. Each score depends only on the

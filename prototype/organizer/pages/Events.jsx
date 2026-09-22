@@ -4,6 +4,7 @@ import { ArrowRight, ArrowUpRight, CalendarDays, Plus } from 'lucide-react'
 import { createEvent, deleteEvent, getEvent, listMyEvents, updateEvent } from '../../apiClient'
 import { Link, navigate } from '../router'
 import { loadHandoff } from '../../publishHandoff'
+import { CalendarArt } from '../../../src/components/PageArt'
 import { formatDistance, formatElevation, useUnits } from '../../../src/lib/units'
 import { Button, Card, EmptyState, Eyebrow, Field, Gradient, Notice, Page, StatusChip, formatDate, inputClass, raceStatus } from '../ui'
 import CountrySelect from '../../../src/components/CountrySelect'
@@ -32,6 +33,7 @@ export function Dashboard({ session }) {
   return (
     <Page
       eyebrow="ORGANIZER DASHBOARD"
+      art={CalendarArt}
       headline={
         <>
           Your
