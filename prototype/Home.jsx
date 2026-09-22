@@ -155,10 +155,10 @@ export default function Home() {
         <div
           className={`${CONTAINER} flex min-w-0 flex-col items-center justify-center py-14 text-center sm:py-20 min-h-[calc(100svh-112px)] md:min-h-[calc(100svh-68px)]`}>
           <div className="flex min-w-0 flex-col items-center">
-            <h1 className="mt-5 max-w-[760px] text-[clamp(44px,7vw,84px)] font-bold leading-[1.08] tracking-[-.065em] text-[#0b1220]">
+            <h1 className="mt-5 max-w-[760px] bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text pb-1 text-[clamp(44px,7vw,84px)] font-bold leading-[1.08] tracking-[-.065em] text-transparent">
               The open score
               <br />
-              <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">for any trail race.</em>
+              <em className="not-italic">for any trail race.</em>
             </h1>
             {/* Plain sentences in one colour. Scattered bold and a second accent made this harder
                 to read, not easier. */}
