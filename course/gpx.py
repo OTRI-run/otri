@@ -77,7 +77,12 @@ _OTHER_FORMATS = {
 }
 
 
-MAX_TAGS = 3_000_000
+# Counted before the file is parsed. The fullest real course, 100,000 points each carrying
+# elevation, time and a watch's extensions, is under two million tags; three million was the old
+# ceiling, and a 12 MB file of empty elements just under it parsed to a 240 MB heap on a service
+# capped at 700 MB, from a public endpoint. Two million keeps every genuine file and takes a third
+# off the worst case.
+MAX_TAGS = 2_000_000
 
 
 def parse_track_points(gpx_text: str) -> list[TrackPoint]:
