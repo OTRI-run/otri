@@ -150,9 +150,6 @@ export default function Home() {
         <div
           className={`${CONTAINER} flex min-w-0 flex-col items-center justify-center py-14 text-center sm:py-20 min-h-[calc(100svh-112px)] md:min-h-[calc(100svh-68px)]`}>
           <div className="flex min-w-0 flex-col items-center">
-            {/* One famous performance at a time, with its flag and an illustrative score: what a
-                number here looks like, before the words say what it is. Decorative, not a link. */}
-            <ScoreTicker className="mb-2" />
             <h1 className="mt-5 max-w-[760px] text-[clamp(44px,7vw,84px)] font-bold leading-[1.08] tracking-[-.065em] text-[#0b1220]">
               The open score
               <br />
@@ -227,6 +224,10 @@ export default function Home() {
                 </div>
               ))}
             </div>
+            {/* One famous performance at a time, with its flag and an illustrative score: what a
+                number here looks like, once the two doors above have said what the site is for.
+                Decorative, not a link. */}
+            <ScoreTicker className="mt-8" />
           </div>
         </div>
       </section>

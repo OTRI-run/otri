@@ -19,7 +19,9 @@ const SHOWCASE = [
   { name: 'Blandine L’Hirondel', country: 'FRA', race: 'UTMB', year: 2026, score: 843 },
 ]
 
-const ROW_PX = 52
+// Two lines per row, name over race, at every width. One line truncated the race away on a phone
+// and needed a box too wide for the column on a desktop; two short lines fit a narrow card.
+const ROW_PX = 60
 const DWELL_MS = 3200
 const SLIDE_MS = 550
 
@@ -34,13 +36,15 @@ function shuffled(items) {
 
 function Row({ item }) {
   return (
-    <div className="flex h-[52px] min-w-0 items-center justify-center gap-3 px-4 sm:gap-4" style={{ height: ROW_PX }}>
-      <Flag code={item.country} showCode={false} className="shrink-0 [&>span]:text-[18px]" />
-      <span className="min-w-0 truncate text-[14px] font-semibold tracking-[-.01em] text-[#0b1220] sm:text-[15px]">
-        {item.name}
-        <span className="font-normal text-slate-500"> · {item.race} {item.year}</span>
+    <div className="flex min-w-0 items-center gap-3 px-3.5 sm:px-4" style={{ height: ROW_PX }}>
+      <Flag code={item.country} showCode={false} className="shrink-0 [&>span]:text-[20px]" />
+      <span className="flex min-w-0 flex-1 flex-col leading-tight">
+        <span className="truncate text-[14px] font-semibold tracking-[-.01em] text-[#0b1220]">{item.name}</span>
+        <span className="truncate text-[12px] text-slate-500">
+          {item.race} {item.year}
+        </span>
       </span>
-      <span className="shrink-0 rounded-md bg-[#0b1220] px-2 py-0.5 font-mono text-[13px] font-bold tabular-nums text-white sm:text-[14px]">
+      <span className="shrink-0 rounded-md bg-[#0b1220] px-2 py-0.5 font-mono text-[13px] font-bold tabular-nums text-white">
         OTRI {item.score}
       </span>
     </div>
@@ -91,7 +95,7 @@ export default function ScoreTicker({ className = '' }) {
       aria-hidden="true"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
-      className={`w-full max-w-[560px] select-none ${className}`}
+      className={`w-full max-w-[400px] select-none ${className}`}
     >
       <div
         className="overflow-hidden rounded-2xl border border-slate-200 bg-white/85 shadow-[0_10px_28px_rgba(15,23,42,.05)] backdrop-blur"
@@ -103,7 +107,7 @@ export default function ScoreTicker({ className = '' }) {
           ))}
         </div>
       </div>
-      <p className="mt-1.5 text-center font-mono text-[10px] uppercase tracking-[.12em] text-slate-400">Illustrative scores</p>
+      <p className="mt-1.5 text-center font-mono text-[10px] uppercase tracking-[.12em] text-slate-400">Illustrative example scores</p>
     </div>
   )
 }
