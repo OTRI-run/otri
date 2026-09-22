@@ -18,6 +18,7 @@ const SHOWCASE = [
   { name: 'Ruth Croft', country: 'NZL', race: 'UTMB', year: 2025, time: '22:56:23', score: 840 },
   { name: 'Jennifer Lichter', country: 'USA', race: 'Western States 100', year: 2026, time: '15:28:05', score: 840 },
   { name: 'Blandine L’Hirondel', country: 'FRA', race: 'UTMB', year: 2026, time: '21:54:49', score: 843 },
+  { name: 'Vincent Bouillard', country: 'FRA', race: 'Western States 100', year: 2026, time: '13:46:15', score: 927 },
 ]
 
 // Three lines keep the event and time-to-points comparison within the existing narrow card.
