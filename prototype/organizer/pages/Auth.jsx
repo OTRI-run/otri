@@ -1,6 +1,6 @@
 import { autoFocusOnDesktop } from '../../../src/lib/comfort'
 import { useEffect, useState } from 'react'
-import { ArrowRight, ArrowUpRight, CalendarDays, FileSpreadsheet, Mountain, ShieldCheck } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, CalendarDays, FileSpreadsheet, Mail, Mountain, ShieldCheck } from 'lucide-react'
 import { completeTwoFactor, fetchPendingGoogleAddress, getAuthProviders, googleStartUrl, loginOrganizer, registerOrganizer, requestPasswordReset, resendVerification, resetPassword, verifyEmail } from '../../apiClient'
 import PasswordStrength, { assessPassword } from '../../../src/components/PasswordStrength'
 import { Link, navigate } from '../router'
@@ -293,9 +293,17 @@ export function SignupForm({ onSignedIn, initialEmail = '', autoFocus = false, i
   const check = assessPassword(password, email)
   const tooShort = password.length > 0 && !check.ok
   const mismatch = confirm.length > 0 && confirm !== password
+  // The two ways in are the first thing, and the password fields wait behind the second of them.
+  // Reading past three fields to find the one-press way in put the quicker road behind the slower
+  // one; this keeps both in sight and asks for typing only from whoever chose to type. It opens in
+  // place, so choosing email is not a second page.
+  const [showEmail, setShowEmail] = useState(Boolean(initialEmail))
 
   useEffect(() => {
-    if (initialEmail) setEmail(initialEmail)
+    if (initialEmail) {
+      setEmail(initialEmail)
+      setShowEmail(true) // they arrived from a Google sign-in with no account: their address is known
+    }
   }, [initialEmail])
 
   async function submit(event) {
@@ -319,6 +327,16 @@ export function SignupForm({ onSignedIn, initialEmail = '', autoFocus = false, i
   return (
     <form onSubmit={submit} className="grid gap-4" noValidate>
       <GoogleButton intent="register" acceptTerms marketingOptIn={news} label="Sign up with Google" divider={false} />
+      {!showEmail && (
+        <>
+          <Button type="button" onClick={() => setShowEmail(true)} className="min-h-12 text-[14px]">
+            <Mail size={15} /> Sign up with email
+          </Button>
+          <TermsLine />
+        </>
+      )}
+      {showEmail && (
+        <>
       {/* Only when there is something to be "or" from: this deployment may have no Google client
           configured, and then the button above renders nothing. */}
       {providers.google && (
@@ -361,6 +379,8 @@ export function SignupForm({ onSignedIn, initialEmail = '', autoFocus = false, i
         </p>
       )}
       <TermsLine />
+        </>
+      )}
     </form>
   )
 }

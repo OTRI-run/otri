@@ -106,7 +106,7 @@ function AccountMenu({ session, onSignOut }) {
   )
 }
 
-function Header({ session, onSignOut }) {
+function Header({ session, onSignOut, onLogin = false }) {
   return (
     <>
       <header className="sticky top-0 z-50 h-[68px] border-b border-slate-200/90 bg-white/95 backdrop-blur">
@@ -141,6 +141,10 @@ function Header({ session, onSignOut }) {
             </span>
             {session ? (
               <AccountMenu session={session} onSignOut={onSignOut} />
+            ) : onLogin ? (
+              <Link to="/register" className="inline-flex min-h-9 items-center rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white no-underline hover:bg-blue-700">
+                Create account
+              </Link>
             ) : (
               <Link to="/login" className="inline-flex min-h-9 items-center rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white no-underline hover:bg-blue-700">
                 Sign in
@@ -340,7 +344,7 @@ function App() {
 
   return (
     <div id="top" className="flex min-h-screen max-w-full flex-col overflow-x-clip bg-[#f7f9fc] text-[#0b1220]">
-      <Header session={session} onSignOut={signOut} />
+      <Header session={session} onSignOut={signOut} onLogin={route.path.startsWith('/login')} />
       {signOutFailed && (
         <div className="border-b border-red-200 bg-red-50">
           <div className={`${CONTAINER} flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-[13px] text-red-800`} role="alert">

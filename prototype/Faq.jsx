@@ -18,12 +18,12 @@ const FAQ = [
         tags: 'definition meaning number scale',
       },
       {
-        q: 'Which races can OTRI score: trail, road, vertical?',
-        a: 'Anything with a fixed, measurable course and a finish time. Trail and mountain races are what the model was built for; road races work too; some kinds are scored with a warning, and a few cannot be scored at all.',
+        q: 'Which races can OTRI score: trail, mountain, vertical?',
+        a: 'Anything with a fixed, measurable course and a finish time. Trail and mountain races are what the model was built for; uphill-only races are scored too, and that setting is still being tested; a race with no fixed course cannot be scored at all.',
         table: true,
         // The table is drawn from the same data; this keeps it findable by the search box.
         search: `${WHAT_WE_SCORE.map((row) => row.slice(1).join(' ')).join(' ')} ${NOT_MEASURED}`,
-        tags: 'limits what can score road race marathon vertical kilometre steep short 24 hour backyard relay stage race technical terrain mud heat',
+        tags: 'limits what can score trail mountain ultra vertical kilometre uphill road marathon steep short 24 hour backyard relay stage race technical terrain mud heat',
       },
       {
         q: 'Why does the score not depend on who else raced?',
