@@ -120,13 +120,21 @@ export function Welcome() {
               Bring your course file and your results. OTRI measures the course, validates the file and gives every finisher a
               score that depends only on the course and their own time. Free, open, and the whole method is on the record.
             </p>
-            <div className="mt-7 flex flex-col gap-2 sm:flex-row">
-              <Button onClick={() => navigate('/register')}>
-                Create organizer account <ArrowRight size={15} />
+            {/* The ways in, here rather than behind a button that only asks which one. Landing,
+                pressing "create an account" and then choosing was two clicks before anything
+                happened, and the second one was the only one that did anything. */}
+            <div className="mt-7 grid max-w-[380px] gap-2.5">
+              <GoogleButton intent="register" acceptTerms label="Sign up with Google" divider={false} />
+              <Button onClick={() => navigate('/register?method=email')} className="min-h-12 text-[14px]">
+                Sign up with email <ArrowRight size={15} />
               </Button>
-              <Button variant="secondary" onClick={() => navigate('/login')}>
-                Sign in
-              </Button>
+              <TermsLine />
+              <p className="text-center text-[13px] text-slate-600">
+                Already have an account?{' '}
+                <Link to="/login" className="font-semibold text-blue-600">
+                  Sign in
+                </Link>
+              </p>
             </div>
             <p className="mt-4 max-w-[620px] text-sm leading-6 text-slate-600">
               Rather see your scores first?{' '}
@@ -135,7 +143,7 @@ export function Welcome() {
             <div className="mt-7 flex flex-wrap gap-x-4 gap-y-2 font-mono text-[8px] tracking-[.08em] text-slate-500 sm:text-[9px]">
               <span className="text-blue-600">FREE</span>
               <span>OPEN SOURCE</span>
-              <span>ABOUT 10 MINUTES</span>
+              <span>NO APPROVAL NEEDED</span>
             </div>
           </div>
 
@@ -332,7 +340,7 @@ export function Register({ onSignedIn, query = {} }) {
   // with Google underneath them, so the quicker way in was the one you had to read past a form to
   // find. `query.email` comes back from a Google sign-in that found no account, and that visitor
   // has already chosen: open the form with their address in it.
-  const [chosen, setChosen] = useState(query.email ? 'email' : null)
+  const [chosen, setChosen] = useState(query.email || query.method === 'email' ? 'email' : null)
 
   if (chosen !== 'email') {
     return (
