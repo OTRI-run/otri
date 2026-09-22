@@ -48,7 +48,7 @@ function RecoveryCodes({ codes, method }) {
 }
 
 function ProfileForm({ me, onSaved }) {
-  const [form, setForm] = useState({ display_name: '', organization: '', website: '', country: '', phone: '', bio: '', marketing_opt_in: false })
+  const [form, setForm] = useState({ display_name: '', organization: '', website: '', country: '', bio: '', marketing_opt_in: false })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [saved, setSaved] = useState(false)
@@ -58,7 +58,7 @@ function ProfileForm({ me, onSaved }) {
   useEffect(() => {
     if (!me) return
     const p = me.profile ?? {}
-    setForm({ display_name: p.display_name ?? '', organization: p.organization ?? '', website: p.website ?? '', country: p.country ?? '', phone: p.phone ?? '', bio: p.bio ?? '', marketing_opt_in: Boolean(p.marketing_opt_in) })
+    setForm({ display_name: p.display_name ?? '', organization: p.organization ?? '', website: p.website ?? '', country: p.country ?? '', bio: p.bio ?? '', marketing_opt_in: Boolean(p.marketing_opt_in) })
   }, [me])
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
 
@@ -459,10 +459,18 @@ function DataCard({ email, onDeleted }) {
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  // The download carries every result row the account has ever uploaded, so it asks for the
+  // password like the other two actions in this card do.
+  const [askingDownload, setAskingDownload] = useState(false)
+  const [downloadPassword, setDownloadPassword] = useState('')
+  const [downloading, setDownloading] = useState(false)
   async function download() {
     setError(null)
+    setDownloading(true)
     try {
-      const blob = await fetchAccountExport()
+      const blob = await fetchAccountExport(downloadPassword)
+      setAskingDownload(false)
+      setDownloadPassword('')
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -471,6 +479,8 @@ function DataCard({ email, onDeleted }) {
       URL.revokeObjectURL(url)
     } catch (err) {
       setError(err.message)
+    } finally {
+      setDownloading(false)
     }
   }
   async function remove() {
@@ -489,14 +499,36 @@ function DataCard({ email, onDeleted }) {
     <Card>
       <Eyebrow>YOUR DATA</Eyebrow>
       <div className="mt-3 grid gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3">
-          <p className="text-sm">
-            <span className="font-semibold text-[#0b1220]">Download my data</span>{' '}
-            <span className="text-slate-500">· your account, events, races, result rows and the emails we sent you, as JSON.</span>
-          </p>
-          <Button variant="secondary" className="min-h-10 text-xs" onClick={download}>
-            <Download size={14} /> Download (JSON)
-          </Button>
+        <div className="rounded-xl bg-slate-50 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm">
+              <span className="font-semibold text-[#0b1220]">Download my data</span>{' '}
+              <span className="text-slate-500">· your account, linked sign-ins, events, races, result rows and the emails we sent you, as JSON.</span>
+            </p>
+            {!askingDownload && (
+              <Button variant="secondary" className="min-h-10 text-xs" onClick={() => { setError(null); setAskingDownload(true) }}>
+                <Download size={14} /> Download (JSON)
+              </Button>
+            )}
+          </div>
+          {askingDownload && (
+            <form
+              className="mt-3 grid gap-3"
+              onSubmit={(event) => { event.preventDefault(); download() }}
+            >
+              <Field label="Your password" htmlFor="export-pw" hint="The file holds every finisher's name from the results you uploaded, so we ask before handing it over.">
+                <PasswordInput id="export-pw" autoComplete="current-password" value={downloadPassword} onChange={(e) => setDownloadPassword(e.target.value)} className={inputClass} />
+              </Field>
+              <div className="flex gap-2">
+                <Button type="submit" variant="secondary" busy={downloading} disabled={!downloadPassword}>
+                  <Download size={14} /> Download (JSON)
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => { setAskingDownload(false); setDownloadPassword(''); setError(null) }}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
         </div>
         <div className="rounded-xl border border-red-200 bg-red-50/60 px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">

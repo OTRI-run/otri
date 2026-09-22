@@ -44,11 +44,16 @@ WorkingDirectory=${APP_DIR}
 EnvironmentFile=${APP_DIR}/.env
 # ProtectHome hides /home; newer gunicorn wants a writable HOME for its control socket.
 Environment=HOME=${APP_DIR}/data
+# The access log records the path and not the query string. gunicorn's default format logs the
+# whole request line, and some of OTRI's one-time links arrive as query parameters: a Google
+# identity-link token, an OAuth code. A log is kept, shipped and backed up, and a token sitting in
+# one is a way into an account for as long as it is valid. %(U)s is the path alone.
 ExecStart=${APP_DIR}/venv/bin/gunicorn api.app:app \\
     --workers ${GUNICORN_WORKERS} \\
     --worker-class uvicorn.workers.UvicornWorker \\
     --bind 127.0.0.1:8000 \\
     --access-logfile - \\
+    --access-logformat '%(h)s "%(m)s %(U)s" %(s)s %(b)s %(M)sms' \\
     --error-logfile -
 Restart=on-failure
 RestartSec=5

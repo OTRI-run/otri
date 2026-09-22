@@ -1,7 +1,7 @@
 import { autoFocusOnDesktop } from '../../../src/lib/comfort'
 import { useEffect, useState } from 'react'
 import { ArrowRight, ArrowUpRight, CalendarDays, FileSpreadsheet, Mountain, ShieldCheck } from 'lucide-react'
-import { completeTwoFactor, getAuthProviders, googleStartUrl, loginOrganizer, registerOrganizer, requestPasswordReset, resendVerification, resetPassword, verifyEmail } from '../../apiClient'
+import { completeTwoFactor, fetchPendingGoogleAddress, getAuthProviders, googleStartUrl, loginOrganizer, registerOrganizer, requestPasswordReset, resendVerification, resetPassword, verifyEmail } from '../../apiClient'
 import PasswordStrength, { assessPassword } from '../../../src/components/PasswordStrength'
 import { Link, navigate } from '../router'
 import { hasHandoff } from '../../publishHandoff'
@@ -300,7 +300,7 @@ function AuthCard({ title, intro, children, footer, eyebrow = 'FOR ORGANIZERS' }
 }
 
 export function Register({ onSignedIn, query = {} }) {
-  const [email, setEmail] = useState(query.email || '')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState(null)
@@ -330,9 +330,20 @@ export function Register({ onSignedIn, query = {} }) {
 
   // Signing up starts with how, not with a form. The page used to open on the password fields
   // with Google underneath them, so the quicker way in was the one you had to read past a form to
-  // find. `query.email` comes back from a Google sign-in that found no account, and that visitor
-  // has already chosen: open the form with their address in it.
-  const [chosen, setChosen] = useState(query.email ? 'email' : null)
+  // find. A visitor sent here by a Google sign-in that found no account has already chosen, so
+  // the form opens with their address in it; the address comes from a one-read cookie rather than
+  // the URL, which is why it arrives a moment after the page does.
+  const [chosen, setChosen] = useState(query.google === 'no-account' ? 'email' : null)
+
+  useEffect(() => {
+    if (query.google !== 'no-account') return
+    let live = true
+    fetchPendingGoogleAddress().then((address) => {
+      if (live && address) setEmail(address)
+    })
+    return () => { live = false }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (chosen !== 'email') {
     return (
@@ -548,8 +559,13 @@ export function Login({ onSignedIn, afterReset = false, query = {} }) {
       navigate('/', { replace: true })
     } else if (query.challenge) {
       setChallenge({ challenge: query.challenge, method: query.method || 'totp' })
+      // A Google sign-in reaches this screen with no address typed, so the page used to read
+      // "We emailed a 6-digit code to ." The address comes back from the API, not the URL.
+      if ((query.method || 'totp') === 'email') fetchPendingGoogleAddress().then((a) => a && setEmail(a))
       // a challenge is used once; it should not stay in the address bar or the history
       window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#/login`)
+    } else if (query.google === 'confirm-link') {
+      fetchPendingGoogleAddress().then((a) => a && setEmail(a))
     } else if (query.google === 'failed') {
       setError(GOOGLE_FAILURE[query.reason] || 'Signing in with Google did not work. Try again, or use your password.')
     }
@@ -654,7 +670,7 @@ export function Login({ onSignedIn, afterReset = false, query = {} }) {
         {afterReset && <Notice kind="success" title="Your password is changed.">Sign in with it; you will be asked for your code as usual. Every other session of this account was signed out.</Notice>}
         {query.google === 'confirm-link' && (
           <Notice kind="info" title="Check your email to connect Google.">
-            An OTRI account already uses {query.email || 'that address'}. Google told us the address was checked, but it does not run that mailbox, so
+            An OTRI account already uses {email || 'that address'}. Google told us the address was checked, but it does not run that mailbox, so
             we have sent a link there. Open it and the two are connected. Until then nothing about the account has changed.
           </Notice>
         )}

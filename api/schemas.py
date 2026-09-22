@@ -114,6 +114,12 @@ class RunnerDeletedOut(BaseModel):
     unpublished_races: list[str] = []
 
 
+class PendingAddressOut(BaseModel):
+    """The address a Google sign-in ended on, handed to the page that needs to show it."""
+
+    email: str = ""
+
+
 class ValidationIssueOut(BaseModel):
     severity: str
     row: int | None
@@ -348,7 +354,6 @@ class ProfileOut(BaseModel):
     display_name: str | None = None
     organization: str | None = None
     website: str | None = None
-    phone: str | None = None
     country: str | None = None
     bio: str | None = None
     marketing_opt_in: bool = False
@@ -360,7 +365,6 @@ class ProfileUpdate(BaseModel):
     display_name: str | None = None
     organization: str | None = None
     website: str | None = None
-    phone: str | None = None
     country: str | None = None
     bio: str | None = None
     marketing_opt_in: bool | None = None

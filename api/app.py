@@ -118,6 +118,7 @@ from .schemas import (
     GpxAnalysis,
     IllustrativeEstimateOut,
     MessageResponse,
+    PendingAddressOut,
     ProvidersResponse,
     RegistrationResponse,
     OrganizerCredentials,
@@ -725,6 +726,38 @@ def _clear_oauth_cookie(response: Response, request: Request) -> None:
     response.delete_cookie(_OAUTH_COOKIE, path="/auth/google", httponly=True, secure=_cookie_secure(request), samesite="lax")
 
 
+# The address a Google sign-in ended on, carried back to the app without putting it in a URL.
+#
+# It used to ride in the redirect's query string, which wrote it into this API's access log, the
+# static site's access log, the browser history and the address bar -- where, on a shared machine,
+# it stays in autocomplete. It is the visitor's own address and the page genuinely needs it, so it
+# travels in a short-lived cookie the app reads once instead. The same carrier serves the
+# second-factor screen, which had no address at all after a Google sign-in and so told people
+# "We emailed a 6-digit code to ."
+_OAUTH_HINT_COOKIE = "otri_oauth_hint"
+_OAUTH_HINT_PATH = "/auth/google"
+
+
+def _set_oauth_hint(response: Response, request: Request, email: str) -> None:
+    response.set_cookie(
+        _OAUTH_HINT_COOKIE,
+        email,
+        max_age=600,
+        httponly=True,
+        secure=_cookie_secure(request),
+        samesite="lax",  # same site as the app (api.otri.run and otri.run), so the app's fetch carries it
+        path=_OAUTH_HINT_PATH,
+    )
+
+
+@app.get("/auth/google/pending", response_model=PendingAddressOut)
+def google_pending_address(request: Request, response: Response) -> PendingAddressOut:
+    """The address the sign-in just ended on, read once and then forgotten."""
+    email = request.cookies.get(_OAUTH_HINT_COOKIE, "")
+    response.delete_cookie(_OAUTH_HINT_COOKIE, path=_OAUTH_HINT_PATH, httponly=True, secure=_cookie_secure(request), samesite="lax")
+    return PendingAddressOut(email=email[:320])
+
+
 @app.get("/auth/providers", response_model=ProvidersResponse)
 def auth_providers() -> ProvidersResponse:
     """Which outside sign-ins this deployment offers, so the app only shows buttons that work."""
@@ -797,7 +830,8 @@ def google_callback(request: Request, state: str = "", code: str = "", error: st
 
     if outcome.event == "no_account":
         # The visitor's own address, handed back so the register page can fill it in.
-        response = _app_redirect("/register", google="no-account", email=identity.email)
+        response = _app_redirect("/register", google="no-account")
+        _set_oauth_hint(response, request, identity.email)
         _clear_oauth_cookie(response, request)
         return response
 
@@ -822,7 +856,8 @@ def google_callback(request: Request, state: str = "", code: str = "", error: st
             f"{_api_base(request)}/auth/google/confirm-link?token={quote(token, safe='')}",
             unconfirmed=not outcome.organizer.email_verified,
         )
-        response = _app_redirect("/login", google="confirm-link", email=identity.email)
+        response = _app_redirect("/login", google="confirm-link")
+        _set_oauth_hint(response, request, identity.email)
         _clear_oauth_cookie(response, request)
         return response
 
@@ -836,6 +871,8 @@ def google_callback(request: Request, state: str = "", code: str = "", error: st
     if session.requires_2fa:
         # The account's own second factor still stands. The login page knows this screen.
         response = _app_redirect("/login", challenge=session.challenge, method=session.method or "")
+        # So the screen can say which address the code went to, as the password path does.
+        _set_oauth_hint(response, request, organizer.email)
     else:
         response = _app_redirect("/login", google="ok", event=outcome.event)
         _set_session_cookie(response, request, session.access_token, started.remember)
@@ -965,9 +1002,18 @@ def logout_everywhere(payload: PasswordConfirm, request: Request, response: Resp
     return MessageResponse(message="signed out everywhere")
 
 
-@app.get("/auth/export")
-def export_account(organizer: Organizer = Depends(require_organizer)) -> Response:
-    """Everything OTRI holds for this account, as a JSON download (PRIVACY.md, 'Your rights')."""
+@app.post("/auth/export")
+def export_account(payload: PasswordConfirm, request: Request, organizer: Organizer = Depends(require_organizer)) -> Response:
+    """Everything OTRI holds for this account, as a JSON download (PRIVACY.md, 'Your rights').
+
+    Asks for the password, like every other account action that matters. This was the one that did
+    not, and it is the one worth the most: in a single request it hands over the account, its
+    consents, and every result row the organizer ever uploaded -- each with a runner's name,
+    gender, year of birth and nationality. A session on its own should not be able to take all of
+    that, because a session is what an attacker has.
+    """
+    with _password_confirmed(request, organizer):
+        _auth.confirm_password(organizer.id, payload.password)
     data = db.export_organizer(organizer.id)
     data["exported_at"] = datetime.now(timezone.utc).isoformat()
     body = json.dumps(data, default=str, indent=2)

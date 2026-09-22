@@ -107,6 +107,17 @@ MIGRATIONS: tuple[Migration, ...] = (
         """,
         "Signing out revokes that token (digests, until they expire); sign-in codes leave the email log; runners left behind by replaced or deleted results go.",
     ),
+    Migration(
+        "0008_forget_phone_numbers_and_spent_tokens",
+        """
+        UPDATE organizers SET phone = NULL WHERE phone IS NOT NULL;
+        DELETE FROM email_verification_tokens WHERE expires_at < now();
+        DELETE FROM password_reset_tokens WHERE expires_at < now() - INTERVAL '1 hour';
+        """,
+        "The profile form stopped asking for a phone number but the endpoint still accepted one, and it was in no policy: "
+        "existing numbers are emptied. One-time tokens that nobody can use any more are removed, which the code now also "
+        "does on the path that makes them; PRIVACY.md said reset tokens were deleted after two hours and nothing ever did.",
+    ),
 )
 
 _TRACKING_SQL = """

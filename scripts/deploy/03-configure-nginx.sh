@@ -33,11 +33,19 @@ tee /etc/nginx/sites-available/otri-api >/dev/null <<EOF
 limit_req_zone \$binary_remote_addr zone=otri_api:10m rate=20r/s;
 limit_conn_zone \$binary_remote_addr zone=otri_conn:10m;
 
+# The path, never the query string. Some of OTRI's one-time links arrive as query parameters (a
+# Google identity-link token, an OAuth code), and the default combined format would write them
+# into a file that is kept, rotated and backed up. \$uri is the path after normalisation.
+log_format otri_no_query '\$remote_addr - \$remote_user [\$time_local] '
+                         '"\$request_method \$uri \$server_protocol" \$status \$body_bytes_sent '
+                         '"\$http_referer" "\$http_user_agent"';
+
 server {
     listen 80;
     server_name ${DOMAIN};
     # Do not tell every visitor which nginx version and distribution this is.
     server_tokens off;
+    access_log /var/log/nginx/access.log otri_no_query;
 
     # Only meaningful over TLS (certbot adds the 443 server below); harmless on the redirect.
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;

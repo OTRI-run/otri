@@ -1081,7 +1081,11 @@ def published_results_grouped_by_race(runner_ids: list[str] | None = None) -> di
 
 # --- Organizer profile ---------------------------------------------------------
 
-PROFILE_FIELDS = ("display_name", "organization", "website", "phone", "country", "bio", "marketing_opt_in")
+# No phone number. The form stopped asking for one, but the column, the schema and the endpoint
+# all kept accepting and returning it, so any client could still put one there -- data OTRI has no
+# use for, does not show anywhere, and does not list in PRIVACY.md. The column stays for now so
+# nothing breaks on an older row; a migration empties it.
+PROFILE_FIELDS = ("display_name", "organization", "website", "country", "bio", "marketing_opt_in")
 
 
 def get_profile(organizer_id: int) -> dict:
@@ -1414,7 +1418,7 @@ def export_organizer(organizer_id: int) -> dict:
     """Everything OTRI holds for one account, for the 'download my data' button."""
     with get_connection() as connection:
         account = connection.execute(
-            "SELECT email, created_at, email_verified, is_admin, display_name, organization, website, phone, country, bio, "
+            "SELECT email, created_at, email_verified, is_admin, display_name, organization, website, country, bio, "
             "terms_accepted_at, marketing_opt_in, marketing_opt_in_at, two_factor_method, password_changed_at "
             "FROM organizers WHERE id = %s",
             (organizer_id,),
@@ -1432,12 +1436,23 @@ def export_organizer(organizer_id: int) -> dict:
         emails = connection.execute(
             "SELECT subject, status, created_at FROM email_log WHERE to_email = %s ORDER BY created_at DESC LIMIT 200", (account["email"],)
         ).fetchall() if account else []
+        # A linked sign-in is held about the person and is nowhere else they can see it: the account
+        # page shows only that Google is connected, not which address or since when.
+        identities = connection.execute(
+            "SELECT provider, subject, email, created_at, last_used_at FROM organizer_identities WHERE organizer_id = %s ORDER BY created_at",
+            (organizer_id,),
+        ).fetchall()
     return {
         "account": dict(account) if account else None,
+        "linked_sign_ins": [dict(row) for row in identities],
         "events": [dict(row) for row in events],
         "races": [dict(row) for row in races],
         "results": [dict(row) for row in results],
         "emails_sent_to_you": [dict(row) for row in emails],
+        "not_included": (
+            "Security material is deliberately left out: the password hash, any authenticator secret "
+            "and the hashed recovery codes. Email history is the most recent 200 messages."
+        ),
     }
 
 
