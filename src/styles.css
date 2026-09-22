@@ -44,7 +44,6 @@ body{margin:0;font-synthesis:none;text-rendering:optimizeLegibility}
    the fallback. Dash offsets are in user units, so a pattern advances by exactly one period. */
 @keyframes otri-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 @keyframes otri-run{to{stroke-dashoffset:18}}
-@keyframes otri-travel{to{stroke-dashoffset:-20}}
 @keyframes otri-wave{0%,100%{transform:skewX(-4deg)}50%{transform:skewX(4deg)}}
 @keyframes otri-tick{to{transform:rotate(360deg)}}
 @keyframes otri-write{0%{stroke-dashoffset:50}35%,80%{stroke-dashoffset:0}100%{stroke-dashoffset:50}}
@@ -55,7 +54,6 @@ body{margin:0;font-synthesis:none;text-rendering:optimizeLegibility}
   .otri-float{animation:otri-float 4.2s ease-out infinite}
   .otri-bob{animation:otri-bob 1.6s ease-in-out infinite}
   .otri-run{animation:otri-run .9s linear infinite}
-  .otri-travel{animation:otri-travel 1.4s linear infinite}
   .otri-wave{animation:otri-wave 2.4s ease-in-out infinite}
   .otri-tick{animation:otri-tick 8s linear infinite}
   .otri-write{animation:otri-write 4s ease-in-out infinite}

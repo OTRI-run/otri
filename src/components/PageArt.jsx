@@ -10,7 +10,23 @@
 // is always the fallback. Transform origins are in viewBox units: an SVG element's origin is
 // resolved against the view box by default.
 
+import { useEffect, useState } from 'react'
+
 const STROKE = { fill: 'none', stroke: 'currentColor', strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': 'true', focusable: 'false' }
+
+/** Whether the visitor has asked for reduced motion. The CSS animations honour that on their own;
+ *  this is for motion that CSS cannot switch off, such as an SVG motion path. */
+function useReducedMotion() {
+  const [reduced, setReduced] = useState(() => typeof window !== 'undefined' && Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches))
+  useEffect(() => {
+    const query = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    if (!query) return undefined
+    const onChange = (event) => setReduced(event.matches)
+    query.addEventListener?.('change', onChange)
+    return () => query.removeEventListener?.('change', onChange)
+  }, [])
+  return reduced
+}
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace'
 
 /** The size and tone of a drawing that sits beside a page title. */
@@ -50,14 +66,26 @@ export function SheetArt({ className = '', face = '#ffffff' }) {
   )
 }
 
-/** The dotted trail climbs toward the summit and the flag stirs in the wind. */
+/** A climber's marker makes its way up the ridge to the flag, pauses at the top, and starts again
+ *  from the foot of the mountain. The flag stirs. With reduced motion the marker rests at the
+ *  summit. The dotted trail this used to have moved oddly at title size and is gone. */
+const RIDGE = 'M6 104 L40 46 L58 72 L82 28'
+
 export function SummitArt({ className = '' }) {
+  const reduced = useReducedMotion()
   return (
     <svg viewBox="0 0 120 120" className={className} strokeWidth="6" {...STROKE}>
-      <path d="M6 104 L40 46 L58 72 L82 28 L114 104" />
-      <path d="M22 104 C36 86 46 92 54 82 S70 52 82 34" strokeWidth="4" strokeDasharray="1 9" opacity=".7" className="otri-travel" />
+      <path d={`${RIDGE} L114 104`} />
       <path d="M82 28 V8" />
       <path d="M82 8 L102 14 L82 20 Z" fill="currentColor" className="otri-wave" style={{ transformOrigin: '82px 14px' }} />
+      {reduced ? (
+        <circle cx="82" cy="28" r="6" fill="currentColor" stroke="none" />
+      ) : (
+        <circle r="6" fill="currentColor" stroke="none">
+          {/* Along the ridge in 3.4 s, held at the summit for the last stretch of each cycle. */}
+          <animateMotion dur="4.4s" repeatCount="indefinite" path={RIDGE} calcMode="linear" keyPoints="0;1;1" keyTimes="0;0.78;1" />
+        </circle>
+      )}
     </svg>
   )
 }
