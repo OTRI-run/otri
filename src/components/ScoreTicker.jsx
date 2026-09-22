@@ -111,9 +111,9 @@ export default function ScoreTicker({ className = '' }) {
       aria-hidden="true"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
-      className={`w-full max-w-[300px] select-none ${className}`}
+      className={`relative z-10 w-full max-w-[300px] select-none ${className}`}
     >
-      <div className="overflow-hidden rounded-2xl border border-[#d8c59e] bg-linear-to-b from-[#fffdf7] to-white shadow-[0_6px_20px_rgba(110,83,35,.08)]">
+      <div className="overflow-hidden rounded-2xl border border-[#d8c59e] bg-white bg-linear-to-b from-[#fffdf7] to-white shadow-[0_6px_20px_rgba(110,83,35,.08)]">
         <div className="mx-5 flex items-center justify-center gap-2 border-b border-[#e9dfca] pb-2 pt-3 text-[#8a682c]">
           <Trophy size={13} strokeWidth={1.6} aria-hidden="true" />
           <span className="text-[9px] font-semibold uppercase tracking-[.2em]">Race winner</span>
