@@ -1,5 +1,5 @@
 import { scrollBehavior } from '../src/lib/comfort'
-import { ArrowRight, ArrowUpRight, Database, FileText, GitBranch, Mountain, ShieldCheck, Timer, Upload, Users } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, ClipboardList, Database, FileText, Footprints, GitBranch, Mountain, ShieldCheck, Timer, Upload, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import RaceCard from './RaceCard'
 import ScoreTicker from '../src/components/ScoreTicker'
@@ -171,7 +171,9 @@ export default function Home() {
               {[
                 {
                   who: 'I run',
-                  Icon: Timer,
+                  // Footprints, not a stopwatch: the door is about running a course, and the
+                  // stopwatch said "timing", which is the organiser's side of it.
+                  Icon: Footprints,
                   title: 'What is my time worth?',
                   text: 'A race or your own GPX, and a finish time.',
                   href: '#calculator',
@@ -184,7 +186,9 @@ export default function Home() {
                 },
                 {
                   who: 'I organise a race',
-                  Icon: Upload,
+                  // A results sheet, not an upload arrow: what an organiser holds is the list of
+                  // finishers, and an arrow said "file transfer" rather than "race".
+                  Icon: ClipboardList,
                   title: 'Score my whole race',
                   text: 'The course and the results file. Every finisher scored.',
                   href: '#score',
