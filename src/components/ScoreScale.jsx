@@ -26,6 +26,15 @@ function hm(totalSeconds) {
   return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`
 }
 
+// A gap between two finish times, said the way a person would. Twelve seconds read as "0:00:12",
+// which is three zeroes to get past before the number that matters.
+function gap(totalSeconds) {
+  const s = Math.max(0, Math.round(totalSeconds))
+  if (s < 60) return `${s} s`
+  if (s < 3600) return `${Math.floor(s / 60)} min ${s % 60 ? `${s % 60} s` : ''}`.trim()
+  return hms(s)
+}
+
 function bandRange(band) {
   if (band.from >= 1000) return 'above 1000'
   if (band.from === 0) return 'below 300'
@@ -80,14 +89,14 @@ export default function ScoreScale({ score, share, exponent, targetSeconds, time
       <ul className="mt-5 space-y-2 border-t border-white/15 pt-4 text-[13px] leading-[1.5] text-slate-200">
         {marathon && score < 1000 && (
           <li>
-            The same share of record-run speed on a flat road marathon is{' '}
+            The same effort on a road marathon:{' '}
             <strong className="font-mono font-semibold text-white">{hms(marathon)}</strong>.
           </li>
         )}
         {next && nextTime && faster > 0 && (
           <li>
-            <strong className="font-semibold text-white">{next.name}</strong> starts at {next.from}. That is{' '}
-            <strong className="font-mono font-semibold text-white">{hms(nextTime)}</strong> here, {hms(faster)} faster.
+            <strong className="font-semibold text-white">{next.name}</strong> ({next.from}) is{' '}
+            <strong className="font-mono font-semibold text-white">{hms(nextTime)}</strong> here, {gap(faster)} faster.
           </li>
         )}
       </ul>

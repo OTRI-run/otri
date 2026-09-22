@@ -30,7 +30,20 @@ const JOBS = [
   ['icon-192.png', 'otri-mark.svg', 192, 192, '#ffffff', 0.78],
   ['icon-512.png', 'otri-mark.svg', 512, 512, '#ffffff', 0.78],
   ['icon-maskable-512.png', 'otri-mark.svg', 512, 512, '#ffffff', 0.6],
+  // The mark in every transactional email (api/email.py LOGO_URL). Shown at 36 px, rendered at
+  // four times that for high-density screens. It lived outside this list and was therefore the one
+  // asset the brand refresh did not reach: every email went out with the retired logo.
+  ['email/otri-mark.png', 'otri-mark.svg', 144, 144, null, 1],
 ]
+
+// `--only <text>` renders just the outputs whose name contains `text`, so one asset can be
+// refreshed without rewriting every other binary in the tree.
+const only = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : null
+const jobs = only ? JOBS.filter(([out]) => out.includes(only)) : JOBS
+if (only && jobs.length === 0) {
+  console.error(`No brand output matches --only ${only}`)
+  process.exit(1)
+}
 
 const chrome = process.env.CHROME || ['C:/Program Files/Google/Chrome/Application/chrome.exe', '/usr/bin/google-chrome', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'].find(existsSync)
 const profile = mkdtempSync(join(tmpdir(), 'otri-brand-'))
@@ -50,7 +63,7 @@ const send = (method, params = {}) => new Promise((done) => { pending.set(++id, 
 
 await send('Page.enable')
 const frame = (await send('Page.getFrameTree')).result.frameTree.frame.id
-for (const [out, source, width, wantedHeight, background, fill] of JOBS) {
+for (const [out, source, width, wantedHeight, background, fill] of jobs) {
   const svg = readFileSync(join(brand, source), 'utf8')
   const [, , , boxWidth, boxHeight] = svg.match(/viewBox="(\S+) (\S+) (\S+) (\S+)"/).map(Number)
   const height = wantedHeight ?? Math.round((width * boxHeight) / boxWidth)
@@ -67,7 +80,12 @@ for (const [out, source, width, wantedHeight, background, fill] of JOBS) {
 ws.close()
 proc.kill()
 
-// The kit as one download: every file of public/brand and the terms they come with.
+// The kit as one download: every file of public/brand and the terms they come with. A filtered
+// run refreshed one asset and has no business rewriting the kit around it.
+if (only) {
+  console.log('--only: brand/otri-brand-kit.zip left alone')
+  process.exit(0)
+}
 const zip = join(brand, 'otri-brand-kit.zip')
 rmSync(zip, { force: true })
 execFileSync('python', ['-c', `

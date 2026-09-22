@@ -2,7 +2,7 @@ import ScoreScale from '../src/components/ScoreScale'
 import { exponentOf } from '../src/lib/scoreLevels'
 import { fitFontSize } from '../src/lib/fitText'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUpRight, Check, Copy, GitBranch, Link2, Mountain, RefreshCw, Search, Share2, Timer, Upload, Image as ImageIcon, Download } from 'lucide-react'
+import { ArrowUpRight, Check, Copy, GitBranch, Link2, Mountain, RefreshCw, Search, Share2, Upload, Image as ImageIcon, Download } from 'lucide-react'
 import CourseMap from '../src/components/CourseMap'
 import { analyzeGpx, fetchRaceGpxFile, fetchSharedGpxFile, getRace, listRaces, shareGpx, raceGpxDownloadUrl } from './apiClient'
 import { ShareTarget } from './SharePanel'
@@ -91,10 +91,6 @@ function fmt1(value) {
   return Number(value).toFixed(1)
 }
 
-function shortVersion(scoringVersion) {
-  return `model ${modelShort(scoringVersion)}`
-}
-
 const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
 
 function Eyebrow({ children, className = '' }) {
@@ -120,17 +116,20 @@ function ScorePanel({ estimate, scoring, targetSeconds, features }) {
   const pct = b?.fraction_of_ceiling != null ? Math.round(b.fraction_of_ceiling * 100) : null
 
   // Label left, value right, and the value is the larger of the two. It used to be the other way
-  // round: the course and the time were 8px slate-500 and truncated, so the two facts a reader
-  // most wants to check were the hardest things on the panel to read.
+  // round: the course was 8px slate-500 and truncated, so the fact a reader most wants to check
+  // was the hardest thing on the panel to read.
+  //
+  // No "Your time" row: the target time and its pace are the big input in the card beside this
+  // panel, so repeating them here said the same thing twice a few centimetres apart. And the
+  // model row read "Model model 0.1.0 · reproducible", which is the word twice and a claim the
+  // methodology link makes properly.
   const rows = estimate
     ? [
         [Mountain, 'Course', `${formatDistance(b?.physical_distance_km ?? features?.distance_km ?? 0, units)} · ${formatElevation(features?.elevation_gain_m ?? 0, units, { sign: '+' })}`],
-        [Timer, 'Your time', [formatHms(targetSeconds), formatPace(targetSeconds, features?.distance_km, units)].filter(Boolean).join(' · ')],
-        [GitBranch, 'Model', `${shortVersion(estimate.scoring_version)} · reproducible`],
+        [GitBranch, 'Model', modelShort(estimate.scoring_version)],
       ]
     : [
         [Mountain, 'Course', 'distance, climb, steepness'],
-        [Timer, 'Your time', 'a target, not a result'],
         [GitBranch, 'Model', 'versioned · reproducible'],
       ]
 
@@ -156,22 +155,22 @@ function ScorePanel({ estimate, scoring, targetSeconds, features }) {
       <div className="border-b border-slate-700/70 py-8 text-center">
         {estimate ? (
           <>
-            <small className="text-[11px] font-semibold uppercase tracking-[.08em] text-blue-200">Your projected score</small>
+            {/* No "Your projected score" label: the panel is headed OTRI score and an 84px number
+                needs no caption. The record-run time is not repeated here either; it is stated
+                once, beside the slider whose ends it explains. */}
             <strong
-              className={`mt-1 block bg-gradient-to-r from-white to-blue-200 bg-clip-text pb-1 text-[84px] font-bold leading-none tracking-[-.06em] text-transparent transition-opacity ${scoring ? 'opacity-40' : ''}`}
+              className={`block bg-gradient-to-r from-white to-blue-200 bg-clip-text pb-1 text-[84px] font-bold leading-none tracking-[-.06em] text-transparent transition-opacity ${scoring ? 'opacity-40' : ''}`}
             >
               {estimate.predicted_score}
             </strong>
             {pct != null ? (
               <>
-                <span className={`mt-2 block text-[14px] font-semibold ${pct > 100 ? 'text-cyan-300' : 'text-slate-100'}`}>
-                  {pct}% of record-run speed for a course like this
+                <span className={`mt-1.5 block text-[14px] font-semibold ${pct > 100 ? 'text-cyan-300' : 'text-slate-100'}`}>
+                  {pct}% of record-run speed for this course
                 </span>
-                {b?.world_best_time_seconds > 0 && (
-                  <span className="mx-auto mt-2 block max-w-[330px] text-[13px] leading-[1.5] text-slate-300">
-                    A record run here is about{' '}
-                    <strong className="font-mono font-semibold text-white">{formatHms(Math.round(b.world_best_time_seconds))}</strong>, which scores 1000.
-                    {pct > 100 ? ' Your target is faster than that, so it scores above 1000.' : ''}
+                {pct > 100 && (
+                  <span className="mx-auto mt-1.5 block max-w-[320px] text-[13px] leading-[1.5] text-slate-300">
+                    Faster than a record run here, so it scores above 1000.
                   </span>
                 )}
                 {/* Where that stands, Beginner to World class (src/lib/scoreLevels.js). */}
@@ -1290,7 +1289,12 @@ export default function ScoreCalculator({ embedded = false }) {
     <>
       {!hasCourse && course}
       <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
-        <div className={`${CONTAINER} grid min-w-0 items-center gap-12 py-14 sm:py-16 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-20 lg:py-20`}>
+        {/* With a course loaded the left column ends in the target-time card and the right is the
+            score panel, so the two are bottom-aligned and sit on one line. Centred, as they were,
+            neither edge met and the pair looked unplaced. The empty state keeps the centring: its
+            panel is a short "Pick a course" against a tall column, and hanging it from the bottom
+            would leave a hole above it. */}
+        <div className={`${CONTAINER} grid min-w-0 items-center gap-12 py-14 sm:py-16 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-20 lg:py-20 ${hasCourse ? 'lg:items-end' : ''}`}>
           <div className="min-w-0">
             <div className="text-[11px] font-semibold uppercase tracking-[.08em] text-blue-600">
               OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> SCORE CALCULATOR
