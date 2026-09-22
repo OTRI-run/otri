@@ -4,36 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import RaceCard from './RaceCard'
 import ScoreTicker from '../src/components/ScoreTicker'
 import { listRaces } from './apiClient'
-
-// The picture behind each door, drawn in the same stroke as the site's mark: a runner mid-stride
-// behind "I run", a results sheet with a stopwatch behind "I organise a race". Faded and pinned to
-// the corner, under the words, so the card reads as a picture of its purpose without competing
-// with the text. Decorative: hidden from assistive technology.
-function RunnerArt({ className = '' }) {
-  return (
-    <svg viewBox="0 0 120 120" className={className} fill="none" stroke="currentColor" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      <circle cx="80" cy="20" r="9" />
-      <path d="M72 33 L57 62" />
-      <path d="M69 41 L85 51 L97 43" />
-      <path d="M69 41 L53 45 L41 58" />
-      <path d="M57 62 L75 79 L69 102" />
-      <path d="M57 62 L42 76 L26 71" />
-      <path d="M12 106 H50" strokeWidth="5" opacity=".5" />
-    </svg>
-  )
-}
-
-function SheetArt({ className = '' }) {
-  return (
-    <svg viewBox="0 0 120 120" className={className} fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      <rect x="18" y="16" width="72" height="94" rx="9" />
-      <rect x="40" y="8" width="28" height="15" rx="4" />
-      <path d="M32 42 H76 M32 58 H76 M32 74 H64" />
-      <circle cx="92" cy="94" r="17" fill="currentColor" fillOpacity=".06" />
-      <path d="M92 84 V94 H99 M88 74 V80 M85 78 L88 75" />
-    </svg>
-  )
-}
+import { RunnerArt, SheetArt } from '../src/components/PageArt'
 
 const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 const DOCS = {
@@ -240,7 +211,7 @@ export default function Home() {
                     >
                       <Icon size={18} />
                     </span>
-                    <span className={`font-mono text-[12px] font-semibold uppercase tracking-[.14em] ${dark ? 'text-slate-200' : 'text-slate-700'}`}>
+                    <span className={`font-mono text-[15px] font-bold uppercase tracking-[.12em] ${dark ? 'text-white' : 'text-[#0b1220]'}`}>
                       {who}
                     </span>
                   </span>
@@ -266,7 +237,7 @@ export default function Home() {
                       </a>
                     </div>
                     {dark ? (
-                      <SheetArt className="h-[92px] w-[92px] shrink-0 -rotate-6 text-white opacity-[.32]" />
+                      <SheetArt face="#17202c" className="h-[92px] w-[92px] shrink-0 -rotate-6 text-white opacity-[.32]" />
                     ) : (
                       <RunnerArt className="h-[92px] w-[92px] shrink-0 text-blue-700 opacity-[.4]" />
                     )}

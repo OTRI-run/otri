@@ -1,4 +1,5 @@
 import ResultsTable from '../src/components/ResultsTable'
+import { PodiumArt, TITLE_ART } from '../src/components/PageArt'
 import ColumnsRead from '../src/components/ColumnsRead'
 import WhatWeScore from '../src/components/WhatWeScore'
 import useFileDrop from '../src/lib/useFileDrop'
@@ -500,11 +501,14 @@ export default function ScoreRace() {
             <div className="font-mono text-[10px] font-medium tracking-[.1em] text-blue-600">
               OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> SCORE MY RACE
             </div>
-            <h1 className="mt-5 max-w-[640px] text-[clamp(34px,5vw,56px)] font-bold leading-[1.02] tracking-[-.06em] text-[#0b1220]">
-              Your results,
-              <br />
-              <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">scored in a minute.</em>
-            </h1>
+            <div className="mt-5 flex items-center gap-4 sm:gap-6">
+              <PodiumArt className={TITLE_ART} />
+              <h1 className="min-w-0 max-w-[640px] text-[clamp(34px,5vw,56px)] font-bold leading-[1.02] tracking-[-.06em] text-[#0b1220]">
+                Your results,
+                <br />
+                <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">scored in a minute.</em>
+              </h1>
+            </div>
             <p className="mt-5 max-w-[560px] text-base leading-7 text-slate-600">
               Bring the course and the results file of any trail race. OTRI measures the course, checks the file, and gives every finisher a score you can explain: the same open model as every race here, with no account and no approval.
             </p>

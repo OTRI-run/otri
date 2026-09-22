@@ -2,6 +2,7 @@ import { NOT_MEASURED, WHAT_WE_SCORE, WhatWeScoreTable } from '../src/components
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowUpRight, Mail, Search } from 'lucide-react'
 import NextSteps from './NextSteps'
+import { QuestionArt, TITLE_ART } from '../src/components/PageArt'
 
 const DOCS = 'https://github.com/OTRI-run/otri/blob/main'
 const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
@@ -225,11 +226,14 @@ export default function FaqPage({ initialQuery = '' }) {
           <div className="font-mono text-xs text-blue-600">04</div>
           <div className="min-w-0">
             <p className="mb-3 font-mono text-[10px] tracking-[.08em] text-slate-500">QUESTIONS</p>
-            <h1 className="text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
-              Asked often.
-              <br />
-              <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">Answered plainly.</span>
-            </h1>
+            <div className="flex items-center gap-4 sm:gap-6">
+              <QuestionArt className={TITLE_ART} />
+              <h1 className="min-w-0 text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
+                Asked often.
+                <br />
+                <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">Answered plainly.</span>
+              </h1>
+            </div>
           </div>
           <p className="min-w-0 text-sm leading-7 text-slate-500">
             Short answers about scores, courses, the runner index and publishing a race. The long answers live in the

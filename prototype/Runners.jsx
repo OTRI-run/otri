@@ -16,6 +16,7 @@ import { modelShort } from '../src/lib/model'
 import NotFound from '../src/components/NotFound'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import Flag from '../src/components/Flag'
+import { RunnerArt, TITLE_ART } from '../src/components/PageArt'
 
 const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
 const METHOD_URL = 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/runner-index/RUNNER-INDEX-v1.md'
@@ -104,11 +105,14 @@ export function RunnersPage({ initialQuery = '' }) {
           <div className="font-mono text-xs text-blue-600">02</div>
           <div className="min-w-0">
             <p className="mb-3 font-mono text-[10px] tracking-[.08em] text-slate-500">RUNNERS</p>
-            <h1 className="text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
-              Every runner.
-              <br />
-              <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">One honest number.</span>
-            </h1>
+            <div className="flex items-center gap-4 sm:gap-6">
+              <RunnerArt className={TITLE_ART} />
+              <h1 className="min-w-0 text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
+                Every runner.
+                <br />
+                <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">One honest number.</span>
+              </h1>
+            </div>
           </div>
           <p className="min-w-0 text-sm leading-7 text-slate-500">
             A runner's index is the recency-weighted mean of their best three race scores from the last 24 months, built
