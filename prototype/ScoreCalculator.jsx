@@ -105,6 +105,21 @@ function fmt1(value) {
 
 const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
 
+// A course name for a headline: "UTMB® Mont-Blanc 2026 CCC · 108 KM" with the distance held on one
+// line, so a break never leaves "KM" alone on the line below its number. Only a short final
+// segment is held; a long one is left free to wrap on a phone.
+function HeadlineName({ name }) {
+  const text = String(name ?? '')
+  const cut = text.lastIndexOf(' · ')
+  const last = cut >= 0 ? text.slice(cut + 3) : ''
+  if (cut < 0 || last.length > 14) return text
+  return (
+    <>
+      {text.slice(0, cut)} · <span className="whitespace-nowrap">{last}</span>
+    </>
+  )
+}
+
 function Eyebrow({ children, className = '' }) {
   return <p className={`text-[11px] font-semibold uppercase tracking-[.08em] text-slate-500 ${className}`}>{children}</p>
 }
@@ -1351,7 +1366,7 @@ export default function ScoreCalculator({ embedded = false }) {
                 <h1 className="otri-fit mt-5 max-w-[760px] font-bold leading-[1.06] tracking-[-.05em] text-[#0b1220]" style={{ fontSize: fitFontSize(courseLabel.name, { min: 30, vw: 5, max: 56 }) }}>
                   Your score on
                   <br />
-                  <em className="otri-gradient-text not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">{courseLabel.name}</em>
+                  <em className="otri-gradient-text not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent"><HeadlineName name={courseLabel.name} /></em>
                 </h1>
                 <p className="mt-4 max-w-[620px] text-[15px] leading-7 text-slate-600">
                   It starts at the time that scores {DEFAULT_TARGET_SCORE} here. Set your own target: type it, drag the slider, or pick

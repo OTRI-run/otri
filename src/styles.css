@@ -31,3 +31,8 @@ body{margin:0;font-synthesis:none;text-rendering:optimizeLegibility}
 /* Gradient text over several lines: each line gets the whole gradient, and descenders are not cut off
    by the tight line height. */
 .otri-gradient-text{-webkit-box-decoration-break:clone;box-decoration-break:clone;padding-bottom:.12em}
+/* The same, for every headline that clips text to a gradient, whether or not it remembered the
+   class above: the paint stops at the line box, so a tight-leading headline lost the tails of its
+   y and g. Padding extends the paint; the negative margin gives the space back so nothing moves.
+   Cloned so each wrapped line paints the whole gradient. Unlayered, so it wins over the utility. */
+.bg-clip-text{-webkit-box-decoration-break:clone;box-decoration-break:clone;padding-bottom:.14em;margin-bottom:-.14em}
