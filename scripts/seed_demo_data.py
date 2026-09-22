@@ -74,7 +74,7 @@ def main(publish: bool | None = None) -> None:
 
         result_path = RESULTS_DIR / f"{race.race_id}.csv"
         if result_path.exists():
-            db.replace_results(race.race_id, result_records(result_path))
+            db.replace_results(race.race_id, result_records(result_path), allow_published=True)
             if publish is not None:
                 db.set_race_published(race.race_id, publish)
 

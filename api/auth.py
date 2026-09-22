@@ -354,8 +354,12 @@ def reset_password(token: str, new_password: str) -> Organizer:
             (password_hash, row["organizer_id"]),
         ).fetchone()
         connection.execute("DELETE FROM login_challenges WHERE organizer_id = %s", (row["organizer_id"],))
-        # This link is used; any other still-open reset link for the account dies with it.
+        # This link is used; any other still-open reset link for the account dies with it, and so
+        # does any half-made link to a Google account. A reset is what an owner does when somebody
+        # else has been in the mailbox, and one of those links is a way back in that would have
+        # survived it.
         connection.execute("UPDATE password_reset_tokens SET used_at = now() WHERE organizer_id = %s AND used_at IS NULL", (row["organizer_id"],))
+        connection.execute("UPDATE identity_link_tokens SET used_at = now() WHERE organizer_id = %s AND used_at IS NULL", (row["organizer_id"],))
         return Organizer(id=organizer_row["id"], email=organizer_row["email"], email_verified=True)
 
 
@@ -395,9 +399,15 @@ def _end_pending_access(connection, organizer_id: int) -> None:
     """Whenever an account's protection changes (password, second factor, sign out everywhere):
     whatever was on its way in under the old protection stops there. A half-finished sign-in is
     dropped, and so is every open reset link: an owner who changes the password because somebody
-    may have been in the mailbox must not leave that somebody a link that sets it again."""
+    may have been in the mailbox must not leave that somebody a link that sets it again.
+
+    A half-made link to a Google account goes the same way, and for the same reason. It is a link
+    sent to the mailbox that joins a Google account to this one for good, so it outlives a session
+    and a password: whoever was in the mailbox could hold one, wait for the owner to recover the
+    account, and then open it and be back inside with a sign-in the owner cannot take away."""
     connection.execute("DELETE FROM login_challenges WHERE organizer_id = %s", (organizer_id,))
     connection.execute("UPDATE password_reset_tokens SET used_at = now() WHERE organizer_id = %s AND used_at IS NULL", (organizer_id,))
+    connection.execute("UPDATE identity_link_tokens SET used_at = now() WHERE organizer_id = %s AND used_at IS NULL", (organizer_id,))
 
 
 class NoPassword(AuthError):

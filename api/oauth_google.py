@@ -408,6 +408,10 @@ def complete_link(token: str) -> Outcome:
         connection.execute("DELETE FROM recovery_codes WHERE organizer_id = %s", (account["id"],))
         connection.execute("DELETE FROM login_challenges WHERE organizer_id = %s", (account["id"],))
         connection.execute("UPDATE password_reset_tokens SET used_at = now() WHERE organizer_id = %s AND used_at IS NULL", (account["id"],))
+        connection.execute(
+            "UPDATE identity_link_tokens SET used_at = now() WHERE organizer_id = %s AND used_at IS NULL AND token <> %s",
+            (account["id"], row["token"]),
+        )
         _link(connection, account["id"], identity)
         return Outcome(_organizer(reclaimed), "reclaimed" if taken_from_somebody else "linked")
 

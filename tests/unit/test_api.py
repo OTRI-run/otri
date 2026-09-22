@@ -521,7 +521,7 @@ def test_attached_measurement_is_persisted_and_totals_cannot_diverge(monkeypatch
     def unavailable_provider():
         raise AssertionError('saved measurement must not request current terrain')
     monkeypatch.setattr('course.elevation.configured_provider', unavailable_provider)
-    csv = 'Ranking,Time,Family name,First Name,Gender\n1,01:00:00,Runner,Test,M\n'
+    csv = 'Ranking,Time,Family name,First Name,Gender\n1,05:10:00,Runner,Test,M\n'
     submitted = client.post(f'/races/{race_id}/results', files={'file': ('results.csv', csv.encode(), 'text/csv')}, headers=headers)
     assert submitted.status_code == 200
     replay = client.get(f'/races/{race_id}/results', headers=headers)
@@ -581,6 +581,7 @@ def test_analyze_gpx_prediction_matches_real_score_for_same_course_and_time():
 
     import io
 
+    # One hour on the 438 m flat loop: the same time the prediction above was asked for.
     csv_content = "Ranking,Time,Family name,First Name,Gender\n1,01:00:00,Runner,Test,M\n"
     files = {"file": ("results.csv", io.BytesIO(csv_content.encode()), "text/csv")}
     submit_response = client.post(f"/races/{race_id}/results", files=files, headers=headers)
@@ -831,7 +832,7 @@ def test_share_gpx_caps_file_size_and_rate_limits(tmp_path, monkeypatch):
 
 def _scored_race(headers, email_suffix=""):
     _, race_id = _create_event_and_race(headers)
-    csv = "Ranking,Time,Family name,First Name,Gender\n1,01:00:00,Runner,Test,M\n2,01:10:00,Second,Sam,F\n"
+    csv = "Ranking,Time,Family name,First Name,Gender\n1,05:10:00,Runner,Test,M\n2,05:45:00,Second,Sam,F\n"
     submitted = client.post(f"/races/{race_id}/results", files={"file": ("results.csv", csv.encode(), "text/csv")}, headers=headers)
     assert submitted.status_code == 200, submitted.text
     return race_id
@@ -863,7 +864,7 @@ def test_publishing_controls_what_the_public_sees():
     assert race_id in listed and listed[race_id]["finisher_count"] == 2
     public = client.get(f"/races/{race_id}/results")
     assert public.status_code == 200
-    assert public.json()[0]["finish_time_seconds"] == 3600, "the public leaderboard carries finish times"
+    assert public.json()[0]["finish_time_seconds"] == 18600, "the public leaderboard carries finish times"
 
     unpublished = client.delete(f"/races/{race_id}/publish", headers=headers)
     assert unpublished.status_code == 200 and unpublished.json()["is_published"] is False

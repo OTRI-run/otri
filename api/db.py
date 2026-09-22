@@ -428,10 +428,6 @@ def find_event(event_id: str) -> Event | None:
     return Event(**row) if row else None
 
 
-class QuotaExceeded(Exception):
-    """A per-account limit reached, counted in the same transaction as the row it would allow."""
-
-
 def create_event(
     event_name: str,
     event_date_: date,
@@ -658,9 +654,19 @@ def delete_race(race_id: str) -> None:
         _drop_runners_without_results(connection, runners)
 
 
-def attach_gpx(race_id: str, filename: str, content: str, distance_km: float, elevation_gain_m: float, measurement: dict | None = None) -> Race:
-    """Store a GPX file for a race and refresh its course stats from the real parsed data."""
+def attach_gpx(race_id: str, filename: str, content: str, distance_km: float, elevation_gain_m: float, measurement: dict | None = None, *, allow_published: bool = False) -> Race:
+    """Store a GPX file for a race and refresh its course stats from the real parsed data.
+
+    Refuses on a published race, under the row lock, for the reason given in replace_results: a
+    score is worked out from the course every time it is asked for, so a new course here restates
+    a leaderboard the public has already read.
+    """
     with get_connection() as connection:
+        race = connection.execute("SELECT published_at FROM races WHERE race_id = %s FOR UPDATE", (race_id,)).fetchone()
+        if race is None:
+            raise NotFoundError(f"race {race_id!r} not found")
+        if race["published_at"] is not None and not allow_published:
+            raise RacePublished(race_id)
         cursor = connection.execute(
             "UPDATE races SET gpx_filename = %s, gpx_content = %s, distance_km = %s, elevation_gain_m = %s, "
             "measurement = %s, updated_at = now() WHERE race_id = %s",
@@ -779,20 +785,34 @@ def has_results(race_id: str) -> bool:
     return row is not None
 
 
+class RacePublished(Exception):
+    """A published race's course or results cannot be replaced while it is public."""
+
+
 class QuotaExceeded(Exception):
-    """The upload would take the account over the number of result rows it may hold."""
+    """A per-account limit reached: events, race distances, or result rows. Counted in the same
+    transaction as the row it would allow, so a burst of requests cannot all pass the same check."""
 
 
-def replace_results(race_id: str, results: list[ResultRecord], *, max_rows_for_organizer: int | None = None) -> None:
+def replace_results(race_id: str, results: list[ResultRecord], *, max_rows_for_organizer: int | None = None, allow_published: bool = False) -> None:
     """Overwrite all results for a race in one transaction (re-submission replaces prior data).
 
     Each result is attached to a runner (matched or created) as it is inserted, so runner
-    profiles are consistent the moment a submission lands."""
+    profiles are consistent the moment a submission lands.
+
+    A published race refuses, here rather than only in the handler that called this. The handler
+    reads the race and then calls this, and a publish committing between those two is enough for
+    the write to land on a race that is now public; inside this transaction the row is already
+    held, so there is no such moment. `allow_published` is for the seed script, which owns the
+    races it makes.
+    """
     with get_connection() as connection:
         race = connection.execute(
             "SELECT ra.published_at, e.organizer_id FROM races ra JOIN events e ON e.event_id = ra.event_id WHERE ra.race_id = %s FOR UPDATE OF ra", (race_id,)
         ).fetchone()
         published = race is not None and race["published_at"] is not None
+        if published and not allow_published:
+            raise RacePublished(race_id)
         if max_rows_for_organizer is not None and race is not None and race["organizer_id"] is not None:
             # One upload of an account at a time gets past this line; the other waits for the first
             # to commit and then counts its rows too.
