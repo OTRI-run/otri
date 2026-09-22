@@ -280,7 +280,7 @@ export default function Home() {
             {[
               [Mountain, 'COURSE', 'Distance, climb and steepness, measured on the server.', '#calculator'],
               [Timer, 'TIME', 'A target, not a result. Drag it and see what it is worth.', '#calculator'],
-              [GitBranch, 'SCORE', 'How close your time is to a record run on that course. 1000 is record pace.', DOCS.how],
+              [GitBranch, 'SCORE', 'How close your time is to a record run on that course. Faster than the record scores higher still.', DOCS.how],
             ].map(([Icon, title, desc, href], index) => (
               <a
                 key={title}
