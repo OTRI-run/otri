@@ -6,9 +6,11 @@ import GitHubMark from './components/GitHubMark'
 import BuildBanner from './components/BuildBanner'
 import ErrorBoundary from './components/ErrorBoundary'
 import { initMonitoring } from './lib/monitoring'
+import { countPages } from './lib/analytics'
 import './styles.css'
 
 initMonitoring()
+countPages()
 
 const principles=[['OPEN','Source code and methodology are public.'],['TRANSPARENT','Scores can be inspected and explained.'],['REPRODUCIBLE','Same inputs and version produce the same result.'],['TRACEABLE','Data provenance and permissions are recorded.'],['INDEPENDENT','OTRI develops its own methodology and infrastructure.']]
 const pipeline=[['01','RESULTS','Official race data'],['02','VALIDATE','Quality checks'],['03','COURSE','Distance + elevation'],['04','MODEL','Versioned scoring'],['05','INDEX','Reproducible output']]

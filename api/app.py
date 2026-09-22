@@ -20,7 +20,7 @@ import base64
 import gzip
 import json
 import os
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlsplit
 from dataclasses import asdict, replace
 from hashlib import sha256
 from datetime import date, datetime, timedelta, timezone
@@ -77,11 +77,14 @@ from .auth import (
 from . import email as _email
 from . import server_stats as _server
 from .email import send_password_reset_email, send_verification_email
+from . import analytics as _analytics
 from . import oauth_google as _google
 from . import rate_limit as _limits
 from .rate_limit import enforce_rate_limit, over_limit
 from . import rate_limit as _rate_limit
 from .schemas import (
+    SiteHit,
+    TrafficSummary,
     ChangePassword,
     PasswordConfirm,
     ProfileOut,
@@ -222,6 +225,14 @@ _STARTED_AT = datetime.now(timezone.utc)
 # out of the box.
 _allowed_origins = os.environ.get("OTRI_API_ALLOWED_ORIGINS", "http://localhost:5173")
 _ALLOWED_ORIGIN_LIST = [origin.strip() for origin in _allowed_origins.split(",") if origin.strip()]
+# The hosts that are OTRI's own. A visit arriving from one of these is not a visit from anywhere:
+# it is somebody turning a page, and counting it as a referral would make the site its own biggest
+# source of traffic.
+_OWN_HOSTS = {
+    (urlsplit(origin).hostname or "").lower().removeprefix("www.")
+    for origin in [*_ALLOWED_ORIGIN_LIST, _email.SITE_URL, _email.APP_BASE_URL]
+    if origin
+} - {""}
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_ALLOWED_ORIGIN_LIST,
@@ -532,6 +543,7 @@ def register(payload: OrganizerRegistration, request: Request, response: Respons
 
     token = create_email_verification_token(organizer)
     send_verification_email(organizer.email, token)
+    _analytics.count("organizer_signup")
 
     session = _finish_session(response, request, _issue_session(organizer, False, request), False)
     return RegistrationResponse(**session.model_dump(), message="account created: confirm your email address from the link we sent before you publish")
@@ -1361,6 +1373,7 @@ def publish_race(race_id: str, organizer: Organizer = Depends(require_organizer)
     require_verified(organizer)
     if not db.has_results(race_id):
         raise HTTPException(status_code=422, detail="upload results before publishing")
+    _analytics.count("race_published")
     return _race_summary(db.set_race_published(race_id, True), db.count_results_by_race().get(race_id, 0))
 
 
@@ -2158,6 +2171,7 @@ async def analyze_gpx(request: Request, file: UploadFile, finish_time_seconds: i
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
 
+    _analytics.count("course_analysed")
     return GpxAnalysis(features=features.to_dict(), estimate=estimate, measurement={**measurement.to_dict(), "raw_sha256": sha256(contents).hexdigest()})
 
 
@@ -2271,6 +2285,7 @@ async def score_a_race(
                 best_score=values[-1] if values else None,
                 median_score=values[len(values) // 2] if values else None,
             )
+            _analytics.count("race_scored")
             return ScoreRaceResult(is_valid=True, scores=scores, summary=summary, **issues, **shared)
         finally:
             for path in paths:
@@ -2438,6 +2453,8 @@ async def share_gpx(request: Request, file: UploadFile, name: str | None = Form(
         except OSError:
             pass
     meta = _shared_course_meta(share_id)
+    if created:
+        _analytics.count("course_shared")
     return SharedCourseOut(share_id=share_id, name=meta.get("name"), created=created)
 
 
@@ -2716,6 +2733,54 @@ def create_report(payload: ReportCreate, request: Request) -> ReportOut:
     for admin_email in sorted(_ADMIN_EMAILS) if notify else ():
         _email.send_report_email(admin_email, report.kind, report.subject_label or report.subject_id, message, report.page_url)
     return _report_out(report)
+
+
+# --- Who came to the site ------------------------------------------------------------------
+#
+# OTRI counts its own visitors (api/analytics.py) rather than handing them to somebody else's
+# analytics: the privacy policy says there are no third-party trackers here, and a site whose
+# argument is that it can be inspected should not be watching its readers on another firm's
+# behalf. Nothing is written to the browser, no address is stored, and a visitor's number is a
+# digest of the day that cannot be joined to yesterday's.
+
+
+@app.post("/site/hit", status_code=204)
+async def site_hit(request: Request) -> Response:
+    """A page was opened, or something worth counting happened. Answers 204 either way: a beacon
+    is sent as the page unloads and nothing must wait on it.
+
+    The body is read and parsed here rather than declared as a parameter, because navigator
+    .sendBeacon posts it as text/plain. That is deliberate: a text/plain POST is a simple request,
+    so the browser sends it straight out instead of asking permission first, and a count is not
+    worth a second round trip.
+    """
+    # Generous, because a real reader turns a few pages a minute, and cheap, because the work is
+    # two counter updates. The point is a ceiling on a script, not on a person.
+    if _limits.over_limit(request, max_requests=120, scope="site-hit"):
+        return Response(status_code=204)
+    try:
+        raw = await request.body()
+        if len(raw) > 2_000:
+            return Response(status_code=204)
+        payload = SiteHit(**json.loads(raw or b"{}"))
+        _analytics.record(
+            address=request.client.host if request.client else "",
+            user_agent=request.headers.get("user-agent", "")[:400],
+            path=payload.p,
+            referrer=payload.r,
+            zone=payload.tz,
+            own_hosts=_OWN_HOSTS,
+            action=payload.e,
+        )
+    except Exception as error:  # noqa: BLE001 - counting must never be why a page fails
+        print(f"site/hit: {error!r}")
+    return Response(status_code=204)
+
+
+@app.get("/admin/traffic", response_model=TrafficSummary)
+def admin_traffic(days: int = 30, organizer: Organizer = Depends(require_admin)) -> TrafficSummary:
+    """Visits, visitors and what they had in common, over the last `days` days."""
+    return TrafficSummary(**_analytics.summary(days))
 
 
 @app.get("/admin/reports", response_model=list[ReportOut])

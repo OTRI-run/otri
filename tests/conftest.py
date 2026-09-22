@@ -53,7 +53,8 @@ def clean_state():
     db.init_db()
     with db.get_connection() as connection:
         connection.execute(
-            "TRUNCATE organizers, email_verification_tokens, password_reset_tokens, oauth_states, events, races, results, runners, reports "
+            "TRUNCATE organizers, email_verification_tokens, password_reset_tokens, oauth_states, events, races, results, runners, reports, "
+            "site_hits, site_visitors, site_actions "
             "RESTART IDENTITY CASCADE"
         )
     for race in race_records(RACES_FILE):

@@ -12,6 +12,7 @@ import {
   fetchRaceGpxFile,
   getAdminOverview,
   getAdminServer,
+  getTraffic,
   getRaceMeasurement,
   listAdminEvents,
   listAdminOrganizers,
@@ -35,6 +36,7 @@ const TABS = [
   ['events', 'Events & races'],
   ['calculator', 'Calculator courses'],
   ['shared', 'Shared courses'],
+  ['traffic', 'Traffic'],
   ['server', 'Server'],
 ]
 
@@ -807,7 +809,18 @@ function SharedCourses({ session }) {
 
 function Bar({ value, max, tone = 'blue' }) {
   const pct = max ? Math.min(100, Math.round((value / max) * 100)) : 0
-  const color = pct > 90 ? 'bg-red-500' : pct > 75 ? 'bg-amber-500' : tone === 'blue' ? 'bg-blue-600' : 'bg-emerald-500'
+  // 'plain' is for a bar that measures how much of something there is rather than how full it is:
+  // a busy page is not a warning, and the amber and red below would say it was.
+  const color =
+    tone === 'plain'
+      ? 'bg-blue-600'
+      : pct > 90
+        ? 'bg-red-500'
+        : pct > 75
+          ? 'bg-amber-500'
+          : tone === 'blue'
+            ? 'bg-blue-600'
+            : 'bg-emerald-500'
   return (
     <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
       <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
@@ -830,6 +843,164 @@ function Unavailable({ what, reason }) {
     </p>
   )
 }
+
+// ---------------------------------------------------------------------------------- traffic
+//
+// OTRI counts its own visitors (api/analytics.py) instead of handing them to somebody else's
+// analytics: no cookie, no identifier in the browser, no address kept, and a visitor's number is
+// a digest of the day that cannot be joined to yesterday's. So there is no "who" on this page and
+// there is not meant to be. What there is: how many, which pages, where from, roughly where, and
+// what they did.
+
+function TrafficBars({ title, rows, note }) {
+  const top = Math.max(1, ...rows.map((row) => row.hits))
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+      <p className="font-mono text-[9px] tracking-[.08em] text-slate-500">{title}</p>
+      {note && <p className="mt-1 text-[11px] leading-4 text-slate-400">{note}</p>}
+      {rows.length === 0 ? (
+        <p className="mt-3 text-sm text-slate-400">Nothing yet.</p>
+      ) : (
+        <ul className="mt-3 grid gap-2">
+          {rows.map((row) => (
+            <li key={row.name} className="min-w-0">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="truncate text-[13px] text-[#0b1220]" title={row.name}>
+                  {row.name || 'not given'}
+                </span>
+                <span className="shrink-0 font-mono text-[11px] text-slate-500">{row.hits.toLocaleString()}</span>
+              </div>
+              <Bar value={row.hits} max={top} tone="plain" />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+const ACTION_LABELS = {
+  course_analysed: 'Courses measured',
+  course_shared: 'Course links shared',
+  race_scored: 'Results files scored',
+  race_published: 'Races published',
+  organizer_signup: 'Organizer accounts made',
+  embed_loaded: 'Calculator opened on another site',
+}
+
+function TrafficTab({ session }) {
+  const [days, setDays] = useState(30)
+  const [data, setData] = useState(null)
+  const [error, setError] = useState(null)
+  useEffect(() => {
+    setData(null)
+    setError(null)
+    getTraffic(days, session.token)
+      .then(setData)
+      .catch((err) => setError(err.message))
+  }, [session.token, days])
+
+  if (error) return <Notice kind="error">{error}</Notice>
+  if (!data) return <p className="text-sm text-slate-500">Counting...</p>
+
+  const { by_day: byDay, totals } = data
+  const busiest = Math.max(1, ...byDay.map((day) => day.hits))
+  const panel = 'rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)]'
+  const label = 'font-mono text-[9px] tracking-[.08em] text-slate-500'
+  const perDay = totals.days ? Math.round(totals.hits / totals.days) : 0
+
+  return (
+    <div className="grid gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">
+          OTRI COUNTS ITS OWN · NO COOKIE · NO ADDRESS KEPT · NOTHING JOINS ONE DAY TO THE NEXT
+        </p>
+        <div className="flex gap-1.5">
+          {[7, 30, 90, 365].map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => setDays(option)}
+              className={`min-h-9 rounded-lg px-3 text-[12px] font-semibold ${
+                days === option ? 'bg-[#0b1220] text-white' : 'border border-slate-300 bg-white text-slate-600 hover:border-blue-300'
+              }`}
+            >
+              {option === 365 ? '1 year' : `${option} days`}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className={panel}>
+          <p className={label}>VISITS</p>
+          <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">{totals.hits.toLocaleString()}</p>
+          <p className="mt-0.5 font-mono text-[10px] text-slate-500">{perDay.toLocaleString()} a day</p>
+        </div>
+        <div className={panel}>
+          <p className={label}>VISITORS</p>
+          <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">{totals.visitors.toLocaleString()}</p>
+          <p className="mt-0.5 font-mono text-[10px] text-slate-500">counted once each a day</p>
+        </div>
+        <div className={panel}>
+          <p className={label}>PAGES EACH</p>
+          <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">
+            {totals.visitors ? (totals.hits / totals.visitors).toFixed(1) : 'none'}
+          </p>
+          <p className="mt-0.5 font-mono text-[10px] text-slate-500">visits per visitor</p>
+        </div>
+        <div className={panel}>
+          <p className={label}>DAYS WITH VISITS</p>
+          <p className="mt-1 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">{totals.days}</p>
+          <p className="mt-0.5 font-mono text-[10px] text-slate-500">of the last {days}</p>
+        </div>
+      </div>
+
+      <div className={panel}>
+        <p className={label}>BY DAY</p>
+        {byDay.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-400">
+            Nothing counted yet. Visits start arriving as soon as this is deployed.
+          </p>
+        ) : (
+          <>
+            <div className="mt-3 flex h-32 items-end gap-[2px]" role="img" aria-label={`Visits a day over the last ${days} days`}>
+              {byDay.map((day) => (
+                <div
+                  key={day.day}
+                  className="min-w-[3px] flex-1 rounded-t bg-blue-600/80 hover:bg-blue-600"
+                  style={{ height: `${Math.max(2, (day.hits / busiest) * 100)}%` }}
+                  title={`${day.day}: ${day.hits} visits, ${day.visitors} visitors`}
+                />
+              ))}
+            </div>
+            <div className="mt-2 flex justify-between font-mono text-[10px] text-slate-500">
+              <span>{byDay[0].day}</span>
+              <span>{byDay[byDay.length - 1].day}</span>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <TrafficBars title="PAGES" rows={data.pages} note="Ids are taken out, so every race page counts as one page." />
+        <TrafficBars title="CAME FROM" rows={data.sources} note="The host only. What somebody typed into a search engine is their own." />
+      </div>
+      <div className="grid gap-3 lg:grid-cols-3">
+        <TrafficBars title="TIME ZONE" rows={data.zones} note="The browser's own setting: as close to where as this gets, with no address lookup." />
+        <TrafficBars title="SCREEN" rows={data.devices} />
+        <TrafficBars title="BROWSER" rows={data.browsers} />
+      </div>
+
+      <TrafficBars
+        title="WHAT PEOPLE DID"
+        rows={data.actions.map((row) => ({ ...row, name: ACTION_LABELS[row.name] || row.name }))}
+        note="Counted by the API as it does the work, so these hold even where scripts do not run."
+      />
+    </div>
+  )
+}
+
 
 function ServerTab({ session }) {
   const [data, setData] = useState(null)
@@ -1093,6 +1264,7 @@ export function AdminEvents({ session, tab = 'overview' }) {
         {active === 'events' && <EventsAdmin session={session} />}
         {active === 'calculator' && <CalculatorCourses session={session} />}
         {active === 'shared' && <SharedCourses session={session} />}
+        {active === 'traffic' && <TrafficTab session={session} />}
         {active === 'server' && <ServerTab session={session} />}
       </div>
     </Page>

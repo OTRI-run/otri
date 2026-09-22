@@ -18,6 +18,7 @@ import atexit
 import os
 import threading
 from psycopg.types.json import Jsonb
+import random
 import secrets
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -217,6 +218,36 @@ CREATE TABLE IF NOT EXISTS score_requests (
     visitor_key TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (race_id, visitor_key)
+);
+
+-- How many visits a page had on a day, and what they had in common. One row per combination, a
+-- counter on the end: there is no row for a visit, so there is nothing to read back about one.
+CREATE TABLE IF NOT EXISTS site_hits (
+    day DATE NOT NULL,
+    path TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'direct',
+    zone TEXT NOT NULL DEFAULT '',
+    device TEXT NOT NULL DEFAULT '',
+    browser TEXT NOT NULL DEFAULT '',
+    hits INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, path, source, zone, device, browser)
+);
+
+-- One row per visitor per day, where the visitor is a digest of the day, the address and the
+-- browser (api/analytics.py). The address is never stored; the day is inside the digest, so two
+-- days cannot be joined. Kept only while it is still today's, then dropped.
+CREATE TABLE IF NOT EXISTS site_visitors (
+    day DATE NOT NULL,
+    visitor TEXT NOT NULL,
+    PRIMARY KEY (day, visitor)
+);
+
+-- The things worth counting besides pages: a score worked out, a race scored, an account made.
+CREATE TABLE IF NOT EXISTS site_actions (
+    day DATE NOT NULL,
+    action TEXT NOT NULL,
+    count INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, action)
 );
 
 CREATE TABLE IF NOT EXISTS reports (
@@ -1198,6 +1229,69 @@ def platform_stats() -> dict:
 
 
 # --- Organizer flags (admin / demo) ------------------------------------------
+
+
+# ------------------------------------------------------------------ site traffic (api/analytics.py)
+
+
+def record_site_hit(*, day, path: str, source: str, zone: str, device: str, browser: str, visitor: str) -> None:
+    """One page view. Two counters and nothing else: the row for this combination goes up by one,
+    and the visitor's digest is remembered for today so the same person is one visitor."""
+    with get_connection() as connection:
+        connection.execute(
+            "INSERT INTO site_hits (day, path, source, zone, device, browser, hits) VALUES (%s, %s, %s, %s, %s, %s, 1) "
+            "ON CONFLICT (day, path, source, zone, device, browser) DO UPDATE SET hits = site_hits.hits + 1",
+            (day, path, source, zone, device, browser),
+        )
+        connection.execute(
+            "INSERT INTO site_visitors (day, visitor) VALUES (%s, %s) ON CONFLICT (day, visitor) DO NOTHING",
+            (day, visitor),
+        )
+        if random.random() < 0.01:  # opportunistic, as the rate limiter prunes its own
+            connection.execute("DELETE FROM site_visitors WHERE day < %s - INTERVAL '3 days'", (day,))
+
+
+def record_site_action(day, action: str) -> None:
+    with get_connection() as connection:
+        connection.execute(
+            "INSERT INTO site_actions (day, action, count) VALUES (%s, %s, 1) "
+            "ON CONFLICT (day, action) DO UPDATE SET count = site_actions.count + 1",
+            (day, action),
+        )
+
+
+def prune_site_visitors(before) -> int:
+    """Yesterday's digests say nothing (the salt rotated with the date), so they go."""
+    with get_connection() as connection:
+        return connection.execute("DELETE FROM site_visitors WHERE day < %s", (before,)).rowcount
+
+
+def site_traffic(since) -> dict:
+    """Everything the admin traffic page shows, in one round trip per list."""
+    with get_connection() as connection:
+        def rows(sql, limit=None):
+            params = (since, limit) if limit is not None else (since,)
+            return [dict(row) for row in connection.execute(sql, params).fetchall()]
+
+        by_day = rows(
+            "SELECT h.day::text AS day, sum(h.hits)::int AS hits,"
+            " (SELECT count(*) FROM site_visitors v WHERE v.day = h.day)::int AS visitors"
+            " FROM site_hits h WHERE h.day >= %s GROUP BY h.day ORDER BY h.day"
+        )
+        return {
+            "by_day": by_day,
+            "pages": rows("SELECT path AS name, sum(hits)::int AS hits FROM site_hits WHERE day >= %s GROUP BY path ORDER BY hits DESC LIMIT %s", 20),
+            "sources": rows("SELECT source AS name, sum(hits)::int AS hits FROM site_hits WHERE day >= %s GROUP BY source ORDER BY hits DESC LIMIT %s", 15),
+            "zones": rows("SELECT zone AS name, sum(hits)::int AS hits FROM site_hits WHERE day >= %s AND zone <> '' GROUP BY zone ORDER BY hits DESC LIMIT %s", 15),
+            "devices": rows("SELECT device AS name, sum(hits)::int AS hits FROM site_hits WHERE day >= %s GROUP BY device ORDER BY hits DESC LIMIT %s", 5),
+            "browsers": rows("SELECT browser AS name, sum(hits)::int AS hits FROM site_hits WHERE day >= %s GROUP BY browser ORDER BY hits DESC LIMIT %s", 8),
+            "actions": rows("SELECT action AS name, sum(count)::int AS hits FROM site_actions WHERE day >= %s GROUP BY action ORDER BY hits DESC LIMIT %s", 20),
+            "totals": {
+                "hits": sum(row["hits"] for row in by_day),
+                "visitors": sum(row["visitors"] for row in by_day),
+                "days": len(by_day),
+            },
+        }
 
 
 def get_organizer_flags(organizer_id: int, token_id: str | None = None) -> dict | None:
