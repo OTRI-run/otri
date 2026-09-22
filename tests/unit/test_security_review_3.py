@@ -393,6 +393,8 @@ def test_a_runner_planted_in_a_draft_is_not_who_a_later_publication_is_matched_t
     # The organizer's own drafts still meet their own runners, and a re-upload keeps the runner's id.
     second = _race(organizer, "Real 21K")
     _upload(organizer, second, [("Seededname", "Sam", "", "")])
+    # A published race is taken down before its results are replaced: its scores are public.
+    assert client.delete(f"/races/{race_id}/publish", headers=organizer).status_code == 200
     _upload(organizer, race_id, [("Seededname", "Sam", "", "")])
     with db.get_connection() as connection:
         ids = {row["runner_id"] for row in connection.execute("SELECT runner_id FROM results WHERE race_id IN (%s, %s)", (race_id, second)).fetchall()}

@@ -62,7 +62,7 @@ def clean_state():
         db.create_race(event_id, race.course_name, race.distance_km, race.elevation_gain_m, race_id=race.race_id)
         result_path = RESULTS_DIR / f"{race.race_id}.csv"
         if result_path.exists():
-            db.replace_results(race.race_id, result_records(result_path))
+            db.replace_results(race.race_id, result_records(result_path), allow_published=True)
             db.set_race_published(race.race_id, True)  # demo races are public, as in production
     rate_limit.reset()
     yield

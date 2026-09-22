@@ -245,3 +245,51 @@ def test_an_unconfirmed_account_is_reclaimed_only_through_the_mailbox(monkeypatc
     assert query["event"] == ["signed_in"]
     me = client.get("/auth/me", headers=WEB).json()
     assert me["email_verified"] is True and me["has_password"] is False and me["two_factor"]["enabled"] is False
+
+
+# --- Recovery closes a half-made link -----------------------------------------------------------
+
+
+def test_recovering_the_account_closes_a_pending_google_link(monkeypatch, google_stand_in):
+    """A link sent to the mailbox joins a Google account to this one for good, so it outlives a
+    session and a password. Somebody who had been in the mailbox could hold one, wait for the owner
+    to take the account back, and then open it and be inside again with a way in the owner cannot
+    take away. A reset closes it with everything else that was pending."""
+    from api import auth
+
+    _confirmed_account(VICTIM)
+    _sign_in(monkeypatch, email=VICTIM, sub="was-in-the-mailbox")
+    link = _link_from(google_stand_in)
+
+    token = auth.create_password_reset_token(VICTIM)[1]
+    assert client.post("/auth/reset-password", json={"token": token, "new_password": "the owner is back now 3"}).status_code == 200
+    client.cookies.clear()
+
+    _, path, query = _open(link)
+    assert (path, query["google"], query["reason"]) == ("/login", ["failed"], ["link-expired"])
+    with db.get_connection() as connection:
+        assert connection.execute("SELECT count(*) AS n FROM organizer_identities").fetchone()["n"] == 0, "the link outlived the recovery"
+
+
+def test_signing_out_everywhere_closes_a_pending_google_link(monkeypatch, google_stand_in):
+    from api import auth
+
+    _confirmed_account(VICTIM)
+    organizer_id = db.find_organizer_id(VICTIM)
+    _sign_in(monkeypatch, email=VICTIM, sub="also-was-there")
+    link = _link_from(google_stand_in)
+
+    auth.revoke_all_sessions(organizer_id, PASSWORD)
+    assert _open(link)[2]["reason"] == ["link-expired"]
+
+
+def test_changing_the_password_closes_a_pending_google_link(monkeypatch, google_stand_in):
+    from api import auth
+
+    _confirmed_account(VICTIM)
+    organizer_id = db.find_organizer_id(VICTIM)
+    _sign_in(monkeypatch, email=VICTIM, sub="and-this-one")
+    link = _link_from(google_stand_in)
+
+    auth.change_password(organizer_id, PASSWORD, "a different passphrase 8")
+    assert _open(link)[2]["reason"] == ["link-expired"]

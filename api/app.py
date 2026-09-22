@@ -503,6 +503,36 @@ def _require_race_owner(race: db.Race, organizer: Organizer) -> None:
         raise HTTPException(status_code=403, detail="you do not have permission to modify this race")
 
 
+def _published_conflict(what: str) -> HTTPException:
+    return HTTPException(
+        status_code=409,
+        detail=(
+            f"This race is published, so its {what} cannot be replaced. Unpublish it first, change the "
+            f"{what}, then publish again: every score on it is worked out from the course and the time, so "
+            "this would restate a leaderboard people have already read."
+        ),
+    )
+
+
+def _require_not_public(race: db.Race, what: str) -> None:
+    """What the public can already see does not change under it.
+
+    A score is worked out from the course and the time whenever it is asked for, and a runner's
+    index is worked out from their scores. So replacing either on a race that is out there
+    restates a leaderboard people have read and moves the index of every runner on it, with no
+    version, no notice and nothing in the history to say it happened. Taking the race back first
+    makes that a thing the organizer did rather than something that quietly occurred.
+
+    Listing is not the same thing. A listed race has not happened yet: its course is public so that
+    runners can try a target time on it, but there are no results, no scores and no index points,
+    so there is nothing to restate. An organizer changing the course of a race still to come is
+    doing their job.
+    """
+    if race.published_at is None:
+        return
+    raise _published_conflict(what)
+
+
 def _require_race_visible(race: db.Race, organizer: Organizer | None, *, results: bool = False) -> None:
     """Results, course and measurement are public once published; until then only the owner and admins
     see them. A listing makes the course and measurement public earlier, never the results."""
@@ -1452,6 +1482,13 @@ def edit_race(race_id: str, payload: RaceUpdate, organizer: Organizer = Depends(
     if payload.elevation_gain_m is not None and payload.elevation_gain_m < 0:
         raise HTTPException(status_code=422, detail="elevation_gain_m must be >= 0")
     _validate_scoring_version(payload.scoring_version)
+    # The model version is what a score means. Changing it on a published race restates every
+    # finisher on a leaderboard the public has read, and the name of the model it was read under
+    # no longer matches the numbers beside it. The course and the results are frozen there for the
+    # same reason; this is the third way in.
+    changes_scoring = payload.scoring_version is not None and payload.scoring_version != race.scoring_version
+    if changes_scoring or (payload.distance_km is not None or payload.elevation_gain_m is not None):
+        _require_not_public(race, "scoring model" if changes_scoring else "course figures")
 
     updated = db.update_race(
         race_id,
@@ -1758,14 +1795,7 @@ async def attach_race_gpx(
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
-    if race.published_at is not None:
-        # A score is worked out from the course whenever it is asked for, so a new course here
-        # would quietly restate every finisher's score, and their runner index with it, on a race
-        # the public has already seen. Unpublishing first makes that a thing the organizer did.
-        raise HTTPException(
-            status_code=409,
-            detail="This race is published. Unpublish it before changing its course: every finisher's score is worked out from the course, so publishing again will restate them.",
-        )
+    _require_not_public(race, "course")
     _limit_uploads(request, organizer)  # measuring a course costs a core for seconds
 
     suffix = _safe_suffix(file.filename, ".gpx")
@@ -1787,21 +1817,26 @@ async def attach_race_gpx(
     # Stored and served: positions and elevations only (course/sanitize.py). What the upload said about
     # its origin stays with the race's private record; raw_sha256 still identifies the original file.
     stored = sanitized_gpx(points, name=f"{race.event_name or ''} {race.course_name}".strip())
-    updated = db.attach_gpx(
-        race_id,
-        filename=file.filename or "course.gpx",
-        content=stored,
-        distance_km=features.distance_km,
-        elevation_gain_m=features.elevation_gain_m,
-        measurement={
-            **measurement.to_dict(),
-            "raw_sha256": sha256(contents).hexdigest(),
-            "stored_sha256": sha256(stored.encode("utf-8")).hexdigest(),
-            "source_metadata": source_metadata(decode_gpx(contents)),
-            "processed_at": datetime.now(timezone.utc).isoformat(),
-            "snapshot": asdict(measurement),
-        },
-    )
+    try:
+        updated = db.attach_gpx(
+            race_id,
+            filename=file.filename or "course.gpx",
+            content=stored,
+            distance_km=features.distance_km,
+            elevation_gain_m=features.elevation_gain_m,
+            measurement={
+                **measurement.to_dict(),
+                "raw_sha256": sha256(contents).hexdigest(),
+                "stored_sha256": sha256(stored.encode("utf-8")).hexdigest(),
+                "source_metadata": source_metadata(decode_gpx(contents)),
+                "processed_at": datetime.now(timezone.utc).isoformat(),
+                "snapshot": asdict(measurement),
+            },
+        )
+    except db.RacePublished as error:
+        # Published while this upload was being measured: the write refused, which is why
+        # the check lives in the transaction and not only in front of it.
+        raise _published_conflict("course") from error
     return _race_summary(updated)
 
 
@@ -1868,6 +1903,31 @@ def _score_results(race: db.Race, results: list) -> list[RunnerScoreOut]:
         raise ValueError('reattach the GPX to save a versioned measurement before using measured scoring')
     measurement = Measurement(**stored_measurement["snapshot"]) if stored_measurement else None
     return _scored_rows(race.to_race_record(), results, race.scoring_version, gpx_points, measurement)
+
+
+# A score of 1000 is the rate of a record run on a course of that demand, and real performances
+# sit close to it: the 1500 m world record scores 1020. Twice that is not a person. Either the time
+# is wrong or the course is, and either way the file should not become a public leaderboard and a
+# handful of points on somebody's runner index. The margin is wide on purpose: this is here to
+# catch the impossible, not to argue with a very good runner.
+IMPOSSIBLE_SCORE = 2_000
+
+
+def _refuse_impossible_scores(rows: list[RunnerScoreOut]) -> None:
+    """Raise if a row scores beyond anything a person has done.
+
+    Checked where a file arrives, never where one is read: a race already stored has to stay
+    readable, and the answer to a bad one that is already in is to take it down, not to make its
+    page fail.
+    """
+    for row in rows:
+        if row.otri_score is not None and row.otri_score > IMPOSSIBLE_SCORE:
+            name = " ".join(part for part in (row.first_name, row.family_name) if part) or f"row {row.rank}"
+            raise ValueError(
+                f"{name} scores {row.otri_score}, which is about twice what the best run ever recorded would score "
+                f"on this course. Check that finish time, and check the course file is the right one: a course "
+                f"measured much longer than it really is does this to every finisher on it."
+            )
 
 
 def _scored_rows(race: RaceRecord, results: list, scoring_version: str, gpx_points, measurement) -> list[RunnerScoreOut]:
@@ -1937,6 +1997,7 @@ async def submit_race_results(
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
+    _require_not_public(race, "results")
     _limit_uploads(request, organizer)
 
     suffix = _safe_suffix(file.filename, ".csv")
@@ -1964,16 +2025,28 @@ async def submit_race_results(
 
         results = await run_in_threadpool(result_records, temp_path)
         try:
+            # Scored before anything is stored. Scoring used to come after the write, so a file
+            # the scorer refused had already replaced the race's results and the 422 left them
+            # there. This costs one extra pass over the rows and is worth it.
+            _refuse_impossible_scores(await run_in_threadpool(_score_results, race, results))
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        try:
             # Tens of thousands of inserts: not on the event loop. The account's limit is checked
             # inside, in the transaction that writes and with the account locked: checked out here,
             # two uploads to two races at once each saw room for themselves and both went in.
             await run_in_threadpool(db.replace_results, race_id, results, max_rows_for_organizer=_result_row_limit(organizer))
         except db.QuotaExceeded as error:
             raise _no_room_for_results(organizer) from error
+        except db.RacePublished as error:
+            # The handler checked this before the upload was read; the race was published while it
+            # was being read. The write refused, which is why the check is in both places.
+            raise _published_conflict("results") from error
 
         try:
             # Score the stored rows, which now carry runner ids, so the response matches a later replay.
             scores = await run_in_threadpool(_score_results, race, db.get_results(race_id))
+            _refuse_impossible_scores(scores)
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
 
@@ -2255,6 +2328,7 @@ async def score_a_race(
             race = RaceRecord(race_id="unsaved", race_name=course.name or "Unsaved race", event_date=date.today(), course_name=course.name or "Course", distance_km=distance, elevation_gain_m=climb)
             try:
                 scores = _scored_rows(race, result_records(paths[0]), version, points, measurement)
+                _refuse_impossible_scores(scores)
             except ValueError as error:
                 raise HTTPException(status_code=422, detail=str(error)) from error
 
