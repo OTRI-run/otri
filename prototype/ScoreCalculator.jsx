@@ -98,7 +98,7 @@ function shortVersion(scoringVersion) {
 const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
 
 function Eyebrow({ children, className = '' }) {
-  return <p className={`font-mono text-[10px] tracking-[.08em] text-slate-500 ${className}`}>{children}</p>
+  return <p className={`text-[11px] font-semibold uppercase tracking-[.08em] text-slate-500 ${className}`}>{children}</p>
 }
 
 function Spinner({ className = '' }) {
@@ -118,18 +118,21 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
   const units = useUnits()
   const b = estimate?.breakdown
   const pct = b?.fraction_of_ceiling != null ? Math.round(b.fraction_of_ceiling * 100) : null
-  const status = scoring ? 'CALCULATING' : estimate ? 'LIVE' : courseLabel ? 'READY' : 'WAITING'
+  const status = scoring ? 'Calculating' : estimate ? 'Live' : courseLabel ? 'Ready' : 'Waiting'
 
+  // Label left, value right, and the value is the larger of the two. It used to be the other way
+  // round: the course and the time were 8px slate-500 and truncated, so the two facts a reader
+  // most wants to check were the hardest things on the panel to read.
   const rows = estimate
     ? [
-        [Mountain, 'COURSE', `${formatDistance(b?.physical_distance_km ?? features?.distance_km ?? 0, units)} · ${formatElevation(features?.elevation_gain_m ?? 0, units, { sign: '+' })}`],
-        [Timer, 'YOUR TIME', `${formatHms(targetSeconds)} · ${formatPace(targetSeconds, features?.distance_km, units) ?? ''}`],
-        [GitBranch, 'MODEL', `${shortVersion(estimate.scoring_version)} · versioned · reproducible`],
+        [Mountain, 'Course', `${formatDistance(b?.physical_distance_km ?? features?.distance_km ?? 0, units)} · ${formatElevation(features?.elevation_gain_m ?? 0, units, { sign: '+' })}`],
+        [Timer, 'Your time', [formatHms(targetSeconds), formatPace(targetSeconds, features?.distance_km, units)].filter(Boolean).join(' · ')],
+        [GitBranch, 'Model', `${shortVersion(estimate.scoring_version)} · reproducible`],
       ]
     : [
-        [Mountain, 'COURSE', 'distance · elevation · steepness'],
-        [Timer, 'YOUR TIME', 'a target, not a result'],
-        [GitBranch, 'MODEL', 'versioned · reproducible'],
+        [Mountain, 'Course', 'distance, climb, steepness'],
+        [Timer, 'Your time', 'a target, not a result'],
+        [GitBranch, 'Model', 'versioned · reproducible'],
       ]
 
   return (
@@ -139,9 +142,9 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
       aria-busy={scoring}
       className="min-w-0 overflow-hidden rounded-2xl bg-[linear-gradient(145deg,#08111f_0%,#0b1730_58%,#123b85_100%)] p-4 text-white shadow-[0_24px_70px_rgba(11,18,32,.2)] sm:p-5"
     >
-      <div className="flex items-center justify-between font-mono text-[8px] tracking-[.08em] text-slate-400">
-        <span>OTRI / SCORE</span>
-        <span className="flex items-center gap-1.5">
+      <div className="flex items-center justify-between text-[11px] text-slate-400">
+        <span className="font-semibold uppercase tracking-[.08em]">OTRI score</span>
+        <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-2 py-0.5 font-medium text-slate-200">
           <i className={`h-1.5 w-1.5 rounded-full ${scoring ? 'animate-pulse bg-cyan-300' : 'bg-blue-400'} shadow-[0_0_10px_rgba(96,165,250,.9)]`} />
           {status}
         </span>
@@ -150,7 +153,7 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
       <div className="border-b border-slate-700/70 py-8 text-center">
         {estimate ? (
           <>
-            <small className="font-mono text-[8px] tracking-[.08em] text-blue-300">YOUR PROJECTED SCORE</small>
+            <small className="text-[11px] font-semibold uppercase tracking-[.08em] text-blue-200">Your projected score</small>
             <strong
               className={`mt-1 block bg-gradient-to-r from-white to-blue-200 bg-clip-text pb-1 text-[84px] font-bold leading-none tracking-[-.06em] text-transparent transition-opacity ${scoring ? 'opacity-40' : ''}`}
             >
@@ -158,14 +161,14 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
             </strong>
             {pct != null ? (
               <>
-                <span className={`mt-2 block font-mono text-[11px] ${pct > 100 ? 'text-cyan-300' : 'text-slate-300'}`}>
+                <span className={`mt-2 block text-[14px] font-semibold ${pct > 100 ? 'text-cyan-300' : 'text-slate-100'}`}>
                   {pct}% of record-run speed for a course like this
                 </span>
                 {b?.world_best_time_seconds > 0 && (
-                  <span className="mx-auto mt-1.5 block max-w-[300px] text-[11px] leading-4 text-slate-400">
-                    {pct > 100
-                      ? `A record run here would take about ${formatHms(Math.round(b.world_best_time_seconds))} and score 1000. Your target is faster than that, so it scores above 1000.`
-                      : `A record run here would take about ${formatHms(Math.round(b.world_best_time_seconds))} and score 1000.`}
+                  <span className="mx-auto mt-2 block max-w-[330px] text-[13px] leading-[1.5] text-slate-300">
+                    A record run here is about{' '}
+                    <strong className="font-mono font-semibold text-white">{formatHms(Math.round(b.world_best_time_seconds))}</strong>, which scores 1000.
+                    {pct > 100 ? ' Your target is faster than that, so it scores above 1000.' : ''}
                   </span>
                 )}
                 {/* Where that stands, Beginner to World class (src/lib/scoreLevels.js). */}
@@ -178,11 +181,11 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
                 />
               </>
             ) : (
-              <span className="mt-2 block font-mono text-[11px] text-slate-300">{formatHms(targetSeconds)}</span>
+              <span className="mt-2 block font-mono text-[14px] text-slate-200">{formatHms(targetSeconds)}</span>
             )}
             {scoring && (
-              <span className="mt-3 flex items-center justify-center gap-2 font-mono text-[9px] tracking-[.08em] text-slate-400">
-                <Spinner className="border-slate-600 border-t-white" /> UPDATING
+              <span className="mt-3 flex items-center justify-center gap-2 text-[12px] font-medium text-slate-300">
+                <Spinner className="border-slate-600 border-t-white" /> Updating…
               </span>
             )}
           </>
@@ -196,28 +199,24 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
           </>
         ) : (
           <>
-            <small className="font-mono text-[8px] tracking-[.08em] text-blue-300">WHY THIS SCORE?</small>
+            <small className="text-[11px] font-semibold uppercase tracking-[.08em] text-blue-200">Why this score?</small>
             <strong className="mt-2 block bg-gradient-to-r from-white to-blue-200 bg-clip-text pb-1 text-4xl font-bold leading-[1.25] tracking-[-.05em] text-transparent">
               Pick a course.
             </strong>
-            <span className="mt-1 block text-xs text-slate-400">Then set a finish time. The score updates live.</span>
+            <span className="mt-1.5 block text-[13px] text-slate-300">Then set a finish time. The score updates live.</span>
           </>
         )}
       </div>
 
-      <div>
+      <dl className="mt-1">
         {rows.map(([Icon, title, desc]) => (
-          <div key={title} className="grid min-w-0 grid-cols-[22px_minmax(0,auto)_minmax(0,1fr)] items-center gap-2 border-b border-slate-700/70 py-4">
-            <Icon size={16} className="text-blue-400" />
-            <span className="text-xs font-semibold">{title}</span>
-            <small className="truncate text-right font-mono text-[8px] text-slate-500">{desc}</small>
+          <div key={title} className="grid min-w-0 grid-cols-[18px_minmax(0,auto)_minmax(0,1fr)] items-center gap-x-2.5 border-b border-white/10 py-3.5 last:border-b-0">
+            <Icon size={15} className="text-blue-300" aria-hidden="true" />
+            <dt className="text-[13px] text-slate-300">{title}</dt>
+            <dd className="min-w-0 text-right font-mono text-[13px] font-semibold text-white">{desc}</dd>
           </div>
         ))}
-      </div>
-      <div className="flex justify-between gap-3 pt-4 font-mono text-[8px] tracking-[.08em]">
-        <b>OTRI INDEX</b>
-        <span className="text-right text-blue-300">COURSE + TIME + VERSION = SCORE</span>
-      </div>
+      </dl>
     </div>
   )
 }
@@ -229,7 +228,7 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, courseLabel })
 function Stat({ label, value, mono = true }) {
   return (
     <div>
-      <dt className="font-mono text-[10px] uppercase text-slate-500">{label}</dt>
+      <dt className="text-[11px] font-semibold uppercase tracking-[.06em] text-slate-500">{label}</dt>
       <dd className={`font-semibold text-[#0b1220] ${mono ? 'font-mono' : ''}`}>{value}</dd>
     </div>
   )
@@ -257,7 +256,7 @@ function MeasurementTrust({ estimate }) {
 function ExplanationStep({ n, title, children }) {
   return (
     <div className="grid min-w-0 grid-cols-[30px_minmax(0,1fr)] gap-3 border-b border-slate-300 py-5">
-      <b className="pt-0.5 font-mono text-[9px] text-slate-400">{n}</b>
+      <b className="pt-0.5 font-mono text-[12px] font-semibold text-slate-500">{n}</b>
       <div className="min-w-0">
         <strong className="text-[13px] text-[#0b1220]">{title}</strong>
         <div className="mt-1.5 text-sm leading-6 text-slate-600">{children}</div>
@@ -306,7 +305,7 @@ function ScoreExplanation({ estimate, features, targetSeconds }) {
               That yardstick already allows for distance: nobody holds their 5 km pace for 20 hours, so the best-ever rate
               falls as courses get longer. A long mountain race is never scored worse than a short one for being long.
             </p>
-            <div className="mt-6 flex flex-wrap items-center gap-2 font-mono text-[8px] text-slate-500">
+            <div className="mt-6 flex flex-wrap items-center gap-2 font-mono text-[11px] text-slate-500">
               <GitBranch size={16} className="text-blue-600" />
               same course + same time + same version <b className="text-blue-600">=</b> same score
             </div>
@@ -360,7 +359,7 @@ function ScoreExplanation({ estimate, features, targetSeconds }) {
                     <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200/80" aria-hidden="true">
                       <div className="h-full rounded-full bg-gradient-to-r from-blue-700 to-cyan-500" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
                     </div>
-                    <p className="mt-1 flex justify-between font-mono text-[9px] text-slate-400">
+                    <p className="mt-1 flex justify-between font-mono text-[11px] text-slate-500">
                       <span>0</span>
                       <span>{pct}% · score {estimate.predicted_score}</span>
                       <span>100% = 1000</span>
@@ -381,7 +380,7 @@ function ScoreExplanation({ estimate, features, targetSeconds }) {
         </div>
 
         <details className="group mt-10 rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
-          <summary className="cursor-pointer select-none px-5 py-3.5 font-mono text-[10px] uppercase tracking-[.08em] text-slate-500 hover:text-slate-700">
+          <summary className="cursor-pointer select-none px-5 py-3.5 text-[12px] font-semibold uppercase tracking-[.08em] text-slate-600 hover:text-slate-900">
             <span className="inline-block transition-transform group-open:rotate-90">▸</span> Show the maths
           </summary>
           <div className="border-t border-slate-200 px-5 py-5">
@@ -729,7 +728,7 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
                     <span className="block truncate text-sm font-semibold text-[#0b1220]">
                       {race.event_name} · {race.course_name}
                     </span>
-                    <span className="mt-0.5 block font-mono text-[10px] text-slate-500">
+                    <span className="mt-0.5 block font-mono text-[12px] text-slate-500">
                       {race.calculator_only ? [race.event_location, race.event_country].filter(Boolean).join(', ') || 'course' : race.event_date} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
                     </span>
                   </span>
@@ -739,7 +738,7 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
             </div>
             {known.length > 0 && !missing && (
               <div className="mt-3">
-                <p className="font-mono text-[9px] tracking-[.08em] text-slate-400">WELL-KNOWN RACES · NO COURSE HERE YET</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[.08em] text-slate-500">Well-known races · no course here yet</p>
                 <div className="mt-2 space-y-1.5">
                   {known.map((name) => (
                     <button
@@ -749,7 +748,7 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
                       className="flex w-full items-center justify-between gap-3 rounded-xl border border-dashed border-slate-300 bg-white px-3 py-2.5 text-left transition hover:border-blue-300 hover:bg-blue-50/40"
                     >
                       <span className="min-w-0 truncate text-sm font-semibold text-slate-600">{name}</span>
-                      <span className="shrink-0 font-mono text-[9px] tracking-[.06em] text-slate-400">HOW TO GET THE GPX</span>
+                      <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[.06em] text-slate-500">How to get the GPX</span>
                     </button>
                   ))}
                 </div>
@@ -860,7 +859,7 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
         <div className="mt-8 grid grid-cols-2 border-y border-slate-200 sm:grid-cols-4">
           {stats.map(([label, value], index) => (
             <div key={label} className={`min-w-0 px-2 py-5 sm:px-5 ${index > 0 ? 'sm:border-l sm:border-slate-200' : ''} ${index % 2 === 1 ? 'border-l border-slate-200 sm:border-l' : ''}`}>
-              <small className="font-mono text-[9px] tracking-[.08em] text-blue-600">{label}</small>
+              <small className="text-[11px] font-semibold uppercase tracking-[.08em] text-blue-600">{label}</small>
               <b className="mt-2 block text-2xl font-bold tracking-[-.05em] text-[#0b1220] sm:text-3xl">{value}</b>
             </div>
           ))}
@@ -954,7 +953,7 @@ function TimePart({ id, label, value, max, onCommit, nextId, wide = false }) {
         className={`${wide ? 'w-[2.1ch]' : 'w-[2.1ch]'} rounded-lg border border-transparent bg-transparent p-0 text-center font-mono text-[44px] font-bold leading-none tracking-[-.04em] text-[#0b1220] outline-none hover:border-slate-200 focus:border-blue-500 focus:bg-blue-50/50`}
         style={{ width: `${Math.max(shown.length, wide ? 1 : 2) + 0.35}ch` }}
       />
-      <span className="mt-1 font-mono text-[9px] tracking-[.08em] text-slate-400">{label}</span>
+      <span className="mt-1.5 text-[11px] font-semibold uppercase tracking-[.06em] text-slate-500">{label}</span>
     </label>
   )
 }
@@ -971,12 +970,15 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
   const set = (h, m, s) => onChange(h * 3600 + m * 60 + s)
   // The time that scores `target` here, from the model's ceiling for this course.
   const timeFor = (target) => (ceilingSeconds ? Math.round(ceilingSeconds / Math.pow(target / 1000, 1 / POWER_EXPONENT)) : null)
-  const chip = 'rounded-full border px-3 py-1.5 font-mono text-[11px] font-semibold transition'
+  const chip = 'inline-flex min-h-9 items-center rounded-full border px-3.5 font-mono text-[13px] font-semibold transition'
 
   return (
-    <div className="mt-8 rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] backdrop-blur">
-      <p className="font-mono text-[9px] tracking-[.08em] text-blue-600">YOUR TARGET FINISH TIME · TYPE IT, DRAG IT, OR PICK A SCORE</p>
-      <div className="mt-3 flex flex-wrap items-start gap-x-5 gap-y-3">
+    <div className="mt-8 rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] backdrop-blur sm:p-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 className="text-[15px] font-bold tracking-[-.02em] text-[#0b1220]">Your target finish time</h2>
+        <p className="text-[13px] text-slate-500">Type it, drag it, or jump to a score.</p>
+      </div>
+      <div className="mt-4 flex flex-wrap items-start gap-x-5 gap-y-3">
         <div className="flex items-start gap-1" role="group" aria-label="Target finish time">
           <TimePart id="calc-hours" label="HOURS" value={hours} max={199} wide onCommit={(h) => set(h, minutes, seconds)} nextId="calc-minutes" />
           <span className="font-mono text-[44px] font-bold leading-none text-slate-300">:</span>
@@ -984,10 +986,10 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
           <span className="font-mono text-[44px] font-bold leading-none text-slate-300">:</span>
           <TimePart id="calc-seconds" label="SEC" value={seconds} max={59} onCommit={(s) => set(hours, minutes, s)} />
         </div>
-        <p className="pt-3 font-mono text-xs text-slate-400">{formatPace(targetSeconds, distanceKm, units)}</p>
-        <div className="flex flex-wrap gap-1.5 pt-1.5 sm:ml-auto">
+        <p className="pt-2.5 font-mono text-[14px] font-semibold text-slate-600">{formatPace(targetSeconds, distanceKm, units)}</p>
+        <div className="flex flex-wrap gap-2 pt-1 sm:ml-auto" role="group" aria-label="Adjust the target time">
           {NUDGES.map((delta) => (
-            <button key={delta} type="button" onClick={() => onChange(targetSeconds + delta)} className={`${chip} border-slate-300 bg-white text-[#0b1220] hover:border-blue-300`}>
+            <button key={delta} type="button" onClick={() => onChange(targetSeconds + delta)} className={`${chip} border-slate-300 bg-white text-[#0b1220] hover:border-blue-400 hover:bg-blue-50`}>
               {delta > 0 ? '+' : '−'}{Math.abs(delta) / 60} min
             </button>
           ))}
@@ -1003,29 +1005,48 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
         aria-label="Target finish time"
         // Without this a screen reader reads the raw value: "17700" where the page says 4:55:00.
         aria-valuetext={formatHms(targetSeconds)}
-        className="mt-4 w-full accent-blue-600"
+        className="mt-5 w-full accent-blue-600"
       />
-      <div className="mt-1 flex justify-between gap-3 font-mono text-[11px] tracking-[.04em] text-slate-500">
-        <span>{range.known ? `${formatHms(range.min)} · SCORE ${SLIDER_MAX_SCORE}` : formatHms(range.min)}{range.known && <span className="hidden sm:inline"> · 1000 = RECORD-RUN LEVEL, {formatHms(ceilingSeconds)}</span>}</span>
-        <span>{range.known ? `${formatHms(range.max)} · SCORE ${SLIDER_MIN_SCORE}` : formatHms(range.max)}</span>
+      {/* The two ends of the slider, each as a time above what it means. This used to be one line
+          packing four facts -- "0:45:30 · SCORE 1100 · 1000 = RECORD-RUN LEVEL, 0:51:14" -- which
+          no one can parse at a glance. The record-run fact is its own sentence below. */}
+      <div className="mt-2 flex items-start justify-between gap-4">
+        <div>
+          <p className="font-mono text-[13px] font-semibold text-[#0b1220]">{formatHms(range.min)}</p>
+          <p className="text-[12px] text-slate-500">{range.known ? `scores ${SLIDER_MAX_SCORE}` : 'fastest'}</p>
+        </div>
+        <div className="text-right">
+          <p className="font-mono text-[13px] font-semibold text-[#0b1220]">{formatHms(range.max)}</p>
+          <p className="text-[12px] text-slate-500">{range.known ? `scores ${SLIDER_MIN_SCORE}` : 'slowest'}</p>
+        </div>
       </div>
+      {range.known && ceilingSeconds > 0 && (
+        <p className="mt-3 text-[13px] leading-[1.5] text-slate-500">
+          A record run on this course is about{' '}
+          <strong className="font-mono font-semibold text-slate-700">{formatHms(ceilingSeconds)}</strong>, which scores 1000.
+        </p>
+      )}
       {range.known && (
-        <div className="mt-4 flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 font-mono text-[9px] tracking-[.08em] text-slate-500">WHAT TIME SCORES</span>
-          {SCORE_JUMPS.map((target) => (
-            <button
-              key={target}
-              type="button"
-              onClick={() => onChange(timeFor(target))}
-              title={`${formatHms(timeFor(target))} scores ${target} on this course`}
-              className={`${chip} ${score === target ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white text-[#0b1220] hover:border-blue-300'}`}
-            >
-              {target}
-            </button>
-          ))}
+        <div className="mt-5 border-t border-slate-100 pt-4">
+          <p className="text-[13px] font-semibold text-[#0b1220]">Jump to a score</p>
+          <p className="mt-0.5 text-[12px] text-slate-500">Sets the finish time that would score this here.</p>
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            {SCORE_JUMPS.map((target) => (
+              <button
+                key={target}
+                type="button"
+                onClick={() => onChange(timeFor(target))}
+                aria-pressed={score === target}
+                title={`${formatHms(timeFor(target))} scores ${target} on this course`}
+                className={`${chip} ${score === target ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white text-[#0b1220] hover:border-blue-400 hover:bg-blue-50'}`}
+              >
+                {target}
+              </button>
+            ))}
+          </div>
         </div>
       )}
-      {analysisError && <p className="mt-2 text-xs text-red-600">{analysisError}</p>}
+      {analysisError && <p className="mt-3 text-[13px] text-red-600">{analysisError}</p>}
     </div>
   )
 }
@@ -1254,7 +1275,7 @@ export default function ScoreCalculator({ embedded = false }) {
       <section className="border-b border-slate-200 bg-[radial-gradient(circle_at_78%_28%,rgba(37,99,235,.12),transparent_30%),linear-gradient(180deg,#fff_0%,#f8fbff_100%)]">
         <div className={`${CONTAINER} grid min-w-0 items-center gap-12 py-14 sm:py-16 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-20 lg:py-20`}>
           <div className="min-w-0">
-            <div className="font-mono text-[10px] font-medium tracking-[.1em] text-blue-600">
+            <div className="text-[11px] font-semibold uppercase tracking-[.08em] text-blue-600">
               OPEN TRAIL RUNNING INDEX <span className="text-slate-300">·</span> SCORE CALCULATOR
             </div>
             {hasCourse ? (
@@ -1264,7 +1285,7 @@ export default function ScoreCalculator({ embedded = false }) {
                   <br />
                   <em className="otri-gradient-text not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">{courseLabel.name}</em>
                 </h1>
-                <p className="mt-4 max-w-[620px] text-[15px] leading-7 text-slate-500">
+                <p className="mt-4 max-w-[620px] text-[15px] leading-7 text-slate-600">
                   It starts at the time that scores {DEFAULT_TARGET_SCORE} here. Set your own target: type it, drag the slider, or pick
                   a score to see the time it takes. The same code scores official results.
                 </p>
@@ -1308,7 +1329,7 @@ export default function ScoreCalculator({ embedded = false }) {
                     How it's calculated <ArrowUpRight size={15} />
                   </a>
                 </div>
-                <div className="mt-7 flex flex-wrap gap-x-4 gap-y-2 font-mono text-[8px] tracking-[.08em] text-slate-500 sm:text-[9px]">
+                <div className="mt-7 flex flex-wrap gap-x-4 gap-y-2 font-mono text-[11px] font-semibold tracking-[.08em] text-slate-500">
                   <span className="text-blue-600">COURSE</span>
                   <span>+ TIME</span>
                   <span>+ VERSION</span>
@@ -1330,7 +1351,7 @@ export default function ScoreCalculator({ embedded = false }) {
       {!embedded && hasCourse && estimate && shareImageOpen && (
         <section id="calculator-share" className="scroll-mt-[68px] border-b border-slate-200 bg-white py-10">
           <div className={CONTAINER}>
-            <p className="font-mono text-[10px] tracking-[.08em] text-blue-600">SHARE YOUR TARGET</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[.08em] text-blue-600">Share your target</p>
             <h2 className="mt-2 text-2xl font-bold tracking-[-.03em] text-[#0b1220]">An image and a post, ready for your feed</h2>
             <p className="mt-1 mb-6 max-w-2xl text-sm leading-6 text-slate-600">
               Pick a format, change the words if you like, then download the image or send both to an app.
