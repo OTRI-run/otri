@@ -44,23 +44,43 @@ function GoogleMark() {
 
 /** "Continue with Google". Shown only when the API says Google is configured. On the register
  *  page the terms are accepted by continuing, and the line under the button says so. */
-function GoogleButton({ intent, acceptTerms = false, marketingOptIn = false, remember = false, hint = null }) {
+function GoogleButton({ intent, acceptTerms = false, marketingOptIn = false, remember = false, hint = null, label = 'Continue with Google', divider = true }) {
   const providers = useProviders()
   if (!providers.google) return null
   const classes =
-    'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-[13px] font-semibold text-[#0b1220] no-underline transition hover:border-blue-300'
+    'inline-flex min-h-12 w-full items-center justify-center gap-2.5 rounded-lg border border-slate-300 bg-white px-4 text-[14px] font-semibold text-[#0b1220] no-underline transition hover:border-blue-300'
   return (
     <div className="grid gap-2">
-      <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[.12em] text-slate-400">
-        <span className="h-px flex-1 bg-slate-200" />
-        or
-        <span className="h-px flex-1 bg-slate-200" />
-      </div>
+      {divider && (
+        <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[.12em] text-slate-400">
+          <span className="h-px flex-1 bg-slate-200" />
+          or
+          <span className="h-px flex-1 bg-slate-200" />
+        </div>
+      )}
       <a href={googleStartUrl({ intent, acceptTerms, marketingOptIn, remember })} className={classes}>
-        <GoogleMark /> Continue with Google
+        <GoogleMark /> {label}
       </a>
       {hint && <p className="text-xs leading-5 text-slate-500">{hint}</p>}
     </div>
+  )
+}
+
+/** The line under the buttons. Continuing is what agrees to these, which is how the rest of the
+ *  web does it and is valid acceptance as long as the documents are right there. */
+function TermsLine() {
+  return (
+    <p className="text-center text-xs leading-5 text-slate-500">
+      By continuing you agree to our{' '}
+      <a className="font-semibold text-blue-600 no-underline hover:underline" href="/terms/" target="_blank" rel="noreferrer">
+        terms of service
+      </a>{' '}
+      and{' '}
+      <a className="font-semibold text-blue-600 no-underline hover:underline" href="/privacy/" target="_blank" rel="noreferrer">
+        privacy policy
+      </a>
+      , and confirm you may share the race data you upload.
+    </p>
   )
 }
 
@@ -285,7 +305,6 @@ export function Register({ onSignedIn, query = {} }) {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
-  const [acceptTerms, setAcceptTerms] = useState(false)
   const [news, setNews] = useState(false)
   const check = assessPassword(password, email)
   const tooShort = password.length > 0 && !check.ok
@@ -293,13 +312,13 @@ export function Register({ onSignedIn, query = {} }) {
 
   async function submit(event) {
     event.preventDefault()
-    if (tooShort || mismatch || !acceptTerms) return
+    if (tooShort || mismatch) return
     setError(null)
     setBusy(true)
     try {
       // The account is signed in straight away: the organizer builds their race now and confirms
       // the address (the link we just emailed) before publishing.
-      const result = await registerOrganizer(email, password, { acceptTerms, marketingOptIn: news })
+      const result = await registerOrganizer(email, password, { acceptTerms: true, marketingOptIn: news })
       onSignedIn(result.access_token, result.email, result.is_admin)
       navigate(hasHandoff() ? '/publish' : '/events', { replace: true })
     } catch (err) {
@@ -307,6 +326,47 @@ export function Register({ onSignedIn, query = {} }) {
     } finally {
       setBusy(false)
     }
+  }
+
+  // Signing up starts with how, not with a form. The page used to open on the password fields
+  // with Google underneath them, so the quicker way in was the one you had to read past a form to
+  // find. `query.email` comes back from a Google sign-in that found no account, and that visitor
+  // has already chosen: open the form with their address in it.
+  const [chosen, setChosen] = useState(query.email ? 'email' : null)
+
+  if (chosen !== 'email') {
+    return (
+      <AuthCard
+        eyebrow="ORGANIZER ACCOUNT"
+        title={
+          <>
+            Create your
+            <br />
+            <Gradient>organizer account.</Gradient>
+          </>
+        }
+        intro="You can build your race straight away; confirming your email is only needed to make it public. One account can hold every event you organize."
+      >
+        <div className="grid gap-3">
+          {query.google === 'no-account' && (
+            <Notice kind="info" title="No OTRI account for that Google address yet.">
+              Create one here: continue with Google again, or choose a password instead.
+            </Notice>
+          )}
+          <p className="text-center text-[13px] text-slate-600">
+            Already have an account?{' '}
+            <Link to="/login" className="font-semibold text-blue-600">
+              Sign in
+            </Link>
+          </p>
+          <GoogleButton intent="register" acceptTerms marketingOptIn={news} label="Sign up with Google" divider={false} />
+          <Button type="button" onClick={() => setChosen('email')} className="min-h-12 text-[14px]">
+            Sign up with email
+          </Button>
+          <TermsLine />
+        </div>
+      </AuthCard>
+    )
   }
 
   return (
@@ -330,11 +390,6 @@ export function Register({ onSignedIn, query = {} }) {
       }
     >
       <form onSubmit={submit} className="grid gap-4" noValidate>
-        {query.google === 'no-account' && (
-          <Notice kind="info" title="No OTRI account for that Google address yet.">
-            Create one here: continue with Google again, or choose a password instead.
-          </Notice>
-        )}
         <Field label="Email" htmlFor="reg-email" hint="We send the verification link and race notifications here.">
           <input id="reg-email" autoFocus={autoFocusOnDesktop} type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
         </Field>
@@ -347,24 +402,6 @@ export function Register({ onSignedIn, query = {} }) {
         </Field>
         <div className="grid gap-2 rounded-xl bg-slate-50 px-4 py-3">
           <label className="flex items-start gap-2 text-sm text-slate-700">
-            <input id="reg-terms" type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600" />
-            <span>
-              I agree to the{' '}
-              <a className="font-semibold text-blue-600 underline" href="/terms/" target="_blank" rel="noreferrer">
-                terms of service
-              </a>{' '}
-              and the{' '}
-              <a className="font-semibold text-blue-600 underline" href="/privacy/" target="_blank" rel="noreferrer">
-                privacy policy
-              </a>
-              , and I confirm I may share the race data I upload (
-              <a className="underline" href="/data-policy/" target="_blank" rel="noreferrer">
-                data policy
-              </a>
-              ). <span className="text-slate-500">Required.</span>
-            </span>
-          </label>
-          <label className="flex items-start gap-2 text-sm text-slate-700">
             <input id="reg-news" type="checkbox" checked={news} onChange={(e) => setNews(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600" />
             <span>
               Email me OTRI news: new features, scoring-model updates, organizer tips. A few times a year, unsubscribe any time in your account settings.{' '}
@@ -373,38 +410,22 @@ export function Register({ onSignedIn, query = {} }) {
           </label>
         </div>
         {error && <Notice kind="error">{error}</Notice>}
-        <Button type="submit" busy={busy} disabled={!email || !password || tooShort || mismatch || !acceptTerms}>
+        <Button type="submit" busy={busy} disabled={!email || !password || tooShort || mismatch}>
           Create account <ArrowRight size={15} />
         </Button>
-        {!busy && (!email || !password || tooShort || mismatch || !acceptTerms) && (
+        {!busy && (!email || !password || tooShort || mismatch) && (
           <p className="text-xs text-slate-500">
             {!email
               ? 'Enter your email to continue.'
               : !password || tooShort
                 ? 'Choose a password of at least 10 characters.'
-                : mismatch
-                  ? 'The two passwords do not match yet.'
-                  : 'Tick the terms box to continue.'}
+                : 'The two passwords do not match yet.'}
           </p>
         )}
-        <GoogleButton
-          intent="register"
-          acceptTerms
-          marketingOptIn={news}
-          hint={
-            <>
-              By continuing with Google you agree to the{' '}
-              <a className="underline" href="/terms/" target="_blank" rel="noreferrer">
-                terms of service
-              </a>{' '}
-              and the{' '}
-              <a className="underline" href="/privacy/" target="_blank" rel="noreferrer">
-                privacy policy
-              </a>
-              , and confirm you may share the race data you upload.
-            </>
-          }
-        />
+        <TermsLine />
+        <button type="button" onClick={() => setChosen(null)} className="justify-self-center text-[13px] font-semibold text-blue-600 hover:underline">
+          Back to the other ways in
+        </button>
       </form>
     </AuthCard>
   )
