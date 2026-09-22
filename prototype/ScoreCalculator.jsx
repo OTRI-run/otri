@@ -1001,6 +1001,8 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
         value={targetSeconds}
         onChange={(event) => onChange(Number(event.target.value))}
         aria-label="Target finish time"
+        // Without this a screen reader reads the raw value: "17700" where the page says 4:55:00.
+        aria-valuetext={formatHms(targetSeconds)}
         className="mt-4 w-full accent-blue-600"
       />
       <div className="mt-1 flex justify-between gap-3 font-mono text-[11px] tracking-[.04em] text-slate-500">

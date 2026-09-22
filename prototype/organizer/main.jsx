@@ -350,7 +350,8 @@ function App() {
         </div>
       )}
       {unconfirmed && <ConfirmEmailBar email={session.email} />}
-      <main className="flex-1">{page}</main>
+      <a className="skip-link" href="#main">Skip to content</a>
+      <main id="main" className="flex-1">{page}</main>
       <Footer />
       <BackToTop />
       <BuildBanner />

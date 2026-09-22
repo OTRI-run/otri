@@ -497,7 +497,7 @@ function DataCard({ email, onDeleted }) {
   }
   return (
     <Card>
-      <Eyebrow>YOUR DATA</Eyebrow>
+      <Eyebrow as="h2">YOUR DATA</Eyebrow>
       <div className="mt-3 grid gap-4">
         <div className="rounded-xl bg-slate-50 px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -598,14 +598,14 @@ export function AccountPage({ session, onToken, onSignOut }) {
       )}
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1fr]">
         <Card>
-          <Eyebrow>PROFILE</Eyebrow>
+          <Eyebrow as="h2">PROFILE</Eyebrow>
           <div className="mt-3">
             <ProfileForm me={me} onSaved={setMe} />
           </div>
         </Card>
         <div className="grid gap-6">
           <Card>
-            <Eyebrow>SIGN-IN SECURITY</Eyebrow>
+            <Eyebrow as="h2">SIGN-IN SECURITY</Eyebrow>
             {me?.has_password === false && (
               <div className="mt-3">
                 <Notice kind="info">This account signs in with Google. Two-factor sign-in, signing out everywhere and deleting the account ask for a password; set one in the card below first.</Notice>
@@ -622,7 +622,7 @@ export function AccountPage({ session, onToken, onSignOut }) {
             </p>
           </Card>
           <Card>
-            <Eyebrow>PASSWORD</Eyebrow>
+            <Eyebrow as="h2">PASSWORD</Eyebrow>
             <div className="mt-3">
               {me?.has_password === false ? (
                 <SetPasswordCard email={session.email} />

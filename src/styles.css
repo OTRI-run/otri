@@ -11,7 +11,16 @@
   unicode-range: U+006F, U+0074, U+0072, U+0131;
 }
 
-html{scroll-behavior:smooth}
+/* The header is sticky and 68px tall, so an anchor that scrolls to the top of a section puts that
+   section underneath it -- the eyebrow and the top of the heading are covered. This also applies
+   when focus moves to something further down the page, which is how a keyboard reaches it. One
+   rule here covers all three apps; the per-element scroll-mt-* classes elsewhere are now spare. */
+html{scroll-behavior:smooth;scroll-padding-top:76px}
+
+/* Visible only once it has focus: the first thing Tab reaches, on every page. */
+.skip-link{position:absolute;left:-9999px;top:0;z-index:100;padding:10px 16px;border-radius:0 0 8px 0;
+  background:#0b1220;color:#fff;font:600 13px/1.2 inherit;text-decoration:none}
+.skip-link:focus{left:0}
 body{margin:0;font-synthesis:none;text-rendering:optimizeLegibility}
 *{box-sizing:border-box}
 

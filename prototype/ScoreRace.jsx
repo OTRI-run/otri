@@ -544,7 +544,7 @@ export default function ScoreRace() {
             </label>
 
             {error && (
-              <div id="score-error" role="alert" role="alert" className="mt-4 flex gap-2 rounded-xl border border-red-100 bg-red-50/70 px-3 py-2.5 text-sm text-red-900">
+              <div id="score-error" role="alert" className="mt-4 flex gap-2 rounded-xl border border-red-100 bg-red-50/70 px-3 py-2.5 text-sm text-red-900">
                 <XCircle size={16} className="mt-0.5 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
               </div>
             )}

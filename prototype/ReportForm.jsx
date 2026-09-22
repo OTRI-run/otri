@@ -57,7 +57,9 @@ export default function ReportForm({ kind, subjectId, subjectLabel, prompt = 'Is
 
   return (
     <div className="mt-3">
-      <p className="font-mono text-[9px] tracking-[.05em] text-slate-400">
+      {/* This is the only way in to the correction and removal form on a runner profile or a
+          leaderboard, so it is readable text rather than 9px of pale grey. */}
+      <p className="text-xs leading-5 text-slate-600">
         Built only from races their organizers published. {prompt}{' '}
         <button type="button" onClick={() => setOpen((v) => !v)} className="text-blue-600 underline">
           {open ? 'Close' : 'Report a problem'}

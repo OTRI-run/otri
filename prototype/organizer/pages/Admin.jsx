@@ -1250,6 +1250,9 @@ export function AdminEvents({ session, tab = 'overview' }) {
           <button
             key={id}
             type="button"
+            // Which tab is open was signalled by colour alone, so it was unknowable to anyone
+            // using assistive technology or unable to tell the blue from the grey.
+            aria-current={active === id ? 'page' : undefined}
             onClick={() => setActive(id)}
             className={`-mb-px border-b-2 px-3 py-2 text-sm font-semibold ${active === id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-[#0b1220]'}`}
           >
