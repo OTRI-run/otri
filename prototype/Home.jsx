@@ -5,6 +5,36 @@ import RaceCard from './RaceCard'
 import ScoreTicker from '../src/components/ScoreTicker'
 import { listRaces } from './apiClient'
 
+// The picture behind each door, drawn in the same stroke as the site's mark: a runner mid-stride
+// behind "I run", a results sheet with a stopwatch behind "I organise a race". Faded and pinned to
+// the corner, under the words, so the card reads as a picture of its purpose without competing
+// with the text. Decorative: hidden from assistive technology.
+function RunnerArt({ className = '' }) {
+  return (
+    <svg viewBox="0 0 120 120" className={className} fill="none" stroke="currentColor" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <circle cx="80" cy="20" r="9" />
+      <path d="M72 33 L57 62" />
+      <path d="M69 41 L85 51 L97 43" />
+      <path d="M69 41 L53 45 L41 58" />
+      <path d="M57 62 L75 79 L69 102" />
+      <path d="M57 62 L42 76 L26 71" />
+      <path d="M12 106 H50" strokeWidth="5" opacity=".5" />
+    </svg>
+  )
+}
+
+function SheetArt({ className = '' }) {
+  return (
+    <svg viewBox="0 0 120 120" className={className} fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <rect x="18" y="16" width="72" height="94" rx="9" />
+      <rect x="40" y="8" width="28" height="15" rx="4" />
+      <path d="M32 42 H76 M32 58 H76 M32 74 H64" />
+      <circle cx="92" cy="94" r="17" fill="currentColor" fillOpacity=".06" />
+      <path d="M92 84 V94 H99 M88 74 V80 M85 78 L88 75" />
+    </svg>
+  )
+}
+
 const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 const DOCS = {
   how: `${GITHUB_URL}/blob/main/docs/methodology/0.1.0/HOW-OTRI-SCORES.md`,
@@ -202,10 +232,15 @@ export default function Home() {
                   /* The light card is tinted, not white: the hero behind it is white, so a white
                      card had no edge and the "I run" door was the one thing on the page that did
                      not look like a door. */
-                  className={`relative flex min-w-0 flex-col rounded-2xl border p-5 text-left ${
+                  className={`relative isolate flex min-w-0 flex-col overflow-hidden rounded-2xl border p-5 text-left ${
                     dark ? 'border-[#17202c] bg-[#17202c]' : 'border-blue-200 bg-[#eef4ff] shadow-[0_10px_28px_rgba(37,99,235,.08)]'
                   }`}
                 >
+                  {dark ? (
+                    <SheetArt className="pointer-events-none absolute -bottom-3 -right-2 -z-10 h-[150px] w-[150px] rotate-[-8deg] text-white opacity-[.09]" />
+                  ) : (
+                    <RunnerArt className="pointer-events-none absolute -bottom-2 -right-3 -z-10 h-[150px] w-[150px] text-blue-700 opacity-[.10]" />
+                  )}
                   <span className="flex items-center gap-2.5">
                     <span
                       className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
