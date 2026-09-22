@@ -1,4 +1,5 @@
 import RankBadge from '../../../src/components/RankBadge'
+import ResultsTable from '../../../src/components/ResultsTable'
 import { useEffect, useState } from 'react'
 import CourseMap from '../../../src/components/CourseMap'
 import ColumnsRead from '../../../src/components/ColumnsRead'
@@ -833,16 +834,30 @@ export function ReviewStep({ session, raceId }) {
           </div>
         </Card>
         <Card>
-          <Eyebrow>LEADERBOARD</Eyebrow>
+          <Eyebrow>TOP FINISHERS</Eyebrow>
           {hasResults ? (
             <div className="mt-3">
               <ScoresTable rows={results} limit={12} compact />
+              {results.length > 12 && <p className="mt-2 text-xs text-slate-500">The full list, sortable and by gender, is below.</p>}
             </div>
           ) : (
             <p className="mt-3 text-sm text-slate-500">Appears once results are scored.</p>
           )}
         </Card>
       </div>
+
+      {hasResults && (
+        <Card className="mt-4">
+          <Eyebrow>EVERY RESULT</Eyebrow>
+          <p className="mt-1 text-sm text-slate-600">
+            Every finisher and non-finisher on file, exactly as it will read once published. Sort by any column, filter by
+            gender, and page through the list before you publish.
+          </p>
+          <div className="mt-4">
+            <ResultsTable rows={results} />
+          </div>
+        </Card>
+      )}
     </RaceShell>
   )
 }
