@@ -80,7 +80,17 @@ export default function PublishScoredRace({ session }) {
     }
   }
 
+  // Two different things, which used to be one. "Not now" reads as "remind me later" and used to
+  // delete the course and the results from this browser -- the only copy there is, because a race
+  // scored without an account was never uploaded anywhere. Leaving is now just leaving; throwing
+  // the work away says what it costs and asks first, like every other destructive action here.
+  function leave() {
+    navigate(session ? '/events' : '/', { replace: true })
+  }
+
   async function discard() {
+    const gone = 'Throw away this scored race? The course file and the results are stored only in this browser, so you would have to upload both again and score them again. This cannot be undone.'
+    if (!window.confirm(gone)) return
     await clearHandoff()
     navigate(session ? '/events' : '/', { replace: true })
   }
@@ -190,10 +200,17 @@ export default function PublishScoredRace({ session }) {
               <Button type="submit" busy={busy} disabled={Boolean(missing)}>
                 Build my race page <ArrowRight size={15} />
               </Button>
-              <Button type="button" variant="secondary" onClick={discard} disabled={busy}>
+              <Button type="button" variant="secondary" onClick={leave} disabled={busy}>
                 Not now
               </Button>
             </div>
+            <p className="text-xs leading-5 text-slate-500">
+              "Not now" keeps this race waiting here for a day.{' '}
+              <button type="button" onClick={discard} disabled={busy} className="font-semibold text-slate-600 underline hover:text-red-600">
+                Throw it away instead
+              </button>
+              .
+            </p>
             {!busy && missing && <p className="text-xs text-slate-500">{missing}</p>}
             <p className="text-xs leading-5 text-slate-500">Building the page publishes nothing. The next screen shows the leaderboard as runners will see it, with one Publish button.</p>
           </form>

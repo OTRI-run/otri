@@ -445,13 +445,17 @@ export function Register({ onSignedIn, query = {} }) {
 export function CheckEmail({ email }) {
   const [sent, setSent] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
   async function resend() {
     setBusy(true)
+    setError(null)
     try {
       await resendVerification(email)
+      setSent(true)
+    } catch (err) {
+      setError(err.message)
     } finally {
       setBusy(false)
-      setSent(true)
     }
   }
   return (
@@ -469,6 +473,7 @@ export function CheckEmail({ email }) {
       <Notice kind="info" title="Nothing arriving?">
         Check spam, then resend. The link is valid for a limited time.
       </Notice>
+      {error && <div className="mt-3"><Notice kind="error">{error}</Notice></div>}
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <Button variant="secondary" busy={busy} onClick={resend} disabled={!email || sent}>
           {sent ? 'Sent again' : 'Resend link'}
@@ -534,12 +539,10 @@ export function Verify({ token }) {
   )
 }
 
-export function Login({ onSignedIn, afterReset = false, query = {} }) {
+export function Login({ onSignedIn, afterReset = false, sessionEnded = false, query = {} }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
-  const [needsVerification, setNeedsVerification] = useState(false)
-  const [resent, setResent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [remember, setRemember] = useState(true)
   const [challenge, setChallenge] = useState(null) // { challenge, method }
@@ -575,7 +578,6 @@ export function Login({ onSignedIn, afterReset = false, query = {} }) {
   async function submit(event) {
     event.preventDefault()
     setError(null)
-    setNeedsVerification(false)
     setBusy(true)
     try {
       const result = await loginOrganizer(email, password, remember)
@@ -587,15 +589,9 @@ export function Login({ onSignedIn, afterReset = false, query = {} }) {
       navigate(hasHandoff() ? '/publish' : '/events', { replace: true })
     } catch (err) {
       setError(/invalid email or password/i.test(err.message) ? 'That email and password do not match. Check both, or use “Forgot your password?” below.' : err.message)
-      if (/verif/i.test(err.message)) setNeedsVerification(true)
     } finally {
       setBusy(false)
     }
-  }
-
-  async function resend() {
-    await resendVerification(email)
-    setResent(true)
   }
 
   async function submitCode(event) {
@@ -668,6 +664,12 @@ export function Login({ onSignedIn, afterReset = false, query = {} }) {
     >
       <form onSubmit={submit} className="grid gap-4" noValidate>
         {afterReset && <Notice kind="success" title="Your password is changed.">Sign in with it; you will be asked for your code as usual. Every other session of this account was signed out.</Notice>}
+        {sessionEnded && (
+          <Notice kind="info" title="You were signed out.">
+            That can happen when a session expires, or when the password, two-factor sign-in or "sign out everywhere" is used
+            somewhere else. Sign in again to carry on; nothing you saved is lost.
+          </Notice>
+        )}
         {query.google === 'confirm-link' && (
           <Notice kind="info" title="Check your email to connect Google.">
             An OTRI account already uses {email || 'that address'}. Google told us the address was checked, but it does not run that mailbox, so
@@ -685,22 +687,10 @@ export function Login({ onSignedIn, afterReset = false, query = {} }) {
         <Field label="Password" htmlFor="login-pw">
           <PasswordInput id="login-pw" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
         </Field>
-        {error && (
-          <Notice kind="error">
-            {error}
-            {needsVerification && (
-              <div className="mt-2">
-                {resent ? (
-                  <span>A new verification link is on its way.</span>
-                ) : (
-                  <button type="button" onClick={resend} className="font-semibold underline">
-                    Resend verification email
-                  </button>
-                )}
-              </div>
-            )}
-          </Notice>
-        )}
+        {/* No "resend verification" here: signing in with an unconfirmed address succeeds by
+            design, so this form never sees that failure. The amber bar above the signed-in app is
+            where an unconfirmed organizer is offered the link again. */}
+        {error && <Notice kind="error">{error}</Notice>}
         <label className="flex items-center gap-2 text-sm text-slate-600">
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="h-4 w-4 accent-blue-600" />
           Remember me on this device for 30 days
@@ -721,14 +711,18 @@ export function Forgot() {
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
   async function submit(event) {
     event.preventDefault()
     setBusy(true)
+    setError(null)
     try {
       await requestPasswordReset(email)
+      setSent(true)
+    } catch (err) {
+      setError(err.message)
     } finally {
       setBusy(false)
-      setSent(true)
     }
   }
   return (
@@ -751,6 +745,7 @@ export function Forgot() {
         </>
       ) : (
         <form onSubmit={submit} className="grid gap-4" noValidate>
+          {error && <Notice kind="error">{error}</Notice>}
           <Field label="Email" htmlFor="forgot-email">
             <input id="forgot-email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
           </Field>
@@ -826,7 +821,24 @@ export function Reset({ token, onSignedIn }) {
         <Field label="Confirm new password" htmlFor="reset-pw2" error={mismatch ? 'Passwords do not match.' : null}>
           <PasswordInput id="reset-pw2" required autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={inputClass} />
         </Field>
-        {error && <Notice kind="error">{error}</Notice>}
+        {error && (
+          <Notice kind="error">
+            {error}
+            {/* A reset link lives an hour, and dies early whenever the password changes or
+                two-factor is touched, so this is easy to reach -- and it used to be a dead end
+                with no way on from it. */}
+            <span className="mt-2 block">
+              <Link to="/forgot" className="font-semibold underline">
+                Request a new link
+              </Link>
+              {', or '}
+              <Link to="/login" className="font-semibold underline">
+                go back to sign in
+              </Link>
+              .
+            </span>
+          </Notice>
+        )}
         <Button type="submit" busy={busy} disabled={!password || tooShort || mismatch}>
           Set new password and sign in
         </Button>

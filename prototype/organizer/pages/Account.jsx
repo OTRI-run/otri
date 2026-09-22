@@ -82,10 +82,10 @@ function ProfileForm({ me, onSaved }) {
     <form onSubmit={submit} className="grid gap-4" noValidate>
       <fieldset disabled={!ready} className="contents">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Your name" htmlFor="pf-name" hint="Shown to admins; not public.">
+        <Field label="Your name" htmlFor="pf-name" hint="Shown to OTRI admins only. It is never published.">
           <input id="pf-name" value={form.display_name} onChange={set('display_name')} className={inputClass} placeholder="Ann Organizer" />
         </Field>
-        <Field label="Organization" htmlFor="pf-org" hint="Shown next to your published races.">
+        <Field label="Organization" htmlFor="pf-org" hint="Public: shown next to your published races. Leave it blank and no name appears.">
           <input id="pf-org" value={form.organization} onChange={set('organization')} className={inputClass} placeholder="Doi Trail Club" />
         </Field>
         <Field label="Website" htmlFor="pf-web" hint="Linked from your race pages.">

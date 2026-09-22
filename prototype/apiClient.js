@@ -78,6 +78,19 @@ async function errorFrom(response) {
   return error
 }
 
+// A session can end while the app is open: it expires, or the organizer changes their password,
+// turns two-factor on or signs out everywhere in another tab -- each of which revokes every token
+// the account has. Only the call made on load used to notice, so every screen afterwards showed a
+// signed-in header and failed each action with a raw API sentence in a red box, recoverable only
+// by reloading. Whoever is listening is told once, here, wherever the 401 came from.
+let onSessionEnded = null
+export function whenSessionEnds(handler) {
+  onSessionEnded = handler
+}
+
+// Signing in with the wrong password is a 401 too, and that is not a session ending.
+const SESSION_PATHS = /^\/auth\/(login|register|reset-password|request-password-reset|resend-verification|verify-email|2fa\/challenge|google\/)/
+
 async function request(path, options) {
   checkUploadSize(options?.body)
   let response
@@ -87,7 +100,10 @@ async function request(path, options) {
     throw new Error(import.meta.env?.DEV ? `Could not reach the API at ${API_BASE_URL} (${networkError.message}). Is it running?` : 'Could not reach OTRI. Check your connection and try again; a very large file can also end a connection.')
   }
 
-  if (!response.ok) throw await errorFrom(response)
+  if (!response.ok) {
+    if (response.status === 401 && !SESSION_PATHS.test(path)) onSessionEnded?.()
+    throw await errorFrom(response)
+  }
   if (response.status === 204) return null
   return response.json()
 }
@@ -97,8 +113,10 @@ function authHeaders(token, extra) {
   return token ? { Authorization: `Bearer ${token}`, ...extra } : { ...extra }
 }
 
+// Lets a failure through. Swallowing it meant the app could look signed out while the session
+// cookie -- which is HttpOnly, so no page script can clear it -- was still live on the server.
 export function logoutOrganizer() {
-  return request('/auth/logout', { method: 'POST' }).catch(() => null)
+  return request('/auth/logout', { method: 'POST' })
 }
 
 export function registerOrganizer(email, password, { acceptTerms = false, marketingOptIn = false } = {}) {

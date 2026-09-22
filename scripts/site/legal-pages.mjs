@@ -3,6 +3,7 @@
 // footer and outside parties (Google's sign-in review among them) point at otri.run rather than
 // at GitHub. The Markdown stays the single source: the page is rendered at build time, and in
 // the dev and preview servers on every request.
+import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { marked } from 'marked'
@@ -79,6 +80,18 @@ function renderBody(markdown) {
   return html
 }
 
+/** When this one document last changed, not when the repository last did.
+ *  The build used to pass one date -- the HEAD commit's -- to all three pages, so any commit
+ *  anywhere re-dated every policy, and the date a reader would rely on to know whether the terms
+ *  had changed since they accepted them was wrong. */
+export function lastChanged(file, root) {
+  try {
+    return execSync(`git log -1 --format=%cI -- ${file}`, { cwd: root }).toString().trim()
+  } catch {
+    return ''
+  }
+}
+
 export function renderLegalPage(page, root, { commitDate = '' } = {}) {
   // Windows line endings would stop the title regex: a carriage return is a line end in JavaScript.
   const markdown = readFileSync(resolve(root, page.file), 'utf8').replace(/\r\n/g, '\n')
@@ -86,7 +99,8 @@ export function renderLegalPage(page, root, { commitDate = '' } = {}) {
   const draft = /\(Draft\)\s*$/.test(heading)
   const title = heading.replace(/\s*\(Draft\)\s*$/, '')
   const nav = LEGAL_PAGES.map((p) => `<a href="/${p.path}/"${p === page ? ' aria-current="page"' : ''}>${p.title}</a>`).join('')
-  const updated = commitDate ? `Last changed ${commitDate.slice(0, 10)}. ` : ''
+  const changed = lastChanged(page.file, root) || commitDate
+  const updated = changed ? `Last changed ${changed.slice(0, 10)}. ` : ''
   const draftNote = draft ? 'A draft while OTRI is a prototype, not yet legally reviewed. ' : ''
   return `<!doctype html>
 <html lang="en">

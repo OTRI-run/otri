@@ -1155,12 +1155,24 @@ def confirm_password_reset(payload: PasswordResetConfirm, request: Request, resp
 # --- Events ------------------------------------------------------------------
 
 
+def _today() -> date:
+    """Today, in UTC, everywhere.
+
+    Everything stored is TIMESTAMPTZ written with datetime.now(timezone.utc), but the dates that
+    decide a runner's index "as of", an age category and whether a race is still upcoming came
+    from date.today(), which is the server's local date. On a box that is not on UTC those answers
+    drifted a day from the data they were worked out from, and were not reproducible from the
+    stored values alone.
+    """
+    return datetime.now(timezone.utc).date()
+
+
 def _listing_status(race: db.Race) -> str:
     if race.published_at is not None:
         return "scored"
     if race.listed_at is None:
         return "private"
-    return "upcoming" if race.event_date and race.event_date > date.today() else "awaiting_results"
+    return "upcoming" if race.event_date and race.event_date > _today() else "awaiting_results"
 
 
 def _race_summary(race: db.Race, finisher_count: int | None = None) -> RaceSummary:
@@ -1796,7 +1808,7 @@ async def admin_add_calculator_course(
 
     event = db.create_event(
         event_name.strip(),
-        event_date or date.today(),
+        event_date or _today(),
         organizer.id,
         location=(location or "").strip() or None,
         country=(country or "").strip().upper() or None,
@@ -2320,6 +2332,11 @@ def _runner_summaries(runners: list[db.Runner], as_of: date) -> list[RunnerSumma
     return out
 
 
+# How many runners may be ranked in one request. Every runner with a published result is ranked so
+# that the table really is "by index"; this is the ceiling on that work, not a page size.
+RANKED_RUNNER_CEILING = int(os.environ.get("OTRI_RANKED_RUNNER_CEILING", "20000"))
+
+
 @app.get("/runners", response_model=list[RunnerSummary])
 def list_runners(request: Request, q: str | None = None, limit: int = 100) -> list[RunnerSummary]:
     """Search runners by name (``q``), or list every runner with a published result, indexed."""
@@ -2328,12 +2345,20 @@ def list_runners(request: Request, q: str | None = None, limit: int = 100) -> li
     # Authorization header, which is one line of a script, so the limit lives here too.
     enforce_rate_limit(request, max_requests=30)
     enforce_rate_limit(request, max_requests=600, scope="runners-hour", window_seconds=3600)
-    as_of = date.today()
+    as_of = _today()
     limit = max(1, min(limit, 500))
-    runners = db.search_runners(q, limit) if q and q.strip() else db.list_runners(limit)
-    summaries = _runner_summaries(runners, as_of)
+    if q and q.strip():
+        # A search is its own thing: the caller asked for these names, not for a ranking.
+        summaries = _runner_summaries(db.search_runners(q, limit), as_of)
+        summaries.sort(key=lambda r: (r.index is None, -(r.index or 0), r.family_name, r.first_name))
+        return summaries
+    # Rank everybody, then take the top of the list. Ranking a slice that was cut in alphabetical
+    # order gave "the best runners" as "the best runners whose names come early". Scoring is the
+    # expensive part and it is done once per race either way, so the extra work here is the index
+    # arithmetic, which is pure and cheap. RANKED_RUNNER_CEILING keeps it from becoming unbounded.
+    summaries = _runner_summaries(db.list_runners(RANKED_RUNNER_CEILING), as_of)
     summaries.sort(key=lambda r: (r.index is None, -(r.index or 0), r.family_name, r.first_name))
-    return summaries
+    return summaries[:limit]
 
 
 @app.get("/runners/{runner_id}", response_model=RunnerProfile)
@@ -2341,7 +2366,7 @@ def get_runner(runner_id: str) -> RunnerProfile:
     runner = db.find_runner(runner_id)
     if runner is None:
         raise HTTPException(status_code=404, detail="no runner with published results has that id")
-    return _runner_profile(runner, date.today())
+    return _runner_profile(runner, _today())
 
 
 @app.post("/gpx/analyze", response_model=GpxAnalysis)
@@ -2472,7 +2497,7 @@ async def score_a_race(
             if not report.is_valid:
                 return ScoreRaceResult(is_valid=False, scores=[], **issues, **shared)
 
-            race = RaceRecord(race_id="unsaved", race_name=course.name or "Unsaved race", event_date=date.today(), course_name=course.name or "Course", distance_km=distance, elevation_gain_m=climb)
+            race = RaceRecord(race_id="unsaved", race_name=course.name or "Unsaved race", event_date=_today(), course_name=course.name or "Course", distance_km=distance, elevation_gain_m=climb)
             try:
                 scores = _scored_rows(race, result_records(paths[0]), version, points, measurement)
                 _refuse_impossible_scores(scores)
@@ -2648,7 +2673,13 @@ async def share_gpx(request: Request, file: UploadFile, name: str | None = Form(
             _SHARED_COURSE_DIR.mkdir(parents=True, exist_ok=True)
             # Make room first so the new file is never the one evicted, then trim again in case
             # another process wrote in between.
-            about = json.dumps({"name": clean_name, "filename": (file.filename or "")[:200], "created_at": datetime.now(timezone.utc).isoformat(), "source_metadata": source_metadata(text)})
+            # No source_metadata here, unlike a race upload. That record exists so a licence
+            # dispute about a published course can be answered; an anonymous share publishes
+            # nothing and belongs to nobody, so there is no question to answer and no reason to
+            # keep the author and device names out of somebody's own recorded run. PRIVACY.md
+            # promises those are not kept from a shared course, and the file itself is already
+            # reduced to its track. The original file name is not kept either: a name is often in it.
+            about = json.dumps({"name": clean_name, "created_at": datetime.now(timezone.utc).isoformat()})
             _evict_shared_courses(max(0, _SHARED_COURSE_MAX_TOTAL_BYTES - len(packed) - len(about.encode("utf-8"))))
             path.write_bytes(packed)
             _shared_course_meta_path(share_id).write_text(about, encoding="utf-8")

@@ -22,9 +22,9 @@ By uploading a course (GPX) or a results file you confirm that:
 
 - You have the right to share that data with OTRI and to allow OTRI to publish scores derived from it. In particular, the runners in a results file have been told, in your entry terms or otherwise, that results will be published and may be processed by third parties.
 - The data is accurate to the best of your knowledge, and you will correct it (or ask us to) when you learn it is wrong.
-- The file does not contain more personal data than OTRI asks for. OTRI keeps names, gender, finish time and status, and, when supplied, year of birth and country; delete anything else before uploading. See `DATA_POLICY.md`.
+- The file does not contain more personal data than OTRI asks for. OTRI keeps names, gender, finish time and status, and, when supplied, bib number, year of birth and country; delete anything else before uploading. See `DATA_POLICY.md`.
 
-You keep whatever rights you have in the data you upload. You grant OTRI a worldwide, royalty-free licence to store, process, publish and redistribute the results, course measurements and scores derived from it, for as long as the race stays published on OTRI, and to keep an archival copy for reproducibility afterwards. Unpublishing a race removes its results from every public page.
+You keep whatever rights you have in the data you upload. You grant OTRI a worldwide, royalty-free licence to store, process, publish and redistribute the results, course measurements and scores derived from it, for as long as the race stays published on OTRI, and to keep an archival copy for reproducibility afterwards. Unpublishing a race removes its results from every public page. If the race was also listed, the race page and its course stay public until the listing is removed as well; the review screen says so and offers both.
 
 ## 4. Acceptable use
 
@@ -51,7 +51,7 @@ To the extent the law allows, OTRI, its maintainers and contributors are not lia
 
 ## 8. Changes
 
-We may change these terms as the product develops. Material changes are listed in `CHANGELOG.md` and announced to organizers by email; continuing to use the account after that is acceptance of the new terms. If you do not agree, delete your account.
+We may change these terms as the product develops. Material changes are listed in `CHANGELOG.md`, and the date this document last changed is shown at the top of `/terms/`; continuing to use the account after a change is acceptance of the new terms. If you do not agree, delete your account.
 
 ## 9. Contact and governing law
 

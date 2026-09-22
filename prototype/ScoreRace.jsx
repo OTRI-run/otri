@@ -100,7 +100,7 @@ function download(name, type, content) {
 
 function FilePick({ icon: Icon, label, hint, accept, file, onFile, disabled }) {
   return (
-    <label className={`flex min-w-0 cursor-pointer items-center gap-3 rounded-xl border border-dashed px-4 py-3 transition ${file ? 'border-blue-300 bg-blue-50/50' : 'border-slate-300 bg-white hover:border-blue-300'} ${disabled ? 'opacity-60' : ''}`}>
+    <label className={`flex min-w-0 cursor-pointer items-center gap-3 rounded-xl border border-dashed px-4 py-3 transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 ${file ? 'border-blue-300 bg-blue-50/50' : 'border-slate-300 bg-white hover:border-blue-300'} ${disabled ? 'opacity-60' : ''}`}>
       <Icon size={18} className="shrink-0 text-blue-600" />
       <span className="min-w-0">
         <span className="block truncate text-sm font-semibold text-[#0b1220]">{file ? file.name : label}</span>

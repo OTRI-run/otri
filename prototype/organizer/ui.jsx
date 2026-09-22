@@ -137,7 +137,7 @@ export function Dropzone({ id, accept, onChange, busy = false, busyLabel = 'Work
     <label
       htmlFor={id}
       {...dropProps}
-      className={`flex min-h-[200px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center text-sm transition hover:border-blue-400 hover:bg-blue-50/40 ${dragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-slate-50'}`}
+      className={`flex min-h-[200px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center text-sm transition hover:border-blue-400 hover:bg-blue-50/40 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 ${dragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-slate-50'}`}
     >
       {busy ? (
         <>
@@ -154,7 +154,11 @@ export function Dropzone({ id, accept, onChange, busy = false, busyLabel = 'Work
           </span>
         </>
       )}
-      <input id={id} type="file" accept={accept} onChange={(event) => { setRefused(null); onChange(event) }} disabled={busy} className="hidden" />
+      {/* sr-only, not hidden: `hidden` is display:none, which takes the input out of the tab order,
+          and a <label> cannot hold focus in its place -- so the only way to choose a file was a
+          pointer. Invisible but focusable keeps the keyboard working, and the label shows a ring
+          when the focus is inside it. */}
+      <input id={id} type="file" accept={accept} onChange={(event) => { setRefused(null); onChange(event) }} disabled={busy} className="sr-only" />
     </label>
     {refused && <p className="mt-2 text-xs text-red-600" role="alert">{refused}</p>}
     </>

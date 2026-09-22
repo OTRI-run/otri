@@ -27,6 +27,7 @@ import { RACE_NAMES } from '../src/lib/raceNames'
 import { knownButNotHere } from '../src/lib/suggest'
 import { initMonitoring } from '../src/lib/monitoring'
 import { countPages } from '../src/lib/analytics'
+import { forgetExpiredHandoff } from './publishHandoff'
 import { useDocumentTitle } from '../src/lib/title'
 
 initMonitoring()
@@ -781,6 +782,11 @@ function App() {
     </div>
   )
 }
+
+// A race scored here and handed to the organizer app is kept in this browser for a day. Deleting
+// it used to happen only when the organizer app read it, so a visitor who never went on kept the
+// results file. Any OTRI page now clears an expired one.
+forgetExpiredHandoff()
 
 createRoot(document.getElementById('root')).render(
   <ErrorBoundary home="./">

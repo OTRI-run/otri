@@ -43,8 +43,11 @@ function send(body) {
 
 /** The page as its shape, not as one particular race: the API drops ids too, this saves the trip. */
 function here() {
+  // The route, never its parameters. The organizer app routes on the fragment, so this used to
+  // read "#/reset?token=..." on the page where somebody chooses a new password -- and that token
+  // is live until it is used. The API drops query strings too; this saves them the trip.
   const { pathname, hash } = window.location
-  return (pathname + (hash || '')).slice(0, 200)
+  return (pathname.split('?')[0] + (hash || '').split('?')[0]).slice(0, 200)
 }
 
 let last = null

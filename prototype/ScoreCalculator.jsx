@@ -767,7 +767,7 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
             <label
               htmlFor="calc-gpx-input"
               {...dropProps}
-              className={`mt-4 flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center text-sm transition hover:border-blue-400 hover:bg-blue-50/40 ${dragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-slate-50'}`}
+              className={`mt-4 flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center text-sm transition hover:border-blue-400 hover:bg-blue-50/40 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 ${dragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-slate-50'}`}
             >
               {loadingCourse ? (
                 <>
@@ -788,7 +788,9 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
                   </span>
                 </>
               )}
-              <input id="calc-gpx-input" type="file" accept=".gpx" onChange={onUpload} disabled={loadingCourse} className="hidden" />
+              {/* sr-only, not hidden: see prototype/organizer/ui.jsx. `hidden` is display:none, so
+                  the input left the tab order and there was no keyboard way to choose a course. */}
+              <input id="calc-gpx-input" type="file" accept=".gpx" onChange={onUpload} disabled={loadingCourse} className="sr-only" />
             </label>
             {(refused || loadError) && <p className="mt-3 text-xs leading-5 text-red-600" role="alert">{refused || loadError}</p>}
           </div>
