@@ -4,10 +4,7 @@
 
 export const WHAT_WE_SCORE = [
   ['yes', 'Trail and mountain races', 'From about 5 km to 100 miles and beyond. This is what the model was built for.'],
-  ['yes', 'Road races', 'A flat, well-measured course is the easy case. It still needs the course as a GPX.'],
-  ['provisional', 'Vertical races', 'Scored from the GPX, always at Low confidence: the setting for uphill-only courses rests on a single race so far.'],
-  ['provisional', 'Very steep courses', 'Ground steeper than 45% is scored as if it were 45%, so it earns too little. Low confidence when that is more than a fifth of the course.'],
-  ['provisional', 'Very short races', 'Under about 1.5 km of flat-equivalent effort the score runs high. Low confidence.'],
+  ['beta', 'Vertical races', 'Uphill-only courses are scored from the GPX. The setting for them rests on few races so far, so it is still being tested and every score says Low confidence.'],
   ['no', 'Races with no fixed course', '24-hour and backyard races, relays, a stage race as a whole. One stage can be scored on its own.'],
 ]
 
@@ -16,6 +13,9 @@ export const NOT_MEASURED =
 
 const MARK = {
   yes: ['Yes', 'bg-emerald-50 text-emerald-700 border-emerald-200'],
+  // Green, because these are scored and the scores stand -- and said to be in test, because the
+  // setting behind them has been checked against few races so far.
+  beta: ['Beta', 'bg-emerald-50 text-emerald-700 border-emerald-200'],
   provisional: ['Provisional', 'bg-amber-50 text-amber-700 border-amber-200'],
   no: ['No', 'bg-slate-100 text-slate-600 border-slate-200'],
 }
@@ -45,7 +45,7 @@ export default function WhatWeScore({ className = '' }) {
   return (
     <details className={`group rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 ${className}`}>
       <summary className="cursor-pointer list-none font-semibold text-[#0b1220]">
-        <span className="text-blue-600">Which races can OTRI score? Trail, road, vertical…</span>
+        <span className="text-blue-600">Which races can OTRI score? Trail, mountain, vertical…</span>
       </summary>
       <WhatWeScoreTable className="mt-2" />
     </details>

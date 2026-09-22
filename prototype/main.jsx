@@ -121,7 +121,39 @@ function NavLink({ item, active, className = '', short = false }) {
   )
 }
 
+/** Whether an organizer is signed in, as far as this side of the site can tell.
+ *
+ *  The organizer app writes one flag into localStorage and keeps the session itself in an HttpOnly
+ *  cookie no page script can read, so this is a hint and nothing more -- which is all a label
+ *  needs. It is read again when the tab regains focus, because signing in usually happens in
+ *  another one. */
+function useOrganizerSignedIn() {
+  const read = () => {
+    try {
+      return localStorage.getItem('otri_organizer_signed_in') === '1'
+    } catch {
+      return false
+    }
+  }
+  const [signedIn, setSignedIn] = useState(read)
+  useEffect(() => {
+    const refresh = () => setSignedIn(read())
+    window.addEventListener('focus', refresh)
+    window.addEventListener('storage', refresh)
+    return () => {
+      window.removeEventListener('focus', refresh)
+      window.removeEventListener('storage', refresh)
+    }
+  }, [])
+  return signedIn
+}
+
 function Header({ tab }) {
+  // The button said "For organizers", which names an audience rather than what pressing it does.
+  // It now says what happens next, which depends on whether there is an account waiting.
+  const signedIn = useOrganizerSignedIn()
+  const organizerHref = signedIn ? 'organizer/#/events' : 'organizer/'
+  const organizerLabel = signedIn ? 'My races' : 'Sign up'
   return (
     <>
       <header className="sticky top-0 z-50 h-[68px] border-b border-slate-200/90 bg-white/95 backdrop-blur">
@@ -132,15 +164,20 @@ function Header({ tab }) {
               <NavLink key={item.id} item={item} active={tab === item.id} />
             ))}
             <UnitsMenu compact />
-            <a href="organizer/" className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-300 px-3 text-[13px] font-semibold text-[#0b1220] no-underline hover:border-blue-300">
-              For organizers <ArrowUpRight size={13} />
+            {!signedIn && (
+              <a href="organizer/#/login" className="text-[13px] font-medium text-slate-500 no-underline hover:text-slate-950">
+                Sign in
+              </a>
+            )}
+            <a href={organizerHref} className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-slate-300 px-3 text-[13px] font-semibold text-[#0b1220] no-underline hover:border-blue-300">
+              {organizerLabel} <ArrowUpRight size={13} />
             </a>
           </nav>
           <a
             className="ml-auto flex shrink-0 items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white no-underline md:hidden"
-            href="organizer/"
+            href={organizerHref}
           >
-            Organizers <ArrowUpRight size={13} />
+            {organizerLabel} <ArrowUpRight size={13} />
           </a>
         </div>
       </header>
@@ -279,7 +316,7 @@ function formatHms(totalSeconds) {
 // Rank order is the default and stays the default: it is the result the organizer published, and
 // nothing here reorders it until somebody asks.
 const PAGE_SIZES = [25, 50, 100, 250]
-const DEFAULT_PAGE_SIZE = 50
+const DEFAULT_PAGE_SIZE = 25
 
 const SORT_LABELS = { rank: 'rank', name: 'name', time: 'time', score: 'OTRI score' }
 
@@ -359,6 +396,99 @@ function SortHeader({ id, label, view, onSort, className = '' }) {
         </span>
       </button>
     </th>
+  )
+}
+
+/** The count, the page size and the page controls. Rendered above the table and below it, because
+ *  a long leaderboard is scrolled through in both directions and the reader should never have to
+ *  travel the length of the page to change which page they are on. `place` keeps the two copies'
+ *  ids apart; everything else about them is the same on purpose. */
+function LeaderboardPager({ place, view, onView, set, perPage, page, pages, from, shown, rows, filtering }) {
+  if (shown.length === 0) return null
+  const id = `lb-per-page-${place}`
+  const counting =
+    perPage === 0 || shown.length <= perPage
+      ? `${shown.length} ${shown.length === 1 ? 'runner' : 'runners'}`
+      : `${from + 1}–${Math.min(from + perPage, shown.length)} of ${shown.length}`
+  const filteredNote = filtering && rows.length !== shown.length ? ` · filtered from ${rows.length}` : ''
+  if (pages <= 1 && rows.length <= PAGE_SIZES[0]) {
+    return (
+      <p role={place === 'below' ? 'status' : undefined} className="mt-3 font-mono text-[10px] tracking-[.05em] text-slate-600">
+        {counting}
+        {filteredNote}
+      </p>
+    )
+  }
+  return (
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      {/* One live region, not two: the same sentence announced twice on every change is noise. */}
+      <p role={place === 'below' ? 'status' : undefined} className="font-mono text-[10px] tracking-[.05em] text-slate-600">
+        {counting}
+        {filteredNote}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor={id} className="font-mono text-[10px] uppercase tracking-[.06em] text-slate-600">
+          Per page
+        </label>
+        <select
+          id={id}
+          value={perPage}
+          onChange={(event) => set({ perPage: Number(event.target.value) })}
+          className="min-h-9 rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+        >
+          {PAGE_SIZES.map((size) => (
+            <option key={size} value={size}>
+              {size}
+            </option>
+          ))}
+          <option value={0}>All</option>
+        </select>
+        {pages > 1 && (
+          <nav aria-label="Leaderboard pages" className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => onView({ ...view, page: page - 1 })}
+              className="min-h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 hover:enabled:border-blue-300 disabled:opacity-40"
+            >
+              Previous
+            </button>
+            {/* Previous and Next alone are a poor way to reach page 60 of 98, so the number is a
+                field you can type into once there are enough pages for that to matter. */}
+            {pages > 5 ? (
+              <span className="flex items-center gap-1.5 font-mono text-[10px] tracking-[.05em] text-slate-600">
+                Page
+                <input
+                  type="number"
+                  min={1}
+                  max={pages}
+                  value={page}
+                  aria-label={`Page number, 1 to ${pages}`}
+                  onChange={(event) => {
+                    const wanted = Number(event.target.value)
+                    if (wanted >= 1 && wanted <= pages) onView({ ...view, page: wanted })
+                  }}
+                  className="min-h-9 w-16 rounded-lg border border-slate-300 bg-white px-2 text-center text-xs font-semibold text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                />
+                of {pages}
+              </span>
+            ) : (
+              <span className="font-mono text-[10px] tracking-[.05em] text-slate-600">
+                Page {page} of {pages}
+              </span>
+            )}
+            <button
+              type="button"
+              disabled={page >= pages}
+              onClick={() => onView({ ...view, page: page + 1 })}
+              className="min-h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 hover:enabled:border-blue-300 disabled:opacity-40"
+            >
+              Next
+            </button>
+          </nav>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -463,6 +593,8 @@ function ResultsTable({ results, resultsError, view, onView }) {
         </div>
       )}
 
+      <LeaderboardPager place="above" view={view} onView={onView} set={set} perPage={perPage} page={page} pages={pages} from={from} shown={shown} rows={rows} filtering={filtering} />
+
       <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
         <table className="w-full border-collapse text-left text-sm">
           <caption className="sr-only">
@@ -540,59 +672,7 @@ function ResultsTable({ results, resultsError, view, onView }) {
         </table>
       </div>
 
-      {shown.length > 0 && (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <p role="status" className="font-mono text-[10px] tracking-[.05em] text-slate-600">
-            {perPage === 0 || shown.length <= perPage
-              ? `${shown.length} ${shown.length === 1 ? 'runner' : 'runners'}`
-              : `${from + 1}–${Math.min(from + perPage, shown.length)} of ${shown.length}`}
-            {filtering && rows.length !== shown.length ? ` · filtered from ${rows.length}` : ''}
-          </p>
-          {(pages > 1 || rows.length > PAGE_SIZES[0]) && (
-            <div className="flex flex-wrap items-center gap-2">
-              <label htmlFor="lb-per-page" className="font-mono text-[10px] uppercase tracking-[.06em] text-slate-600">
-                Per page
-              </label>
-              <select
-                id="lb-per-page"
-                value={perPage}
-                onChange={(event) => set({ perPage: Number(event.target.value) })}
-                className="min-h-9 rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              >
-                {PAGE_SIZES.map((size) => (
-                  <option key={size} value={size}>
-                    {size}
-                  </option>
-                ))}
-                <option value={0}>All</option>
-              </select>
-              {pages > 1 && (
-                <nav aria-label="Leaderboard pages" className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={page <= 1}
-                    onClick={() => onView({ ...view, page: page - 1 })}
-                    className="min-h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 hover:enabled:border-blue-300 disabled:opacity-40"
-                  >
-                    Previous
-                  </button>
-                  <span className="font-mono text-[10px] tracking-[.05em] text-slate-600">
-                    Page {page} of {pages}
-                  </span>
-                  <button
-                    type="button"
-                    disabled={page >= pages}
-                    onClick={() => onView({ ...view, page: page + 1 })}
-                    className="min-h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 hover:enabled:border-blue-300 disabled:opacity-40"
-                  >
-                    Next
-                  </button>
-                </nav>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+      <LeaderboardPager place="below" view={view} onView={onView} set={set} perPage={perPage} page={page} pages={pages} from={from} shown={shown} rows={rows} filtering={filtering} />
     </>
   )
 }
