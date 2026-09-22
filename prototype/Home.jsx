@@ -204,8 +204,6 @@ export default function Home() {
                   // Footprints, not a stopwatch: the door is about running a course, and the
                   // stopwatch said "timing", which is the organiser's side of it.
                   Icon: Footprints,
-                  title: 'What is my time worth?',
-                  text: 'A race or your own GPX, and a finish time.',
                   href: '#calculator',
                   action: 'Open the calculator',
                   dark: false,
@@ -219,28 +217,21 @@ export default function Home() {
                   // A results sheet, not an upload arrow: what an organiser holds is the list of
                   // finishers, and an arrow said "file transfer" rather than "race".
                   Icon: ClipboardList,
-                  title: 'Score my whole race',
-                  text: 'The course and the results file. Every finisher scored.',
                   href: '#score',
                   action: 'Score my race',
                   dark: true,
                   more: ['See an example', '#score?example=1'],
                 },
-              ].map(({ who, Icon, title, text, href, action, more, dark }) => (
+              ].map(({ who, Icon, href, action, more, dark }) => (
                 <div
                   key={who}
                   /* The light card is tinted, not white: the hero behind it is white, so a white
                      card had no edge and the "I run" door was the one thing on the page that did
                      not look like a door. */
-                  className={`relative isolate flex min-w-0 flex-col overflow-hidden rounded-2xl border p-5 text-left ${
+                  className={`relative flex min-w-0 flex-col rounded-2xl border p-5 text-left ${
                     dark ? 'border-[#17202c] bg-[#17202c]' : 'border-blue-200 bg-[#eef4ff] shadow-[0_10px_28px_rgba(37,99,235,.08)]'
                   }`}
                 >
-                  {dark ? (
-                    <SheetArt className="pointer-events-none absolute -bottom-3 -right-2 -z-10 h-[150px] w-[150px] rotate-[-8deg] text-white opacity-[.09]" />
-                  ) : (
-                    <RunnerArt className="pointer-events-none absolute -bottom-2 -right-3 -z-10 h-[150px] w-[150px] text-blue-700 opacity-[.10]" />
-                  )}
                   <span className="flex items-center gap-2.5">
                     <span
                       className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
@@ -253,24 +244,33 @@ export default function Home() {
                       {who}
                     </span>
                   </span>
-                  <b className={`mt-3 block text-[16px] leading-6 tracking-[-.02em] ${dark ? 'text-white' : 'text-[#0b1220]'}`}>{title}</b>
-                  <p className={`mt-1 flex-1 text-[13px] leading-5 ${dark ? 'text-slate-400' : 'text-slate-600'}`}>{text}</p>
-                  <a
-                    className={`mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-semibold no-underline ${
-                      dark ? 'bg-white text-[#17202c] hover:bg-slate-100' : 'bg-blue-700 text-white hover:bg-blue-800'
-                    }`}
-                    href={href}
-                  >
-                    {action} <ArrowRight size={15} />
-                  </a>
-                  <a
-                    className={`mt-3 inline-flex items-center justify-center gap-1 text-xs font-semibold no-underline hover:underline ${
-                      dark ? 'text-slate-300' : 'text-blue-700'
-                    }`}
-                    href={more[1]}
-                  >
-                    {more[0]}
-                  </a>
+                  {/* The drawing is a real column beside the buttons, not a background under them:
+                      tucked behind, the buttons covered it and there was nothing to see. */}
+                  <div className="mt-5 flex items-end justify-between gap-4">
+                    <div className="flex min-w-0 flex-col items-start">
+                      <a
+                        className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-semibold no-underline ${
+                          dark ? 'bg-white text-[#17202c] hover:bg-slate-100' : 'bg-blue-700 text-white hover:bg-blue-800'
+                        }`}
+                        href={href}
+                      >
+                        {action} <ArrowRight size={15} />
+                      </a>
+                      <a
+                        className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold no-underline hover:underline ${
+                          dark ? 'text-slate-300' : 'text-blue-700'
+                        }`}
+                        href={more[1]}
+                      >
+                        {more[0]}
+                      </a>
+                    </div>
+                    {dark ? (
+                      <SheetArt className="h-[92px] w-[92px] shrink-0 -rotate-6 text-white opacity-[.32]" />
+                    ) : (
+                      <RunnerArt className="h-[92px] w-[92px] shrink-0 text-blue-700 opacity-[.4]" />
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
