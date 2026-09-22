@@ -63,11 +63,11 @@ Athlete identity matching should use the minimum necessary information and shoul
 
 ## Race listings
 
-OTRI lists no race on anyone's behalf and keeps no catalogue of races. A race is on OTRI because its organizer put it there: they can show their own race before it has results (the facts and their own course file), and they publish the results when they choose. OTRI-compiled listings, and the course files attached to them, were retired in September 2026 ([`docs/product/open-scoring-tool.md`](docs/product/open-scoring-tool.md)); what they left in the database is not shown publicly and is deleted by an admin.
+OTRI lists no race on anyone's behalf and keeps no catalogue of races. A race is on OTRI because its organizer put it there: they can show their own race before it has results (the facts and their own course file), and they publish the results when they choose. OTRI-compiled listings, and the course files attached to them, were retired in September 2026 (`docs/product/open-scoring-tool.md`); what they left in the database is not shown publicly and is deleted by an admin.
 
 ## Stored course files
 
-A course file is reduced to positions and elevations before it is stored or served (`course/sanitize.py`); the measurement is identical. This is data minimisation, not a licence: removing a notice from a file does not change who may publish the course, so the permission rules above apply unchanged. What the uploaded file said about its origin (creator, author, copyright holder, licence, links) is kept with the race's private record, together with the SHA-256 of the original upload, so that a licence's attribution terms can be honoured and a dispute can be answered.
+A course file is reduced to positions and elevations before it is stored or served (`course/sanitize.py`); the measurement is identical. This is data minimisation, not a licence: removing a notice from a file does not change who may publish the course, so the permission rules above apply unchanged. What the uploaded file said about its origin (creator, author, copyright holder, licence, links) is kept with the race's private record, together with the SHA-256 of the original upload, so that a licence's attribution terms can be honoured and a dispute can be answered. This applies to a course an organizer attaches to a race. A course shared anonymously from the calculator publishes nothing and belongs to no race, so there is no attribution to honour and no dispute to answer: nothing about its origin is kept, and neither is the name of the file it came from.
 
 ## Licensing
 

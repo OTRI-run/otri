@@ -125,11 +125,28 @@ def _render(
 # ----------------------------------------------------------------------------- sending
 
 
+def _for_log(address: str) -> str:
+    """An address as the application log may hold it: enough to follow one delivery, not enough to
+    be a list of everyone who ever signed up.
+
+    The log used to carry the address in full on every send, while PRIVACY.md describes server logs
+    as holding an address, a path and a time. The full address is already in the email_log row an
+    admin can look up, so the application log does not need to repeat it.
+    """
+    name, _, domain = address.strip().lower().partition("@")
+    if not domain:
+        return "***"
+    return f"{name[:2]}***@{domain}"
+
+
 def _send(to: str, subject: str, html: str, text: str, *, log_subject: str | None = None) -> None:
     """`log_subject` is what the email log keeps when the subject itself must not be kept."""
     logged = log_subject or subject
     if not RESEND_API_KEY:
-        print(f"[email not sent - no RESEND_API_KEY] to={to!r} subject={subject!r}\n{text}")
+        # Deliberately without the body: it holds reset links and sign-in codes, and this
+        # branch runs whenever the key is missing -- including by accident in production, which is
+        # exactly when printing a live reset link would matter most.
+        print(f"[email not sent - no RESEND_API_KEY] to={_for_log(to)} subject={subject!r}")
         db.log_email(to, logged, "logged")
         return
     try:
@@ -138,13 +155,13 @@ def _send(to: str, subject: str, html: str, text: str, *, log_subject: str | Non
         )
         provider_id = response.get("id") if isinstance(response, dict) else getattr(response, "id", None)
         db.log_email(to, logged, "sent", provider_id=provider_id)
-        print(f"email sent to={to!r} subject={logged!r} resend_id={provider_id}")
+        print(f"email sent to={_for_log(to)} subject={logged!r} resend_id={provider_id}")
     except resend.exceptions.ResendError as error:
         db.log_email(to, logged, "failed", error=str(error))
         # Never let an email-provider hiccup break registration/login/reset: log loudly and
         # continue. A failed verification/reset email is recoverable (the organizer can ask
         # again); a 500 on register/login is not.
-        print(f"WARNING: failed to send email to {to!r} via Resend: {error}")
+        print(f"WARNING: failed to send email to {_for_log(to)} via Resend: {error}")
 
 
 # ----------------------------------------------------------------------------- messages
@@ -218,7 +235,7 @@ def send_report_email(to: str, kind: str, subject_label: str, message: str, page
         ]
         + ([f"Page: {safe_page}"] if safe_page else []),
         cta=("Open the admin dashboard", link),
-        after=["Reports are best answered within a few days; the reporter is waiting on the public page."],
+        after=["Reports are best answered within a few days. The reporter has no page to check and gets no further word unless an admin writes to them, so a removal request needs a reply as well as an action."],
         reason="You received this email because you are an OTRI admin.",
     )
     _send(to, f"New report: {kind} · {subject_label}"[:150], html, text)

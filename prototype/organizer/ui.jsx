@@ -1,5 +1,5 @@
 import { fitFontSize } from '../../src/lib/fitText'
-import { useState } from 'react'
+import { Children, cloneElement, isValidElement, useId, useState } from 'react'
 import useFileDrop from '../../src/lib/useFileDrop'
 import { AlertTriangle, ArrowLeft, Check, CheckCircle2, Info, Upload, XCircle } from 'lucide-react'
 import { Link } from './router'
@@ -7,8 +7,15 @@ import { Link } from './router'
 export const INK = '#0b1220'
 export const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
 
-export function Eyebrow({ children, className = '' }) {
-  return <p className={`font-mono text-[10px] tracking-[.08em] text-slate-500 ${className}`}>{children}</p>
+/** The small capitals above a card or a section.
+ *
+ *  `as="h2"` (or h3) when it is the title of that card, which is what it usually is: every card
+ *  title in the organizer app went through here as a <p>, so the account page had exactly one
+ *  heading in its whole content area and none of its sections could be moved between. It stays a
+ *  <p> by default, for the places where it is a label rather than a title. */
+export function Eyebrow({ children, className = '', as: Tag = 'p' }) {
+  const weight = Tag === 'p' ? '' : 'font-normal'
+  return <Tag className={`font-mono text-[10px] tracking-[.08em] text-slate-500 ${weight} ${className}`}>{children}</Tag>
 }
 
 export function Gradient({ children }) {
@@ -58,15 +65,39 @@ export function Card({ children, className = '' }) {
   return <div className={`min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)] sm:p-6 ${className}`}>{children}</div>
 }
 
+/** A labelled control, with its hint and its error actually attached to it.
+ *
+ *  Both used to be loose paragraphs beside the input. Someone tabbing to "Confirm password" with a
+ *  screen reader heard the label and nothing else -- not the rule the hint explains, and not
+ *  "Passwords do not match." Every organizer form goes through here, so wiring aria-describedby
+ *  and aria-invalid once covers all of them. The error is announced when it appears.
+ *
+ *  The child is cloned to receive the attributes, so no call site has to pass anything. A child
+ *  that sets its own aria-describedby keeps it. */
 export function Field({ label, hint, error, children, htmlFor }) {
+  const generated = useId()
+  const base = htmlFor || generated
+  const hintId = hint ? `${base}-hint` : null
+  const errorId = error ? `${base}-error` : null
+  const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined
+
+  const only = Children.count(children) === 1 ? Children.only(children) : null
+  const described =
+    only && isValidElement(only)
+      ? cloneElement(only, {
+          'aria-describedby': only.props['aria-describedby'] ?? describedBy,
+          'aria-invalid': only.props['aria-invalid'] ?? (error ? true : undefined),
+        })
+      : children
+
   return (
     <div>
       <label htmlFor={htmlFor} className="block text-sm font-semibold text-[#0b1220]">
         {label}
       </label>
-      {hint && <p className="mt-0.5 text-xs text-slate-500">{hint}</p>}
-      <div className="mt-1.5">{children}</div>
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {hint && <p id={hintId} className="mt-0.5 text-xs text-slate-500">{hint}</p>}
+      <div className="mt-1.5">{described}</div>
+      {error && <p id={errorId} role="alert" className="mt-1 text-xs text-red-600">{error}</p>}
     </div>
   )
 }
@@ -137,7 +168,7 @@ export function Dropzone({ id, accept, onChange, busy = false, busyLabel = 'Work
     <label
       htmlFor={id}
       {...dropProps}
-      className={`flex min-h-[200px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center text-sm transition hover:border-blue-400 hover:bg-blue-50/40 ${dragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-slate-50'}`}
+      className={`flex min-h-[200px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center text-sm transition hover:border-blue-400 hover:bg-blue-50/40 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 ${dragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-slate-50'}`}
     >
       {busy ? (
         <>
@@ -154,7 +185,11 @@ export function Dropzone({ id, accept, onChange, busy = false, busyLabel = 'Work
           </span>
         </>
       )}
-      <input id={id} type="file" accept={accept} onChange={(event) => { setRefused(null); onChange(event) }} disabled={busy} className="hidden" />
+      {/* sr-only, not hidden: `hidden` is display:none, which takes the input out of the tab order,
+          and a <label> cannot hold focus in its place -- so the only way to choose a file was a
+          pointer. Invisible but focusable keeps the keyboard working, and the label shows a ring
+          when the focus is inside it. */}
+      <input id={id} type="file" accept={accept} onChange={(event) => { setRefused(null); onChange(event) }} disabled={busy} className="sr-only" />
     </label>
     {refused && <p className="mt-2 text-xs text-red-600" role="alert">{refused}</p>}
     </>
@@ -224,9 +259,19 @@ export function Stepper({ steps, current }) {
 export function ChecklistRow({ ok, label, detail, fixTo, fixLabel = 'Fix' }) {
   return (
     <li className="flex items-start gap-3 py-3">
-      {ok ? <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-emerald-600" /> : <XCircle size={18} className="mt-0.5 shrink-0 text-amber-500" />}
+      {/* The most decision-relevant state on the publish screen was a coloured glyph and nothing
+          else: "Course: not uploaded" read the same as "Course: uploaded" to anyone who could not
+          see the tick. The icon is decoration; the word beside it carries the meaning. */}
+      {ok ? (
+        <CheckCircle2 size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-emerald-600" />
+      ) : (
+        <XCircle size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-amber-500" />
+      )}
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-[#0b1220]">{label}</p>
+        <p className="text-sm font-semibold text-[#0b1220]">
+          <span className="sr-only">{ok ? 'Done: ' : 'Still to do: '}</span>
+          {label}
+        </p>
         {detail && <p className="text-xs text-slate-500">{detail}</p>}
       </div>
       {!ok && fixTo && (

@@ -27,6 +27,7 @@ import { RACE_NAMES } from '../src/lib/raceNames'
 import { knownButNotHere } from '../src/lib/suggest'
 import { initMonitoring } from '../src/lib/monitoring'
 import { countPages } from '../src/lib/analytics'
+import { forgetExpiredHandoff } from './publishHandoff'
 import { useDocumentTitle } from '../src/lib/title'
 
 initMonitoring()
@@ -235,7 +236,7 @@ function Footer() {
           </div>
           {FOOTER_COLUMNS.map(({ heading, links }) => (
             <nav key={heading} className="min-w-0">
-              <h2 className="font-mono text-[10px] uppercase tracking-[.14em] text-slate-400">{heading}</h2>
+              <h2 className="font-mono text-[10px] uppercase tracking-[.14em] text-slate-600">{heading}</h2>
               <ul className="mt-3 flex flex-col gap-2.5">
                 {links.map(([label, href]) => (
                   <li key={label}>
@@ -249,10 +250,10 @@ function Footer() {
           ))}
         </div>
         <div className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-6">
-          <span className="font-mono text-[10px] tracking-[.12em] text-slate-400">
+          <span className="font-mono text-[10px] tracking-[.12em] text-slate-600">
             OPEN · TRANSPARENT · REPRODUCIBLE · INDEPENDENT
           </span>
-          <span className="font-mono text-[10px] tracking-[.12em] text-slate-400">OTRI · {new Date().getFullYear()}</span>
+          <span className="font-mono text-[10px] tracking-[.12em] text-slate-600">OTRI · {new Date().getFullYear()}</span>
         </div>
       </div>
     </footer>
@@ -332,7 +333,7 @@ function Leaderboard({ raceId, onBack }) {
             {race.is_vertical && <VerticalBadge />}
             {race.is_demo && <DemoBadge />}
           </p>
-          <h2 className="otri-fit mt-2 font-bold leading-[1.04] tracking-[-.045em] text-[#0b1220]" style={{ fontSize: fitFontSize(race.event_name, { min: 28, vw: 4.5, max: 52 }) }}>{race.event_name}</h2>
+          <h1 className="otri-fit mt-2 font-bold leading-[1.04] tracking-[-.045em] text-[#0b1220]" style={{ fontSize: fitFontSize(race.event_name, { min: 28, vw: 4.5, max: 52 }) }}>{race.event_name}</h1>
           <p className="mt-3 text-sm text-slate-500">
             {race.course_name} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
             {race.has_gpx ? ' · Measured from the course file' : ' · Official figures, no course file'}
@@ -418,7 +419,7 @@ function Leaderboard({ raceId, onBack }) {
                 </tbody>
               </table>
             </div>
-            <p className="mt-3 font-mono text-[10px] tracking-[.05em] text-slate-400">
+            <p className="mt-3 font-mono text-[10px] tracking-[.05em] text-slate-600">
               {modelLabel(race.scoring_version)} · depends only on the course and each runner's own finish time, never the field
             </p>
             {results?.some((row) => row.status === 'finisher') && (
@@ -635,8 +636,9 @@ function RacesPage({ raceId }) {
                 {hasDemo ? ' Races marked DEMO DATA are synthetic examples.' : ''}
               </p>
             </div>
-            {error && <p className="mt-8 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</p>}
-            {races === null && !error && <p className="mt-8 text-sm text-slate-500">Loading races…</p>}
+            {/* Announced: these arrive after the first paint (see Runners.jsx). */}
+            {error && <p role="alert" className="mt-8 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</p>}
+            {races === null && !error && <p role="status" className="mt-8 text-sm text-slate-500">Loading races…</p>}
             {races?.length === 0 && <NoRacesYet />}
             {races?.length > 0 && (
               <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -764,7 +766,8 @@ function App() {
   return (
     <div id="top" className="min-h-screen max-w-full overflow-x-clip bg-[#f7f9fc] text-[#0b1220]">
       <Header tab={route.tab} />
-      <main>
+      <a className="skip-link" href="#main">Skip to content</a>
+      <main id="main">
         {route.tab === 'home' && <Home />}
         {route.tab === 'races' && <RacesPage raceId={route.raceId} />}
         {route.tab === 'runners' && (route.runnerId ? <RunnerProfilePage runnerId={route.runnerId} onBack={() => navigate('#runners')} /> : <RunnersPage />)}
@@ -773,7 +776,15 @@ function App() {
         {route.tab === 'api' && <ApiDocs />}
         {route.tab === 'media' && <Media />}
         {route.tab === 'faq' && <FaqPage initialQuery={route.faqQuery} />}
-        {route.tab === 'notfound' && <NotFound where={window.location.hash} home="#home" />}
+        {/* In its own container, like every other page. Rendered bare, it had vertical padding
+            and no side gutter, so its text ran to both edges of the viewport. */}
+        {route.tab === 'notfound' && (
+          <section className="py-4">
+            <div className="mx-auto w-[min(1120px,calc(100%-28px))]">
+              <NotFound where={window.location.hash} home="#home" />
+            </div>
+          </section>
+        )}
       </main>
       <Footer />
       <BackToTop />
@@ -781,6 +792,11 @@ function App() {
     </div>
   )
 }
+
+// A race scored here and handed to the organizer app is kept in this browser for a day. Deleting
+// it used to happen only when the organizer app read it, so a visitor who never went on kept the
+// results file. Any OTRI page now clears an expired one.
+forgetExpiredHandoff()
 
 createRoot(document.getElementById('root')).render(
   <ErrorBoundary home="./">

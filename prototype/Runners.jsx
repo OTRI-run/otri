@@ -159,8 +159,10 @@ export function RunnersPage({ initialQuery = '' }) {
           {runners ? ` · ${shown.length}` : ''}
         </p>
 
-        {error && <p className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</p>}
-        {runners === null && !error && <p className="mt-6 text-sm text-slate-500">Loading…</p>}
+        {/* These arrive after the first paint, so without a live region nothing announces them and
+            a screen-reader user is left on a page that simply never fills in. */}
+        {error && <p role="alert" className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{error}</p>}
+        {runners === null && !error && <p role="status" className="mt-6 text-sm text-slate-500">Loading…</p>}
         {runners && shown.length === 0 && (
           <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 text-sm leading-6 text-slate-600">
             <p className="font-semibold text-[#0b1220]">{query.trim() ? `No published results for “${query.trim()}” on OTRI yet.` : 'No runners yet.'}</p>

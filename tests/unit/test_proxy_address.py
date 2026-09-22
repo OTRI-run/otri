@@ -9,6 +9,7 @@ anything into the header and still be counted under its own address. Checked on 
 
 import importlib
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from starlette.testclient import TestClient
@@ -29,25 +30,41 @@ def _behind_nginx(headers):
 
 
 def _sources():
+    """Whose attempts were counted. The table holds a digest of the address, never the address,
+    so the expected value is digested the same way to compare."""
     with db.get_connection() as connection:
         return {row["key"].split(":", 1)[1] for row in connection.execute("SELECT key FROM rate_limits WHERE key LIKE '/auth/login:%'").fetchall()}
+
+
+def _as_stored(address: str) -> str:
+    return rate_limit._client_key(SimpleNamespace(client=SimpleNamespace(host=address)))
+
+
+def test_the_limiter_keeps_a_digest_of_the_address_not_the_address():
+    """The rows outlive the request by up to two days, and thirty more in a nightly backup. The
+    limiter only compares this value with itself, so it never needs the address in the clear."""
+    _behind_nginx({"X-Forwarded-For": "198.51.100.77, 203.0.113.9"})
+    with db.get_connection() as connection:
+        keys = [row["key"] for row in connection.execute("SELECT key FROM rate_limits").fetchall()]
+    assert keys, "nothing was counted"
+    assert not any("203.0.113.9" in key or "198.51.100.77" in key for key in keys), keys
 
 
 def test_a_forged_forwarded_header_does_not_change_whose_attempts_are_counted():
     # The client wrote 198.51.100.77 into the header; nginx appended the address it saw.
     assert _behind_nginx({"X-Forwarded-For": "198.51.100.77, 203.0.113.9"}).status_code == 401
-    assert _sources() == {"203.0.113.9"}
+    assert _sources() == {_as_stored("203.0.113.9")}
     # However many the client invents, and whatever it claims about loopback.
     rate_limit.reset()
     _behind_nginx({"X-Forwarded-For": "127.0.0.1, 10.0.0.1, 198.51.100.77, 203.0.113.9"})
-    assert _sources() == {"203.0.113.9"}
+    assert _sources() == {_as_stored("203.0.113.9")}
 
 
 def test_a_request_that_did_not_come_through_the_proxy_cannot_name_its_own_address():
     wrapped = ProxyHeadersMiddleware(app_module.app, trusted_hosts="127.0.0.1")
     direct = TestClient(wrapped, client=("192.0.2.50", 40000))
     direct.post("/auth/login", json={"email": "nobody@example.com", "password": "not-the-password-1"}, headers={"X-Forwarded-For": "198.51.100.77"})
-    assert _sources() == {"192.0.2.50"}
+    assert _sources() == {_as_stored("192.0.2.50")}
 
 
 def test_nginx_appends_the_address_it_saw_and_the_api_listens_on_loopback_only():

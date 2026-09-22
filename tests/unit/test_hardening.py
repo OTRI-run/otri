@@ -218,7 +218,8 @@ def test_export_contains_the_organizers_own_data_only():
     _, race_id = _create_event_and_race(headers)
     _upload_results(headers, race_id)
     _organizer_auth_headers("other@example.com")
-    response = client.get("/auth/export", headers=headers)
+    assert client.post("/auth/export", json={"password": "wrong password entirely"}, headers=headers).status_code == 400
+    response = client.post("/auth/export", json={"password": "correct horse battery"}, headers=headers)
     assert response.status_code == 200 and "attachment" in response.headers["content-disposition"]
     data = response.json()
     assert data["account"]["email"] == "export@example.com" and "password_hash" not in data["account"]

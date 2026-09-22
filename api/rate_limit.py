@@ -38,7 +38,15 @@ _hits: dict[str, deque[float]] = defaultdict(deque)
 
 
 def _client_key(request: Request | None) -> str:
-    return request.client.host if request is not None and request.client else "unknown"
+    """The caller, as this table may hold them: a digest, never the address itself.
+
+    The limiter only ever compares this value with itself, so it has no use for the address in the
+    clear -- and the rows outlive the request by up to two days, then thirty more in a nightly
+    backup. Email subjects were already hashed by subject_for for exactly this reason; addresses
+    were not. Same length and same shape, so the keys behave identically.
+    """
+    host = request.client.host if request is not None and request.client else "unknown"
+    return hashlib.sha256(host.encode("utf-8")).hexdigest()[:20]
 
 
 def _window_start(now: datetime, window_seconds: int = WINDOW_SECONDS) -> datetime:

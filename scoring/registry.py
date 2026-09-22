@@ -48,11 +48,20 @@ def available_scoring_models() -> list[ScoringModelInfo]:
     return list(_MODEL_INFO.values())
 
 
+class UnknownScoringModel(ValueError):
+    """A race is stored under a model this build no longer carries.
+
+    A ValueError still, so every caller that already handles one keeps working; named so that a
+    reader of a published race can tell this apart from a file it cannot score and answer with the
+    times instead of failing the page.
+    """
+
+
 def get_scoring_model_info(model_version: str) -> ScoringModelInfo:
     try:
         return _MODEL_INFO[model_version]
     except KeyError:
-        raise ValueError(f"unknown scoring model version {model_version!r}") from None
+        raise UnknownScoringModel(f"unknown scoring model version {model_version!r}") from None
 
 
 def score_race(

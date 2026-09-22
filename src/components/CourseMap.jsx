@@ -604,17 +604,24 @@ export default function CourseMap({ gpxText, measurement, styleUrl = DEFAULT_STY
               Steepness
             </button>
           )}
+          {/* A fixed label plus aria-pressed, like the Steepness button above. These used to be
+              labelled with the state you would get rather than the state you were in, and carried
+              no pressed state at all, so what the map was showing was conveyed by colour alone. */}
           <button
+            type="button"
+            aria-pressed={is3D}
             onClick={() => setIs3D((value) => !value)}
-            className="rounded-md bg-white/95 px-2.5 py-1.5 text-[10px] font-semibold text-slate-700 shadow-sm hover:bg-white"
+            className={`rounded-md px-2.5 py-1.5 text-[10px] font-semibold shadow-sm ${is3D ? 'bg-blue-600 text-white' : 'bg-white/95 text-slate-700 hover:bg-white'}`}
           >
-            {is3D ? '2D' : '3D'}
+            3D
           </button>
           <button
+            type="button"
+            aria-pressed={isSatellite}
             onClick={() => setIsSatellite((value) => !value)}
-            className="rounded-md bg-white/95 px-2.5 py-1.5 text-[10px] font-semibold text-slate-700 shadow-sm hover:bg-white"
+            className={`rounded-md px-2.5 py-1.5 text-[10px] font-semibold shadow-sm ${isSatellite ? 'bg-blue-600 text-white' : 'bg-white/95 text-slate-700 hover:bg-white'}`}
           >
-            {isSatellite ? 'Map' : 'Satellite'}
+            Satellite
           </button>
         </div>
       </div>

@@ -15,6 +15,7 @@ Rules:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 
@@ -23,6 +24,76 @@ class Migration:
     name: str
     sql: str
     note: str = ""
+    # Some backfills cannot be written in SQL because the rule they apply lives in Python -- the
+    # runner name key is one. `python` runs after `sql`, in the same transaction, and gets the
+    # connection. It must be as one-shot and as safe to re-run as the SQL beside it.
+    python: Callable[[object], None] | None = None
+
+
+def _rebuild_runner_identity(connection) -> None:
+    """Recompute every runner's name key, and give back their own profile to anyone who was merged
+    into somebody else's.
+
+    The old key encoded names to ASCII and dropped what would not fit, so a name written in any
+    script but Latin became the empty string and every such runner shared one key. Two people with
+    the same gender and the same year of birth then matched each other and their results were
+    collected under whichever profile existed first.
+
+    A result row keeps the name it was uploaded with, so the damage is undoable: each result is
+    re-keyed from its own name, and any that no longer belongs to the runner it points at is moved
+    to the right runner, creating one where there is none. Runners left with nothing go.
+    """
+    from .db import _insert_with_new_id, runner_name_key
+
+    runners = connection.execute("SELECT runner_id, family_name, first_name, gender FROM runners").fetchall()
+    keys: dict[str, str] = {}
+    for runner in runners:
+        key = runner_name_key(runner["family_name"], runner["first_name"], runner["gender"])
+        keys[runner["runner_id"]] = key
+        connection.execute("UPDATE runners SET name_key = %s WHERE runner_id = %s", (key, runner["runner_id"]))
+
+    results = connection.execute(
+        "SELECT id, runner_id, family_name, first_name, gender, birth_year, nationality FROM results "
+        "WHERE runner_id IS NOT NULL ORDER BY id"
+    ).fetchall()
+    # (key, birth_year) -> runner_id, so the rows of one person find each other as they are walked.
+    placed: dict[tuple[str, int | None], str] = {}
+    for result in results:
+        key = runner_name_key(result["family_name"], result["first_name"], result["gender"])
+        if keys.get(result["runner_id"]) == key:
+            placed.setdefault((key, result["birth_year"]), result["runner_id"])
+            continue
+        target = placed.get((key, result["birth_year"]))
+        if target is None:
+            row = connection.execute(
+                "SELECT runner_id FROM runners WHERE name_key = %s AND (birth_year = %s OR (birth_year IS NULL AND %s IS NULL)) "
+                "ORDER BY created_at, runner_id LIMIT 1",
+                (key, result["birth_year"], result["birth_year"]),
+            ).fetchone()
+            target = row["runner_id"] if row else None
+        if target is None:
+            target = _insert_with_new_id(
+                connection,
+                "run",
+                "INSERT INTO runners (runner_id, family_name, first_name, gender, birth_year, nationality, name_key) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (runner_id) DO NOTHING RETURNING runner_id",
+                (
+                    (result["family_name"] or "").strip(),
+                    (result["first_name"] or "").strip(),
+                    (result["gender"] or "").strip().upper()[:1] or "X",
+                    result["birth_year"],
+                    result["nationality"],
+                    key,
+                ),
+                nbytes=8,
+            )
+            keys[target] = key
+        placed[(key, result["birth_year"])] = target
+        connection.execute("UPDATE results SET runner_id = %s WHERE id = %s", (target, result["id"]))
+
+    connection.execute(
+        "DELETE FROM runners ru WHERE NOT EXISTS (SELECT 1 FROM results res WHERE res.runner_id = ru.runner_id)"
+    )
 
 
 MIGRATIONS: tuple[Migration, ...] = (
@@ -71,7 +142,7 @@ MIGRATIONS: tuple[Migration, ...] = (
         "0004_single_scoring_model",
         """
         UPDATE races SET scoring_version = '0.9.0-course-standard-domain-gated', updated_at = now()
-        WHERE scoring_version <> '0.9.0-course-standard-domain-gated';
+        WHERE scoring_version <> '0.9.0-course-standard-domain-gated' AND published_at IS NULL;
         ALTER TABLE races ALTER COLUMN scoring_version SET DEFAULT '0.9.0-course-standard-domain-gated';
         """,
         "The development builds before OTRI model 0.1.0 were removed from the code; a race stored under one "
@@ -81,7 +152,7 @@ MIGRATIONS: tuple[Migration, ...] = (
         "0005_vertical_build",
         """
         UPDATE races SET scoring_version = '0.10.0-course-standard-vertical', updated_at = now()
-        WHERE scoring_version <> '0.10.0-course-standard-vertical';
+        WHERE scoring_version <> '0.10.0-course-standard-vertical' AND published_at IS NULL;
         ALTER TABLE races ALTER COLUMN scoring_version SET DEFAULT '0.10.0-course-standard-vertical';
         """,
         "Build 0.10.0 scores uphill-only courses (OEP-003) and gives every other course the same score as "
@@ -106,6 +177,44 @@ MIGRATIONS: tuple[Migration, ...] = (
         DELETE FROM runners ru WHERE NOT EXISTS (SELECT 1 FROM results res WHERE res.runner_id = ru.runner_id);
         """,
         "Signing out revokes that token (digests, until they expire); sign-in codes leave the email log; runners left behind by replaced or deleted results go.",
+    ),
+    Migration(
+        "0008_forget_phone_numbers_and_spent_tokens",
+        """
+        UPDATE organizers SET phone = NULL WHERE phone IS NOT NULL;
+        DELETE FROM email_verification_tokens WHERE expires_at < now();
+        DELETE FROM password_reset_tokens WHERE expires_at < now() - INTERVAL '1 hour';
+        """,
+        "The profile form stopped asking for a phone number but the endpoint still accepted one, and it was in no policy: "
+        "existing numbers are emptied. One-time tokens that nobody can use any more are removed, which the code now also "
+        "does on the path that makes them; PRIVACY.md said reset tokens were deleted after two hours and nothing ever did.",
+    ),
+    Migration(
+        "0009_names_in_every_script",
+        """
+        DELETE FROM site_hits WHERE path LIKE '%?%';
+        """,
+        "A runner's name key kept only the characters that survived a conversion to ASCII, so every name written in a "
+        "script other than Latin became the empty string and those runners shared one key -- unrelated people could be "
+        "merged into one public profile and none of them could be found by searching. Keys are recomputed and merged "
+        "profiles are separated again from the names on their own result rows. Counted page addresses that still carry a "
+        "query string are dropped: the organizer app routes on the fragment, so a password-reset token could be counted.",
+        python=_rebuild_runner_identity,
+    ),
+    Migration(
+        "0010_keep_daily_visitor_counts",
+        """
+        CREATE TABLE IF NOT EXISTS site_visitor_days (
+            day DATE PRIMARY KEY,
+            visitors INTEGER NOT NULL DEFAULT 0
+        );
+        INSERT INTO site_visitor_days (day, visitors)
+        SELECT day, count(*)::int FROM site_visitors GROUP BY day
+        ON CONFLICT (day) DO UPDATE SET visitors = GREATEST(site_visitor_days.visitors, EXCLUDED.visitors);
+        """,
+        "The traffic report counted a day's visitors from the digests themselves, which are deleted after three days, so "
+        "every older day showed nobody beside a page count that was still there. The count is kept as it is made; the days "
+        "whose digests are still on file are backfilled, and older days stay at nobody because that number is not recoverable.",
     ),
 )
 
@@ -139,7 +248,10 @@ def apply_pending(connection) -> list[str]:
     applied: list[str] = []
     for migration in pending(connection):
         with connection.transaction():
-            connection.execute(migration.sql)
+            if migration.sql.strip():
+                connection.execute(migration.sql)
+            if migration.python is not None:
+                migration.python(connection)
             connection.execute("INSERT INTO schema_migrations (name) VALUES (%s)", (migration.name,))
         applied.append(migration.name)
     return applied

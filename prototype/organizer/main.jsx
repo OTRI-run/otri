@@ -7,7 +7,7 @@ import '../../src/styles.css'
 import Logo from '../../src/components/Logo'
 import GitHubMark from '../../src/components/GitHubMark'
 import UnitsMenu from '../../src/components/UnitsMenu'
-import { logoutOrganizer, getMe, resendVerification } from '../apiClient'
+import { logoutOrganizer, getMe, resendVerification, whenSessionEnds } from '../apiClient'
 import BuildBanner from '../../src/components/BuildBanner'
 import ErrorBoundary from '../../src/components/ErrorBoundary'
 import { initMonitoring } from '../../src/lib/monitoring'
@@ -17,7 +17,7 @@ import SharedNotFound from '../../src/components/NotFound'
 import { AccountPage } from './pages/Account'
 import { AdminEvents } from './pages/Admin'
 import PublishScoredRace from './pages/Publish'
-import { hasHandoff } from '../publishHandoff'
+import { forgetExpiredHandoff, hasHandoff } from '../publishHandoff'
 import { CheckEmail, Forgot, Login, Register, Reset, Verify, Welcome } from './pages/Auth'
 import { Dashboard, EventPage, NewEvent } from './pages/Events'
 import { CourseStep, NewRace, ResultsStep, ReviewStep } from './pages/Race'
@@ -221,13 +221,36 @@ function App() {
   const route = useRoute()
   useDocumentTitle(organizerTitle(route.path))
   const [session, setSession] = useState(() => readSession())
+  const [sessionEnded, setSessionEnded] = useState(false)
+
+  // A scored race left in this browser is deleted after a day, whoever opens OTRI next. It used to
+  // be deleted only by the code that reads it, so a visitor who never came back to /publish kept
+  // the results file -- with every finisher's name in it -- indefinitely.
+  useEffect(() => {
+    forgetExpiredHandoff()
+  }, [])
 
   function signIn(token, email, isAdmin = false) {
     writeSession()
     setSession({ token, email, isAdmin, pending: false })
   }
-  function signOut() {
-    logoutOrganizer()
+  // Signing out is the server ending the session, not the app forgetting it. The session lives in
+  // an HttpOnly cookie that no page script can clear, so if the request does not arrive the
+  // account is still open -- and the app used to look signed out anyway. Somebody on a shared
+  // computer would walk away from a live session. Now it waits for the answer and says so if it
+  // did not come.
+  const [signOutFailed, setSignOutFailed] = useState(null)
+  async function signOut() {
+    setSignOutFailed(null)
+    try {
+      await logoutOrganizer()
+    } catch (err) {
+      // A session that was already gone is a sign-out that succeeded.
+      if (err?.status !== 401) {
+        setSignOutFailed(err.message)
+        return
+      }
+    }
     clearSession()
     setSession(null)
     navigate('/', { replace: true })
@@ -255,6 +278,20 @@ function App() {
       })
   }, [signedIn])
 
+  // Any call, anywhere in the app, that comes back 401 means this session is over. Say so once and
+  // offer the way back, instead of leaving a signed-in header above a screen that cannot do
+  // anything. Reachable by the organizer's own actions: changing the password, turning two-factor
+  // on, or signing out everywhere in another tab all revoke every token the account has.
+  useEffect(() => {
+    whenSessionEnds(() => {
+      clearSession()
+      setSession(null)
+      setSessionEnded(true)
+      if (/^#\/(events|races|admin|account)/.test(window.location.hash)) navigate('/login', { replace: true })
+    })
+    return () => whenSessionEnds(null)
+  }, [])
+
   const needsAuth = /^\/(events|races|admin|account)/.test(route.path)
   useEffect(() => {
     // Read the live hash, not the rendered route: signing out navigates to '/' and clears the
@@ -270,16 +307,21 @@ function App() {
   useEffect(() => {
     if (!unconfirmed) return undefined
     const refresh = () => getMe('').then((me) => setSession((current) => (current ? { ...current, emailVerified: me.email_verified } : current))).catch(() => {})
+    // On focus, for the usual case: the link was opened in another tab. And on every route change,
+    // for the case it missed -- confirming in this tab and pressing Continue is an in-app hash
+    // navigation, which fires no focus event, so the amber "confirm your email" bar stayed up
+    // contradicting the success the visitor had just been shown.
+    refresh()
     window.addEventListener('focus', refresh)
     return () => window.removeEventListener('focus', refresh)
-  }, [unconfirmed])
+  }, [unconfirmed, route.path])
 
   let page = null
   let params
   if (route.path === '/') page = session ? null : <Welcome />
   else if (route.path === '/publish') page = <PublishScoredRace session={session} />
   else if (route.path === '/register') page = <Register onSignedIn={signIn} query={route.query} />
-  else if (route.path === '/login') page = <Login onSignedIn={signIn} afterReset={Boolean(route.query?.reset)} query={route.query} />
+  else if (route.path === '/login') page = <Login onSignedIn={signIn} afterReset={Boolean(route.query?.reset)} sessionEnded={sessionEnded} query={route.query} />
   else if (route.path === '/forgot') page = <Forgot />
   else if (route.path === '/check-email') page = <CheckEmail email={route.query.email} />
   else if (route.path === '/verify') page = <Verify token={route.query.token} />
@@ -299,8 +341,22 @@ function App() {
   return (
     <div id="top" className="flex min-h-screen max-w-full flex-col overflow-x-clip bg-[#f7f9fc] text-[#0b1220]">
       <Header session={session} onSignOut={signOut} />
+      {signOutFailed && (
+        <div className="border-b border-red-200 bg-red-50">
+          <div className={`${CONTAINER} flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-[13px] text-red-800`} role="alert">
+            <span className="min-w-0">
+              <strong className="font-semibold">You are still signed in.</strong> Signing out did not reach OTRI ({signOutFailed}), so this
+              session is still open. Try again, and do not leave this computer until it works.
+            </span>
+            <button type="button" onClick={signOut} className="font-semibold text-red-900 underline">
+              Sign out again
+            </button>
+          </div>
+        </div>
+      )}
       {unconfirmed && <ConfirmEmailBar email={session.email} />}
-      <main className="flex-1">{page}</main>
+      <a className="skip-link" href="#main">Skip to content</a>
+      <main id="main" className="flex-1">{page}</main>
       <Footer />
       <BackToTop />
       <BuildBanner />
@@ -310,7 +366,10 @@ function App() {
 
 // Signed in with an address nobody has confirmed yet: everything works except making a race public.
 function ConfirmEmailBar({ email }) {
+  // "Sent again" on a failure leaves somebody waiting for mail that was never sent -- and the
+  // usual reason to fail here is the per-address limit, i.e. pressing it too often.
   const [sent, setSent] = useState(false)
+  const [failed, setFailed] = useState(null)
   return (
     <div className="border-b border-amber-200 bg-amber-50">
       <div className={`${CONTAINER} flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-[13px] text-amber-900`}>
@@ -321,11 +380,15 @@ function ConfirmEmailBar({ email }) {
         <button
           type="button"
           disabled={sent}
-          onClick={() => resendVerification(email).then(() => setSent(true)).catch(() => setSent(true))}
+          onClick={() => {
+            setFailed(null)
+            resendVerification(email).then(() => setSent(true)).catch((err) => setFailed(err.message))
+          }}
           className="font-semibold text-amber-900 underline disabled:no-underline"
         >
           {sent ? 'Sent again' : 'Send it again'}
         </button>
+        {failed && <span role="alert" className="min-w-0 text-amber-800">{failed}</span>}
       </div>
     </div>
   )

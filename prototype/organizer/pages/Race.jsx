@@ -53,6 +53,24 @@ function RaceShell({ race, step, children }) {
   )
 }
 
+/** A published race's course and results are frozen, and the API refuses to replace either.
+ *  It used to refuse only after the whole file had been uploaded and, for a course, measured --
+ *  seconds of waiting to be told it was never possible. This says so before a file is chosen. */
+function FrozenWhilePublished({ what, raceId }) {
+  return (
+    <div className="mt-2">
+      <Notice kind="info" title={`This race is published, so its ${what} cannot be replaced.`}>
+        Every score on it is worked out from the course and the finish time, so changing either would restate a leaderboard
+        people have already read.{' '}
+        <Link to={`/races/${encodeURIComponent(raceId)}/review`} className="font-semibold text-blue-600">
+          Unpublish it first
+        </Link>
+        , change the {what}, then publish again.
+      </Notice>
+    </div>
+  )
+}
+
 function useRace(raceId) {
   const [race, setRace] = useState(null)
   const [error, setError] = useState(null)
@@ -278,7 +296,11 @@ export function CourseStep({ session, raceId }) {
         )}
 
         <Card>
-          <Eyebrow>{race.has_gpx ? 'REPLACE THE COURSE' : 'UPLOAD THE COURSE'}</Eyebrow>
+          <Eyebrow>{race.is_published ? 'COURSE ON FILE' : race.has_gpx ? 'REPLACE THE COURSE' : 'UPLOAD THE COURSE'}</Eyebrow>
+          {race.is_published ? (
+            <FrozenWhilePublished what="course" raceId={raceId} />
+          ) : (
+          <>
           <p className="mt-1 text-sm text-slate-600">
             Upload the official route as a GPX. OTRI measures it — every 10 m, elevation from verified terrain data where available — and shows how it compares with the figures you entered before anything is saved.
           </p>
@@ -295,6 +317,8 @@ export function CourseStep({ session, raceId }) {
             />
           </div>
           {error && <div className="mt-3"><Notice kind="error">{error}</Notice></div>}
+          </>
+          )}
         </Card>
 
         {analysis && (
@@ -533,7 +557,9 @@ export function ResultsStep({ session, raceId }) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <Eyebrow>RESULTS ON FILE</Eyebrow>
-                <p className="mt-1 text-sm text-slate-600">{existing.length} finishers scored. Uploading a new file replaces them.</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  {existing.length} finishers scored.{race.is_published ? ' They are public, so they stay as they are until the race is unpublished.' : ' Uploading a new file replaces them.'}
+                </p>
               </div>
               <Button onClick={() => navigate(`/races/${encodeURIComponent(raceId)}/review`)}>
                 Continue to review <ArrowRight size={15} />
@@ -543,7 +569,11 @@ export function ResultsStep({ session, raceId }) {
         )}
 
         <Card>
-          <Eyebrow>{existing?.length ? 'REPLACE RESULTS' : 'UPLOAD RESULTS'}</Eyebrow>
+          <Eyebrow>{race.is_published ? 'RESULTS ARE PUBLIC' : existing?.length ? 'REPLACE RESULTS' : 'UPLOAD RESULTS'}</Eyebrow>
+          {race.is_published ? (
+            <FrozenWhilePublished what="results" raceId={raceId} />
+          ) : (
+          <>
           <p className="mt-1 text-sm text-slate-600">
             Upload the export you already have: from your timing company, or the sheet you send to ITRA or UTMB.
             One file per race distance, CSV or Excel, one row per participant. It needs a finish time and a name;
@@ -601,6 +631,8 @@ export function ResultsStep({ session, raceId }) {
             {!file && <span className="text-xs text-slate-500">Choose a file first.</span>}
           </div>
           {error && <div id="results-error" className="mt-3 scroll-mt-24"><Notice kind="error">{error}</Notice></div>}
+          </>
+          )}
         </Card>
 
         <div id="results-outcome" className="scroll-mt-24 outline-none" aria-live="polite">
@@ -679,7 +711,13 @@ export function ReviewStep({ session, raceId }) {
   }
 
   async function remove() {
-    if (!window.confirm(`Delete "${race.course_name}" and its results? This cannot be undone.`)) return
+    // Deleting a published race is allowed and deliberate, but the confirm used to say only "this
+    // cannot be undone", which does not tell the organizer that a public leaderboard disappears
+    // and every runner on it loses those index points. The account-deletion card says as much.
+    const published = race.is_published
+      ? ' Its public leaderboard disappears, and every runner on it loses the index points it gave them.'
+      : ''
+    if (!window.confirm(`Delete "${race.course_name}" and its results?${published} This cannot be undone.`)) return
     setBusy(true)
     try {
       await deleteRace(raceId, session.token)
@@ -740,7 +778,8 @@ export function ReviewStep({ session, raceId }) {
                 <a href={`../#races/${encodeURIComponent(raceId)}`} className="font-semibold underline">
                   View the public page
                 </a>
-                . Unpublish at any time to take it down.
+                . Unpublishing takes the results down
+                {race.is_listed ? ', and the race stays listed: its page and course remain public until you also remove the listing.' : '.'}
               </Notice>
             ) : complete ? (
               <Notice kind="success" title="Ready to publish.">
@@ -759,8 +798,9 @@ export function ReviewStep({ session, raceId }) {
               <p className="mt-3 text-xs leading-5 text-slate-500">
                 {race.is_listed ? (
                   <>
-                    Listed: runners can find this race, see its course and ask for scores.{' '}
-                    <a href={`../#races/${encodeURIComponent(raceId)}`} className="font-semibold text-blue-600">View the listing</a>. Results stay private until you publish.
+                    <strong className="font-semibold text-amber-700">Still listed publicly.</strong> Runners can find this race and see its course; only
+                    the results are private. Press "Remove listing" to take the page down as well.{' '}
+                    <a href={`../#races/${encodeURIComponent(raceId)}`} className="font-semibold text-blue-600">View the listing</a>.
                   </>
                 ) : (
                   'Race day still ahead, or results not ready? List the race now: runners can find it, see the course and try target times, and results stay private until you publish.'
@@ -779,7 +819,7 @@ export function ReviewStep({ session, raceId }) {
                 <Eye size={15} /> Publish results
               </Button>
             )}
-            {!race.is_published && (
+            {(!race.is_published || race.is_listed) && (
               <Button variant="secondary" busy={publishing} onClick={() => toggleListed(!race.is_listed)}>
                 {race.is_listed ? <EyeOff size={15} /> : <Eye size={15} />} {race.is_listed ? 'Remove listing' : 'List without results'}
               </Button>

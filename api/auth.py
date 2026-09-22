@@ -264,10 +264,25 @@ def request_email_verification(email: str) -> tuple[Organizer, str] | None:
     return organizer, create_email_verification_token(organizer)
 
 
+def _sweep_spent_tokens(connection) -> None:
+    """Drop one-time tokens nobody can use any more.
+
+    On the path that makes them, which is the pattern oauth_states and identity_link_tokens already
+    follow: cleanup then scales with the thing that causes it and needs no timer. Both tables only
+    ever grew before -- a used reset token was marked, never removed -- so they kept a permanent
+    record of every time an account asked for recovery, which is not something worth keeping and
+    not what PRIVACY.md said happened. A reset token is kept for an hour past its expiry so that
+    somebody clicking a stale link is told it has expired rather than that it never existed.
+    """
+    connection.execute("DELETE FROM email_verification_tokens WHERE expires_at < now()")
+    connection.execute("DELETE FROM password_reset_tokens WHERE expires_at < now() - INTERVAL '1 hour'")
+
+
 def create_email_verification_token(organizer: Organizer) -> str:
     token = secrets.token_urlsafe(32)
     expires_at = datetime.now(timezone.utc) + _EMAIL_VERIFICATION_TTL
     with get_connection() as connection:
+        _sweep_spent_tokens(connection)
         connection.execute(
             "INSERT INTO email_verification_tokens (token, organizer_id, expires_at) VALUES (%s, %s, %s)",
             (_token_digest(token), organizer.id, expires_at),
@@ -305,6 +320,7 @@ def create_password_reset_token(email: str) -> tuple[Organizer, str] | None:
             return None
         token = secrets.token_urlsafe(32)
         expires_at = datetime.now(timezone.utc) + _PASSWORD_RESET_TTL
+        _sweep_spent_tokens(connection)
         connection.execute(
             "INSERT INTO password_reset_tokens (token, organizer_id, expires_at) VALUES (%s, %s, %s)",
             (_token_digest(token), row["id"], expires_at),
@@ -555,6 +571,12 @@ def revoke_all_sessions(organizer_id: int, password: str) -> None:
         _check_password(connection, organizer_id, password)
         connection.execute("UPDATE organizers SET session_version = session_version + 1 WHERE id = %s", (organizer_id,))
         _end_pending_access(connection, organizer_id)
+
+
+def confirm_password(organizer_id: int, password: str) -> None:
+    """Just the check, for an action that reads rather than writes (the data export)."""
+    with get_connection() as connection:
+        _check_password(connection, organizer_id, password)
 
 
 def delete_own_account(organizer_id: int, password: str) -> None:

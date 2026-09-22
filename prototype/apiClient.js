@@ -62,6 +62,35 @@ function checkUploadSize(body) {
   if (total > MAX_UPLOAD_BYTES) throw new Error('Together the files are larger than 20 MB, which is the limit for one upload. Export the course with fewer points (one every 5 to 10 m is plenty).')
 }
 
+/** The API's own sentence for a failure, not the bare status word.
+ *  Shared, so a download that goes wrong says "the password is not right" rather than
+ *  "Unauthorized" -- which is what the two hand-rolled fetches used to show. */
+async function errorFrom(response) {
+  let detail = FRIENDLY_STATUS[response.status] ?? response.statusText
+  try {
+    const body = await response.json()
+    detail = readableDetail(body.detail ?? body) ?? detail
+  } catch {
+    // no JSON body; keep the friendly status
+  }
+  const error = new Error(detail)
+  error.status = response.status
+  return error
+}
+
+// A session can end while the app is open: it expires, or the organizer changes their password,
+// turns two-factor on or signs out everywhere in another tab -- each of which revokes every token
+// the account has. Only the call made on load used to notice, so every screen afterwards showed a
+// signed-in header and failed each action with a raw API sentence in a red box, recoverable only
+// by reloading. Whoever is listening is told once, here, wherever the 401 came from.
+let onSessionEnded = null
+export function whenSessionEnds(handler) {
+  onSessionEnded = handler
+}
+
+// Signing in with the wrong password is a 401 too, and that is not a session ending.
+const SESSION_PATHS = /^\/auth\/(login|register|reset-password|request-password-reset|resend-verification|verify-email|2fa\/challenge|google\/)/
+
 async function request(path, options) {
   checkUploadSize(options?.body)
   let response
@@ -72,16 +101,8 @@ async function request(path, options) {
   }
 
   if (!response.ok) {
-    let detail = FRIENDLY_STATUS[response.status] ?? response.statusText
-    try {
-      const body = await response.json()
-      detail = readableDetail(body.detail ?? body) ?? detail
-    } catch {
-      // response had no JSON body; keep statusText
-    }
-    const error = new Error(detail)
-    error.status = response.status
-    throw error
+    if (response.status === 401 && !SESSION_PATHS.test(path)) onSessionEnded?.()
+    throw await errorFrom(response)
   }
   if (response.status === 204) return null
   return response.json()
@@ -92,8 +113,10 @@ function authHeaders(token, extra) {
   return token ? { Authorization: `Bearer ${token}`, ...extra } : { ...extra }
 }
 
+// Lets a failure through. Swallowing it meant the app could look signed out while the session
+// cookie -- which is HttpOnly, so no page script can clear it -- was still live on the server.
 export function logoutOrganizer() {
-  return request('/auth/logout', { method: 'POST' }).catch(() => null)
+  return request('/auth/logout', { method: 'POST' })
 }
 
 export function registerOrganizer(email, password, { acceptTerms = false, marketingOptIn = false } = {}) {
@@ -143,7 +166,10 @@ function sessionToken() {
   }
 }
 export function fetchNewsletterCsv() {
-  return fetch(`${API_BASE_URL}/admin/newsletter.csv`, withCredentials({ headers: authHeaders(sessionToken()) })).then((r) => (r.ok ? r.blob() : Promise.reject(new Error(r.statusText))))
+  return fetch(`${API_BASE_URL}/admin/newsletter.csv`, withCredentials({ headers: authHeaders(sessionToken()) })).then(async (r) => {
+    if (r.ok) return r.blob()
+    throw await errorFrom(r)
+  })
 }
 export function updateProfile(profile) {
   return request('/auth/profile', { method: 'PATCH', ...json(sessionToken(), profile) })
@@ -157,8 +183,22 @@ export function logoutEverywhere(password) {
 export function deleteOwnAccount(password) {
   return request('/auth/account', { method: 'DELETE', ...json(sessionToken(), { password }) })
 }
-export function fetchAccountExport() {
-  return fetch(`${API_BASE_URL}/auth/export`, withCredentials({ headers: authHeaders(sessionToken()) })).then((r) => (r.ok ? r.blob() : Promise.reject(new Error(r.statusText))))
+// Asks for the password, as deleting and signing out everywhere do: this hands over every result
+// row the account ever uploaded, and a session alone is what an attacker has.
+// The address a Google sign-in ended on. It is handed back in a short-lived cookie rather than in
+// the redirect's query string, so it stays out of access logs, browser history and the address bar.
+export function fetchPendingGoogleAddress() {
+  return request('/auth/google/pending', { method: 'GET' }).then((r) => r?.email || '').catch(() => '')
+}
+
+export function fetchAccountExport(password) {
+  return fetch(
+    `${API_BASE_URL}/auth/export`,
+    withCredentials({ method: 'POST', ...json(sessionToken(), { password }) }),
+  ).then(async (r) => {
+    if (r.ok) return r.blob()
+    throw await errorFrom(r)
+  })
 }
 // Changing how an account is protected asks for the password again: a session alone is not enough.
 export function totpSetup(password) {
@@ -464,7 +504,7 @@ export async function getRaceResults(raceId, token) {
   const response = await fetch(`${API_BASE_URL}/races/${encodeURIComponent(raceId)}/results`, withCredentials({ headers: authHeaders(token) }))
   if (response.status === 404) return []
   if (response.status === 403) throw new Error('This race has not been published by its organizer.')
-  if (!response.ok) throw new Error(response.statusText)
+  if (!response.ok) throw await errorFrom(response)
   return response.json()
 }
 

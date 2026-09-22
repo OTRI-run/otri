@@ -56,7 +56,7 @@ if not os.environ.get("OTRI_DEM_MANIFEST"):
     )
 from ingestion import result_records, validate_result_file
 from ingestion.records import RaceRecord
-from scoring import DEFAULT_SCORING_VERSION, available_scoring_models, estimate_score, get_scoring_model_info, score_race
+from scoring import DEFAULT_SCORING_VERSION, UnknownScoringModel, available_scoring_models, estimate_score, get_scoring_model_info, score_race
 from scoring.runner_index import IndexInput, compute_runner_index
 
 from . import db
@@ -118,6 +118,7 @@ from .schemas import (
     GpxAnalysis,
     IllustrativeEstimateOut,
     MessageResponse,
+    PendingAddressOut,
     ProvidersResponse,
     RegistrationResponse,
     OrganizerCredentials,
@@ -129,6 +130,7 @@ from .schemas import (
     RaceSummary,
     RaceUpdate,
     ResendVerificationRequest,
+    RunnerDeletedOut,
     RunnerScoreOut,
     ScoringModelOut,
     SubmissionResult,
@@ -724,6 +726,38 @@ def _clear_oauth_cookie(response: Response, request: Request) -> None:
     response.delete_cookie(_OAUTH_COOKIE, path="/auth/google", httponly=True, secure=_cookie_secure(request), samesite="lax")
 
 
+# The address a Google sign-in ended on, carried back to the app without putting it in a URL.
+#
+# It used to ride in the redirect's query string, which wrote it into this API's access log, the
+# static site's access log, the browser history and the address bar -- where, on a shared machine,
+# it stays in autocomplete. It is the visitor's own address and the page genuinely needs it, so it
+# travels in a short-lived cookie the app reads once instead. The same carrier serves the
+# second-factor screen, which had no address at all after a Google sign-in and so told people
+# "We emailed a 6-digit code to ."
+_OAUTH_HINT_COOKIE = "otri_oauth_hint"
+_OAUTH_HINT_PATH = "/auth/google"
+
+
+def _set_oauth_hint(response: Response, request: Request, email: str) -> None:
+    response.set_cookie(
+        _OAUTH_HINT_COOKIE,
+        email,
+        max_age=600,
+        httponly=True,
+        secure=_cookie_secure(request),
+        samesite="lax",  # same site as the app (api.otri.run and otri.run), so the app's fetch carries it
+        path=_OAUTH_HINT_PATH,
+    )
+
+
+@app.get("/auth/google/pending", response_model=PendingAddressOut)
+def google_pending_address(request: Request, response: Response) -> PendingAddressOut:
+    """The address the sign-in just ended on, read once and then forgotten."""
+    email = request.cookies.get(_OAUTH_HINT_COOKIE, "")
+    response.delete_cookie(_OAUTH_HINT_COOKIE, path=_OAUTH_HINT_PATH, httponly=True, secure=_cookie_secure(request), samesite="lax")
+    return PendingAddressOut(email=email[:320])
+
+
 @app.get("/auth/providers", response_model=ProvidersResponse)
 def auth_providers() -> ProvidersResponse:
     """Which outside sign-ins this deployment offers, so the app only shows buttons that work."""
@@ -796,7 +830,8 @@ def google_callback(request: Request, state: str = "", code: str = "", error: st
 
     if outcome.event == "no_account":
         # The visitor's own address, handed back so the register page can fill it in.
-        response = _app_redirect("/register", google="no-account", email=identity.email)
+        response = _app_redirect("/register", google="no-account")
+        _set_oauth_hint(response, request, identity.email)
         _clear_oauth_cookie(response, request)
         return response
 
@@ -821,7 +856,8 @@ def google_callback(request: Request, state: str = "", code: str = "", error: st
             f"{_api_base(request)}/auth/google/confirm-link?token={quote(token, safe='')}",
             unconfirmed=not outcome.organizer.email_verified,
         )
-        response = _app_redirect("/login", google="confirm-link", email=identity.email)
+        response = _app_redirect("/login", google="confirm-link")
+        _set_oauth_hint(response, request, identity.email)
         _clear_oauth_cookie(response, request)
         return response
 
@@ -835,6 +871,8 @@ def google_callback(request: Request, state: str = "", code: str = "", error: st
     if session.requires_2fa:
         # The account's own second factor still stands. The login page knows this screen.
         response = _app_redirect("/login", challenge=session.challenge, method=session.method or "")
+        # So the screen can say which address the code went to, as the password path does.
+        _set_oauth_hint(response, request, organizer.email)
     else:
         response = _app_redirect("/login", google="ok", event=outcome.event)
         _set_session_cookie(response, request, session.access_token, started.remember)
@@ -964,9 +1002,18 @@ def logout_everywhere(payload: PasswordConfirm, request: Request, response: Resp
     return MessageResponse(message="signed out everywhere")
 
 
-@app.get("/auth/export")
-def export_account(organizer: Organizer = Depends(require_organizer)) -> Response:
-    """Everything OTRI holds for this account, as a JSON download (PRIVACY.md, 'Your rights')."""
+@app.post("/auth/export")
+def export_account(payload: PasswordConfirm, request: Request, organizer: Organizer = Depends(require_organizer)) -> Response:
+    """Everything OTRI holds for this account, as a JSON download (PRIVACY.md, 'Your rights').
+
+    Asks for the password, like every other account action that matters. This was the one that did
+    not, and it is the one worth the most: in a single request it hands over the account, its
+    consents, and every result row the organizer ever uploaded -- each with a runner's name,
+    gender, year of birth and nationality. A session on its own should not be able to take all of
+    that, because a session is what an attacker has.
+    """
+    with _password_confirmed(request, organizer):
+        _auth.confirm_password(organizer.id, payload.password)
     data = db.export_organizer(organizer.id)
     data["exported_at"] = datetime.now(timezone.utc).isoformat()
     body = json.dumps(data, default=str, indent=2)
@@ -1108,12 +1155,24 @@ def confirm_password_reset(payload: PasswordResetConfirm, request: Request, resp
 # --- Events ------------------------------------------------------------------
 
 
+def _today() -> date:
+    """Today, in UTC, everywhere.
+
+    Everything stored is TIMESTAMPTZ written with datetime.now(timezone.utc), but the dates that
+    decide a runner's index "as of", an age category and whether a race is still upcoming came
+    from date.today(), which is the server's local date. On a box that is not on UTC those answers
+    drifted a day from the data they were worked out from, and were not reproducible from the
+    stored values alone.
+    """
+    return datetime.now(timezone.utc).date()
+
+
 def _listing_status(race: db.Race) -> str:
     if race.published_at is not None:
         return "scored"
     if race.listed_at is None:
         return "private"
-    return "upcoming" if race.event_date and race.event_date > date.today() else "awaiting_results"
+    return "upcoming" if race.event_date and race.event_date > _today() else "awaiting_results"
 
 
 def _race_summary(race: db.Race, finisher_count: int | None = None) -> RaceSummary:
@@ -1188,7 +1247,10 @@ def list_events(mine: bool = False, organizer: Organizer | None = Depends(_optio
         # prepared, a race not published yet) are theirs until they publish: not their names either.
         public_events = {race.event_id for race in db.list_races(published_only=True)}
         events = [event for event in events if event.event_id in public_events]
-    race_counts = db.count_races_by_event()
+    # The count follows the same rule as the list: an owner and an admin see everything, a stranger
+    # sees only what is public, so this number agrees with the event's own page either way.
+    own_view = mine or (organizer is not None and organizer.is_admin)
+    race_counts = db.count_races_by_event(public_only=not own_view)
     return [
         EventSummary(
             event_id=event.event_id,
@@ -1403,6 +1465,25 @@ def publish_race(race_id: str, organizer: Organizer = Depends(require_organizer)
     require_verified(organizer)
     if not db.has_results(race_id):
         raise HTTPException(status_code=422, detail="upload results before publishing")
+
+    # What is about to become public is scored once more, here, against the course as it stands
+    # now. The check on the way in is not enough on its own: a race scored from typed figures can
+    # have those figures edited afterwards, and the file that passed the check is then scored
+    # against a course nobody checked. Publishing is the moment the numbers stop being the
+    # organizer's own and start being somebody's runner index, so it is the right place to look.
+    try:
+        scored = _score_results(race, db.get_results(race_id))
+        _refuse_impossible_scores(scored)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    if not any(row.status == "finisher" for row in scored):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "This race has no finishers: every row on file is a DNF, DSQ or DNS. A race is "
+                "published so that runners can read a leaderboard, and there is nothing to read here."
+            ),
+        )
     _analytics.count("race_published")
     return _race_summary(db.set_race_published(race_id, True), db.count_results_by_race().get(race_id, 0))
 
@@ -1503,13 +1584,17 @@ def edit_race(race_id: str, payload: RaceUpdate, organizer: Organizer = Depends(
     if changes_scoring or (payload.distance_km is not None or payload.elevation_gain_m is not None):
         _require_not_public(race, "scoring model" if changes_scoring else "course figures")
 
-    updated = db.update_race(
-        race_id,
-        course_name=payload.course_name.strip() if payload.course_name else None,
-        distance_km=payload.distance_km,
-        elevation_gain_m=payload.elevation_gain_m,
-        scoring_version=payload.scoring_version,
-    )
+    try:
+        updated = db.update_race(
+            race_id,
+            course_name=payload.course_name.strip() if payload.course_name else None,
+            distance_km=payload.distance_km,
+            elevation_gain_m=payload.elevation_gain_m,
+            scoring_version=payload.scoring_version,
+        )
+    except db.RacePublished as error:
+        # Checked above too; the race was published between that read and this write.
+        raise _published_conflict("scoring model" if changes_scoring else "course figures") from error
     return _race_summary(updated)
 
 
@@ -1723,7 +1808,7 @@ async def admin_add_calculator_course(
 
     event = db.create_event(
         event_name.strip(),
-        event_date or date.today(),
+        event_date or _today(),
         organizer.id,
         location=(location or "").strip() or None,
         country=(country or "").strip().upper() or None,
@@ -1948,11 +2033,28 @@ def _scored_rows(race: RaceRecord, results: list, scoring_version: str, gpx_poin
     stateless `POST /score` are the same computation."""
     scores = score_race(race, results, model_version=scoring_version, gpx_points=gpx_points, measurement=measurement)
     # Finish times ride along for the public leaderboard; scores carry the runner's identity only.
-    by_key = {(str(r.rank), r.family_name, r.first_name): r for r in results}
+    #
+    # One source row per score, and the right one. A rank and a name are not unique -- the same
+    # runner is listed twice often enough in an exported file, and two people do share a name --
+    # so keying a dict on them collapsed the duplicates and every score in the group was handed
+    # the last row's finish time. A leaderboard then showed a time that its own score contradicted.
+    # Keep every row that shares a key, in the order the model scores them (it sorts finishers by
+    # time, then bib), and take them one at a time as their scores come back.
+    by_key: dict[tuple[str, str, str], list] = {}
+    for record in results:
+        by_key.setdefault((str(record.rank), record.family_name, record.first_name), []).append(record)
+    for group in by_key.values():
+        if len(group) > 1:
+            group.sort(key=lambda r: (r.finish_time_seconds if r.finish_time_seconds is not None else 0, r.bib_number or ""))
+    taken: dict[tuple[str, str, str], int] = {}
     out = []
     for score in scores:
         data = score.to_dict()
-        source = by_key.get((str(data.get("rank")), data.get("family_name"), data.get("first_name")))
+        key = (str(data.get("rank")), data.get("family_name"), data.get("first_name"))
+        group = by_key.get(key, [])
+        position = taken.get(key, 0)
+        source = group[position] if position < len(group) else None
+        taken[key] = position + 1
         out.append(
             RunnerScoreOut(
                 **data,
@@ -1982,6 +2084,31 @@ def _scored_rows(race: RaceRecord, results: list, scoring_version: str, gpx_poin
     return out
 
 
+def _unscored_rows(results: list, scoring_version: str) -> list[RunnerScoreOut]:
+    """A leaderboard with the times and no scores, for a race whose model this build has dropped."""
+    rows = [
+        RunnerScoreOut(
+            rank=result.rank,
+            bib_number=result.bib_number,
+            family_name=result.family_name,
+            first_name=result.first_name,
+            otri_score=None,
+            confidence="n/a",
+            scoring_version=scoring_version,
+            status="finisher" if result.is_finisher and result.finish_time_seconds is not None else str(result.rank),
+            quality_flags=["scoring_model_retired"],
+            finish_time_seconds=result.finish_time_seconds,
+            runner_id=result.runner_id,
+            gender=result.gender,
+            nationality=result.nationality,
+        )
+        for result in results
+        if not (isinstance(result.rank, str) and result.rank == "DNS")
+    ]
+    rows.sort(key=lambda row: (row.finish_time_seconds is None, row.finish_time_seconds or 0))
+    return rows
+
+
 @app.get("/races/{race_id}/results", response_model=list[RunnerScoreOut])
 def get_race_results(race_id: str, organizer: Organizer | None = Depends(_optional_organizer)) -> list[RunnerScoreOut]:
     race = _visible_race(race_id, organizer, results=True)
@@ -1991,6 +2118,12 @@ def get_race_results(race_id: str, organizer: Organizer | None = Depends(_option
 
     try:
         return _score_results(race, db.get_results(race_id))
+    except UnknownScoringModel:
+        # The model this race was scored under is not in this build. The race is public and people
+        # are reading it, so it answers with what does not depend on the model -- who finished and
+        # in what time -- rather than failing the page. A score that cannot be reproduced is not
+        # shown at all, which is the same rule the rest of the project follows.
+        return _unscored_rows(db.get_results(race_id), race.scoring_version)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
 
@@ -2108,10 +2241,20 @@ def _runner_profile(runner: db.Runner, as_of: date) -> RunnerProfile:
     scored_by_race = {race_id: _scored_rows_for_race(race_id) for race_id in {e["race_id"] for e in entries}}
     inputs = []
     details = {}
+    counted_races = set()
     for entry in entries:
         row = scored_by_race.get(entry["race_id"], {}).get(runner.runner_id)
         if row is None:
             continue  # DNF/DNS/DSQ rows have no score and no place in the index
+        # One race, one entry. A runner listed twice in the same file -- a duplicated row is an
+        # ordinary export artefact, and the validator lets it through as a warning -- used to put
+        # two entries into an index that counts the best three, so their best race crowded out
+        # their weaker ones and, with three copies, a single race could stop the index being
+        # provisional. Scoring already resolves a runner to one row per race; the index now counts
+        # that row once.
+        if entry["race_id"] in counted_races:
+            continue
+        counted_races.add(entry["race_id"])
         result_id = str(entry["result_id"])
         inputs.append(IndexInput(result_id=result_id, event_date=entry["event_date"], score=row.otri_score))
         details[result_id] = (entry["race_id"], row)
@@ -2176,15 +2319,22 @@ def _runner_summaries(runners: list[db.Runner], as_of: date) -> list[RunnerSumma
         if not any(entry["runner_id"] in wanted for entry in entries):
             continue
         scored = _scored_rows_for_race(race_id)
+        counted_here = set()  # one entry per runner per race, for the reason given in _runner_profile
         for entry in entries:
             row = scored.get(entry["runner_id"])
-            if row is not None and entry["runner_id"] in wanted:
+            if row is not None and entry["runner_id"] in wanted and entry["runner_id"] not in counted_here:
+                counted_here.add(entry["runner_id"])
                 inputs[entry["runner_id"]].append(IndexInput(result_id=str(entry["result_id"]), event_date=entry["event_date"], score=row.otri_score))
     out = []
     for runner in runners:
         index = compute_runner_index(inputs[runner.runner_id], as_of)
         out.append(RunnerSummary(**_runner_summary_fields(runner, as_of), index=index.index, provisional=index.provisional))
     return out
+
+
+# How many runners may be ranked in one request. Every runner with a published result is ranked so
+# that the table really is "by index"; this is the ceiling on that work, not a page size.
+RANKED_RUNNER_CEILING = int(os.environ.get("OTRI_RANKED_RUNNER_CEILING", "20000"))
 
 
 @app.get("/runners", response_model=list[RunnerSummary])
@@ -2195,12 +2345,20 @@ def list_runners(request: Request, q: str | None = None, limit: int = 100) -> li
     # Authorization header, which is one line of a script, so the limit lives here too.
     enforce_rate_limit(request, max_requests=30)
     enforce_rate_limit(request, max_requests=600, scope="runners-hour", window_seconds=3600)
-    as_of = date.today()
+    as_of = _today()
     limit = max(1, min(limit, 500))
-    runners = db.search_runners(q, limit) if q and q.strip() else db.list_runners(limit)
-    summaries = _runner_summaries(runners, as_of)
+    if q and q.strip():
+        # A search is its own thing: the caller asked for these names, not for a ranking.
+        summaries = _runner_summaries(db.search_runners(q, limit), as_of)
+        summaries.sort(key=lambda r: (r.index is None, -(r.index or 0), r.family_name, r.first_name))
+        return summaries
+    # Rank everybody, then take the top of the list. Ranking a slice that was cut in alphabetical
+    # order gave "the best runners" as "the best runners whose names come early". Scoring is the
+    # expensive part and it is done once per race either way, so the extra work here is the index
+    # arithmetic, which is pure and cheap. RANKED_RUNNER_CEILING keeps it from becoming unbounded.
+    summaries = _runner_summaries(db.list_runners(RANKED_RUNNER_CEILING), as_of)
     summaries.sort(key=lambda r: (r.index is None, -(r.index or 0), r.family_name, r.first_name))
-    return summaries
+    return summaries[:limit]
 
 
 @app.get("/runners/{runner_id}", response_model=RunnerProfile)
@@ -2208,7 +2366,7 @@ def get_runner(runner_id: str) -> RunnerProfile:
     runner = db.find_runner(runner_id)
     if runner is None:
         raise HTTPException(status_code=404, detail="no runner with published results has that id")
-    return _runner_profile(runner, date.today())
+    return _runner_profile(runner, _today())
 
 
 @app.post("/gpx/analyze", response_model=GpxAnalysis)
@@ -2339,7 +2497,7 @@ async def score_a_race(
             if not report.is_valid:
                 return ScoreRaceResult(is_valid=False, scores=[], **issues, **shared)
 
-            race = RaceRecord(race_id="unsaved", race_name=course.name or "Unsaved race", event_date=date.today(), course_name=course.name or "Course", distance_km=distance, elevation_gain_m=climb)
+            race = RaceRecord(race_id="unsaved", race_name=course.name or "Unsaved race", event_date=_today(), course_name=course.name or "Course", distance_km=distance, elevation_gain_m=climb)
             try:
                 scores = _scored_rows(race, result_records(paths[0]), version, points, measurement)
                 _refuse_impossible_scores(scores)
@@ -2515,7 +2673,13 @@ async def share_gpx(request: Request, file: UploadFile, name: str | None = Form(
             _SHARED_COURSE_DIR.mkdir(parents=True, exist_ok=True)
             # Make room first so the new file is never the one evicted, then trim again in case
             # another process wrote in between.
-            about = json.dumps({"name": clean_name, "filename": (file.filename or "")[:200], "created_at": datetime.now(timezone.utc).isoformat(), "source_metadata": source_metadata(text)})
+            # No source_metadata here, unlike a race upload. That record exists so a licence
+            # dispute about a published course can be answered; an anonymous share publishes
+            # nothing and belongs to nobody, so there is no question to answer and no reason to
+            # keep the author and device names out of somebody's own recorded run. PRIVACY.md
+            # promises those are not kept from a shared course, and the file itself is already
+            # reduced to its track. The original file name is not kept either: a name is often in it.
+            about = json.dumps({"name": clean_name, "created_at": datetime.now(timezone.utc).isoformat()})
             _evict_shared_courses(max(0, _SHARED_COURSE_MAX_TOTAL_BYTES - len(packed) - len(about.encode("utf-8"))))
             path.write_bytes(packed)
             _shared_course_meta_path(share_id).write_text(about, encoding="utf-8")
@@ -2877,10 +3041,16 @@ def admin_delete_report(report_id: int, organizer: Organizer = Depends(require_a
     return Response(status_code=204)
 
 
-@app.delete("/admin/runners/{runner_id}", status_code=204)
-def admin_delete_runner(runner_id: str, organizer: Organizer = Depends(require_admin)) -> Response:
-    """Remove a runner's profile and every result attached to it (a removal request, or a bad merge)."""
-    if db.find_runner(runner_id) is None and not db.delete_runner(runner_id):
+@app.delete("/admin/runners/{runner_id}", response_model=RunnerDeletedOut)
+def admin_delete_runner(runner_id: str, organizer: Organizer = Depends(require_admin)) -> RunnerDeletedOut:
+    """Remove a runner's profile and every result attached to it (a removal request, or a bad merge).
+
+    Answers with what it reached. A runner's results sit in other organizers' races, so this can
+    empty a published leaderboard that belongs to somebody who was never part of the request; those
+    races are unpublished rather than left advertising results that are gone, and they are named
+    here so the admin knows what else changed.
+    """
+    removed, unpublished = db.delete_runner(runner_id)
+    if removed == 0 and db.find_runner(runner_id) is None:
         raise HTTPException(status_code=404, detail="no runner with that id")
-    db.delete_runner(runner_id)
-    return Response(status_code=204)
+    return RunnerDeletedOut(results_removed=removed, unpublished_races=unpublished)

@@ -148,9 +148,21 @@ def test_a_new_organizer_is_created_from_the_register_page(monkeypatch):
 def test_the_register_page_without_the_terms_makes_no_account(monkeypatch):
     response = _sign_in(monkeypatch, email="new@gmail.com", sub="sub-1", intent="register", accept_terms=False)
     path, query = _landing(response)
-    assert path == "/register" and query["google"] == ["no-account"] and query["email"] == ["new@gmail.com"]
+    assert path == "/register" and query["google"] == ["no-account"]
+    # The address is not in the URL: it would be written into two access logs, the browser history
+    # and the address bar. It comes back once, from a short-lived cookie the register page reads.
+    assert "email" not in query
+    # It comes back through the API instead, once, for the page that fills the form in.
+    assert client.get("/auth/google/pending").json()["email"] == "new@gmail.com"
     assert "otri_session" not in response.cookies
     assert db.find_organizer_id("new@gmail.com") is None
+
+
+def test_the_address_a_sign_in_ended_on_is_handed_over_once(monkeypatch):
+    _sign_in(monkeypatch, email="once@gmail.com", sub="sub-once", intent="register", accept_terms=False)
+    assert client.get("/auth/google/pending").json()["email"] == "once@gmail.com"
+    # Read once: the response clears it, so a second reader of the same browser gets nothing.
+    assert client.get("/auth/google/pending").json()["email"] == ""
 
 
 def test_the_login_page_with_no_account_is_sent_to_register(monkeypatch):

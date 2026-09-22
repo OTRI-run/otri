@@ -15,6 +15,7 @@ from .model import RunnerScore, ScoreBreakdown
 from .registry import (
     DEFAULT_SCORING_VERSION,
     ScoringModelInfo,
+    UnknownScoringModel,
     available_scoring_models,
     get_scoring_model_info,
     score_race,
@@ -35,6 +36,7 @@ __all__ = [
     "EnduranceReference",
     "TerrainModel",
     "ScoringModelInfo",
+    "UnknownScoringModel",
     "ScoreEstimate",
     "EstimateBreakdown",
     "DISCLAIMER",

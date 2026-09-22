@@ -105,7 +105,7 @@ def test_a_sign_in_code_is_not_kept_in_the_email_log():
         subjects = [row["subject"] for row in connection.execute("SELECT subject FROM email_log WHERE to_email = 'code@example.com'").fetchall()]
     assert "Your OTRI sign-in code" in subjects
     assert not [subject for subject in subjects if any(character.isdigit() for character in subject)], subjects
-    export = client.get("/auth/export", headers=headers).text
+    export = client.post("/auth/export", json={"password": "correct horse battery"}, headers=headers).text
     assert "is your OTRI sign-in code" not in export
 
 

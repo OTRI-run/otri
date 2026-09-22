@@ -235,11 +235,21 @@ CREATE TABLE IF NOT EXISTS site_hits (
 
 -- One row per visitor per day, where the visitor is a digest of the day, the address and the
 -- browser (api/analytics.py). The address is never stored; the day is inside the digest, so two
--- days cannot be joined. Kept only while it is still today's, then dropped.
+-- days cannot be joined. Kept three days (api/analytics.py VISITOR_RETENTION), then dropped; the
+-- count they were counted into lives on in site_visitor_days.
 CREATE TABLE IF NOT EXISTS site_visitors (
     day DATE NOT NULL,
     visitor TEXT NOT NULL,
     PRIMARY KEY (day, visitor)
+);
+
+-- How many distinct visitors a day had, kept after the digests for that day are gone. The count is
+-- the thing worth keeping; the digests are only how it is arrived at, and they are deleted after
+-- three days. Reading the count straight from site_visitors meant every day older than that
+-- reported nobody, beside a page-view count that was still there.
+CREATE TABLE IF NOT EXISTS site_visitor_days (
+    day DATE PRIMARY KEY,
+    visitors INTEGER NOT NULL DEFAULT 0
 );
 
 -- The things worth counting besides pages: a score worked out, a race scored, an account made.
@@ -522,7 +532,10 @@ _RACE_JOIN_SELECT = """
            r.calculator_only, NULLIF(e.source_url, '') AS event_source_url,
            r.published_at, COALESCE(o.is_demo, FALSE) AS is_demo, r.created_at,
            e.event_name, e.event_date, e.organizer_id, e.location AS event_location, e.country AS event_country,
-           COALESCE(NULLIF(o.organization, ''), NULLIF(o.display_name, '')) AS organizer_display, NULLIF(o.website, '') AS organizer_website
+           -- The organization only. display_name is the organizer's own name, which the account
+           -- page promises is shown to admins and not published; falling back to it put a real
+           -- person's name on a public race page whenever they had left the organization blank.
+           NULLIF(o.organization, '') AS organizer_display, NULLIF(o.website, '') AS organizer_website
     FROM races r JOIN events e ON e.event_id = r.event_id
     LEFT JOIN organizers o ON o.id = e.organizer_id
 """
@@ -551,6 +564,31 @@ def fill_in_runner_details(connection, race_id: str) -> None:
         )
 
 
+def refresh_runner_details(connection, runner_ids: list[str]) -> None:
+    """Put a runner's year of birth and nationality back to what their *published* results say.
+
+    fill_in_runner_details copies these onto the shared runner record when a race is published, and
+    nothing used to take them off again. Unpublishing a race hid its result rows but left the year
+    of birth and nationality it had contributed on a profile the public can still read through the
+    runner's other races -- and correcting a file did not put a wrong value right either. Recomputed
+    from the published results that remain: if they agree on a value it stands, if they disagree or
+    say nothing it is cleared.
+    """
+    if not runner_ids:
+        return
+    for column in ("birth_year", "nationality"):
+        connection.execute(
+            f"UPDATE runners ru SET {column} = src.value FROM ("
+            f"  SELECT ids.runner_id, ("
+            f"    SELECT CASE WHEN COUNT(DISTINCT res.{column}) = 1 THEN MIN(res.{column}) END"
+            f"    FROM results res JOIN races ra ON ra.race_id = res.race_id AND ra.published_at IS NOT NULL"
+            f"    WHERE res.runner_id = ids.runner_id AND res.{column} IS NOT NULL"
+            f"  ) AS value FROM unnest(%s::text[]) AS ids(runner_id)"
+            f") src WHERE ru.runner_id = src.runner_id AND ru.{column} IS DISTINCT FROM src.value",
+            (runner_ids,),
+        )
+
+
 def set_race_published(race_id: str, published: bool) -> Race:
     """Publishing makes a race's results, course and measurement public; unpublishing hides them again."""
     with get_connection() as connection:
@@ -563,14 +601,25 @@ def set_race_published(race_id: str, published: bool) -> Race:
             raise NotFoundError(f"race {race_id!r} not found")
         if published:
             fill_in_runner_details(connection, race_id)
+        else:
+            # Taking a race down takes back what it contributed to the shared runner records, which
+            # the public can still read through the runner's other races.
+            refresh_runner_details(connection, _runner_ids(connection, "res.race_id = %s", (race_id,)))
     race = find_race(race_id)
     assert race is not None
     return race
 
 
-def count_races_by_event() -> dict[str, int]:
+def count_races_by_event(*, public_only: bool = False) -> dict[str, int]:
+    """How many races each event holds. `public_only` counts the ones a stranger could open.
+
+    The public list used to show the total, which told anyone reading how many distances an
+    organizer was still preparing -- the same thing the filter that builds the list exists to keep
+    private, and a number that disagreed with the event's own page.
+    """
+    where = " WHERE published_at IS NOT NULL OR listed_at IS NOT NULL" if public_only else ""
     with get_connection() as connection:
-        rows = connection.execute("SELECT event_id, COUNT(*) AS n FROM races GROUP BY event_id").fetchall()
+        rows = connection.execute(f"SELECT event_id, COUNT(*) AS n FROM races{where} GROUP BY event_id").fetchall()
     return {row["event_id"]: int(row["n"]) for row in rows}
 
 
@@ -628,8 +677,28 @@ def update_race(
     distance_km: float | None = None,
     elevation_gain_m: float | None = None,
     scoring_version: str | None = None,
+    allow_published: bool = False,
 ) -> Race:
+    """Change a race's name, its course figures or its scoring model.
+
+    The figures and the model are what a score means, so on a published race they are frozen for
+    the reason given in replace_results, and the refusal is here rather than only in the handler
+    that called this. The handler reads the race and then calls this on another connection; a
+    publish committing between those two was enough for the change to land on a race that is now
+    public. Inside this transaction the row is already held, so there is no such moment. Renaming
+    stays open either way: the freeze is on what the numbers mean, not on the words around them.
+    """
+    restated = distance_km is not None or elevation_gain_m is not None or scoring_version is not None
     with get_connection() as connection:
+        if restated and not allow_published:
+            current = connection.execute("SELECT published_at, scoring_version FROM races WHERE race_id = %s FOR UPDATE", (race_id,)).fetchone()
+            if current is None:
+                raise NotFoundError(f"race {race_id!r} not found")
+            # A scoring_version that is already what the race carries changes nothing, so it is not
+            # a restatement and should not be refused.
+            moves_model = scoring_version is not None and scoring_version != current["scoring_version"]
+            if current["published_at"] is not None and (distance_km is not None or elevation_gain_m is not None or moves_model):
+                raise RacePublished(race_id)
         cursor = connection.execute(
             "UPDATE races SET course_name = COALESCE(%s, course_name), "
             "distance_km = COALESCE(%s, distance_km), "
@@ -846,6 +915,11 @@ def replace_results(race_id: str, results: list[ResultRecord], *, max_rows_for_o
                         runner_id,
                     ),
                 )
+        # Replacing a file can correct a year of birth or a nationality, or remove one. Those are
+        # copied onto the shared runner record when a race is published, so they are recomputed
+        # here from whatever published results remain rather than left at the old value.
+        after = _runner_ids(connection, "res.race_id = %s", (race_id,))
+        refresh_runner_details(connection, sorted(set(before) | set(after)))
         _drop_runners_without_results(connection, before)
 
 
@@ -856,11 +930,23 @@ def replace_results(race_id: str, results: list[ResultRecord], *, max_rows_for_o
 
 
 def runner_name_key(family_name: str, first_name: str, gender: str) -> str:
+    """How two spellings of one runner's name are recognised as the same name.
+
+    Accents are folded, so Müller and Muller meet. Everything else is kept. This used to encode to
+    ASCII and drop whatever would not fit, which folded the accents by destroying the letter: a
+    Chinese, Thai, Japanese, Korean, Cyrillic, Greek or Arabic name lost every character and became
+    the empty string. Every runner whose name is written in one of those scripts then shared a
+    single key -- "||M" -- so unrelated people were candidates to be merged into one profile, and
+    searching for them could not work at all. Stripping combining marks rather than non-ASCII
+    characters folds the accents and leaves the name.
+    """
+
     def norm(text: str) -> str:
         import unicodedata
 
-        folded = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
-        return " ".join(folded.lower().split())
+        decomposed = unicodedata.normalize("NFKD", text)
+        without_marks = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+        return " ".join(unicodedata.normalize("NFKC", without_marks).casefold().split())
 
     return f"{norm(family_name)}|{norm(first_name)}|{(gender or '').strip().upper()[:1]}"
 
@@ -909,12 +995,18 @@ def _match_runner(connection, result: ResultRecord, *, fill_in: bool = True, sco
     of birth, without publishing anything. For a draft the match is kept and the runner left as
     they are; publishing the race completes them (`fill_in_runner_details`)."""
     key = runner_name_key(result.family_name, result.first_name, result.gender)
-    candidates = connection.execute(
-        "SELECT ru.runner_id, ru.birth_year, ru.nationality FROM runners ru WHERE ru.name_key = %s"
-        + (_VISIBLE_TO_SCOPE if scope is not None else "")
-        + " ORDER BY ru.created_at, ru.runner_id",
-        (key, list(scope.keep), scope.organizer_id) if scope is not None else (key,),
-    ).fetchall()
+    # A key with no name left in it identifies nobody, so it must not gather people together. This
+    # cannot happen for a name in any script any more, but a row whose name fields are blank or
+    # punctuation still gets a runner of its own rather than joining whoever came first.
+    if key.split("|", 2)[0] == "" and key.split("|", 2)[1] == "":
+        candidates = []
+    else:
+        candidates = connection.execute(
+            "SELECT ru.runner_id, ru.birth_year, ru.nationality FROM runners ru WHERE ru.name_key = %s"
+            + (_VISIBLE_TO_SCOPE if scope is not None else "")
+            + " ORDER BY ru.created_at, ru.runner_id",
+            (key, list(scope.keep), scope.organizer_id) if scope is not None else (key,),
+        ).fetchall()
     nat = result.nationality
 
     def compatible_nationality(row) -> bool:
@@ -1008,10 +1100,21 @@ def search_runners(query: str, limit: int = 25) -> list[Runner]:
     return [Runner(**row) for row in rows]
 
 
-def list_runners(limit: int = 500) -> list[Runner]:
-    """Every runner with a published result (for the runner index table; bounded)."""
+def list_runners(limit: int | None = None) -> list[Runner]:
+    """Every runner with a published result, for the runner index table.
+
+    `limit` is a ceiling on the work, not a page: the caller ranks what comes back, and a slice
+    taken here in alphabetical order would be ranked among itself. The table used to ask for 500
+    ordered by family name, so with more runners than that the "by index" ranking was the ranking
+    of whoever came first in the alphabet, and the strongest runner in the world could be missing
+    from it because their name begins with W.
+    """
+    sql = _RUNNER_SELECT + " GROUP BY ru.runner_id ORDER BY ru.family_name, ru.first_name"
     with get_connection() as connection:
-        rows = connection.execute(_RUNNER_SELECT + " GROUP BY ru.runner_id ORDER BY ru.family_name, ru.first_name LIMIT %s", (limit,)).fetchall()
+        if limit is None:
+            rows = connection.execute(sql).fetchall()
+        else:
+            rows = connection.execute(sql + " LIMIT %s", (limit,)).fetchall()
     return [Runner(**row) for row in rows]
 
 
@@ -1054,7 +1157,11 @@ def published_results_grouped_by_race(runner_ids: list[str] | None = None) -> di
 
 # --- Organizer profile ---------------------------------------------------------
 
-PROFILE_FIELDS = ("display_name", "organization", "website", "phone", "country", "bio", "marketing_opt_in")
+# No phone number. The form stopped asking for one, but the column, the schema and the endpoint
+# all kept accepting and returning it, so any client could still put one there -- data OTRI has no
+# use for, does not show anywhere, and does not list in PRIVACY.md. The column stays for now so
+# nothing breaks on an older row; a migration empties it.
+PROFILE_FIELDS = ("display_name", "organization", "website", "country", "bio", "marketing_opt_in")
 
 
 def get_profile(organizer_id: int) -> dict:
@@ -1128,7 +1235,14 @@ def list_reports(status: str | None = "open") -> list[Report]:
         if status:
             rows = connection.execute(f"SELECT {_REPORT_COLUMNS} FROM reports WHERE status = %s ORDER BY created_at DESC", (status,)).fetchall()
         else:
-            rows = connection.execute(f"SELECT {_REPORT_COLUMNS} FROM reports ORDER BY (status = 'open') DESC, created_at DESC").fetchall()
+            # Open first, then removal requests before anything else: somebody asking for their
+            # own data to come down is waiting on a person, and the form tells them this is how it
+            # is ordered. Within that, oldest open first, so nothing is left at the bottom forever.
+            rows = connection.execute(
+                f"SELECT {_REPORT_COLUMNS} FROM reports "
+                "ORDER BY (status = 'open') DESC, (reason = 'remove_my_data') DESC, "
+                "CASE WHEN status = 'open' THEN created_at END ASC, created_at DESC"
+            ).fetchall()
     return [Report(**row) for row in rows]
 
 
@@ -1153,12 +1267,36 @@ def delete_report(report_id: int) -> bool:
         return connection.execute("DELETE FROM reports WHERE id = %s", (report_id,)).rowcount > 0
 
 
-def delete_runner(runner_id: str) -> int:
-    """Remove a runner and every result attached to them. Returns how many results went."""
+def delete_runner(runner_id: str) -> tuple[int, list[str]]:
+    """Remove a runner and every result attached to them.
+
+    Returns how many results went and which published races were taken down because of it.
+
+    A runner's results are spread across whatever races they ran, which belong to whatever
+    organizers held them. Removing the runner therefore reaches into other people's published
+    leaderboards, and a race that loses its last finisher this way used to stay public, still
+    listed as scored, with a results page that answered 404. A race with nobody left in it is
+    unpublished here, in the same transaction, so the public record is never left saying something
+    that is not so. The race itself and its course are untouched: the organizer can look at it,
+    see what is left and decide.
+    """
     with get_connection() as connection:
+        affected = [
+            row["race_id"]
+            for row in connection.execute("SELECT DISTINCT race_id FROM results WHERE runner_id = %s", (runner_id,)).fetchall()
+        ]
         removed = connection.execute("DELETE FROM results WHERE runner_id = %s", (runner_id,)).rowcount
         connection.execute("DELETE FROM runners WHERE runner_id = %s", (runner_id,))
-    return removed
+        unpublished: list[str] = []
+        if affected:
+            rows = connection.execute(
+                "UPDATE races SET published_at = NULL, updated_at = now() WHERE race_id = ANY(%s) AND published_at IS NOT NULL "
+                "AND NOT EXISTS (SELECT 1 FROM results res WHERE res.race_id = races.race_id AND res.finish_time_seconds IS NOT NULL) "
+                "RETURNING race_id",
+                (affected,),
+            ).fetchall()
+            unpublished = [row["race_id"] for row in rows]
+    return removed, unpublished
 
 
 # --- Admin: accounts and platform statistics ---------------------------------
@@ -1263,10 +1401,17 @@ def record_site_hit(*, day, path: str, source: str, zone: str, device: str, brow
             "ON CONFLICT (day, path, source, zone, device, browser) DO UPDATE SET hits = site_hits.hits + 1",
             (day, path, source, zone, device, browser),
         )
-        connection.execute(
-            "INSERT INTO site_visitors (day, visitor) VALUES (%s, %s) ON CONFLICT (day, visitor) DO NOTHING",
+        first_today = connection.execute(
+            "INSERT INTO site_visitors (day, visitor) VALUES (%s, %s) ON CONFLICT (day, visitor) DO NOTHING RETURNING 1",
             (day, visitor),
-        )
+        ).fetchone()
+        if first_today is not None:
+            # Counted as it happens, so the number outlives the digests it was counted from.
+            connection.execute(
+                "INSERT INTO site_visitor_days (day, visitors) VALUES (%s, 1) "
+                "ON CONFLICT (day) DO UPDATE SET visitors = site_visitor_days.visitors + 1",
+                (day,),
+            )
         if random.random() < 0.01:  # opportunistic, as the rate limiter prunes its own
             connection.execute("DELETE FROM site_visitors WHERE day < %s - INTERVAL '3 days'", (day,))
 
@@ -1281,7 +1426,7 @@ def record_site_action(day, action: str) -> None:
 
 
 def prune_site_visitors(before) -> int:
-    """Yesterday's digests say nothing (the salt rotated with the date), so they go."""
+    """Old digests cannot be joined to any other day (the date is inside them), so they go."""
     with get_connection() as connection:
         return connection.execute("DELETE FROM site_visitors WHERE day < %s", (before,)).rowcount
 
@@ -1295,7 +1440,7 @@ def site_traffic(since) -> dict:
 
         by_day = rows(
             "SELECT h.day::text AS day, sum(h.hits)::int AS hits,"
-            " (SELECT count(*) FROM site_visitors v WHERE v.day = h.day)::int AS visitors"
+            " COALESCE((SELECT d.visitors FROM site_visitor_days d WHERE d.day = h.day), 0)::int AS visitors"
             " FROM site_hits h WHERE h.day >= %s GROUP BY h.day ORDER BY h.day"
         )
         return {
@@ -1363,7 +1508,7 @@ def export_organizer(organizer_id: int) -> dict:
     """Everything OTRI holds for one account, for the 'download my data' button."""
     with get_connection() as connection:
         account = connection.execute(
-            "SELECT email, created_at, email_verified, is_admin, display_name, organization, website, phone, country, bio, "
+            "SELECT email, created_at, email_verified, is_admin, display_name, organization, website, country, bio, "
             "terms_accepted_at, marketing_opt_in, marketing_opt_in_at, two_factor_method, password_changed_at "
             "FROM organizers WHERE id = %s",
             (organizer_id,),
@@ -1381,12 +1526,23 @@ def export_organizer(organizer_id: int) -> dict:
         emails = connection.execute(
             "SELECT subject, status, created_at FROM email_log WHERE to_email = %s ORDER BY created_at DESC LIMIT 200", (account["email"],)
         ).fetchall() if account else []
+        # A linked sign-in is held about the person and is nowhere else they can see it: the account
+        # page shows only that Google is connected, not which address or since when.
+        identities = connection.execute(
+            "SELECT provider, subject, email, created_at, last_used_at FROM organizer_identities WHERE organizer_id = %s ORDER BY created_at",
+            (organizer_id,),
+        ).fetchall()
     return {
         "account": dict(account) if account else None,
+        "linked_sign_ins": [dict(row) for row in identities],
         "events": [dict(row) for row in events],
         "races": [dict(row) for row in races],
         "results": [dict(row) for row in results],
         "emails_sent_to_you": [dict(row) for row in emails],
+        "not_included": (
+            "Security material is deliberately left out: the password hash, any authenticator secret "
+            "and the hashed recovery codes. Email history is the most recent 200 messages."
+        ),
     }
 
 

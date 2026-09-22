@@ -266,14 +266,17 @@ export default function FaqPage({ initialQuery = '' }) {
 
         {groups.map((group) => (
           <div key={group.group} className="mt-10">
-            <p className="mb-3 font-mono text-[11px] tracking-[.08em] text-slate-500">{group.group.toUpperCase()}</p>
+            <h2 className="mb-3 font-mono text-[11px] font-normal tracking-[.08em] text-slate-600">{group.group.toUpperCase()}</h2>
             <div className="divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
               {group.items.map((item) => (
                 <details key={item.q} open={words.length > 0} className="group px-5 py-4 sm:px-6">
                   <summary className="cursor-pointer list-none text-[15px] font-semibold text-[#0b1220] marker:content-none">
+                    {/* The question is a heading, so the FAQ can be moved through by headings.
+                        A <summary> on its own is not one, which left ~30 questions unreachable
+                        that way. The h3 sits inside the summary so the disclosure still works. */}
                     <span className="flex items-start justify-between gap-4">
-                      <span>{item.q}</span>
-                      <span aria-hidden="true" className="mt-1 shrink-0 font-mono text-xs text-slate-400 transition group-open:rotate-45">
+                      <h3 className="m-0 text-[15px] font-semibold">{item.q}</h3>
+                      <span aria-hidden="true" className="mt-1 shrink-0 font-mono text-xs text-slate-500 transition group-open:rotate-45">
                         +
                       </span>
                     </span>

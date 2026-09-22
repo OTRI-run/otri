@@ -100,7 +100,7 @@ function download(name, type, content) {
 
 function FilePick({ icon: Icon, label, hint, accept, file, onFile, disabled }) {
   return (
-    <label className={`flex min-w-0 cursor-pointer items-center gap-3 rounded-xl border border-dashed px-4 py-3 transition ${file ? 'border-blue-300 bg-blue-50/50' : 'border-slate-300 bg-white hover:border-blue-300'} ${disabled ? 'opacity-60' : ''}`}>
+    <label className={`flex min-w-0 cursor-pointer items-center gap-3 rounded-xl border border-dashed px-4 py-3 transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 ${file ? 'border-blue-300 bg-blue-50/50' : 'border-slate-300 bg-white hover:border-blue-300'} ${disabled ? 'opacity-60' : ''}`}>
       <Icon size={18} className="shrink-0 text-blue-600" />
       <span className="min-w-0">
         <span className="block truncate text-sm font-semibold text-[#0b1220]">{file ? file.name : label}</span>
@@ -544,7 +544,7 @@ export default function ScoreRace() {
             </label>
 
             {error && (
-              <div id="score-error" role="alert" role="alert" className="mt-4 flex gap-2 rounded-xl border border-red-100 bg-red-50/70 px-3 py-2.5 text-sm text-red-900">
+              <div id="score-error" role="alert" className="mt-4 flex gap-2 rounded-xl border border-red-100 bg-red-50/70 px-3 py-2.5 text-sm text-red-900">
                 <XCircle size={16} className="mt-0.5 shrink-0" /> <span className="min-w-0 break-words">{error}</span>
               </div>
             )}

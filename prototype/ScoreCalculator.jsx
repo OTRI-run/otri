@@ -767,7 +767,7 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
             <label
               htmlFor="calc-gpx-input"
               {...dropProps}
-              className={`mt-4 flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center text-sm transition hover:border-blue-400 hover:bg-blue-50/40 ${dragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-slate-50'}`}
+              className={`mt-4 flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center text-sm transition hover:border-blue-400 hover:bg-blue-50/40 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 ${dragging ? 'border-blue-500 bg-blue-50' : 'border-slate-300 bg-slate-50'}`}
             >
               {loadingCourse ? (
                 <>
@@ -788,7 +788,9 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
                   </span>
                 </>
               )}
-              <input id="calc-gpx-input" type="file" accept=".gpx" onChange={onUpload} disabled={loadingCourse} className="hidden" />
+              {/* sr-only, not hidden: see prototype/organizer/ui.jsx. `hidden` is display:none, so
+                  the input left the tab order and there was no keyboard way to choose a course. */}
+              <input id="calc-gpx-input" type="file" accept=".gpx" onChange={onUpload} disabled={loadingCourse} className="sr-only" />
             </label>
             {(refused || loadError) && <p className="mt-3 text-xs leading-5 text-red-600" role="alert">{refused || loadError}</p>}
           </div>
@@ -999,6 +1001,8 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
         value={targetSeconds}
         onChange={(event) => onChange(Number(event.target.value))}
         aria-label="Target finish time"
+        // Without this a screen reader reads the raw value: "17700" where the page says 4:55:00.
+        aria-valuetext={formatHms(targetSeconds)}
         className="mt-4 w-full accent-blue-600"
       />
       <div className="mt-1 flex justify-between gap-3 font-mono text-[11px] tracking-[.04em] text-slate-500">
@@ -1286,9 +1290,14 @@ export default function ScoreCalculator({ embedded = false }) {
                   you how close that time would be to the best a human has ever run over that much ground.
                 </p>
                 <div className="mt-7 flex flex-col gap-2 sm:flex-row">
+                  {/* target="_self" because the embed page sets <base target="_blank"> so that
+                      links leave the frame. This one does not leave: it scrolls to the picker on
+                      this same page, and inheriting the base opened a new tab with a bare copy of
+                      the embed in it. The #races link below is already guarded the other way. */}
                   <a
                     className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 px-4 text-[13px] font-semibold text-white no-underline shadow-[0_10px_28px_rgba(37,99,235,.2)] hover:from-blue-800 hover:to-blue-600"
                     href="#calculator-course"
+                    target="_self"
                   >
                     Choose a course <Mountain size={15} />
                   </a>

@@ -35,7 +35,11 @@ from .auth import JWT_SECRET
 MAX_PATH = 120
 MAX_SOURCE = 80
 MAX_ZONE = 60
-VISITOR_RETENTION = timedelta(days=3)  # the salt has rotated by then; the rows say nothing
+# What rotates is the date inside the digest, not the secret beside it: a visitor hashes to
+# something different every day, so two days cannot be joined, which is the property that matters.
+# The secret itself is long-lived, so anyone holding it could still test a guess at "was this
+# address here on this day" for as long as a row survives -- which is why the rows are short-lived.
+VISITOR_RETENTION = timedelta(days=3)
 
 # The things worth counting besides page views. A fixed list: whatever the beacon sends that is
 # not one of these is dropped, so the table cannot be filled with invented names.
@@ -114,9 +118,14 @@ def clean_path(value: str) -> str:
         path = "/" + path
     if not _ALLOWED_PATH.match(path):
         return "/other"
+    # No query string, anywhere, ever. The organizer app routes on the fragment, so a page address
+    # here can read "#/reset?token=...": a live password-reset token, which would then sit in
+    # site_hits, be shown in the admin traffic report and never be pruned. Ids were rewritten to
+    # shapes and one parameter was dropped by name, which could never cover a secret nobody had
+    # thought of. Everything after the first "?" goes, in the path and in the fragment alike.
+    path = path.split("?", 1)[0]
     path = re.sub(r"(evt|race|run)-[0-9a-z]{4,}", r"\1-…", path)
     path = re.sub(r"\b[0-9a-f]{12,}\b", "…", path)
-    path = re.sub(r"[?&]t=\d+", "", path)
     return path[:MAX_PATH] or "/"
 
 

@@ -84,3 +84,26 @@ export function hasHandoff() {
     return false
   }
 }
+
+/** Delete a handed-over race that is past its day, whether or not anything asks for it.
+ *
+ *  PRIVACY.md says these two files are deleted after one day. Deletion only ever happened inside
+ *  loadHandoff, which the organizer app calls when it opens /publish -- and hasHandoff, which is
+ *  what the rest of the app asks, hides an expired race without deleting it. So a visitor who
+ *  scored a race, did not go on, and never opened /publish again kept the results file, with every
+ *  finisher's name in it, in their browser indefinitely. This runs on load, on both apps, so the
+ *  next visit to any OTRI page clears it. */
+export async function forgetExpiredHandoff() {
+  try {
+    const at = Number(localStorage.getItem(FLAG))
+    if (at && Date.now() - at > MAX_AGE_MS) {
+      await clearHandoff()
+      return
+    }
+    // The flag can be missing while the record is not (storage cleared unevenly, an older build).
+    const race = await run('readonly', (store) => store.get(KEY))
+    if (race && Date.now() - race.savedAt > MAX_AGE_MS) await clearHandoff()
+  } catch {
+    // no storage to clean
+  }
+}
