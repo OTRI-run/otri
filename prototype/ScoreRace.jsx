@@ -47,6 +47,14 @@ const ROLE_CLASS = {
   dnf: 'bg-amber-50 text-amber-700',
 }
 
+// The example race is a made-up course and 100 invented finishers. It exists to show how the tool
+// works, so it must not become a public race page: the invitation below stays, and its button is
+// off until real files are scored. Recognised by the two file names, so downloading the example
+// and uploading it again is caught as well.
+function isExampleRace(files) {
+  return Boolean(files) && files.gpx?.name === EXAMPLE.course.file && files.results?.name === EXAMPLE.results.file
+}
+
 async function fetchExample({ url, file, type }) {
   const response = await fetch(url)
   if (!response.ok) throw new Error(`Could not load ${file} (HTTP ${response.status}).`)
@@ -342,11 +350,11 @@ function ExampleRows({ onClose }) {
 // The invitation after a race has been scored: keep it. The two files go to the organizer app
 // through this browser (publishHandoff.js), so nothing is uploaded twice and nothing is sent
 // anywhere until the organizer is signed in.
-function PublishInvite({ result, files }) {
+function PublishInvite({ result, files, isExample = false }) {
   const [state, setState] = useState('idle') // idle | saving | failed
-  const finishers = result.summary.finishers
 
   async function publish() {
+    if (isExample) return
     setState('saving')
     try {
       await saveHandoff({ gpx: files.gpx, results: files.results, raceName: result.course.name ?? '', course: { distance_km: result.course.distance_km, elevation_gain_m: result.course.elevation_gain_m }, summary: result.summary })
@@ -381,10 +389,23 @@ function PublishInvite({ result, files }) {
           </ul>
         </div>
         <div className="min-w-0 lg:w-[270px]">
-          <button type="button" onClick={publish} disabled={state === 'saving'} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#0b1220] shadow-lg transition hover:bg-blue-50 disabled:opacity-70">
+          <button
+            type="button"
+            onClick={publish}
+            disabled={state === 'saving' || isExample}
+            aria-describedby={isExample ? 'publish-example-note' : undefined}
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-bold text-[#0b1220] shadow-lg transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-white"
+          >
             {state === 'saving' ? 'One moment…' : <>Publish this race <ArrowRight size={16} /></>}
           </button>
-          <p className="mt-3 text-center text-xs leading-5 text-blue-200">Two minutes: an email address, the race date, done. Nothing is public until you press Publish.</p>
+          {isExample ? (
+            <p id="publish-example-note" className="mt-3 text-center text-xs leading-5 text-blue-200">
+              This is the example race, so it cannot be published: its course and its hundred finishers are made up.{' '}
+              <a href="#score" className="font-semibold text-white underline">Score your own race</a> and this button turns on.
+            </p>
+          ) : (
+            <p className="mt-3 text-center text-xs leading-5 text-blue-200">Two minutes: an email address, the race date, done. Nothing is public until you press Publish.</p>
+          )}
           {state === 'failed' && (
             <p className="mt-2 text-center text-xs text-amber-200">
               This browser would not keep the files. <a href="organizer/" className="font-semibold text-white underline">Create the account</a> and add the two files there.
@@ -553,7 +574,7 @@ export default function ScoreRace() {
         )}
         {result?.is_valid && (
           <Scored result={result} gpxText={scoredFiles?.gpxText} fileStem={(result.course.name ?? results?.name ?? '').replace(/\.[a-z]+$/i, '').replace(/[^\w-]+/g, '-').toLowerCase()}>
-            {result.summary.finishers > 0 && scoredFiles && <PublishInvite result={result} files={scoredFiles} />}
+            {result.summary.finishers > 0 && scoredFiles && <PublishInvite result={result} files={scoredFiles} isExample={isExampleRace(scoredFiles)} />}
           </Scored>
         )}
 
