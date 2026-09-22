@@ -39,4 +39,27 @@ body{margin:0;font-synthesis:none;text-rendering:optimizeLegibility}
 /* Scores rising out of the calculator drawing (PageArt CalculatorArt): a slow drift up and a fade,
    looping. Still for anyone who has asked for reduced motion. */
 @keyframes otri-float{0%{transform:translateY(6px);opacity:0}25%{opacity:1}100%{transform:translateY(-10px);opacity:0}}
-@media (prefers-reduced-motion:no-preference){.otri-float{animation:otri-float 4.2s ease-out infinite}}
+/* The rest of the title drawings (PageArt): each moves the way its subject would. Slow, small,
+   and all of it off for anyone who has asked for reduced motion, so the still drawing is always
+   the fallback. Dash offsets are in user units, so a pattern advances by exactly one period. */
+@keyframes otri-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes otri-run{to{stroke-dashoffset:18}}
+@keyframes otri-travel{to{stroke-dashoffset:-20}}
+@keyframes otri-wave{0%,100%{transform:skewX(-4deg)}50%{transform:skewX(4deg)}}
+@keyframes otri-tick{to{transform:rotate(360deg)}}
+@keyframes otri-write{0%{stroke-dashoffset:50}35%,80%{stroke-dashoffset:0}100%{stroke-dashoffset:50}}
+@keyframes otri-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+@keyframes otri-flow{to{transform:translateX(-26px)}}
+@keyframes otri-pop{0%,100%{opacity:.3}50%{opacity:1}}
+@media (prefers-reduced-motion:no-preference){
+  .otri-float{animation:otri-float 4.2s ease-out infinite}
+  .otri-bob{animation:otri-bob 1.6s ease-in-out infinite}
+  .otri-run{animation:otri-run .9s linear infinite}
+  .otri-travel{animation:otri-travel 1.4s linear infinite}
+  .otri-wave{animation:otri-wave 2.4s ease-in-out infinite}
+  .otri-tick{animation:otri-tick 8s linear infinite}
+  .otri-write{animation:otri-write 4s ease-in-out infinite}
+  .otri-pulse{animation:otri-pulse 2.2s ease-in-out infinite}
+  .otri-flow{animation:otri-flow 1.3s linear infinite}
+  .otri-pop{animation:otri-pop 2.7s ease-in-out infinite}
+}
