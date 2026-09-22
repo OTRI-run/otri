@@ -25,7 +25,12 @@ EMAIL_FROM = os.environ.get("OTRI_EMAIL_FROM", "OTRI <noreply@otri.run>")
 EMAIL_REPLY_TO = os.environ.get("OTRI_EMAIL_REPLY_TO", "hello@otri.run")
 APP_BASE_URL = os.environ.get("OTRI_APP_BASE_URL", "http://localhost:5173")
 SITE_URL = os.environ.get("OTRI_SITE_URL", "https://otri.run")
-LOGO_URL = f"{SITE_URL}/email/otri-mark.png"
+# The mark is rendered from public/brand/otri-mark.svg by scripts/build_brand_png.mjs, like every
+# other icon, so a brand change reaches email too. The version is a cache-buster, not a path: mail
+# clients proxy and cache images by URL (Gmail keeps them for a long time), so without it a
+# recipient who had an older OTRI email could go on being served the retired logo. The file itself
+# keeps its name, so the images in mail already delivered do not break.
+LOGO_URL = f"{SITE_URL}/email/otri-mark.png?v=2"
 
 if RESEND_API_KEY:
     resend.api_key = RESEND_API_KEY
