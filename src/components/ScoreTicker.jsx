@@ -107,7 +107,7 @@ export default function ScoreTicker({ className = '' }) {
           ))}
         </div>
       </div>
-      <p className="mt-1.5 text-center font-mono text-[10px] uppercase tracking-[.12em] text-slate-400">Illustrative scores</p>
+      <p className="mt-1.5 text-center font-mono text-[10px] uppercase tracking-[.12em] text-slate-400">Illustrative example scores</p>
     </div>
   )
 }
