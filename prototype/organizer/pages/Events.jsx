@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { ArrowRight, ArrowUpRight, CalendarDays, Plus } from 'lucide-react'
 import { createEvent, deleteEvent, getEvent, listMyEvents, updateEvent } from '../../apiClient'
 import { Link, navigate } from '../router'
-import { hasHandoff } from '../../publishHandoff'
+import { loadHandoff } from '../../publishHandoff'
 import { formatDistance, formatElevation, useUnits } from '../../../src/lib/units'
 import { Button, Card, EmptyState, Eyebrow, Field, Gradient, Notice, Page, StatusChip, formatDate, inputClass, raceStatus } from '../ui'
 import CountrySelect from '../../../src/components/CountrySelect'
@@ -12,14 +12,22 @@ import PlaceNameList, { PLACE_NAME_LIST } from '../../../src/components/PlaceNam
 import { countryOfPlace } from '../../../src/lib/placeNames'
 
 export function Dashboard({ session }) {
+  const units = useUnits()
   const [events, setEvents] = useState(null)
   const [error, setError] = useState(null)
+  // A race scored on the public site and handed to this browser (publishHandoff.js). The full
+  // record, not the bare "something is waiting" flag, so the reminder can name the race.
+  const [waiting, setWaiting] = useState(null)
 
   useEffect(() => {
     listMyEvents(session.token)
       .then(setEvents)
       .catch((err) => setError(err.message))
   }, [session.token])
+
+  useEffect(() => {
+    loadHandoff().then(setWaiting).catch(() => setWaiting(null))
+  }, [])
 
   return (
     <Page
@@ -43,10 +51,10 @@ export function Dashboard({ session }) {
           </Button>
         )}
       </div>
-      {hasHandoff() && (
+      {waiting && (
         <div className="mt-4">
-          <Notice kind="success" title="The race you scored is waiting.">
-            The course and the results are in this browser.{' '}
+          <Notice kind="success" title={`“${waiting.raceName || 'Your scored race'}” is waiting to be published.`}>
+            The course and the results are in this browser: {formatDistance(waiting.course.distance_km, units)} · {formatElevation(waiting.course.elevation_gain_m, units, { sign: '+' })} · {waiting.summary?.finishers ?? 0} finisher{(waiting.summary?.finishers ?? 0) === 1 ? '' : 's'} scored.{' '}
             <Link to="/publish" className="font-semibold text-emerald-900 underline">Build its race page</Link>
           </Notice>
         </div>
