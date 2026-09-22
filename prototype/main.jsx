@@ -2,7 +2,7 @@ import RankBadge from '../src/components/RankBadge'
 import { fitFontSize } from '../src/lib/fitText'
 import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowLeft, ArrowUpRight, Mail, Download, Upload, Play, ArrowRight, Calculator as CalculatorIcon } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, Mail, Download, Upload, Play, ArrowRight, Share2, Calculator as CalculatorIcon } from 'lucide-react'
 import { countryName } from '../src/components/CountrySelect'
 import Logo from '../src/components/Logo'
 import GitHubMark from '../src/components/GitHubMark'
@@ -71,8 +71,8 @@ function parseHash(hash) {
   if (path === 'score' || path.startsWith('score?')) return { tab: 'score', raceId: null }
   if (path === 'api' || path.startsWith('api?')) return { tab: 'api', raceId: null }
   if (path === 'media' || path === 'brand' || path === 'press') return { tab: 'media', raceId: null }
-  const raceMatch = path.match(/^races\/(.+)$/)
-  if (raceMatch) return { tab: 'races', raceId: decodeURIComponent(raceMatch[1]) }
+  const raceMatch = path.match(/^races\/([^?]+)(?:\?(.*))?$/)
+  if (raceMatch) return { tab: 'races', raceId: decodeURIComponent(raceMatch[1]), raceQuery: new URLSearchParams(raceMatch[2] || '') }
   if (path.startsWith('races')) return { tab: 'races', raceId: null }
   const runnerMatch = path.match(/^runners\/(.+)$/)
   if (runnerMatch) return { tab: 'runners', raceId: null, runnerId: decodeURIComponent(runnerMatch[1]) }
@@ -271,7 +271,333 @@ function formatHms(totalSeconds) {
   return `${h}:${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 }
 
-function Leaderboard({ raceId, onBack }) {
+// A leaderboard is read, not just displayed. A big race is thousands of rows, and the question a
+// visitor arrives with is usually narrow: where did I come, who won the women's race, who did not
+// finish. So the table can be searched, filtered, sorted and paged -- and the whole view travels in
+// the address, so a filtered leaderboard is a link an organizer can send.
+//
+// Rank order is the default and stays the default: it is the result the organizer published, and
+// nothing here reorders it until somebody asks.
+const PAGE_SIZES = [25, 50, 100, 250]
+const DEFAULT_PAGE_SIZE = 50
+
+const SORT_LABELS = { rank: 'rank', name: 'name', time: 'time', score: 'OTRI score' }
+
+export function defaultLeaderboardView(params) {
+  const asked = (key, fallback) => params?.get(key) ?? fallback
+  const perPage = Number(asked('per', DEFAULT_PAGE_SIZE))
+  return {
+    q: asked('q', ''),
+    gender: ['F', 'M'].includes(asked('g', '')) ? asked('g', '') : '',
+    status: ['all', 'finishers', 'dnf'].includes(asked('show', 'all')) ? asked('show', 'all') : 'all',
+    sort: Object.keys(SORT_LABELS).includes(asked('sort', 'rank')) ? asked('sort', 'rank') : 'rank',
+    // Each column has a way it is usually read, and a link that names a column without naming a
+    // direction means that way: highest score first, quickest time first, first place first.
+    direction: ['asc', 'desc'].includes(asked('dir', '')) ? asked('dir', '') : asked('sort', 'rank') === 'score' ? 'desc' : 'asc',
+    perPage: PAGE_SIZES.includes(perPage) || perPage === 0 ? perPage : DEFAULT_PAGE_SIZE,
+    page: Math.max(1, Number(asked('page', 1)) || 1),
+  }
+}
+
+/** Only what differs from the default goes in the address, so an ordinary link stays clean. */
+export function leaderboardQuery(view) {
+  const params = new URLSearchParams()
+  if (view.q.trim()) params.set('q', view.q.trim())
+  if (view.gender) params.set('g', view.gender)
+  if (view.status !== 'all') params.set('show', view.status)
+  if (view.sort !== 'rank') params.set('sort', view.sort)
+  if (view.direction !== (view.sort === 'score' ? 'desc' : 'asc')) params.set('dir', view.direction)
+  if (view.perPage !== DEFAULT_PAGE_SIZE) params.set('per', String(view.perPage))
+  if (view.page > 1) params.set('page', String(view.page))
+  const text = params.toString()
+  return text ? `?${text}` : ''
+}
+
+function sortRows(rows, key, direction) {
+  const sign = direction === 'asc' ? 1 : -1
+  // A row with no rank, time or score is not first or last by accident: the rows that have a value
+  // are ordered among themselves, and the ones that do not stay together at the end either way. A
+  // DNF has no finishing position, so it sorts with them whichever column is chosen.
+  const missing = (row) =>
+    key === 'time'
+      ? row.finish_time_seconds == null
+      : key === 'score'
+        ? row.otri_score == null
+        : key === 'rank'
+          ? typeof row.rank !== 'number'
+          : false
+  const value = (row) =>
+    key === 'time'
+      ? row.finish_time_seconds
+      : key === 'score'
+        ? row.otri_score
+        : key === 'rank'
+          ? row.rank
+          : `${row.family_name} ${row.first_name}`.toLowerCase()
+  return [...rows].sort((a, b) => {
+    if (missing(a) !== missing(b)) return missing(a) ? 1 : -1
+    if (missing(a)) return 0
+    const left = value(a)
+    const right = value(b)
+    if (left === right) return 0
+    return (left > right ? 1 : -1) * sign
+  })
+}
+
+function SortHeader({ id, label, view, onSort, className = '' }) {
+  const active = view.sort === id
+  return (
+    <th scope="col" className={className} aria-sort={active ? (view.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
+      <button
+        type="button"
+        onClick={() => onSort(id)}
+        className={`flex w-full items-center gap-1 px-4 py-3 text-left font-mono text-[10px] uppercase tracking-[.06em] ${active ? 'text-blue-700' : 'text-slate-600 hover:text-[#0b1220]'}`}
+      >
+        {label}
+        <span aria-hidden="true" className={active ? 'text-blue-700' : 'text-slate-400'}>
+          {active ? (view.direction === 'asc' ? '↑' : '↓') : '↕'}
+        </span>
+      </button>
+    </th>
+  )
+}
+
+function ResultsTable({ results, resultsError, view, onView }) {
+  const rows = results ?? []
+  const genders = useMemo(() => [...new Set(rows.map((row) => row.gender).filter(Boolean))].sort(), [rows])
+  const hasNonFinishers = useMemo(() => rows.some((row) => row.status !== 'finisher'), [rows])
+
+  const shown = useMemo(() => {
+    const needle = view.q.trim().toLowerCase()
+    const filtered = rows.filter((row) => {
+      if (view.gender && row.gender !== view.gender) return false
+      if (view.status === 'finishers' && row.status !== 'finisher') return false
+      if (view.status === 'dnf' && row.status === 'finisher') return false
+      if (needle && !`${row.first_name} ${row.family_name} ${row.bib_number ?? ''}`.toLowerCase().includes(needle)) return false
+      return true
+    })
+    return sortRows(filtered, view.sort, view.direction)
+  }, [rows, view.q, view.gender, view.status, view.sort, view.direction])
+
+  const perPage = view.perPage
+  const pages = perPage === 0 ? 1 : Math.max(1, Math.ceil(shown.length / perPage))
+  const page = Math.min(view.page, pages)
+  const from = perPage === 0 ? 0 : (page - 1) * perPage
+  const visible = perPage === 0 ? shown : shown.slice(from, from + perPage)
+
+  // Any change to what is being looked at starts again at the first page; paging keeps the rest.
+  const set = (changes) => onView({ ...view, page: 1, ...changes })
+  const onSort = (id) => {
+    // A first press sorts the way that column is usually read: quickest time first, highest score
+    // first, A to Z. Pressing the same column again turns it round.
+    if (view.sort === id) return set({ direction: view.direction === 'asc' ? 'desc' : 'asc' })
+    return set({ sort: id, direction: id === 'score' ? 'desc' : 'asc' })
+  }
+
+  const filtering = Boolean(view.q.trim() || view.gender || view.status !== 'all')
+  const worthControls = rows.length > 10 || filtering
+  const clear = () => set({ q: '', gender: '', status: 'all' })
+
+  return (
+    <>
+      {worthControls && (
+        <div className="mt-5 flex flex-wrap items-end gap-x-4 gap-y-3">
+          <div className="min-w-0 grow sm:max-w-xs">
+            <label htmlFor="lb-find" className="block font-mono text-[10px] uppercase tracking-[.06em] text-slate-600">
+              Find a runner
+            </label>
+            <input
+              id="lb-find"
+              type="search"
+              value={view.q}
+              onChange={(event) => set({ q: event.target.value })}
+              placeholder="Name or bib number"
+              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+          {genders.length > 1 && (
+            <div>
+              <span id="lb-gender" className="block font-mono text-[10px] uppercase tracking-[.06em] text-slate-600">
+                Category
+              </span>
+              <div role="group" aria-labelledby="lb-gender" className="mt-1 inline-flex overflow-hidden rounded-lg border border-slate-300 bg-white">
+                {[['', 'All'], ...genders.map((code) => [code, code === 'F' ? 'Women' : code === 'M' ? 'Men' : code])].map(([code, label]) => (
+                  <button
+                    key={code || 'all'}
+                    type="button"
+                    aria-pressed={view.gender === code}
+                    onClick={() => set({ gender: code })}
+                    className={`min-h-9 px-3 text-xs font-semibold ${view.gender === code ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-50'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {hasNonFinishers && (
+            <div>
+              <span id="lb-status" className="block font-mono text-[10px] uppercase tracking-[.06em] text-slate-600">
+                Show
+              </span>
+              <div role="group" aria-labelledby="lb-status" className="mt-1 inline-flex overflow-hidden rounded-lg border border-slate-300 bg-white">
+                {[['all', 'Everyone'], ['finishers', 'Finishers'], ['dnf', 'Did not finish']].map(([code, label]) => (
+                  <button
+                    key={code}
+                    type="button"
+                    aria-pressed={view.status === code}
+                    onClick={() => set({ status: code })}
+                    className={`min-h-9 px-3 text-xs font-semibold ${view.status === code ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-50'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {filtering && (
+            <button type="button" onClick={clear} className="min-h-9 text-xs font-semibold text-blue-600 hover:underline">
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+        <table className="w-full border-collapse text-left text-sm">
+          <caption className="sr-only">
+            Results, sorted by {SORT_LABELS[view.sort]}
+            {view.gender ? `, ${view.gender === 'F' ? 'women only' : view.gender === 'M' ? 'men only' : view.gender}` : ''}
+          </caption>
+          <thead>
+            <tr className="border-b border-slate-200 bg-slate-50">
+              <SortHeader id="rank" label="Rank" view={view} onSort={onSort} />
+              <SortHeader id="name" label="Runner" view={view} onSort={onSort} />
+              <th scope="col" className="hidden px-4 py-3 font-mono text-[10px] uppercase tracking-[.06em] text-slate-600 sm:table-cell">Country</th>
+              <th scope="col" className="hidden px-4 py-3 font-mono text-[10px] uppercase tracking-[.06em] text-slate-600 sm:table-cell">Gender</th>
+              <SortHeader id="time" label="Time" view={view} onSort={onSort} />
+              <SortHeader id="score" label="OTRI score" view={view} onSort={onSort} />
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((row) => (
+              <tr key={`${row.rank}-${row.bib_number ?? row.family_name}-${row.first_name}`} className={`border-b border-slate-100 last:border-0 hover:bg-blue-50/50 ${row.status !== 'finisher' ? 'bg-slate-50/60 text-slate-500' : 'even:bg-slate-50/70'}`}>
+                <td className="px-4 py-3 font-mono text-xs text-slate-500"><RankBadge rank={row.rank} /></td>
+                <td className="px-4 py-3 font-medium text-[#0b1220]">
+                  {row.runner_id ? (
+                    <a href={`#runners/${encodeURIComponent(row.runner_id)}`} className="no-underline hover:underline">
+                      {row.first_name} {row.family_name}
+                    </a>
+                  ) : (
+                    <>
+                      {row.first_name} {row.family_name}
+                    </>
+                  )}
+                  <span className="mt-0.5 flex items-center gap-2 font-mono text-[10px] font-normal text-slate-500 sm:hidden">
+                    {row.nationality && <Flag code={row.nationality} />}
+                    {row.gender && <span>{row.gender}</span>}
+                  </span>
+                </td>
+                <td className="hidden px-4 py-3 sm:table-cell">{row.nationality ? <Flag code={row.nationality} /> : <span className="text-slate-300">—</span>}</td>
+                <td className="hidden px-4 py-3 font-mono text-xs text-slate-500 sm:table-cell">{row.gender ?? '—'}</td>
+                <td className="px-4 py-3 font-mono text-xs text-slate-500">{formatHms(row.finish_time_seconds)}</td>
+                <td className="px-4 py-3 font-mono text-sm font-bold text-blue-600">{row.otri_score ?? <span className="text-slate-300">—</span>}</td>
+              </tr>
+            ))}
+            {results?.length === 0 && !resultsError && (
+              <tr>
+                <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">
+                  No results published yet.
+                </td>
+              </tr>
+            )}
+            {results?.length > 0 && shown.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">
+                  Nobody here matches that.{' '}
+                  <button type="button" onClick={clear} className="font-semibold text-blue-600 hover:underline">
+                    Clear the filters
+                  </button>
+                </td>
+              </tr>
+            )}
+            {/* The leaderboard alone failed; the race, its course and its map are above. */}
+            {resultsError && (
+              <tr>
+                <td colSpan={6} className="px-4 py-6 text-center text-sm text-amber-800" role="alert">
+                  The leaderboard could not be loaded. {resultsError.message}
+                </td>
+              </tr>
+            )}
+            {results === null && !resultsError && (
+              <tr>
+                <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500" role="status">
+                  Loading the leaderboard…
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {shown.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <p role="status" className="font-mono text-[10px] tracking-[.05em] text-slate-600">
+            {perPage === 0 || shown.length <= perPage
+              ? `${shown.length} ${shown.length === 1 ? 'runner' : 'runners'}`
+              : `${from + 1}–${Math.min(from + perPage, shown.length)} of ${shown.length}`}
+            {filtering && rows.length !== shown.length ? ` · filtered from ${rows.length}` : ''}
+          </p>
+          {(pages > 1 || rows.length > PAGE_SIZES[0]) && (
+            <div className="flex flex-wrap items-center gap-2">
+              <label htmlFor="lb-per-page" className="font-mono text-[10px] uppercase tracking-[.06em] text-slate-600">
+                Per page
+              </label>
+              <select
+                id="lb-per-page"
+                value={perPage}
+                onChange={(event) => set({ perPage: Number(event.target.value) })}
+                className="min-h-9 rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              >
+                {PAGE_SIZES.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+                <option value={0}>All</option>
+              </select>
+              {pages > 1 && (
+                <nav aria-label="Leaderboard pages" className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={page <= 1}
+                    onClick={() => onView({ ...view, page: page - 1 })}
+                    className="min-h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 hover:enabled:border-blue-300 disabled:opacity-40"
+                  >
+                    Previous
+                  </button>
+                  <span className="font-mono text-[10px] tracking-[.05em] text-slate-600">
+                    Page {page} of {pages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={page >= pages}
+                    onClick={() => onView({ ...view, page: page + 1 })}
+                    className="min-h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 hover:enabled:border-blue-300 disabled:opacity-40"
+                  >
+                    Next
+                  </button>
+                </nav>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  )
+}
+
+function Leaderboard({ raceId, onBack, query }) {
   const units = useUnits()
   const [race, setRace] = useState(null)
   const [results, setResults] = useState(null)
@@ -279,7 +605,14 @@ function Leaderboard({ raceId, onBack }) {
   const [error, setError] = useState(null)
   const [resultsError, setResultsError] = useState(null)
   const [sharing, setSharing] = useState(false)
+  const [view, setView] = useState(() => defaultLeaderboardView(query))
   useDocumentTitle(race ? `${race.event_name} · ${race.course_name} · OTRI` : 'Race · OTRI')
+
+  useEffect(() => {
+    const base = `#races/${encodeURIComponent(raceId)}`
+    const next = `${base}${leaderboardQuery(view)}`
+    if (window.location.hash !== next) window.history.replaceState(null, '', next)
+  }, [raceId, view])
 
   useEffect(() => {
     let cancelled = false
@@ -382,75 +715,10 @@ function Leaderboard({ raceId, onBack }) {
                 <strong className="text-[#0b1220]">Finish times only.</strong> {notScoredReason(results)}
               </p>
             )}
-            <div className="mt-6 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
-              <table className="w-full border-collapse text-left text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
-                    <th className="px-4 py-3">Rank</th>
-                    <th className="px-4 py-3">Runner</th>
-                    <th className="hidden px-4 py-3 sm:table-cell">Country</th>
-                    <th className="hidden px-4 py-3 sm:table-cell">Gender</th>
-                    <th className="px-4 py-3">Time</th>
-                    <th className="px-4 py-3">OTRI score</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(results ?? []).map((row) => (
-                    <tr key={`${row.rank}-${row.bib_number ?? row.family_name}-${row.first_name}`} className={`border-b border-slate-100 last:border-0 hover:bg-blue-50/50 ${row.status !== 'finisher' ? 'bg-slate-50/60 text-slate-500' : 'even:bg-slate-50/70'}`}>
-                      <td className="px-4 py-3 font-mono text-xs text-slate-500"><RankBadge rank={row.rank} /></td>
-                      <td className="px-4 py-3 font-medium text-[#0b1220]">
-                        {row.runner_id ? (
-                          <a href={`#runners/${encodeURIComponent(row.runner_id)}`} className="no-underline hover:underline">
-                            {row.first_name} {row.family_name}
-                          </a>
-                        ) : (
-                          <>
-                            {row.first_name} {row.family_name}
-                          </>
-                        )}
-                        <span className="mt-0.5 flex items-center gap-2 font-mono text-[10px] font-normal text-slate-500 sm:hidden">
-                          {row.nationality && <Flag code={row.nationality} />}
-                          {row.gender && <span>{row.gender}</span>}
-                        </span>
-                      </td>
-                      <td className="hidden px-4 py-3 sm:table-cell">{row.nationality ? <Flag code={row.nationality} /> : <span className="text-slate-300">—</span>}</td>
-                      <td className="hidden px-4 py-3 font-mono text-xs text-slate-500 sm:table-cell">{row.gender ?? '—'}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-slate-500">{formatHms(row.finish_time_seconds)}</td>
-                      <td className="px-4 py-3 font-mono text-sm font-bold text-blue-600">{row.otri_score ?? <span className="text-slate-300">—</span>}</td>
-                    </tr>
-                  ))}
-                  {results?.length === 0 && !resultsError && (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500">
-                        No results published yet.
-                      </td>
-                    </tr>
-                  )}
-                  {/* The leaderboard alone failed; the race, its course and its map are above. */}
-                  {resultsError && (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-sm text-amber-800" role="alert">
-                        The leaderboard could not be loaded. {resultsError.message}
-                      </td>
-                    </tr>
-                  )}
-                  {results === null && !resultsError && (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-sm text-slate-500" role="status">
-                        Loading the leaderboard…
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <p className="mt-3 font-mono text-[10px] tracking-[.05em] text-slate-600">
-              {modelLabel(race.scoring_version)} · depends only on the course and each runner's own finish time, never the field
-            </p>
             {results?.some((row) => row.status === 'finisher') && (
-              <div className="mt-5">
+              <div className="mt-6">
                 <button type="button" onClick={() => setSharing((open) => !open)} aria-expanded={sharing} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-xs font-semibold text-[#0b1220] hover:border-blue-300">
-                  {sharing ? 'Close sharing' : 'Share these results: image and post text'}
+                  <Share2 size={14} /> {sharing ? 'Close sharing' : 'Share these results: image and post text'}
                 </button>
                 {sharing && (
                   <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-5">
@@ -459,6 +727,10 @@ function Leaderboard({ raceId, onBack }) {
                 )}
               </div>
             )}
+            <ResultsTable results={results} resultsError={resultsError} view={view} onView={setView} />
+            <p className="mt-3 font-mono text-[10px] tracking-[.05em] text-slate-600">
+              {modelLabel(race.scoring_version)} · depends only on the course and each runner's own finish time, never the field
+            </p>
             </>
           )}
           <ReportForm kind="race" subjectId={race.race_id} subjectLabel={`${race.event_name} · ${race.course_name}`} prompt={race.is_published ? 'Wrong result, wrong course, or your name should not be here?' : 'Wrong details, or should this race not be listed?'} />
@@ -572,7 +844,7 @@ function racesHash(state) {
   return `#races${text ? `?${text}` : ''}`
 }
 
-function RacesPage({ raceId }) {
+function RacesPage({ raceId, raceQuery }) {
   const [races, setRaces] = useState(null)
   const [error, setError] = useState(null)
   const initial = useMemo(readRacesQuery, [])
@@ -642,7 +914,7 @@ function RacesPage({ raceId }) {
     <section className="bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] py-14 sm:py-20">
       <div className="mx-auto w-[min(1120px,calc(100%-28px))]">
         {raceId ? (
-          <Leaderboard raceId={raceId} onBack={() => navigate(address)} />
+          <Leaderboard raceId={raceId} query={raceQuery} onBack={() => navigate(address)} />
         ) : (
           <>
             <div className="grid min-w-0 items-end gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,.8fr)]">
@@ -794,7 +1066,7 @@ function App() {
       <a className="skip-link" href="#main">Skip to content</a>
       <main id="main">
         {route.tab === 'home' && <Home />}
-        {route.tab === 'races' && <RacesPage raceId={route.raceId} />}
+        {route.tab === 'races' && <RacesPage raceId={route.raceId} raceQuery={route.raceQuery} />}
         {route.tab === 'runners' && (route.runnerId ? <RunnerProfilePage runnerId={route.runnerId} onBack={() => navigate('#runners')} /> : <RunnersPage />)}
         {route.tab === 'calculator' && <ScoreCalculator />}
         {route.tab === 'score' && <ScoreRace />}
