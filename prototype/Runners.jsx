@@ -69,15 +69,17 @@ function RunnerRow({ runner, rank }) {
 }
 
 const PAGE_SIZE = 25
+const PAGE_SIZES = [25, 50, 100, 250]
 
 export function RunnersPage({ initialQuery = '' }) {
   const [query, setQuery] = useState(initialQuery)
   const [runners, setRunners] = useState(null)
   const [error, setError] = useState(null)
   const [gender, setGender] = useState('all')
-  // Long lists render a page at a time; search and the gender filter still cover everything loaded.
-  const [visible, setVisible] = useState(PAGE_SIZE)
-  useEffect(() => setVisible(PAGE_SIZE), [query, gender])
+  const [perPage, setPerPage] = useState(PAGE_SIZE)
+  // Long lists render a page at a time; search, the gender filter and a change of page size all start it over.
+  const [visible, setVisible] = useState(perPage)
+  useEffect(() => setVisible(perPage), [query, gender, perPage])
 
   useEffect(() => {
     let cancelled = false
@@ -154,10 +156,28 @@ export function RunnersPage({ initialQuery = '' }) {
             ))}
           </div>
         </div>
-        <p className="mt-2 font-mono text-[9px] tracking-[.08em] text-slate-400">
-          {query ? 'SEARCH RESULTS' : 'ALL RUNNERS WITH PUBLISHED RESULTS · BY INDEX'}
-          {runners ? ` · ${shown.length}` : ''}
-        </p>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+          <p className="font-mono text-[9px] tracking-[.08em] text-slate-400">
+            {query ? 'SEARCH RESULTS' : 'ALL RUNNERS WITH PUBLISHED RESULTS · BY INDEX'}
+            {runners ? ` · ${shown.length}` : ''}
+          </p>
+          {shown.length > PAGE_SIZES[0] && (
+            <label className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[.06em] text-slate-500">
+              Per page
+              <select
+                value={perPage}
+                onChange={(e) => setPerPage(Number(e.target.value))}
+                className="min-h-8 rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              >
+                {PAGE_SIZES.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
 
         {/* These arrive after the first paint, so without a live region nothing announces them and
             a screen-reader user is left on a page that simply never fills in. */}
@@ -194,10 +214,10 @@ export function RunnersPage({ initialQuery = '' }) {
             {shown.length > visible && (
               <button
                 type="button"
-                onClick={() => setVisible((n) => n + PAGE_SIZE)}
+                onClick={() => setVisible((n) => n + perPage)}
                 className="inline-flex min-h-[40px] items-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-[#0b1220] hover:border-blue-300"
               >
-                Show {Math.min(PAGE_SIZE, shown.length - visible)} more
+                Show {Math.min(perPage, shown.length - visible)} more
               </button>
             )}
           </div>
