@@ -158,7 +158,7 @@ export default function Home() {
             <h1 className="mt-5 max-w-[760px] text-[clamp(44px,7vw,84px)] font-bold leading-[1.08] tracking-[-.065em] text-[#0b1220]">
               The open score
               <br />
-              <em className="not-italic text-blue-700">for any trail race.</em>
+              <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">for any trail race.</em>
             </h1>
             {/* Plain sentences in one colour. Scattered bold and a second accent made this harder
                 to read, not easier. */}
@@ -195,14 +195,17 @@ export default function Home() {
               ].map(({ who, Icon, title, text, href, action, more, dark }) => (
                 <div
                   key={who}
+                  /* The light card is tinted, not white: the hero behind it is white, so a white
+                     card had no edge and the "I run" door was the one thing on the page that did
+                     not look like a door. */
                   className={`relative flex min-w-0 flex-col rounded-2xl border p-5 text-left ${
-                    dark ? 'border-[#17202c] bg-[#17202c]' : 'border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]'
+                    dark ? 'border-[#17202c] bg-[#17202c]' : 'border-blue-200 bg-[#eef4ff] shadow-[0_10px_28px_rgba(37,99,235,.08)]'
                   }`}
                 >
                   <span className="flex items-center gap-2.5">
                     <span
                       className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-                        dark ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'
+                        dark ? 'bg-white/10 text-white' : 'bg-white text-blue-700 shadow-[0_1px_2px_rgba(15,23,42,.06)]'
                       }`}
                     >
                       <Icon size={18} />
