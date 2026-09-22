@@ -58,13 +58,26 @@ export function PodiumArt({ className = '' }) {
   )
 }
 
-export function RouteArt({ className = '' }) {
+/** A finish line: two poles, the banner across them, and the checkered strip on the ground. */
+export function FinishArt({ className = '' }) {
   return (
     <svg viewBox="0 0 120 120" className={className} strokeWidth="6" {...STROKE}>
-      <path d="M16 102 C30 60 50 116 66 72 S98 34 104 18" strokeWidth="5" strokeDasharray="1 11" />
-      <circle cx="16" cy="102" r="7" fill="currentColor" />
-      <path d="M104 18 V4" />
-      <path d="M104 4 H122 L116 10 L122 16 H104 Z" fill="currentColor" transform="translate(-2 0)" />
+      <path d="M18 24 V110 M102 24 V110" />
+      <rect x="10" y="18" width="100" height="28" rx="5" />
+      <text x="60" y="38" textAnchor="middle" fontSize="15" fontWeight="800" letterSpacing="2" fill="currentColor" stroke="none" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">
+        FINISH
+      </text>
+      <g fill="currentColor" stroke="none">
+        <rect x="8" y="96" width="13" height="8" />
+        <rect x="34" y="96" width="13" height="8" />
+        <rect x="60" y="96" width="13" height="8" />
+        <rect x="86" y="96" width="13" height="8" />
+        <rect x="21" y="104" width="13" height="8" />
+        <rect x="47" y="104" width="13" height="8" />
+        <rect x="73" y="104" width="13" height="8" />
+        <rect x="99" y="104" width="13" height="8" />
+      </g>
+      <rect x="8" y="96" width="104" height="16" strokeWidth="3" />
     </svg>
   )
 }
@@ -75,6 +88,23 @@ export function QuestionArt({ className = '' }) {
       <path d="M22 20 H98 A12 12 0 0 1 110 32 V68 A12 12 0 0 1 98 80 H56 L36 100 V80 H22 A12 12 0 0 1 10 68 V32 A12 12 0 0 1 22 20 Z" />
       <path d="M48 42 A12 12 0 1 1 66 54 C61 57 60 60 60 64" />
       <circle cx="60" cy="72" r="3.5" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+/** A calculator with scores rising out of its screen, up to 1000. The digits drift upward slowly
+ *  (styles.css `.otri-float`), and hold still for anyone who has asked for reduced motion. */
+export function CalculatorArt({ className = '' }) {
+  return (
+    <svg viewBox="0 0 120 120" className={className} strokeWidth="6" {...STROKE}>
+      <rect x="24" y="40" width="64" height="76" rx="9" />
+      <rect x="34" y="50" width="44" height="16" rx="3" />
+      <path d="M38 78 H46 M56 78 H64 M74 78 H82 M38 92 H46 M56 92 H64 M74 92 H82 M38 106 H46 M56 106 H64 M74 106 H82" strokeWidth="5" />
+      <g fill="currentColor" stroke="none" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace" fontWeight="700">
+        <text x="30" y="34" fontSize="13" className="otri-float" style={{ animationDelay: '0s' }}>499</text>
+        <text x="66" y="24" fontSize="12" opacity=".7" className="otri-float" style={{ animationDelay: '-1.4s' }}>720</text>
+        <text x="46" y="12" fontSize="14" className="otri-float" style={{ animationDelay: '-2.8s' }}>1000</text>
+      </g>
     </svg>
   )
 }

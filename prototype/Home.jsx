@@ -217,7 +217,11 @@ export default function Home() {
                   </span>
                   {/* The drawing is a real column beside the buttons, not a background under them:
                       tucked behind, the buttons covered it and there was nothing to see. */}
-                  <div className="mt-5 flex items-end justify-between gap-4">
+                  {/* Buttons align to the top of the row, not the bottom: the link under a button
+                      is one line or two depending on the race name, and bottom-aligned that moved
+                      the button up and out of line with the other card's. The link reserves two
+                      lines of height, so the card stays the same size either way. */}
+                  <div className="mt-6 flex items-start justify-between gap-4">
                     <div className="flex min-w-0 flex-col items-start">
                       <a
                         className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-semibold no-underline ${
@@ -228,7 +232,7 @@ export default function Home() {
                         {action} <ArrowRight size={15} />
                       </a>
                       <a
-                        className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold no-underline hover:underline ${
+                        className={`mt-3 inline-flex min-h-10 items-start gap-1 text-xs font-semibold leading-5 no-underline hover:underline ${
                           dark ? 'text-slate-300' : 'text-blue-700'
                         }`}
                         href={more[1]}

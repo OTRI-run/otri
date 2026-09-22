@@ -9,7 +9,7 @@ import { ShareTarget } from './SharePanel'
 import NextSteps from './NextSteps'
 import ReportForm from './ReportForm'
 import { modelLabel, modelShort } from '../src/lib/model'
-import { SummitArt, TITLE_ART } from '../src/components/PageArt'
+import { CalculatorArt, SummitArt, TITLE_ART } from '../src/components/PageArt'
 import { RACE_NAMES } from '../src/lib/raceNames'
 import WhatWeScore from '../src/components/WhatWeScore'
 import useFileDrop from '../src/lib/useFileDrop'
@@ -701,15 +701,18 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
   return (
     <section className="border-b border-slate-200 bg-white py-10 sm:py-14">
       <div className={CONTAINER}>
-        <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
-          <div className="hidden font-mono text-xs text-blue-600 md:block">01</div>
+        {/* The same two-column header as the races page: see Runners.jsx. */}
+        <div className="grid min-w-0 items-end gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,.8fr)]">
           <div className="min-w-0">
             <Eyebrow className="mb-3">COURSE</Eyebrow>
-            <h2 className="text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
-              Start with
-              <br />
-              <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">the course.</span>
-            </h2>
+            <div className="flex items-center gap-4 sm:gap-6">
+              <CalculatorArt className={TITLE_ART} />
+              <h2 className="min-w-0 text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220]">
+                Start with
+                <br />
+                <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">the course.</span>
+              </h2>
+            </div>
           </div>
           <div className="min-w-0">
             <p className="text-sm leading-7 text-slate-500">

@@ -36,3 +36,7 @@ body{margin:0;font-synthesis:none;text-rendering:optimizeLegibility}
    y and g. Padding extends the paint; the negative margin gives the space back so nothing moves.
    Cloned so each wrapped line paints the whole gradient. Unlayered, so it wins over the utility. */
 .bg-clip-text{-webkit-box-decoration-break:clone;box-decoration-break:clone;padding-bottom:.14em;margin-bottom:-.14em}
+/* Scores rising out of the calculator drawing (PageArt CalculatorArt): a slow drift up and a fade,
+   looping. Still for anyone who has asked for reduced motion. */
+@keyframes otri-float{0%{transform:translateY(6px);opacity:0}25%{opacity:1}100%{transform:translateY(-10px);opacity:0}}
+@media (prefers-reduced-motion:no-preference){.otri-float{animation:otri-float 4.2s ease-out infinite}}

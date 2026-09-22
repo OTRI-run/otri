@@ -222,8 +222,8 @@ export default function FaqPage({ initialQuery = '' }) {
   return (
     <section className="bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] py-14 sm:py-20">
       <div className={CONTAINER}>
-        <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
-          <div className="font-mono text-xs text-blue-600">04</div>
+        {/* The same two-column header as the races page: see Runners.jsx. */}
+        <div className="grid min-w-0 items-end gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,.8fr)]">
           <div className="min-w-0">
             <p className="mb-3 font-mono text-[10px] tracking-[.08em] text-slate-500">QUESTIONS</p>
             <div className="flex items-center gap-4 sm:gap-6">
