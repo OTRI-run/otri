@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Flag from './Flag'
+import { Timer } from 'lucide-react'
 
 // A slow vertical ticker over the landing headline: one well-known performance at a time, with
 // its flag and the score it would carry. Decorative. Nothing here is a link, and it is hidden
@@ -10,18 +11,17 @@ import Flag from './Flag'
 // number shown beside a real athlete's name must not read as a claim about them.
 
 const SHOWCASE = [
-  { name: 'Louison Coiffet', country: 'FRA', race: 'Marathon du Mont-Blanc 90 km', year: 2026, score: 946 },
-  { name: 'Jim Walmsley', country: 'USA', race: 'Chianti Ultra Trail 120K', year: 2025, score: 935 },
-  { name: 'Ben Dhiman', country: 'USA', race: 'UTMB', year: 2026, score: 985 },
-  { name: 'Tom Evans', country: 'GBR', race: 'UTMB', year: 2025, score: 972 },
-  { name: 'Ruth Croft', country: 'NZL', race: 'UTMB', year: 2025, score: 840 },
-  { name: 'Jennifer Lichter', country: 'USA', race: 'Western States 100', year: 2026, score: 840 },
-  { name: 'Blandine L’Hirondel', country: 'FRA', race: 'UTMB', year: 2026, score: 843 },
+  { name: 'Louison Coiffet', country: 'FRA', race: 'Marathon du Mont-Blanc 90 km', year: 2026, time: '9:37:22', score: 946 },
+  { name: 'Jim Walmsley', country: 'USA', race: 'Chianti Ultra Trail 120K', year: 2025, time: '9:59:48', score: 935 },
+  { name: 'Ben Dhiman', country: 'USA', race: 'UTMB', year: 2026, time: '18:16:29', score: 985 },
+  { name: 'Tom Evans', country: 'GBR', race: 'UTMB', year: 2025, time: '19:18:58', score: 972 },
+  { name: 'Ruth Croft', country: 'NZL', race: 'UTMB', year: 2025, time: '22:56:23', score: 840 },
+  { name: 'Jennifer Lichter', country: 'USA', race: 'Western States 100', year: 2026, time: '15:28:05', score: 840 },
+  { name: 'Blandine L’Hirondel', country: 'FRA', race: 'UTMB', year: 2026, time: '21:54:49', score: 843 },
 ]
 
-// Two lines per row, name over race, at every width. One line truncated the race away on a phone
-// and needed a box too wide for the column on a desktop; two short lines fit a narrow card.
-const ROW_PX = 60
+// Three lines keep the event and time-to-points comparison within the existing narrow card.
+const ROW_PX = 96
 const DWELL_MS = 3200
 const SLIDE_MS = 550
 
@@ -34,18 +34,36 @@ function shuffled(items) {
   return out
 }
 
+function OtriPointsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false" className="shrink-0">
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="m5.5 15.5 4.5-6 3 4 2-2.5 3.5 4.5" />
+    </svg>
+  )
+}
+
 function Row({ item }) {
   return (
     <div className="flex min-w-0 items-center gap-3 px-3.5 sm:px-4" style={{ height: ROW_PX }}>
       <Flag code={item.country} showCode={false} className="shrink-0 [&>span]:text-[20px]" />
-      <span className="flex min-w-0 flex-1 flex-col leading-tight">
+      <span className="flex min-w-0 flex-1 flex-col gap-1 leading-tight">
         <span className="truncate text-[14px] font-semibold tracking-[-.01em] text-[#0b1220]">{item.name}</span>
-        <span className="truncate text-[12px] text-slate-500">
+        <span className="text-[12px] text-slate-500">
           {item.race} {item.year}
         </span>
-      </span>
-      <span className="shrink-0 rounded-md bg-[#0b1220] px-2 py-0.5 font-mono text-[13px] font-bold tabular-nums text-white">
-        OTRI {item.score}
+        <span className="flex items-center gap-2 font-mono text-[12px] tabular-nums">
+          <span className="inline-flex shrink-0 items-center gap-1 text-slate-600" title="Finish time">
+            <Timer size={13} aria-hidden="true" />
+            <span>{item.time}</span>
+          </span>
+          <span className="text-slate-400">=</span>
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-[#0b1220] px-2 py-1 text-white" title="Illustrative OTRI points">
+            <OtriPointsIcon />
+            <b className="text-[13px]">{item.score}</b>
+            <span className="text-[9px] font-semibold tracking-wide">OTRI pts</span>
+          </span>
+        </span>
       </span>
     </div>
   )
