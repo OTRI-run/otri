@@ -21,7 +21,7 @@ const SHOWCASE = [
 ]
 
 // Three lines keep the event and time-to-points comparison within the existing narrow card.
-const ROW_PX = 96
+const ROW_PX = 112
 const DWELL_MS = 3200
 const SLIDE_MS = 550
 
@@ -34,35 +34,33 @@ function shuffled(items) {
   return out
 }
 
-function OtriPointsIcon() {
+function EqualsIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false" className="shrink-0">
-      <circle cx="12" cy="12" r="9.5" />
-      <path d="m5.5 15.5 4.5-6 3 4 2-2.5 3.5 4.5" />
+    <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" focusable="false" className="shrink-0 text-slate-400">
+      <path d="M4 7h12M4 13h12" />
     </svg>
   )
 }
 
 function Row({ item }) {
   return (
-    <div className="flex min-w-0 items-center gap-3 px-3.5 sm:px-4" style={{ height: ROW_PX }}>
-      <Flag code={item.country} showCode={false} className="shrink-0 [&>span]:text-[20px]" />
-      <span className="flex min-w-0 flex-1 flex-col gap-1 leading-tight">
-        <span className="truncate text-[14px] font-semibold tracking-[-.01em] text-[#0b1220]">{item.name}</span>
-        <span className="text-[12px] text-slate-500">
-          {item.race} {item.year}
+    <div className="flex min-w-0 flex-col justify-center gap-1.5 px-3.5 text-left sm:px-4" style={{ height: ROW_PX }}>
+      <span className="flex min-w-0 items-center gap-2">
+        <Flag code={item.country} showCode={false} className="shrink-0 [&>span]:text-[16px]" />
+        <span className="min-w-0 text-[14px] font-semibold leading-tight tracking-[-.01em] text-[#0b1220]">{item.name}</span>
+      </span>
+      <span className="text-[12px] leading-tight text-slate-500">
+        {item.race} {item.year}
+      </span>
+      <span className="flex min-w-0 items-center gap-2 font-mono text-[12px] tabular-nums">
+        <span className="inline-flex items-center gap-1 whitespace-nowrap text-slate-600" title="Finish time">
+          <Timer size={13} className="shrink-0" aria-hidden="true" />
+          <span>{item.time}</span>
         </span>
-        <span className="flex items-center gap-2 font-mono text-[12px] tabular-nums">
-          <span className="inline-flex shrink-0 items-center gap-1 text-slate-600" title="Finish time">
-            <Timer size={13} aria-hidden="true" />
-            <span>{item.time}</span>
-          </span>
-          <span className="text-slate-400">=</span>
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-[#0b1220] px-2 py-1 text-white" title="Illustrative OTRI points">
-            <OtriPointsIcon />
-            <b className="text-[13px]">{item.score}</b>
-            <span className="text-[9px] font-semibold tracking-wide">OTRI pts</span>
-          </span>
+        <EqualsIcon />
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-[#0b1220] px-2 py-1 text-white" title="Illustrative OTRI score">
+          <span className="text-[10px] font-semibold tracking-wide">OTRI</span>
+          <b className="text-[13px]">{item.score}</b>
         </span>
       </span>
     </div>
