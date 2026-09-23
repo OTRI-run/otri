@@ -1,12 +1,10 @@
-# Terms of Service for organizer accounts (Draft)
-
-**This is a first draft, not a legally reviewed document.** Like `PRIVACY.md`, it exists so that the sign-up form has something concrete to point at while OTRI is a prototype. Get qualified legal advice before a real public launch, and check `DATA_POLICY.md`'s "Legal review" section.
+# Terms of Service for organizer accounts
 
 These terms apply to anyone who creates an **organizer account** on OTRI (the Open Trail Running Index) at otri.run. Reading scores, using the score calculator and browsing races or runner profiles need no account and are covered only by the "Public content" section below.
 
 ## 1. What OTRI is
 
-OTRI is an open, reproducible trail-running performance index built in the open. It is a prototype: features change, scores are recomputed when the scoring model changes, and the service may be unavailable at times. It is provided free of charge and without any guarantee of availability, accuracy or fitness for a particular purpose.
+OTRI is an open, reproducible trail-running performance index built in the open. It is built in the open: features change, scores are recomputed when the scoring model changes, and the service may be unavailable at times. It is provided free of charge and without any guarantee of availability, accuracy or fitness for a particular purpose.
 
 ## 2. Your account
 

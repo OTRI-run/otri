@@ -1,7 +1,7 @@
 # Runner index v1 — one number per runner
 
 **Status:** Implemented (`runner-index-v1`, `scoring/runner_index.py`), 2026-09-18
-**Depends on:** per-race scores from the current scoring model (V0.8); nothing else
+**Depends on:** per-race scores from the current scoring model (OTRI model 0.1.0, build `0.10.0-course-standard-vertical`); nothing else
 **Audience:** runners asking "why is my index this number", and anyone auditing the rule
 
 ---

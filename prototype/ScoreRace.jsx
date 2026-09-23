@@ -237,6 +237,7 @@ function Scored({ result, fileStem, gpxText, children }) {
 // results and scores them, and the answer scrolls into view. The rows can be looked at first,
 // which is also the quickest way to see the format.
 function ExampleRace({ onUse, busy, rowsOpen, onToggleRows }) {
+  const units = useUnits()
   const [state, setState] = useState('idle') // idle | loading | failed
 
   async function use() {
@@ -264,7 +265,7 @@ function ExampleRace({ onUse, busy, rowsOpen, onToggleRows }) {
         {state === 'loading' ? 'Loading the example…' : 'Score the example race'}
       </button>
       <p className="mt-2 text-center text-xs leading-5 text-slate-500">
-        A made-up 24 km course and 100 finishers called John Doe and Max Mustermann.{' '}
+        A made-up {formatDistance(24, units, 0)} course and 100 finishers called John Doe and Max Mustermann.{' '}
         <button type="button" onClick={onToggleRows} aria-expanded={rowsOpen} aria-controls="example-rows" className="font-semibold text-blue-600 hover:underline">
           {rowsOpen ? 'Hide' : 'Show'} rows
         </button>

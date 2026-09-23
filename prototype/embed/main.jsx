@@ -4,6 +4,7 @@ import { ArrowUpRight } from 'lucide-react'
 import ScoreCalculator from '../ScoreCalculator'
 import ErrorBoundary from '../../src/components/ErrorBoundary'
 import Gate from '../../src/components/Gate'
+import Maintenance from '../../src/components/Maintenance'
 import '../../src/styles.css'
 import { action } from '../../src/lib/analytics'
 
@@ -50,7 +51,9 @@ action('embed_loaded')
 createRoot(document.getElementById('root')).render(
   <ErrorBoundary home="./">
     <Gate>
-      <Embed />
+      <Maintenance compact>
+        <Embed />
+      </Maintenance>
     </Gate>
   </ErrorBoundary>,
 )

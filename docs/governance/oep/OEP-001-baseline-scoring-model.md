@@ -1,6 +1,6 @@
 # OEP-001: Baseline scoring model (v0.1)
 
-- **Status:** Accepted
+- **Status:** Superseded. The field-relative model this accepted (`scoring_version = "0.1.0"`) was retired when OTRI model 0.1.0 (Course Standard) replaced it; the registry holds one model (`scoring/registry.py`, [`OTRI-MODEL-0.1.0.md`](../../methodology/0.1.0/OTRI-MODEL-0.1.0.md) §14). Kept as the record of the decision.
 - **Author(s):** OTRI maintainers
 - **Date:** 2026-09-16
 - **Affects:** `scoring_version = "0.1.0"` (`scoring/model.py`)
@@ -11,7 +11,7 @@ OTRI needed a first scoring model before anything else could be built on top of 
 
 ## 2. Hypothesis
 
-A deliberately simple, single-race-relative model — pace adjusted for elevation gain, scored against the fastest finisher in the same race — is more useful right now than a more sophisticated but uncalibrated model, per `METHODOLOGY.md` §13: "prefer a simple transparent baseline over an impressive-looking but poorly validated model."
+A deliberately simple, single-race-relative model — pace adjusted for elevation gain, scored against the fastest finisher in the same race — is more useful right now than a more sophisticated but uncalibrated model, per the research discipline in `HANDBOOK.md` (then `METHODOLOGY.md` §13): "prefer a simple transparent baseline over an impressive-looking but poorly validated model."
 
 ## 3. Mathematical / statistical rationale
 
@@ -28,7 +28,7 @@ The three synthetic demo races in `data/demo/` (`OTRI-DEMO-001/002/003`, 12 fini
 ## 5. Alternatives considered
 
 - **A cross-race calibrated model** (percentile against a global performance curve): rejected for v0.1 — there is no real multi-race dataset yet to calibrate against, and a fabricated calibration would be less honest than a clearly-labeled single-race-relative score.
-- **A more detailed course-difficulty adjustment** using `course/features.py`'s gradient/steep-climb data: deferred — `course/` and `scoring/` are intentionally decoupled until there is real data to justify how they combine (`METHODOLOGY.md` §3).
+- **A more detailed course-difficulty adjustment** using `course/features.py`'s gradient/steep-climb data: deferred — `course/` and `scoring/` are intentionally decoupled until there is real data to justify how they combine.
 
 ## 6. Before / after results
 
@@ -36,7 +36,7 @@ Before this OEP: no scoring engine existed. After: every finisher in `data/demo/
 
 ## 7. Tests and validation
 
-`tests/unit/test_scoring_model.py`: a hand-verified golden fixture, winner-always-scores-1000 on real demo data, DNF exclusion, and same-input-twice determinism. All pass; see `docs/roadmap.md` Phase 1.
+`tests/unit/test_scoring_model.py`: a hand-verified golden fixture, winner-always-scores-1000 on real demo data, DNF exclusion, and same-input-twice determinism. All pass.
 
 ## 8. Known limitations
 

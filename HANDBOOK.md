@@ -1,6 +1,6 @@
 # Open Trail Running Index (OTRI)
 
-This handbook defines the initial product strategy, data architecture, scoring philosophy, governance, and roadmap for OTRI.
+This handbook is what OTRI stands on: what it is and is not, its data principles, scoring philosophy, governance and research discipline. What is built, and how it works, is in the module guides and under [`docs/`](docs/README.md).
 
 > **Core principle:** Build an independent, transparent trail-running performance index from legitimately obtained data. Do not copy other organizations' proprietary scores or databases.
 
@@ -68,7 +68,7 @@ Field strength can improve cross-race comparability, but it must be handled care
 
 ## GPX Target Performance Predictor
 
-One of OTRI's strongest planned features is reverse performance prediction.
+One of OTRI's strongest features is reverse performance prediction: the calculator (`#calculator`) does modes A and B below on any course; C is not built.
 
 ### User flow
 
@@ -143,7 +143,7 @@ An organizer submits results; the scoring engine calculates the score. An organi
 
 ## Auditability
 
-Where practical, a score should expose components such as:
+A score exposes what went into it. The calculator's "Show the maths" and every race page's explanation do this for the model in production; illustratively, a breakdown looks like:
 
 ```text
 OTRI Score: 621
@@ -161,112 +161,23 @@ The exact implementation may evolve; the principle is that the result should be 
 
 Methodology changes should be proposed publicly, discussed, tested on historical data, benchmarked against alternatives, approved through documented governance, and versioned.
 
-Use OTRI Enhancement Proposals (OEPs), for example:
+Substantial changes are OTRI Enhancement Proposals (OEPs): the process, the template and the index of proposals so far are in [`docs/governance/README.md`](docs/governance/README.md).
 
-- OEP-001 — New Course Difficulty Model
-- OEP-002 — Field Strength Adjustment
-- OEP-003 — Performance Decay
+## Research discipline
 
-## Recommended stack
+The rules the model is held to, whichever version is current (they were `METHODOLOGY.md` until the first model shipped; the model itself is specified in [`docs/methodology/`](docs/methodology/README.md)).
 
-- Python
-- FastAPI
-- PostgreSQL
-- Redis where useful
-- pandas / NumPy / SciPy
-- scikit-learn where justified
-- Next.js / TypeScript for the web application
-- GitHub Actions for CI/CD
+**A simple, transparent baseline beats an impressive-looking but poorly validated model.** A more complex model is not automatically a better one. Model selection prioritises, in order: predictive accuracy, stability, interpretability, resistance to manipulation, reproducibility. Not every plausible variable enters the model; each feature must show useful predictive value and acceptable data quality.
 
-Start small. Do not build expensive distributed infrastructure before the data volume requires it.
+**Every published model has a version.** Historical scores stay reproducible under the version they were computed with; a methodology change never silently rewrites history. A change to how scores are computed is a new `scoring_version` and goes through an OEP.
 
-## Initial repository structure
+**Validation is against unseen data.** Held-out races and temporal validation, never a random split of correlated results that leaks between training and test. The cases that matter: an unseen race, an unseen course, a new edition of a known race, another region, another distance band, a small field, a large field, an unusual profile.
 
-```text
-otri/
-├── README.md
-├── LICENSE
-├── CONTRIBUTING.md
-├── CODE_OF_CONDUCT.md
-├── SECURITY.md
-├── GOVERNANCE.md
-├── DATA_POLICY.md
-├── METHODOLOGY.md
-├── API.md
-├── HANDBOOK.md
-├── docs/
-├── data/
-├── ingestion/
-├── scoring/
-├── api/
-├── web/
-├── notebooks/
-├── tests/
-└── scripts/
-```
+**Field strength, if it is ever used, must not be circular**: a race's score may not prove that its field was strong and then be used again to compute the score. Field adjustments would have to be regularised and uncertainty-aware; the model in production uses none.
 
-## MVP
+**Every major formula change brings** its hypothesis, the dataset, the method, the alternatives considered, the validation results, an error analysis, the known limitations and what is needed to reproduce it. That is the OEP template.
 
-Do not start with everything. The first usable system should be:
-
-```text
-Race database
-   ↓
-Result importer
-   ↓
-Validation
-   ↓
-Baseline scoring engine
-   ↓
-Runner profile
-   ↓
-Race leaderboard
-   ↓
-Transparent methodology
-```
-
-A strong first milestone is a working system on roughly 20 legitimate races, not a huge database assembled from questionable sources.
-
-## Roadmap
-
-### Phase 1 — Foundation
-
-- Establish repository and documentation.
-- Define result schema.
-- Define provenance/data policy.
-- Build CSV importer and validator.
-- Build baseline scoring model.
-- Add reproducibility tests.
-
-### Phase 2 — Dataset
-
-- Secure initial organizer/licensed datasets.
-- Build race and course database.
-- Add athlete identity resolution with privacy safeguards.
-- Publish methodology and benchmark results.
-
-### Phase 3 — Product
-
-- Athlete profiles.
-- Race leaderboards.
-- API.
-- GPX analysis.
-- Target OTRI predictor.
-- Organizer submission workflow.
-
-### Phase 4 — Ecosystem
-
-- More organizers.
-- Developer integrations.
-- Scientific advisors.
-- Formal governance.
-- International expansion.
-
-## Success metrics
-
-Track verified races, verified results, unique runners, countries, organizer partners, contributors, API users, corrections, reproducibility, and model prediction error.
-
-A particularly important metric is the number of independent people who can reproduce a score from the published data and code.
+**Benchmark against outcomes, not against other indexes.** Other indexes may be studied as context, but the target is accurate, fair and independently justified OTRI scoring; an OTRI value is never presented as equivalent to another organization's number.
 
 ## Fundamental rule
 

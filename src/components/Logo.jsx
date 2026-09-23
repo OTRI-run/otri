@@ -15,11 +15,12 @@ export function Wordmark({ tone = 'brand', size = 30, className = '' }) {
 }
 
 /** The lockup used in the chrome: the wordmark, a rule, and the name written out. */
-export default function Logo({ dark = false, href = '#top', showName = true, size = 30, className = '' }) {
+export default function Logo({ dark = false, href = '#top', showName = true, size = 30, className = '', onClick }) {
   const tone = dark ? 'white' : 'brand'
   return (
     <a
       href={href}
+      onClick={onClick}
       aria-label="OTRI, the Open Trail Running Index. Home"
       className={`flex min-w-0 shrink-0 items-center gap-3 no-underline ${className}`}
     >

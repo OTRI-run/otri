@@ -261,6 +261,13 @@ CREATE TABLE IF NOT EXISTS site_actions (
     PRIMARY KEY (day, action)
 );
 
+-- Settings an admin changes while the site runs, one row each (api/app.py: /site/status).
+CREATE TABLE IF NOT EXISTS site_settings (
+    key TEXT PRIMARY KEY,
+    value JSONB NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS reports (
     id SERIAL PRIMARY KEY,
     kind TEXT NOT NULL,
@@ -1685,6 +1692,25 @@ def recent_emails(limit: int = 50) -> list[dict]:
             "SELECT id, to_email, subject, provider_id, status, error, created_at FROM email_log ORDER BY created_at DESC LIMIT %s", (limit,)
         ).fetchall()
     return [dict(row) for row in rows]
+
+
+# --- Site settings --------------------------------------------------------------------------
+
+
+def get_setting(key: str) -> dict | None:
+    """One site setting, or None when it was never set."""
+    with get_connection() as connection:
+        row = connection.execute("SELECT value FROM site_settings WHERE key = %s", (key,)).fetchone()
+    return row["value"] if row else None
+
+
+def set_setting(key: str, value: dict) -> None:
+    with get_connection() as connection:
+        connection.execute(
+            "INSERT INTO site_settings (key, value, updated_at) VALUES (%s, %s, now()) "
+            "ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()",
+            (key, Jsonb(value)),
+        )
 
 
 def set_organizer_flags(email: str, *, is_admin: bool | None = None, is_demo: bool | None = None) -> bool:

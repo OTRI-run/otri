@@ -6,6 +6,8 @@ import ScoreTicker from '../src/components/ScoreTicker'
 import ExamplePreview, { EXAMPLE, ExampleExplanation, ExampleProfile, SyntheticPill, courseLine } from '../src/components/ExamplePreview'
 import { listRaces } from './apiClient'
 import { CalculatorArt, PodiumArt, SheetArt } from '../src/components/PageArt'
+import { ReviewArt, ShareArt, UploadArt } from '../src/components/StepArt'
+import { formatRate, kmToUnit, useUnits } from '../src/lib/units'
 
 const GITHUB_URL = 'https://github.com/OTRI-run/otri'
 
@@ -127,10 +129,12 @@ function TryButtons({ onDark = false }) {
   )
 }
 
+// Each step with its scene (src/components/StepArt.jsx): the files going in, the scores appearing,
+// the result going out.
 const STEPS = [
-  ['Upload your course and results', 'Bring a course GPX and CSV or XLSX results for one race distance.'],
-  ['Review the output', 'Check any file issues, explore the scores, and read how they were calculated.'],
-  ['Choose what to share', 'Download the scored results, prepare a podium image, or create a race page to review and publish.'],
+  [UploadArt, 'Upload your course and results', 'Bring a course GPX and CSV or XLSX results for one race distance.'],
+  [ReviewArt, 'Review the output', 'Check any file issues, explore the scores, and read how they were calculated.'],
+  [ShareArt, 'Choose what to share', 'Download the scored results, prepare a podium image, or create a race page to review and publish.'],
 ]
 
 const USEFUL = [
@@ -191,6 +195,7 @@ export default function Home() {
   }, [])
 
   const { targets, explanation } = EXAMPLE
+  const units = useUnits()
 
   return (
     <>
@@ -259,8 +264,11 @@ export default function Home() {
           <Eyebrow className="mb-3">HOW IT WORKS</Eyebrow>
           <Heading>From two files to an explained result.</Heading>
           <ol className="mt-10 grid gap-6 md:grid-cols-3 md:gap-8">
-            {STEPS.map(([title, text], index) => (
+            {STEPS.map(([Art, title, text], index) => (
               <li key={title} className="min-w-0 border-t-2 border-blue-700 pt-4">
+                <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-blue-700">
+                  <Art className="mx-auto h-[120px] w-full max-w-[260px]" />
+                </div>
                 <p className="font-mono text-[11px] tracking-[.08em] text-blue-700">STEP {index + 1}</p>
                 <h3 className="mt-2 text-[17px] font-bold tracking-[-.02em] text-[#0b1220]">
                   {index + 1}. {title}
@@ -375,7 +383,7 @@ export default function Home() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-[14px] font-bold text-[#0b1220]">{EXAMPLE.course.name}</p>
-                <p className="font-mono text-[11px] leading-5 text-slate-500 [overflow-wrap:anywhere]">{courseLine()}</p>
+                <p className="font-mono text-[11px] leading-5 text-slate-500 [overflow-wrap:anywhere]">{courseLine(undefined, units)}</p>
               </div>
               <SyntheticPill />
             </div>
@@ -390,7 +398,8 @@ export default function Home() {
                     <span className="font-mono text-[26px] font-bold tabular-nums text-blue-700">{target.score}</span>
                   </p>
                   <p className="mt-1 text-[12px] leading-5 text-slate-600">
-                    {(target.fraction_of_ceiling * 100).toFixed(0)} % of the ceiling rate: {target.performance_rate.toFixed(2)} of {explanation.reference_rate.toFixed(2)} km/h
+                    {(target.fraction_of_ceiling * 100).toFixed(0)} % of the ceiling rate: {kmToUnit(target.performance_rate, units).toFixed(2)} of{' '}
+                    {formatRate(explanation.reference_rate, units, 2)}
                   </p>
                 </div>
               ))}

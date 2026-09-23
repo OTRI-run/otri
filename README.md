@@ -6,12 +6,12 @@ OTRI is an open calculator and scoring tool for trail running: a course and a re
 
 ## Why OTRI?
 
-Trail performances cannot be compared fairly from finish time alone. Distance, elevation, terrain, course design, field strength, weather, altitude, and other factors matter.
+Trail performances cannot be compared fairly from finish time alone. Distance, elevation, terrain, course design, altitude and other factors matter.
 
-OTRI aims to make trail-performance data and scoring:
+OTRI makes trail-performance scoring:
 
 - **Open** — source code and methodology are public.
-- **Transparent** — scores can be inspected and explained.
+- **Transparent** — every score explains itself, down to the maths.
 - **Reproducible** — the same inputs and scoring version produce the same result.
 - **Traceable** — datasets record provenance and permissions.
 - **Privacy-conscious** — collect and publish only what is necessary.
@@ -20,74 +20,76 @@ OTRI aims to make trail-performance data and scoring:
 ## Core idea
 
 ```text
-Race results + course data
+Course GPX + results file
           ↓
        Validation
           ↓
-   OTRI scoring engine
+   Course measurement (course/)
           ↓
-      OTRI score
+   OTRI scoring engine (scoring/)
+          ↓
+      OTRI score, with its explanation
           ↓
  Scored result list / race page / API / embedded calculator
 ```
 
-Try it: **Score my race** at [otri.run/#score](https://otri.run/#score), or as one call:
+Try it: **Score my race** at [otri.run/#score](https://otri.run/#score), the calculator at [otri.run/#calculator](https://otri.run/#calculator), or as one call:
 
 ```bash
 curl -X POST https://api.otri.run/score -F "results=@results.csv" -F "gpx=@course.gpx"
 ```
 
-The calculator already turns a course GPX and a target time into a score, and the exact inverse (score → time); a version with uncertainty ranges rather than point estimates is planned.
-
-## Repository structure
+## What is where
 
 ```text
 .
-├── .github/                 # CI/CD and GitHub project configuration
-├── data/                    # Data workspace and versioned schemas
-│   ├── raw/                 # Legitimately obtained source data
-│   ├── processed/           # Reproducible derived datasets
-│   └── schemas/             # Machine-readable data schemas
-├── docs/                    # Technical and project documentation
-│   ├── architecture/       # System architecture
-│   ├── methodology/        # Research and scoring work
-│   ├── data/                # Data documentation
-│   ├── governance/          # Governance and decision records
-│   ├── api/                 # Future public API documentation
-│   └── operations/          # Deployment and maintenance runbooks
-├── media/brand/             # Canonical OTRI brand assets
-├── public/                  # Static web assets
-├── scripts/                 # Reproducible utilities and maintenance tools
-├── src/                     # Website/application source
-│   ├── components/          # Reusable UI components
-│   ├── data/                # Frontend-safe data
-│   └── lib/                 # Shared utilities and domain helpers
-└── tests/                   # Automated tests and fixtures
-    ├── unit/
-    ├── integration/
-    └── fixtures/
+├── index.html, organizer/, embed/   # the three pages Vite builds: the site, the organizer app, the embeddable calculator
+├── prototype/                       # the web app's code (React): pages, the organizer app, the API client
+├── src/                             # shared components, styles, brand geometry and small libraries
+├── public/                          # static files served as they are: icons, brand kit, badge, redirects, robots, sitemap
+├── api/                             # the FastAPI backend: accounts, events, races, results, scoring calls, admin
+├── course/                          # GPX parsing and course measurement (distance, climb, gradients, terrain data)
+├── scoring/                         # OTRI model 0.1.0: course demand, terrain factor, the score curve, the runner index
+├── ingestion/                       # reading and validating organizer result files (CSV, TSV, XLSX)
+├── data/                            # schemas, the synthetic demo dataset, calibration records; caches (git-ignored)
+├── docs/                            # methodology, governance, operations, product direction, user guides
+├── scripts/                         # deploy scripts, seeding, migrations, brand kit builds, diagnostics
+├── tests/                           # the pytest suite (unit/) and its fixtures
+├── media/brand/                     # canonical brand assets
+└── .github/                         # CI: the site build and deploy, the Python tests, Dependabot, templates
 ```
 
-## Key project documents
+## Documentation
 
-- `HANDBOOK.md` — project strategy, architecture, governance, scoring, data, and roadmap
-- `METHODOLOGY.md` — scoring principles and research direction
-- `DATA_POLICY.md` — data provenance, licensing, privacy, and sourcing principles
-- `CONTRIBUTING.md` — how to contribute
-- `SECURITY.md` — security reporting and data-security principles
-- `TERMS.md` — terms of service for organizer accounts (draft)
-- `PRIVACY.md` — what personal data OTRI keeps and why (draft)
-- `docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md` — the scoring model in production, in one page
+Start with [`docs/README.md`](docs/README.md), the index of everything under `docs/`.
+
+Project-wide:
+
+- [`HANDBOOK.md`](HANDBOOK.md) — what OTRI is and is not, data principles, scoring philosophy, governance, research discipline
+- [`DATA_POLICY.md`](DATA_POLICY.md) — data provenance, licensing, privacy and sourcing principles
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — how to contribute, and what a scoring change has to bring
+- [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
+- [`SECURITY.md`](SECURITY.md) — how to report a vulnerability
+- [`TERMS.md`](TERMS.md) and [`PRIVACY.md`](PRIVACY.md) — the terms for organizer accounts and what personal data OTRI keeps, published on the site as /terms/ and /privacy/
+- [`CHANGELOG.md`](CHANGELOG.md) — what changed, and why
+
+The model and how it is used:
+
+- [`docs/methodology/0.1.0/HOW-OTRI-SCORES.md`](docs/methodology/0.1.0/HOW-OTRI-SCORES.md) — the plain-language explanation of the scoring model
+- [`docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md`](docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md) — the specification of the model in production, in one page
+- [`docs/product/open-scoring-tool.md`](docs/product/open-scoring-tool.md) — the product direction: a scoring tool, not a governing body
+
+Each module documents itself: [`api/README.md`](api/README.md), [`course/README.md`](course/README.md), [`scoring/README.md`](scoring/README.md), [`ingestion/README.md`](ingestion/README.md), [`prototype/README.md`](prototype/README.md), [`scripts/deploy/README.md`](scripts/deploy/README.md), [`data/README.md`](data/README.md).
 
 ## Frontend
 
-The website uses React, Vite, Tailwind CSS, Lucide icons, and responsive modern typography. GitHub Actions builds and deploys the site to GitHub Pages.
+The website uses React, Vite, Tailwind CSS and Lucide icons. GitHub Actions builds it and deploys it to GitHub Pages on every push to `main`; the API runs on its own server ([`docs/operations/digitalocean-deployment.md`](docs/operations/digitalocean-deployment.md)).
 
 ## Independence
 
 OTRI is an independent open-source project. It is **not affiliated with any commercial trail-running ranking organization**.
 
-OTRI must not copy proprietary scores, rankings, databases, or restricted datasets. The project should build its own data supply chain through organizers, licensed providers, explicitly reusable public datasets, and appropriate athlete submissions.
+OTRI must not copy proprietary scores, rankings, databases, or restricted datasets. The project builds its own data supply chain through organizers, licensed providers, explicitly reusable public datasets, and appropriate athlete submissions.
 
 ## About
 
@@ -97,9 +99,9 @@ We're always looking for contributors and testers: developers, methodology/data 
 
 ## Status
 
-**Early design / MVP development.**
+**Working product, model 0.1.0, pre-launch.**
 
-The scoring model is deliberately not treated as final. The first goal is to establish clean data provenance, a reliable result schema, validation, reproducible calculations, and a baseline model that can be tested against real race data.
+The scoring tool, the organizer workflow, the public race pages and the API are built and tested. The scoring model is deliberately not treated as final: it is published, versioned and explained, and it will be refined against real race data. A change to how scores are computed is always a new scoring version; a score once given replays byte-for-byte.
 
 ## License
 

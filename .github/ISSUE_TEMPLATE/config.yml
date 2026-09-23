@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question about a score
+    url: https://otri.run/#faq
+    about: How a score is made, what it does not see, why 1000 is not a maximum. Most questions are answered here.
+  - name: Security report
+    url: https://github.com/OTRI-run/otri/blob/main/SECURITY.md
+    about: Please do not put vulnerability details in a public issue; SECURITY.md says where to send them.

@@ -99,10 +99,3 @@ An organizer can show their own race publicly before it has results.
 `listed_at` makes the race facts, the course and its measurement public. `published_at` still gates results: a listed race with uploaded, unpublished results shows no results. `listing_status` on every race summary is `scored` once results are published, otherwise `upcoming` or `awaiting_results` by the date, or `private`.
 
 A listed race with a course is what the calculator opens from the race page ("Try a target time on this course") and what the embedded calculator's `?race=` takes.
-
-## Next
-
-1. Score my race: keep the result open in the page across a reload (browser storage only), and a printable result sheet.
-2. A column-mapping step for results files whose headers are not recognised, instead of an error.
-3. `POST /score` with several distances in one call (one file per distance).
-4. API terms: attribution, fair use, and a stability policy once the contract is 1.0.

@@ -15,7 +15,7 @@ export const GATE_ENABLED = true
 export const GATE_HASH = '67a9689fda9c251b4df5d80d8480b236fe164ac91219806b83a319a083643d1f'
 export const GATE_KEY = 'otri_gate'
 
-async function sha256(text) {
+export async function sha256(text) {
   const bytes = new TextEncoder().encode(text)
   const digest = await crypto.subtle.digest('SHA-256', bytes)
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('')

@@ -1,8 +1,8 @@
 # Course measurement
 
-`measure_course()` in `measurement.py` is the shared physical-course pipeline for new GPX statistics, API profiles and Course Standard V0.2 scoring. `extract_features()` delegates to it. The original `extract_features_legacy()` and V0.1 scoring integral remain available for reproducibility.
+`measure_course()` in `measurement.py` is the physical-course pipeline behind every GPX statistic, API profile and score: the calculator, `POST /gpx/analyze`, `POST /score` and the courses attached to races all go through it. `extract_features()` delegates to it; `extract_features_legacy()` is the earlier feature extraction, kept for the regression fixtures.
 
-## Current method: course-measurement-v1
+## Current method: course-measurement-v3 (`VERSION` in `measurement.py`)
 
 - Parse one track, preserving segment boundaries. Reject malformed/nonfinite coordinates and elevations, DTDs, excessive uploads and incomplete elevation coverage.
 - Aggregate consecutive duplicate locations using median elevation. Never connect separate segments or remove nonconsecutive revisits.
@@ -46,7 +46,7 @@ Tile paths resolve relative to the manifest. Keep manifests and tiles immutable 
 
 `POST /gpx/analyze` returns features and a `measurement` containing the cleaned profile, method/parameters, source, hashes and quality status. The browser renders this server profile. `POST /races/{id}/gpx` stores the raw GPX, feature totals and measurement snapshot atomically. `GET /races/{id}/measurement` returns public provenance and profile. Measured race totals cannot be overwritten using PATCH; replace the GPX explicitly.
 
-New races and the predictor use `0.2.0-course-standard-measured`. Existing races retain their stored scoring version. V0.2 reads the persisted snapshot when scoring stored results, independent of future provider configuration. Existing GPX races without a snapshot must reattach their GPX before selecting V0.2. Changing an existing race's GPX remains an explicit course replacement and can change its scores; no bulk migration runs automatically.
+Stored results are scored from the persisted measurement snapshot, independent of how terrain data is configured later, so a race replays byte-for-byte. Changing a race's GPX is an explicit course replacement and can change its scores; nothing is re-measured in bulk.
 
 ## Diagnostics
 

@@ -66,3 +66,28 @@ body{margin:0;font-synthesis:none;text-rendering:optimizeLegibility}
   .otri-swing{animation:otri-swing .72s ease-in-out infinite alternate}
   .otri-swing-back{animation:otri-swing .72s ease-in-out infinite alternate-reverse}
 }
+
+/* The three "How it works" scenes (src/components/StepArt.jsx). Each loops slowly; the finished
+   state is what the drawing shows when motion is switched off, so nothing is missing without it. */
+@keyframes otri-step-drop{0%{transform:translateY(-40px) scale(.96);opacity:0}14%{transform:translateY(0) scale(1);opacity:1}84%{transform:translateY(0);opacity:1}92%,100%{transform:translateY(0);opacity:0}}
+@keyframes otri-step-tray{0%,12%{stroke:#cbd5e1;stroke-dasharray:6 7}24%,84%{stroke:currentColor;stroke-dasharray:1 0}92%,100%{stroke:#cbd5e1;stroke-dasharray:6 7}}
+@keyframes otri-step-tray-arrow{0%,12%{opacity:1}22%,88%{opacity:0}96%,100%{opacity:1}}
+@keyframes otri-step-tick{0%,26%{transform:scale(0)}34%{transform:scale(1.15)}40%,84%{transform:scale(1)}92%,100%{transform:scale(0)}}
+@keyframes otri-step-pop{0%{transform:scale(0);opacity:0}8%{transform:scale(1.12);opacity:1}12%,80%{transform:scale(1);opacity:1}90%,100%{transform:scale(0);opacity:0}}
+@keyframes otri-step-draw{0%{stroke-dashoffset:1}14%{stroke-dashoffset:0}84%{stroke-dashoffset:0}92%,100%{stroke-dashoffset:1}}
+@keyframes otri-step-reason{0%,40%{stroke-dashoffset:1}62%,84%{stroke-dashoffset:0}92%,100%{stroke-dashoffset:1}}
+@keyframes otri-step-glide{0%,8%{transform:translateY(0)}48%{transform:translateY(46px)}62%{transform:translateY(46px)}100%{transform:translateY(0)}}
+@keyframes otri-step-arrive{0%,10%{transform:scale(.6);opacity:0}18%{transform:scale(1.08);opacity:1}22%,84%{transform:scale(1);opacity:1}92%,100%{transform:scale(.6);opacity:0}}
+@media (prefers-reduced-motion:no-preference){
+  .otri-step-file{animation:otri-step-drop 6s cubic-bezier(.2,.8,.2,1) infinite both}
+  .otri-step-file-2{animation-delay:.5s}
+  .otri-step-tray{animation:otri-step-tray 6s ease-in-out infinite}
+  .otri-step-tray-arrow{animation:otri-step-tray-arrow 6s ease-in-out infinite}
+  .otri-step-tick{animation:otri-step-tick 6s cubic-bezier(.2,.8,.2,1) infinite}
+  .otri-step-score{animation:otri-step-pop 5.4s cubic-bezier(.2,.8,.2,1) infinite both}
+  .otri-step-reason-line{animation:otri-step-reason 5.4s ease-in-out infinite}
+  .otri-step-glass{animation:otri-step-glide 5.4s ease-in-out infinite}
+  .otri-step-line{animation:otri-step-draw 6.6s ease-in-out infinite both}
+  .otri-step-target{animation:otri-step-arrive 6.6s cubic-bezier(.2,.8,.2,1) infinite both}
+  .otri-step-trophy{animation:otri-bob 3.3s ease-in-out infinite}
+}

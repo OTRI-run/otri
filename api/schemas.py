@@ -409,6 +409,24 @@ class TwoFactorStatus(BaseModel):
     recovery_codes_left: int = 0
 
 
+class MaintenanceState(BaseModel):
+    """Whether the site is closed for maintenance, as the public sees it."""
+
+    on: bool = False
+    # What the closed site says, in the admin's words; empty means the default wording.
+    message: str = ""
+    since: datetime | None = None
+
+
+class SiteStatus(BaseModel):
+    maintenance: MaintenanceState = MaintenanceState()
+
+
+class MaintenanceUpdate(BaseModel):
+    on: bool
+    message: str = Field("", max_length=500)
+
+
 class MeResponse(BaseModel):
     email: str
     is_admin: bool = False

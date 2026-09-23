@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Activity, ArrowUpRight, Check, Eye, EyeOff, Flag as FlagIcon, HardDrive, Map, PauseCircle, Server, ShieldCheck, Trash2, UserCheck, XCircle } from 'lucide-react'
+import { Activity, ArrowUpRight, Check, Construction, Eye, EyeOff, Flag as FlagIcon, HardDrive, Map, PauseCircle, Server, ShieldCheck, Trash2, UserCheck, XCircle } from 'lucide-react'
 import CourseMap from '../../../src/components/CourseMap'
 import {
   setRaceListed,
@@ -12,6 +12,7 @@ import {
   fetchRaceGpxFile,
   getAdminOverview,
   getAdminServer,
+  getSiteStatus,
   getTraffic,
   getRaceMeasurement,
   listAdminEvents,
@@ -21,6 +22,7 @@ import {
   listSharedCourses,
   resolveAdminReport,
   reviewAdminRace,
+  setSiteMaintenance,
   unpublishRace,
   verifyAdminOrganizer,
 } from '../../apiClient'
@@ -41,6 +43,7 @@ const TABS = [
   ['shared', 'Shared courses'],
   ['traffic', 'Traffic'],
   ['server', 'Server'],
+  ['site', 'Site'],
 ]
 
 // The terrain tiles on disk. With fetching on demand the list grows by itself, so it shows a count
@@ -1426,6 +1429,106 @@ function ServerTab({ session }) {
 
 // ------------------------------------------------------------------------------ page
 
+// Maintenance mode: the switch that closes the site (src/components/Maintenance.jsx). It is a
+// setting in the API, so it needs no deploy and takes effect as pages open.
+function SiteTab({ session }) {
+  const [state, setState] = useState(null)
+  const [message, setMessage] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const [saved, setSaved] = useState(null)
+
+  useEffect(() => {
+    getSiteStatus()
+      .then((status) => {
+        setState(status.maintenance)
+        setMessage(status.maintenance.message || '')
+      })
+      .catch((err) => setError(err.message))
+  }, [])
+
+  async function apply(on) {
+    if (on && !state?.on && !window.confirm('Close the site for every visitor who is not an admin? You can open it again from here at any time.')) return
+    setBusy(true)
+    setError(null)
+    setSaved(null)
+    try {
+      const status = await setSiteMaintenance({ on, message: on ? message : '' }, session.token)
+      setState(status.maintenance)
+      setMessage(status.maintenance.message || '')
+      setSaved(on ? (state?.on ? 'Message updated.' : 'The site is closed. Pages already open show a banner; new visits show the notice.') : 'The site is open again. Closed pages open by themselves within half a minute.')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const panel = 'rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)]'
+  if (error && !state) return <Notice kind="error">{error}</Notice>
+  if (!state) return <p className="text-sm text-slate-500">Reading the site status…</p>
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+      <div className={panel}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="flex items-center gap-2 font-mono text-[10px] tracking-[.08em] text-slate-500">
+            <Construction size={14} className={state.on ? 'text-amber-600' : 'text-slate-400'} /> MAINTENANCE MODE
+          </p>
+          <span className={`rounded-full px-2.5 py-0.5 font-mono text-[10px] font-semibold ${state.on ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+            {state.on ? 'CLOSED' : 'OPEN'}
+          </span>
+        </div>
+        <p className="mt-3 text-sm leading-6 text-slate-600">
+          {state.on
+            ? `The site has been closed since ${when(state.since)}. Visitors see a notice instead of the pages; you see the site because you are an admin.`
+            : 'The site is open. Closing it shows every visitor a notice with the message below, on the public site, the organizer app and the embedded calculator.'}
+        </p>
+        <label className="mt-5 block text-xs font-semibold text-slate-700" htmlFor="maintenance-message">
+          Message to visitors <span className="font-normal text-slate-500">(optional)</span>
+        </label>
+        <textarea
+          id="maintenance-message"
+          value={message}
+          onChange={(event) => setMessage(event.target.value.slice(0, 500))}
+          rows={3}
+          placeholder="OTRI is being worked on and will be back shortly. Nothing you published is affected."
+          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+        />
+        <p className="mt-1 text-right font-mono text-[10px] text-slate-400">{message.length} / 500</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {state.on ? (
+            <>
+              <Button onClick={() => apply(false)} busy={busy}>
+                Open the site again
+              </Button>
+              <Button variant="secondary" onClick={() => apply(true)} busy={busy} disabled={message === (state.message || '')}>
+                Update the message
+              </Button>
+            </>
+          ) : (
+            <Button variant="danger" onClick={() => apply(true)} busy={busy}>
+              Close the site for maintenance
+            </Button>
+          )}
+        </div>
+        {saved && <p className="mt-3 text-xs text-emerald-700">{saved}</p>}
+        {error && <p className="mt-3 text-xs text-red-600">{error}</p>}
+      </div>
+
+      <div className={panel}>
+        <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">HOW IT WORKS</p>
+        <ul className="mt-3 grid gap-2 text-[13px] leading-6 text-slate-600">
+          <li>Every page asks the API whether the site is closed as it opens, and a closed page asks again every half minute, so opening the site again needs no deploy and reaches visitors within a minute.</li>
+          <li>Who still gets in: admins who are signed in, and anyone who enters the site password on the notice (the same password as the pre-launch gate). A page that was already open keeps working and shows a banner.</li>
+          <li>The API keeps answering throughout, so nothing in flight is lost. Take it down separately if the work needs that.</li>
+          <li>If the API itself is what is down, this switch cannot reach anyone. For that day, set the VITE_OTRI_MAINTENANCE repository variable to 1 on GitHub and run the Pages workflow; every page is then closed whatever the API says.</li>
+        </ul>
+      </div>
+    </div>
+  )
+}
+
 export function AdminEvents({ session, tab = 'overview' }) {
   // An admin email links to `#/admin?tab=reviews&race=<id>`: the tab opens on that race.
   const { query } = useRoute()
@@ -1475,6 +1578,7 @@ export function AdminEvents({ session, tab = 'overview' }) {
         {active === 'shared' && <SharedCourses session={session} />}
         {active === 'traffic' && <TrafficTab session={session} />}
         {active === 'server' && <ServerTab session={session} />}
+        {active === 'site' && <SiteTab session={session} />}
       </div>
     </Page>
   )

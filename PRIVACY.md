@@ -1,8 +1,4 @@
-# Privacy Policy (Draft)
-
-**This is a first draft, not a legally reviewed document.** It describes accurately what the software does, and it has not been checked by a lawyer. See `DATA_POLICY.md`'s "Legal review" section: qualified advice is needed before a real public launch, particularly on GDPR and on the other places organizers and runners sign up from.
-
-This page describes what personal data OTRI collects and why. For race-result data specifically (athlete names, times, etc.), see `DATA_POLICY.md`.
+# Privacy Policy
 
 ## What we collect
 
@@ -95,7 +91,7 @@ Passwords are hashed with `bcrypt`, never stored or logged in plain text. Sessio
 
 ## Changes to this policy
 
-This is a living document during OTRI's prototype phase. Material changes will be noted in `CHANGELOG.md`.
+Material changes to this policy are recorded in `CHANGELOG.md`.
 
 ## Signing in with Google
 
