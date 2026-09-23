@@ -35,7 +35,7 @@ def _admin(email="course-admin@example.com"):
 
 
 def _propose(**fields):
-    data = {"event_name": "Doi Inthanon Trail", "course_name": "60K", "year": 2026, "location": "Chiang Mai", "country": "tha", "source_url": "https://example.org/course", "attest": "true", "email": "runner@example.com", **fields}
+    data = {"event_name": "Doi Inthanon Trail", "course_name": "60K", "year": 2026, "location": "Chiang Mai", "country": "tha", "source_url": "https://example.org/course", "email": "runner@example.com", **fields}
     return client.post("/calculator-courses/proposals", files={"file": ("course.gpx", GPX, "application/gpx+xml")}, data=data)
 
 
@@ -104,8 +104,8 @@ def test_the_same_track_is_not_taken_twice():
 
 
 def test_what_a_proposal_must_carry():
-    assert _propose(attest="false").status_code == 422, "the visitor's word that it may be shared"
-    assert _propose(source_url="not a link").status_code == 422
+    assert _propose(source_url="").status_code == 201, "where the file came from is welcome, not required"
+    assert _propose(event_name="Another race", source_url="not a link").status_code == 422
     assert _propose(email="nobody").status_code == 422
     assert _propose(year=1800).status_code == 422
     assert client.post("/calculator-courses/proposals", files={"file": ("course.gpx", GPX, "application/gpx+xml")}, data={"event_name": "X"}).status_code == 422

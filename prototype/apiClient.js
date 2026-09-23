@@ -503,13 +503,12 @@ export function updateCalculatorCourse(raceId, { file, event_name, course_name, 
 /** A visitor proposes the course they uploaded for the calculator's "Pick a race". A track that
  *  is already there, or already proposed, is refused: the error carries `raceId` when it points at
  *  a course in the calculator. */
-export async function proposeCalculatorCourse({ file, event_name, course_name, year, location, country, source_url, email, attest }) {
+export async function proposeCalculatorCourse({ file, event_name, course_name, year, location, country, source_url, email }) {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('event_name', event_name.trim())
   formData.append('course_name', course_name.trim())
-  formData.append('source_url', source_url.trim())
-  formData.append('attest', attest ? 'true' : 'false')
+  if (source_url?.trim()) formData.append('source_url', source_url.trim())
   if (String(year ?? '').trim()) formData.append('year', String(year).trim())
   if (location?.trim()) formData.append('location', location.trim())
   if (country?.trim()) formData.append('country', country.trim())

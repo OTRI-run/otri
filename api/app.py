@@ -3422,22 +3422,20 @@ async def propose_calculator_course(
     file: UploadFile,
     event_name: str = Form(..., min_length=2, max_length=200),
     course_name: str = Form(..., min_length=1, max_length=120),
-    source_url: str = Form(..., max_length=500),
-    attest: bool = Form(...),
+    source_url: str | None = Form(default=None, max_length=500),
     year: int | None = Form(default=None, ge=1900, le=2100),
     location: str | None = Form(default=None, max_length=200),
     country: str | None = Form(default=None, max_length=3),
     email: str | None = Form(default=None, max_length=254),
 ) -> CourseProposalOut:
     """A visitor proposes the course they uploaded for the calculator's "Pick a race": the race's
-    names, the edition, where the file came from, and their word that it is the official course
-    and may be shared. Measured and kept for an admin; added on its own after the waiting time."""
+    names, the edition, and where the file came from if they know. Proposing it is their word that
+    it is the race's official course. Measured and kept for an admin; added on its own after the
+    waiting time."""
     enforce_rate_limit(request, max_requests=3, scope="course-proposal")
     enforce_rate_limit(request, max_requests=10, scope="course-proposal-day", window_seconds=86400)
-    if not attest:
-        raise HTTPException(status_code=422, detail="Confirm that this is the race's official course and that it may be shared")
-    source_url = source_url.strip()
-    if not re.match(r"^https?://", source_url):
+    source_url = (source_url or "").strip() or None
+    if source_url and not re.match(r"^https?://", source_url):
         raise HTTPException(status_code=422, detail="The source link must start with http:// or https://")
     email = (email or "").strip().lower() or None
     if email and ("@" not in email or len(email) > 254):
@@ -3482,7 +3480,7 @@ async def propose_calculator_course(
     # The proposals are all kept; the emails about them are what is limited (as with reports).
     notify = not over_limit(None, max_requests=12, scope="proposal-mail", subject="admins", window_seconds=3600)
     for admin_email in sorted(_ADMIN_EMAILS) if notify else ():
-        _email.send_course_proposal_email(admin_email, proposal_id=proposal.id, course_label=f"{proposal.event_name} · {proposal.course_name}", source_url=source_url, auto_approve_at=proposal.auto_approve_at)
+        _email.send_course_proposal_email(admin_email, proposal_id=proposal.id, course_label=f"{proposal.event_name} · {proposal.course_name}", source_url=source_url or "(not given)", auto_approve_at=proposal.auto_approve_at)
     return _proposal_out(proposal, admin=False)
 
 
