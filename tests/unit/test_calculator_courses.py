@@ -126,3 +126,26 @@ def test_a_downloaded_course_carries_positions_and_elevations_and_nothing_else()
     assert again.text.count("<trkpt") == served.count("<trkpt")
     assert again.headers["content-disposition"] == 'attachment; filename="doi-pui-ubertrail-24k-otri.gpx"'
     assert "content-disposition" not in client.get(url).headers
+
+
+def test_a_course_carries_the_edition_it_is_from_and_an_empty_year_clears_it():
+    admin = _headers("calc-admin@example.com", True)
+    added = _add(admin, year=2025)
+    assert added.status_code == 201, added.text
+    assert added.json()["edition_year"] == 2025
+    race_id = added.json()["race_id"]
+    assert client.get("/admin/calculator-courses", headers=admin).json()[0]["edition_year"] == 2025
+
+    # The public listing says which edition a calculator course is, and nothing for a real race.
+    listed = {race["race_id"]: race for race in client.get("/races").json()}
+    assert listed[race_id]["edition_year"] == 2025
+    assert all(race["edition_year"] is None for race in listed.values() if not race["calculator_only"])
+
+    fields = {"event_name": "Lavaredo Ultra Trail", "course_name": "120K", "location": "Cortina", "country": "ita", "source_url": "https://example.org/course"}
+    changed = client.patch(f"/admin/calculator-courses/{race_id}", data={**fields, "year": 2026}, headers=admin)
+    assert changed.status_code == 200 and changed.json()["edition_year"] == 2026
+    cleared = client.patch(f"/admin/calculator-courses/{race_id}", data=fields, headers=admin)
+    assert cleared.status_code == 200 and cleared.json()["edition_year"] is None
+
+    assert _add(admin, year=1800).status_code == 422, "a year outside 1900-2100 is refused"
+

@@ -20,7 +20,7 @@ export default function CalculatorCourses({ session }) {
   const [added, setAdded] = useState(null)
   const [busy, setBusy] = useState(false)
   const [busyId, setBusyId] = useState(null)
-  const empty = { event_name: '', course_name: '', location: '', country: '', source_url: '' }
+  const empty = { event_name: '', course_name: '', location: '', country: '', source_url: '', year: '' }
   const [form, setForm] = useState(empty)
   const [file, setFile] = useState(null)
   // The course being changed, when the form is editing one and not adding one.
@@ -54,7 +54,7 @@ export default function CalculatorCourses({ session }) {
 
   function startEditing(row) {
     setEditing(row)
-    setForm({ event_name: row.event_name ?? '', course_name: row.course_name ?? '', location: row.event_location ?? '', country: row.event_country ?? '', source_url: row.source_url ?? '' })
+    setForm({ event_name: row.event_name ?? '', course_name: row.course_name ?? '', location: row.event_location ?? '', country: row.event_country ?? '', source_url: row.source_url ?? '', year: row.edition_year ? String(row.edition_year) : '' })
     setFile(null)
     setAdded(null)
     setError(null)
@@ -114,14 +114,19 @@ export default function CalculatorCourses({ session }) {
             hint={editing ? 'Optional. Without a file the course stays as it is.' : 'The official course of the race, up to 20 MB.'}
             fileName={file?.name}
           />
-          <Field label="Race name" htmlFor="cc-name" hint="As runners know it. Add the year if the course changes between editions.">
+          <Field label="Race name" htmlFor="cc-name" hint="As runners know it; the edition goes in the year field.">
             <input id="cc-name" required value={form.event_name} onChange={set('event_name')} list={RACE_NAME_LIST} autoComplete="off" className={inputClass} placeholder="Lavaredo Ultra Trail" />
             <RaceNameList />
           </Field>
-          <Field label="Distance name" htmlFor="cc-course" hint="How this distance is listed.">
-            <input id="cc-course" required value={form.course_name} onChange={set('course_name')} list={DISTANCE_NAME_LIST} autoComplete="off" className={inputClass} placeholder="120K" />
-            <DistanceNameList />
-          </Field>
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_140px]">
+            <Field label="Distance name" htmlFor="cc-course" hint="How this distance is listed.">
+              <input id="cc-course" required value={form.course_name} onChange={set('course_name')} list={DISTANCE_NAME_LIST} autoComplete="off" className={inputClass} placeholder="120K" />
+              <DistanceNameList />
+            </Field>
+            <Field label="Year" htmlFor="cc-year" hint="The edition this file is from. Optional.">
+              <input id="cc-year" type="number" inputMode="numeric" min="1900" max="2100" step="1" value={form.year} onChange={set('year')} className={inputClass} placeholder={String(new Date().getFullYear())} />
+            </Field>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Location" htmlFor="cc-location" hint="Optional.">
               <input
@@ -169,6 +174,7 @@ export default function CalculatorCourses({ session }) {
                 <p className="truncate text-sm font-semibold text-[#0b1220]">{row.event_name} · {row.course_name}</p>
                 <p className="mt-0.5 font-mono text-[10px] text-slate-500">
                   {formatDistance(row.distance_km, units)} · {formatElevation(row.elevation_gain_m, units, { sign: '+' })}
+                  {row.edition_year ? ` · ${row.edition_year}` : ''}
                   {row.event_location ? ` · ${row.event_location}` : ''}{row.event_country ? ` · ${row.event_country}` : ''}
                 </p>
                 {row.source_url && (

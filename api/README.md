@@ -106,7 +106,7 @@ Generated from `api/app.py` (`grep '@app\.' api/app.py`); the interactive refere
 | GET | `/admin/reports?status=open\|all` · POST `/admin/reports/{id}/resolve` · DELETE `/admin/reports/{id}` | Correction and removal requests. |
 | GET | `/admin/organizers` · POST `/admin/organizers/{id}/verify` · DELETE `/admin/organizers/{id}` | Accounts: list, confirm an address by hand, delete with everything it owns (never oneself). |
 | DELETE | `/admin/runners/{runner_id}` | Remove a runner's profile and every result attached to it (a removal request, or a bad merge). |
-| GET · POST | `/admin/calculator-courses` · PATCH · DELETE `/admin/calculator-courses/{race_id}` | The courses hand-picked for the calculator's "Pick a race": a GPX, names, location, source link. Public to try a target time on, never a race page. |
+| GET · POST | `/admin/calculator-courses` · PATCH · DELETE `/admin/calculator-courses/{race_id}` | The courses hand-picked for the calculator's "Pick a race": a GPX, names, location, source link and the edition (`year`) the file is from. Public to try a target time on, never a race page. |
 | GET | `/admin/shared-courses` · DELETE `/admin/shared-courses/{share_id}` | The calculator's share files. |
 | GET | `/admin/emails?limit=50` | The last emails asked of Resend, with the provider's id and any error. |
 | GET | `/admin/newsletter` · `/admin/newsletter.csv` | Verified organizers who opted in to OTRI news, as JSON or a CSV for a mailing tool. |

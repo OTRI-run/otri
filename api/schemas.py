@@ -87,6 +87,8 @@ class RaceSummary(BaseModel):
     calculator_only: bool = False
     # Where the course file came from (the organizer's page), shown with a calculator course.
     source_url: str | None = None
+    # The edition (year) a calculator course's file is from, when the admin gave one.
+    edition_year: int | None = None
     # The publish review (api/screening.py). 'none' until published; 'pending' while public and
     # waiting to verify itself; 'verified'; 'held' (not public, an admin decides); 'rejected'.
     review_status: str = "none"
