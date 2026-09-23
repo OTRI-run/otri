@@ -374,7 +374,7 @@ function PublishInvite({ result, files, isExample = false }) {
             Give every runner a page to find their score.
           </h2>
           <p className="mt-3 max-w-[620px] text-sm leading-6 text-blue-100">
-            Publish this race on OTRI: the course and these results come with you, so there is nothing to upload again. It is free, there is no approval to wait for, and you can take it down whenever you like.
+            Publish this race on OTRI: the course and these results come with you, so there is nothing to upload again. It is free; publishing runs automatic checks, and some races may need a review before they show. You can take it down whenever you like.
           </p>
           <ul className="mt-5 grid gap-x-6 gap-y-2 text-sm text-white sm:grid-cols-2">
             {[
@@ -405,7 +405,7 @@ function PublishInvite({ result, files, isExample = false }) {
               <a href="#score" className="font-semibold text-white underline">Score your own race</a> and this button turns on.
             </p>
           ) : (
-            <p className="mt-3 text-center text-xs leading-5 text-blue-200">Two minutes: an email address, the race date, done. Nothing is public until you press Publish.</p>
+            <p className="mt-3 text-center text-xs leading-5 text-blue-200">Two minutes: an email address, the race date, done. Race results remain private until you publish.</p>
           )}
           {state === 'failed' && (
             <p className="mt-2 text-center text-xs text-amber-200">
@@ -584,7 +584,7 @@ export default function ScoreRace() {
 
         <section className="mt-12 grid gap-4 md:grid-cols-3">
           {[
-            ['Want a public race page?', 'Score the race here first, then press Publish this race: the course and the results come with you into a free organizer account. No approval, and you decide when it goes public.', 'organizer/', 'Or start with an account'],
+            ['Want a public race page?', 'Score the race here first, then press Publish this race: the course and the results come with you into a free organizer account. Results stay private until you publish; publishing runs automatic checks, and some races may need review.', 'organizer/', 'Or start with an account'],
             ['Put the calculator on your site', 'Runners try a target time on your course before race day. One line of HTML, no account, free.', '#api', 'Embed the calculator'],
             ['How is a score worked out?', 'Course demand from the measured track, against a published record-run reference. Every step is documented and versioned.', '#faq', 'Read the answers'],
           ].map(([title, text, href, cta]) => (

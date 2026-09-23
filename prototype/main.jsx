@@ -915,7 +915,7 @@ function NoRacesYet() {
     [
       'Hello,',
       'I would like to see our race on OTRI (https://otri.run), an open and free score for trail races: every finisher gets a score that depends only on the course and their own time, so it compares across races.',
-      'Scoring the results takes about a minute and needs no account (https://otri.run/#score). Publishing them as a race page is free and needs no approval: https://otri.run/organizer/',
+      'Scoring the results takes about a minute and needs no account (https://otri.run/#score). Publishing them as a race page is free; it runs automatic checks and some races may need review: https://otri.run/organizer/',
       'Thank you!',
     ].join('\n\n'),
   )}`
