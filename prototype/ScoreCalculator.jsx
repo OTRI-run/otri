@@ -15,7 +15,7 @@ import WhatWeScore from '../src/components/WhatWeScore'
 import useFileDrop from '../src/lib/useFileDrop'
 import { scrollBehavior } from '../src/lib/comfort'
 import { knownButNotHere, matchRank } from '../src/lib/suggest'
-import { distanceUnit, elevationUnit, formatDistance, formatElevation, formatPace as formatPaceUnits, formatRate, kmToUnit, metresToUnit, useUnits } from '../src/lib/units'
+import { distanceUnit, formatDistance, formatElevation, formatPace as formatPaceUnits, formatRate, kmToUnit, useUnits } from '../src/lib/units'
 
 // Published anchor tables, shown for context in the "why this score" breakdown. The actual
 // score always comes from the API. Scores 0-544 are V0.1's real demo/test anchors in every
@@ -125,6 +125,18 @@ function HeadlineName({ name }) {
     <>
       {text.slice(0, cut)} · <span className="whitespace-nowrap">{last}</span>
     </>
+  )
+}
+
+/** The edition a hand-picked course is from, as a small label beside its name. */
+function EditionLabel({ year, large = false }) {
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center rounded-full border border-blue-200 bg-blue-50 font-mono font-semibold text-blue-700 ${large ? 'px-2.5 py-1 text-[12px]' : 'px-1.5 py-0.5 text-[10px]'}`}
+      title={`Course file from the ${year} edition`}
+    >
+      {year}
+    </span>
   )
 }
 
@@ -793,11 +805,14 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
                   className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-blue-300 hover:bg-blue-50/40 disabled:opacity-50"
                 >
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold text-[#0b1220]">
-                      {race.event_name} · {race.course_name}
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-sm font-semibold text-[#0b1220]">
+                        {race.event_name} · {race.course_name}
+                      </span>
+                      {race.calculator_only && race.edition_year && <EditionLabel year={race.edition_year} />}
                     </span>
                     <span className="mt-0.5 block font-mono text-[12px] text-slate-500">
-                      {race.calculator_only ? [[race.event_location, race.event_country].filter(Boolean).join(', '), race.edition_year].filter(Boolean).join(' · ') || 'course' : race.event_date} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
+                      {race.calculator_only ? [race.event_location, race.event_country].filter(Boolean).join(', ') || 'course' : race.event_date} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
                     </span>
                   </span>
                   <ArrowUpRight size={14} className="shrink-0 text-slate-400" />
@@ -876,15 +891,6 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
     ['DISTANCE', formatDistance(features.distance_km, units)],
     ['CLIMB', formatElevation(features.elevation_gain_m, units, { sign: '+' })],
     ['DESCENT', formatElevation(features.elevation_loss_m, units, { sign: '-' })],
-    // Climb per unit of distance, the figure trail runners size a course by ("40 m/km"). The
-    // steepest 50 m used to sit here; a single extreme says little about a course, and the map
-    // below already shows where the steep ground is and how much of it there is.
-    [
-      `CLIMB PER ${distanceUnit(units).toUpperCase()}`,
-      features.distance_km > 0
-        ? `+${Math.round(metresToUnit(features.elevation_gain_m, units) / kmToUnit(features.distance_km, units))} ${elevationUnit(units)}/${distanceUnit(units)}`
-        : 'n/a',
-    ],
   ]
 
   return (
@@ -893,7 +899,10 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
             <Eyebrow>01 / COURSE</Eyebrow>
-            <h2 className="otri-fit mt-3 font-bold leading-[1.05] tracking-[-.04em] text-[#0b1220]" style={{ fontSize: fitFontSize(courseLabel.name, { min: 26, vw: 4, max: 44 }) }}>{courseLabel.name}</h2>
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <h2 className="otri-fit font-bold leading-[1.05] tracking-[-.04em] text-[#0b1220]" style={{ fontSize: fitFontSize(courseLabel.name, { min: 26, vw: 4, max: 44 }) }}>{courseLabel.name}</h2>
+              {courseLabel.year && <EditionLabel year={courseLabel.year} large />}
+            </div>
             <p className="mt-2 text-sm text-slate-500">
               {courseLabel.meta ? `${courseLabel.meta} · ` : ''}
               <span className={courseLabel.verified ? 'font-semibold text-blue-600' : 'font-semibold text-amber-600'}>
@@ -1273,7 +1282,7 @@ export default function ScoreCalculator({ embedded = false }) {
   }
 
   function raceLabel(race) {
-    return { name: `${race.event_name} · ${race.course_name}`, meta: race.calculator_only ? [[race.event_location, race.event_country].filter(Boolean).join(', '), race.edition_year].filter(Boolean).join(' · ') : race.event_date, verified: true, raceId: race.race_id, sourceUrl: race.source_url ?? null }
+    return { name: `${race.event_name} · ${race.course_name}`, meta: race.calculator_only ? [race.event_location, race.event_country].filter(Boolean).join(', ') : race.event_date, year: race.calculator_only ? race.edition_year ?? null : null, verified: true, raceId: race.race_id, sourceUrl: race.source_url ?? null }
   }
 
   function chooseExistingRace(race) {
