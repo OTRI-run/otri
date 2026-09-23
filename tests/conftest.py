@@ -52,11 +52,12 @@ def clean_state():
     """
     db.init_db()
     with db.get_connection() as connection:
-        connection.execute(
-            "TRUNCATE organizers, email_verification_tokens, password_reset_tokens, oauth_states, events, races, results, runners, reports, "
-            "site_hits, site_visitors, site_visitor_days, site_actions "
-            "RESTART IDENTITY CASCADE"
-        )
+        with connection.transaction():
+            connection.execute(
+                "TRUNCATE organizers, email_verification_tokens, password_reset_tokens, oauth_states, events, races, results, runners, reports, "
+                "site_hits, site_visitors, site_visitor_days, site_actions "
+                "RESTART IDENTITY CASCADE"
+            )
     for race in race_records(RACES_FILE):
         event_id = f"evt-{race.race_id}"
         db.create_event(race.race_name, race.event_date, organizer_id=None, event_id=event_id, location=race.location, country=race.country)

@@ -144,7 +144,7 @@ const QUESTIONS = [
   ['Do I need an account?', 'No account to score. An account, with a confirmed email, to publish.', '#faq?q=account'],
   ['Which files do I need?', 'A course GPX and a CSV or XLSX results file for one distance. Only a name and a finish-time column are required.', '#faq?q=columns'],
   ['What happens to my files?', 'Files you score without an account are deleted after the answer; only a hash-keyed course measurement is cached, without names.', '#faq?q=deleted'],
-  ['When does anything go public?', 'Nothing is public until you press Publish. Every publish is checked, and you can unpublish at any time.', '#faq?q=unpublish'],
+  ['When does anything go public?', 'Race results remain private until you publish. Publishing runs automatic checks, and some races may need review. Sharing a course from the calculator is separate: it links the course only, never results. You can unpublish at any time.', '#faq?q=unpublish'],
 ]
 
 export default function Home() {
