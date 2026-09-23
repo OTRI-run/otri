@@ -47,6 +47,7 @@ const PAGE_TITLES = {
 import { fetchRaceGpxFile, getRace, getRaceMeasurement, getRaceResults, listRaces, raceGpxDownloadUrl } from './apiClient'
 import BuildBanner from '../src/components/BuildBanner'
 import ErrorBoundary from '../src/components/ErrorBoundary'
+import Gate from '../src/components/Gate'
 import NotFound from '../src/components/NotFound'
 import { modelLabel, notScoredReason } from '../src/lib/model'
 import BackToTop from '../src/components/BackToTop'
@@ -1221,6 +1222,8 @@ forgetExpiredHandoff()
 
 createRoot(document.getElementById('root')).render(
   <ErrorBoundary home="./">
-    <App />
+    <Gate>
+      <App />
+    </Gate>
   </ErrorBoundary>,
 )

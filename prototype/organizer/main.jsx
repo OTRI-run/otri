@@ -10,6 +10,7 @@ import UnitsMenu from '../../src/components/UnitsMenu'
 import { logoutOrganizer, getMe, resendVerification, whenSessionEnds } from '../apiClient'
 import BuildBanner from '../../src/components/BuildBanner'
 import ErrorBoundary from '../../src/components/ErrorBoundary'
+import Gate from '../../src/components/Gate'
 import { initMonitoring } from '../../src/lib/monitoring'
 import { countPages } from '../../src/lib/analytics'
 import { useDocumentTitle } from '../../src/lib/title'
@@ -414,6 +415,8 @@ installSearchShortcut()
 
 createRoot(document.getElementById('root')).render(
   <ErrorBoundary home="./">
-    <App />
+    <Gate>
+      <App />
+    </Gate>
   </ErrorBoundary>,
 )
