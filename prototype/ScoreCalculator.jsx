@@ -286,6 +286,44 @@ function ProposeCourse({ courseFile }) {
   )
 }
 
+// ----------------------------------------------------------------------------- under the score
+// The page is long: the map, the explanation and the maths are screens below the score. A row of
+// jumps under it, as buttons rather than links, since a "#…" address here would be read as a
+// page by the router. For a visitor's own upload the row also carries the offer to add it to the
+// calculator, which otherwise sits under the map where nobody looks for it.
+
+function scrollToId(id) {
+  const target = document.getElementById(id)
+  if (!target) return
+  if (target.tagName === 'DETAILS') target.open = true
+  target.scrollIntoView({ behavior: scrollBehavior(), block: 'start' })
+}
+
+function UnderTheScore({ items, offerProposal }) {
+  const jump = 'font-semibold text-blue-700 hover:underline'
+  return (
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+      <nav aria-label="On this page" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
+        <span className="font-mono text-[10px] tracking-[.08em] text-slate-500">ON THIS PAGE</span>
+        {items.map(([id, label]) => (
+          <button key={id} type="button" onClick={() => scrollToId(id)} className={jump}>
+            {label} ↓
+          </button>
+        ))}
+      </nav>
+      {offerProposal && (
+        <p className="text-[13px] text-slate-600">
+          Is this the official course of a race?{' '}
+          <button type="button" onClick={() => scrollToId('calculator-propose')} className={jump}>
+            Add it to the calculator ↓
+          </button>{' '}
+          so every runner can try a target time on it.
+        </p>
+      )}
+    </div>
+  )
+}
+
 function Eyebrow({ children, className = '' }) {
   return <p className={`text-[11px] font-semibold uppercase tracking-[.08em] text-slate-500 ${className}`}>{children}</p>
 }
@@ -477,7 +515,7 @@ function ScoreExplanation({ estimate, features, targetSeconds }) {
   const bestFlatPace = b?.world_best_time_seconds ? formatPace(b.world_best_time_seconds, b.adjusted_demand_km, units) : null
 
   return (
-    <section className="bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] py-14 sm:py-20">
+    <section id="calculator-why" className="scroll-mt-[68px] bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] py-14 sm:py-20">
       <div className={CONTAINER}>
         <div className="flex items-center justify-between gap-4">
           <Eyebrow>02 / WHY THIS SCORE</Eyebrow>
@@ -575,7 +613,7 @@ function ScoreExplanation({ estimate, features, targetSeconds }) {
           </div>
         </div>
 
-        <details className="group mt-10 rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+        <details id="calculator-maths" className="group mt-10 scroll-mt-[80px] rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
           <summary className="cursor-pointer select-none px-5 py-3.5 text-[12px] font-semibold uppercase tracking-[.08em] text-slate-600 hover:text-slate-900">
             <span className="inline-block transition-transform group-open:rotate-90">▸</span> Show the maths
           </summary>
@@ -1098,12 +1136,16 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
         </div>
 
         {gpxText && (
-          <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+          <div id="calculator-map" className="mt-6 scroll-mt-[80px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
             <CourseMap gpxText={gpxText} measurement={measurement} className="p-3" />
           </div>
         )}
 
-        {ownUpload && !embedded && courseFile && <ProposeCourse key={courseFile.name + courseFile.size} courseFile={courseFile} />}
+        {ownUpload && !embedded && courseFile && (
+          <div id="calculator-propose" className="scroll-mt-[80px]">
+            <ProposeCourse key={courseFile.name + courseFile.size} courseFile={courseFile} />
+          </div>
+        )}
 
         {courseLabel.meta === 'Shared course' && shareId && (
           <ReportForm kind="shared_course" subjectId={shareId} subjectLabel={courseLabel.name} prompt="Is this course file yours, or wrong?" />
@@ -1623,6 +1665,14 @@ export default function ScoreCalculator({ embedded = false }) {
       {!embedded && hasCourse && (
         <section className="border-b border-slate-200 bg-[#f8fbff] py-6">
           <div className={CONTAINER}>
+            <UnderTheScore
+              items={[
+                ['calculator-map', 'Course map'],
+                ...(estimate ? [['calculator-why', 'Why this score'], ['calculator-maths', 'The maths']] : []),
+                ...(estimate && shareImageOpen ? [['calculator-share', 'Share image']] : []),
+              ]}
+              offerProposal={Boolean(courseFile) && !courseLabel.verified && courseLabel.meta !== 'Shared course'}
+            />
             <ShareBox
               courseLabel={courseLabel}
               courseFile={courseFile}
