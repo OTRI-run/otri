@@ -114,6 +114,8 @@ export function renderLegalPage(page, root, { commitDate = '' } = {}) {
 <link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" />
 <title>${escape(page.title)} · OTRI</title>
+<meta name="robots" content="noindex" />
+<script>try{if(localStorage.getItem('otri_gate')!=='67a9689fda9c251b4df5d80d8480b236fe164ac91219806b83a319a083643d1f')location.replace('/')}catch(e){location.replace('/')}</script>
 <style>${CSS}</style>
 </head>
 <body>

@@ -1,5 +1,5 @@
 User-agent: *
-Allow: /
+Disallow: /
 Disallow: /organizer/
 Disallow: /embed/
 Sitemap: https://otri.run/sitemap.xml
