@@ -37,7 +37,7 @@ Try it: **Score my race** at [otri.run/prototype/#score](https://otri.run/protot
 curl -X POST https://api.otri.run/score -F "results=@results.csv" -F "gpx=@course.gpx"
 ```
 
-A major planned capability is the **GPX Target Performance Predictor**: upload a GPX course and estimate the finish time needed to target a chosen OTRI score, with uncertainty rather than false precision.
+The calculator already turns a course GPX and a target time into a score, and the exact inverse (score → time); a version with uncertainty ranges rather than point estimates is planned.
 
 ## Repository structure
 

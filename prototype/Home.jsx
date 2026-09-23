@@ -1,20 +1,19 @@
 import { scrollBehavior } from '../src/lib/comfort'
-import { ArrowRight, ArrowUpRight, Database, FileText, GitBranch, Mountain, ShieldCheck, Timer, Upload, Users } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Eye, GitBranch, Link2, UserX } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import RaceCard from './RaceCard'
 import ScoreTicker from '../src/components/ScoreTicker'
+import ExamplePreview, { EXAMPLE, ExampleExplanation, ExampleProfile, SyntheticPill, courseLine } from '../src/components/ExamplePreview'
 import { listRaces } from './apiClient'
-import { RunnerArt, SheetArt } from '../src/components/PageArt'
+import { CalculatorArt, PodiumArt, SheetArt } from '../src/components/PageArt'
 
 const GITHUB_URL = 'https://github.com/OTRI-run/otri'
-const DOCS = {
-  how: `${GITHUB_URL}/blob/main/docs/methodology/0.1.0/HOW-OTRI-SCORES.md`,
-  methodology: `${GITHUB_URL}/blob/main/METHODOLOGY.md`,
-  dataPolicy: '/data-policy/',
-  organizer: `${GITHUB_URL}/blob/main/docs/organizer-upload.md`,
-}
 
 const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
+
+// The header's "How it works" link lands on #home and leaves the section it wants here, because
+// the router only knows whole pages; Home reads it once mounted and scrolls (see main.jsx, NAV).
+export const HOME_SECTION_KEY = 'otri_home_section'
 
 /**
  * The ground, drawn as a wireframe surface running back to a horizon: the thing the index
@@ -92,28 +91,78 @@ function TerrainMesh() {
 }
 
 function Eyebrow({ children, className = '' }) {
-  return <p className={`font-mono text-[10px] tracking-[.08em] text-slate-500 ${className}`}>{children}</p>
+  return <p className={`font-mono text-[11px] tracking-[.08em] text-slate-500 ${className}`}>{children}</p>
 }
 
-function Heading({ children, className = '' }) {
-  return <h2 className={`text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em] text-[#0b1220] ${className}`}>{children}</h2>
+function Heading({ children, className = '', light = false }) {
+  return (
+    <h2 className={`text-[clamp(30px,4vw,48px)] font-bold leading-[1.02] tracking-[-.05em] ${light ? 'text-white' : 'text-[#0b1220]'} ${className}`}>
+      {children}
+    </h2>
+  )
 }
 
 function Gradient({ children }) {
   return <span className="bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">{children}</span>
 }
 
-const primaryButton =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 text-[13px] font-semibold text-white no-underline hover:bg-blue-800'
-const secondaryButton =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white/90 px-4 text-[13px] font-semibold text-[#0b1220] no-underline hover:border-blue-300'
-const textLink = 'inline-flex items-center gap-1 text-xs font-semibold text-blue-600 no-underline hover:underline'
+const focusRing = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600'
+const primaryButton = `inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 text-[13px] font-semibold text-white no-underline hover:bg-blue-800 ${focusRing}`
+const secondaryButton = `inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white/90 px-4 text-[13px] font-semibold text-[#0b1220] no-underline hover:border-blue-300 ${focusRing}`
+const lightButton = `inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-white px-4 text-[13px] font-semibold text-[#0b1220] no-underline hover:bg-blue-50 ${focusRing} focus-visible:outline-white`
+const outlineLightButton = `inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-white/40 px-4 text-[13px] font-semibold text-white no-underline hover:border-white ${focusRing} focus-visible:outline-white`
+const textLink = `inline-flex items-center gap-1 text-[13px] font-semibold text-blue-700 no-underline hover:underline ${focusRing}`
+
+/** The two actions the whole page keeps coming back to. */
+function TryButtons({ onDark = false }) {
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row">
+      <a className={onDark ? lightButton : primaryButton} href="#score?example=1">
+        Try an example race <ArrowRight size={15} aria-hidden="true" />
+      </a>
+      <a className={onDark ? outlineLightButton : secondaryButton} href="#score">
+        Score my race
+      </a>
+    </div>
+  )
+}
+
+const STEPS = [
+  ['Upload your course and results', 'Bring a course GPX and CSV or XLSX results for one race distance.'],
+  ['Review the output', 'Check any file issues, explore the scores, and read how they were calculated.'],
+  ['Choose what to share', 'Download the scored results, prepare a podium image, or create a race page to review and publish.'],
+]
+
+const USEFUL = [
+  [SheetArt, 'An accessible results page', 'Share a public link that runners can open without signing in.'],
+  [CalculatorArt, 'Scores with an explanation', 'Show the course inputs, calculation and confidence notes behind the result.'],
+  [PodiumArt, 'Images for your race channels', 'Prepare a podium image and suggested caption, then choose where to post them.'],
+]
+
+const QUESTIONS = [
+  ['What does it cost?', 'Free. There is no paid tier.', '#faq?q=cost'],
+  ['Do I need an account?', 'No account to score. An account, with a confirmed email, to publish.', '#faq?q=account'],
+  ['Which files do I need?', 'A course GPX and a CSV or XLSX results file for one distance. Only a name and a finish-time column are required.', '#faq?q=columns'],
+  ['What happens to my files?', 'Files you score without an account are deleted after the answer; only a hash-keyed course measurement is cached, without names.', '#faq?q=deleted'],
+  ['When does anything go public?', 'Nothing is public until you press Publish. Every publish is checked, and you can unpublish at any time.', '#faq?q=unpublish'],
+]
 
 export default function Home() {
-  // #contribute (the hero's link, the footer's, or an address someone shared) is the block below.
+  // #contribute (a footer link, or an address someone shared) is a block near the end of the page;
+  // the header's "How it works" leaves the section it wants in sessionStorage (see HOME_SECTION_KEY).
   useEffect(() => {
     const go = () => {
-      if (window.location.hash === '#contribute') document.getElementById('contribute')?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' })
+      let wanted = window.location.hash === '#contribute' ? 'contribute' : null
+      try {
+        const asked = sessionStorage.getItem(HOME_SECTION_KEY)
+        if (asked) {
+          sessionStorage.removeItem(HOME_SECTION_KEY)
+          wanted = asked
+        }
+      } catch {
+        // storage unavailable: the page opens at its top
+      }
+      if (wanted) document.getElementById(wanted)?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' })
     }
     const timer = setTimeout(go, 80) // after the page has laid out
     window.addEventListener('hashchange', go)
@@ -123,20 +172,17 @@ export default function Home() {
     }
   }, [])
 
+  // Published races, straight from the API. `loaded` tells the empty state apart from a failed
+  // request: only a list that really came back empty says there is nothing yet.
   const [races, setRaces] = useState([])
-  // The course the "I run" door offers to try: one public course with a track, chosen at random
-  // each visit. It was one race, by name, forever; every other course on the site got no turn.
-  const [tryRace, setTryRace] = useState(null)
+  const [loaded, setLoaded] = useState(false)
   useEffect(() => {
     let cancelled = false
     listRaces()
-      .then(async (all) => {
+      .then((all) => {
         if (cancelled) return
-        // The home page counts and previews scored races; listings without results live on the races page.
-        const rows = all.filter((race) => race.is_published)
-        setRaces(rows)
-        const tryable = all.filter((race) => race.has_gpx && (race.is_published || race.is_listed))
-        if (tryable.length) setTryRace(tryable[Math.floor(Math.random() * tryable.length)])
+        setRaces(all.filter((race) => race.is_published))
+        setLoaded(true)
       })
       .catch(() => {})
     return () => {
@@ -144,298 +190,283 @@ export default function Home() {
     }
   }, [])
 
+  const { targets, explanation } = EXAMPLE
+
   return (
     <>
-      {/* Hero */}
+      {/* Hero: what you get, and the real thing beside it. Not a full screen; the next section is
+          meant to show under it on a laptop. */}
       <section className="relative overflow-hidden border-b border-slate-200 bg-white">
         <TerrainMesh />
-        {/* The first screen is the hero and nothing else. The header is 68px, and below md a
-            second row of section links adds about 44 more, so the hero is told to fill what is
-            left of the viewport. svh rather than vh, so a phone's collapsing toolbar does not
-            push the next section into view. */}
-        <div
-          className={`${CONTAINER} flex min-w-0 flex-col items-center justify-center py-14 text-center sm:py-20 min-h-[calc(100svh-112px)] md:min-h-[calc(100svh-68px)]`}>
-          <div className="flex min-w-0 flex-col items-center">
-            <h1 className="mt-5 max-w-[760px] bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text pb-1 text-[clamp(44px,7vw,84px)] font-bold leading-[1.08] tracking-[-.065em] text-transparent">
-              The open score
+        <div className={`${CONTAINER} relative grid min-w-0 items-center gap-10 py-12 sm:py-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,480px)] lg:gap-14`}>
+          <div className="min-w-0">
+            <Eyebrow className="text-blue-700">TRAIL SCORES. OPEN TO EVERYONE.</Eyebrow>
+            <h1 className="mt-4 text-[clamp(38px,5.6vw,68px)] font-bold leading-[1.04] tracking-[-.06em] text-[#0b1220]">
+              Your race. Explained scores.
               <br />
-              <em className="not-italic">for any trail race.</em>
+              <span className="bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text pb-1 text-transparent">Open for everyone to see.</span>
             </h1>
-            {/* Plain sentences in one colour. Scattered bold and a second accent made this harder
-                to read, not easier. */}
-            {/* Each sentence gets its own line, so a break never lands in the middle of a phrase. */}
-            <p className="mt-6 max-w-[64ch] text-[19px] font-medium leading-8 text-slate-800">
-              Finish time in. Score out.
-              <span className="block">A calculator, not a governing body. Free and no black box.</span>
+            <p className="mt-6 max-w-[58ch] text-[16px] leading-7 text-slate-700 sm:text-[17px]">
+              Turn your course GPX and race results into explained trail scores. Try scoring without an account, then choose whether to publish a
+              race page your runners can view without signing in or subscribing.
             </p>
-            <div className="mt-7 grid max-w-[680px] gap-3 sm:grid-cols-2">
+            <div className="mt-7">
+              <TryButtons />
+            </div>
+            <p className="mt-5 text-[12px] font-medium text-slate-500">Free scoring · Public results without sign-in · Open methodology</p>
+            <a href="#calculator" className={`${textLink} mt-4`}>
+              Running a course yourself? Explore the calculator <ArrowRight size={14} aria-hidden="true" />
+            </a>
+          </div>
+          <ExamplePreview base="" className="min-w-0" />
+        </div>
+      </section>
+
+      {/* 2 / One link */}
+      <section id="public" className="border-b border-slate-200 bg-slate-50 py-14 sm:py-16">
+        <div className={`${CONTAINER} grid min-w-0 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16`}>
+          <div className="min-w-0">
+            <Eyebrow className="mb-3">FOR YOUR RUNNERS</Eyebrow>
+            <Heading>
+              Share one link.
+              <br />
+              <Gradient>Let everyone see the scores.</Gradient>
+            </Heading>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[15px] leading-7 text-slate-700">
+              When you publish a race on OTRI, runners can open its results and scores without creating an account or buying a subscription.
+            </p>
+            <p className="mt-3 text-[15px] leading-7 text-slate-700">You need an organizer account to publish. Your audience doesn't need one to view.</p>
+            <ul className="mt-6 grid gap-3 sm:grid-cols-3">
               {[
-                {
-                  who: 'I run',
-                  href: '#calculator',
-                  action: 'Open the calculator',
-                  dark: false,
-                  // Until the list arrives, or if nothing is tryable, the calculator itself.
-                  more: tryRace
-                    ? [`Try it on ${tryRace.event_name} · ${tryRace.course_name}`, `#calculator?race=${encodeURIComponent(tryRace.race_id)}`]
-                    : ['Try it on a race', '#calculator'],
-                },
-                {
-                  who: 'I organise a race',
-                  href: '#score',
-                  action: 'Score my race',
-                  dark: true,
-                  more: ['See an example', '#score?example=1'],
-                },
-              ].map(({ who, href, action, more, dark }) => (
-                <div
-                  key={who}
-                  /* The light card is tinted, not white: the hero behind it is white, so a white
-                     card had no edge and the "I run" door was the one thing on the page that did
-                     not look like a door. */
-                  className={`relative flex min-w-0 flex-col rounded-2xl border p-5 text-left ${
-                    dark ? 'border-[#17202c] bg-[#17202c]' : 'border-blue-200 bg-[#eef4ff] shadow-[0_10px_28px_rgba(37,99,235,.08)]'
-                  }`}
-                >
-                  <span className={`font-mono text-[15px] font-bold uppercase tracking-[.12em] ${dark ? 'text-white' : 'text-[#0b1220]'}`}>
-                    {who}
-                  </span>
-                  {/* The drawing is a real column beside the buttons, not a background under them:
-                      tucked behind, the buttons covered it and there was nothing to see. */}
-                  {/* Buttons align to the top of the row, not the bottom: the link under a button
-                      is one line or two depending on the race name, and bottom-aligned that moved
-                      the button up and out of line with the other card's. The link reserves two
-                      lines of height, so the card stays the same size either way. */}
-                  <div className="mt-6 flex items-start justify-between gap-4">
-                    <div className="flex min-w-0 flex-col items-start">
-                      <a
-                        className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-[13px] font-semibold no-underline ${
-                          dark ? 'bg-white text-[#17202c] hover:bg-slate-100' : 'bg-blue-700 text-white hover:bg-blue-800'
-                        }`}
-                        href={href}
-                      >
-                        {action} <ArrowRight size={15} />
-                      </a>
-                      <a
-                        className={`mt-3 inline-flex min-h-10 items-start gap-1 text-xs font-semibold leading-5 no-underline hover:underline ${
-                          dark ? 'text-slate-300' : 'text-blue-700'
-                        }`}
-                        href={more[1]}
-                      >
-                        {more[0]}
-                      </a>
-                    </div>
-                    {dark ? (
-                      <SheetArt face="#17202c" className="h-[92px] w-[92px] shrink-0 -rotate-6 text-white opacity-[.32]" />
-                    ) : (
-                      <RunnerArt className="h-[92px] w-[92px] shrink-0 text-blue-700 opacity-[.4]" />
-                    )}
-                  </div>
+                [Link2, 'One public link'],
+                [UserX, 'No account for readers'],
+                [Eye, 'No subscription to view'],
+              ].map(([Icon, text]) => (
+                <li key={text} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-[13px] font-semibold text-[#0b1220]">
+                  <Icon size={16} className="shrink-0 text-blue-700" aria-hidden="true" /> {text}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* 3 / How it works */}
+      <section id="how-it-works" className="scroll-mt-20 border-b border-slate-200 bg-white py-14 sm:py-16">
+        <div className={CONTAINER}>
+          <Eyebrow className="mb-3">HOW IT WORKS</Eyebrow>
+          <Heading>From two files to an explained result.</Heading>
+          <ol className="mt-10 grid gap-6 md:grid-cols-3 md:gap-8">
+            {STEPS.map(([title, text], index) => (
+              <li key={title} className="min-w-0 border-t-2 border-blue-700 pt-4">
+                <p className="font-mono text-[11px] tracking-[.08em] text-blue-700">STEP {index + 1}</p>
+                <h3 className="mt-2 text-[17px] font-bold tracking-[-.02em] text-[#0b1220]">
+                  {index + 1}. {title}
+                </h3>
+                <p className="mt-2 text-[14px] leading-6 text-slate-600">{text}</p>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-8 text-[13px] text-slate-500">Trying the scoring tool does not publish your results.</p>
+        </div>
+      </section>
+
+      {/* 4 / Useful for runners */}
+      <section className="border-b border-slate-200 bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] py-14 sm:py-16">
+        <div className={CONTAINER}>
+          <Eyebrow className="mb-3">WHAT YOU CAN SHARE</Eyebrow>
+          <Heading>Give your runners something useful.</Heading>
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {USEFUL.map(([Art, title, text]) => (
+              <article key={title} className="flex min-w-0 gap-4 rounded-2xl border border-slate-200 bg-white p-5">
+                <Art className="h-14 w-14 shrink-0 text-blue-700 opacity-[.6]" />
+                <div className="min-w-0">
+                  <h3 className="text-[16px] font-bold tracking-[-.02em] text-[#0b1220]">{title}</h3>
+                  <p className="mt-2 text-[14px] leading-6 text-slate-600">{text}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+          {/* One famous performance at a time with an illustrative score: what a number looks like.
+              Decorative, not a link, and the strip says the scores are illustrative. */}
+          <div className="mt-12 flex flex-col items-center">
+            <ScoreTicker />
+          </div>
+        </div>
+      </section>
+
+      {/* Races: the published ones, or the fact that there are none yet. Hidden while the list has
+          not arrived, so a failed request never reads as an empty site. */}
+      {(loaded || races.length > 0) && (
+        <section id="races-preview" className="border-b border-slate-200 bg-white py-14 sm:py-16">
+          <div className={CONTAINER}>
+            <div className="flex items-center justify-between gap-4">
+              <Eyebrow>RACES</Eyebrow>
+              <a href="#races" className={textLink}>
+                All races <ArrowRight size={14} aria-hidden="true" />
+              </a>
+            </div>
+            <Heading className="mt-3">Published races.</Heading>
+            {races.length > 0 ? (
+              <>
+                <p className="mt-4 max-w-[60ch] text-[15px] leading-7 text-slate-700">
+                  {races.every((race) => race.is_demo) ? 'Demonstration races' : 'Races'} their organizers published, all scored with the same open model. Open one to see its results page.
+                </p>
+                <div className="mt-8 grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {races.slice(0, 4).map((race) => (
+                    <RaceCard key={race.race_id} race={race} />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6">
+                <p className="text-[15px] leading-7 text-slate-700">No published races yet. Score your race, review its page and publish when ready.</p>
+                <a href="#score" className={`${primaryButton} mt-4`}>
+                  Score my race <ArrowRight size={15} aria-hidden="true" />
+                </a>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* 5 / Explained */}
+      <section id="explained" className="border-b border-slate-200 bg-slate-50 py-14 sm:py-16">
+        <div className={`${CONTAINER} grid min-w-0 items-start gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-16`}>
+          <div className="min-w-0 lg:order-2">
+            <Eyebrow className="mb-3">THE MODEL</Eyebrow>
+            <Heading>Every score explains itself.</Heading>
+            <div className="mt-5 flex flex-col gap-3 text-[15px] leading-7 text-slate-700">
+              <p>OTRI's current model uses the measured course and each runner's finish time. The calculation does not depend on who else entered the race.</p>
+              <p>The methodology and source code are public. Each score identifies its model version.</p>
+              <p>The model is still developing. Race-day weather and technical footing are not fully represented.</p>
+            </div>
+            <a href="#faq?q=score" className={`${secondaryButton} mt-6`}>
+              Explore the explanation <ArrowRight size={15} aria-hidden="true" />
+            </a>
+          </div>
+          <div className="min-w-0 lg:order-1">
+            <div className="mb-2 flex items-center gap-2">
+              <SyntheticPill />
+              <span className="text-[12px] text-slate-500">the winner of the example race</span>
+            </div>
+            <ExampleExplanation className="bg-white" />
+          </div>
+        </div>
+      </section>
+
+      {/* 6 / Target time */}
+      <section id="target" className="border-b border-slate-200 bg-white py-14 sm:py-16">
+        <div className={`${CONTAINER} grid min-w-0 items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-16`}>
+          <div className="min-w-0">
+            <Eyebrow className="mb-3">FOR RUNNERS</Eyebrow>
+            <Heading>Explore a target time on your course.</Heading>
+            <div className="mt-5 flex flex-col gap-3 text-[15px] leading-7 text-slate-700">
+              <p>Open a course, adjust the finish time, and see how the model-based score changes.</p>
+              <p>Read the explanation and confidence notes alongside the estimate. It is not a guarantee of race-day performance.</p>
+            </div>
+            <a href="#calculator" className={`${primaryButton} mt-6`}>
+              Open the calculator <ArrowRight size={15} aria-hidden="true" />
+            </a>
+          </div>
+          <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[14px] font-bold text-[#0b1220]">{EXAMPLE.course.name}</p>
+                <p className="font-mono text-[11px] leading-5 text-slate-500 [overflow-wrap:anywhere]">{courseLine()}</p>
+              </div>
+              <SyntheticPill />
+            </div>
+            <ExampleProfile className="mt-3" />
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {targets.map((target) => (
+                <div key={target.time} className="rounded-xl border border-slate-200 bg-white p-4">
+                  <p className="font-mono text-[11px] uppercase tracking-[.08em] text-slate-500">Finish time</p>
+                  <p className="mt-1 font-mono text-[22px] font-bold tabular-nums tracking-[-.02em] text-[#0b1220]">{target.time}</p>
+                  <p className="mt-3 flex items-baseline gap-2">
+                    <span className="font-mono text-[11px] uppercase tracking-[.08em] text-slate-500">OTRI</span>
+                    <span className="font-mono text-[26px] font-bold tabular-nums text-blue-700">{target.score}</span>
+                  </p>
+                  <p className="mt-1 text-[12px] leading-5 text-slate-600">
+                    {(target.fraction_of_ceiling * 100).toFixed(0)} % of the ceiling rate: {target.performance_rate.toFixed(2)} of {explanation.reference_rate.toFixed(2)} km/h
+                  </p>
                 </div>
               ))}
             </div>
-            {/* One famous performance at a time, with its flag and an illustrative score: what a
-                number here looks like, once the two doors above have said what the site is for.
-                Decorative, not a link. */}
-            <ScoreTicker className="mt-8" />
+            <p className="mt-3 text-[12px] leading-5 text-slate-500">
+              Two target times on the example course, scored by the live API with {EXAMPLE.model_label}.
+            </p>
           </div>
         </div>
       </section>
 
-      {/* 01 / Calculate */}
-      <section className="border-t border-slate-200 bg-slate-50 py-14 sm:py-20">
+      {/* 7 / Questions */}
+      <section id="questions" className="border-b border-slate-200 bg-slate-50 py-14 sm:py-16">
         <div className={CONTAINER}>
-          <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
-            <div className="hidden font-mono text-xs text-blue-600 md:block">01</div>
+          <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="min-w-0">
-              <Eyebrow className="mb-3">FOR RUNNERS</Eyebrow>
-              <Heading>
-                Know your score.
-                <br />
-                <Gradient>Before you race.</Gradient>
-              </Heading>
+              <Eyebrow className="mb-3">BEFORE YOU START</Eyebrow>
+              <Heading>Questions before you upload?</Heading>
             </div>
-            <div className="min-w-0">
-              <p className="text-sm leading-7 text-slate-500">
-                Pick a race or upload a GPX, set a target finish time, and watch the score update live —
-                with the full reasoning underneath.
-              </p>
-              <a href="#calculator" className={`${textLink} mt-3`}>
-                Open the calculator <ArrowRight size={14} />
-              </a>
-            </div>
-          </div>
-          <div className="mt-10 grid grid-cols-1 border-y border-slate-200 sm:grid-cols-3">
-            {[
-              [Mountain, 'COURSE', 'Distance, climb and steepness, measured on the server.', '#calculator'],
-              [Timer, 'TIME', 'A target, not a result. Drag it and see what it is worth.', '#calculator'],
-              [GitBranch, 'SCORE', 'How close your time is to a record run on that course. Faster than the record scores higher still.', DOCS.how],
-            ].map(([Icon, title, desc, href], index) => (
-              <a
-                key={title}
-                href={href}
-                className={`group block min-w-0 px-2 py-5 no-underline sm:px-5 ${index > 0 ? 'border-t border-slate-200 sm:border-l sm:border-t-0' : ''}`}
-              >
-                <small className="flex items-center gap-2 font-mono text-[9px] tracking-[.08em] text-blue-600">
-                  <Icon size={14} /> {title}
-                </small>
-                <b className="mt-2 block text-sm leading-6 text-[#0b1220]">{desc}</b>
-                <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-slate-400 transition group-hover:text-blue-600">
-                  {href.startsWith('#') ? 'Try it' : 'Read how'} <ArrowUpRight size={12} />
-                </span>
-              </a>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 02 / Score a race */}
-      <section className="border-t border-slate-200 bg-white py-14 sm:py-20">
-        <div className={CONTAINER}>
-          <div className="grid min-w-0 items-end gap-6 md:grid-cols-[34px_minmax(0,1fr)_minmax(0,.8fr)]">
-            <div className="hidden font-mono text-xs text-blue-600 md:block">02</div>
-            <div className="min-w-0">
-              <Eyebrow className="mb-3">FOR RACES</Eyebrow>
-              <Heading>
-                Score your race.
-                <br />
-                <Gradient>Then show it off.</Gradient>
-              </Heading>
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm leading-7 text-slate-500">
-                No sign-up to see your scores. Keep them as a file, share the podium, or turn the race into a public page with one
-                click: free, and nobody has to approve you.
-              </p>
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                <a className={primaryButton} href="#score">
-                  Score my race <ArrowRight size={15} />
-                </a>
-                <a className={secondaryButton} href="#score?example=1">
-                  See an example result
-                </a>
-              </div>
-            </div>
-          </div>
-          <div className="mt-10 grid grid-cols-1 border-y border-slate-200 sm:grid-cols-3">
-            {[
-              [Upload, 'BRING TWO FILES', 'The course as a GPX and the results as CSV or Excel. There is an example race to try first.', '#score'],
-              [ShieldCheck, 'GET EVERY SCORE', 'The file is checked row by row, the course is measured, and the model says how far each number can be trusted.', '#score'],
-              [Users, 'PUBLISH AND SHARE', 'A leaderboard page for your runners, podium images and a post for your channels, the calculator on your site.', '#score'],
-            ].map(([Icon, title, desc, href], index) => (
-              <a key={title} href={href} className={`group block min-w-0 px-0 py-5 text-inherit no-underline sm:px-5 ${index < 2 ? 'border-b border-slate-200 sm:border-b-0 sm:border-r' : ''}`}>
-                <small className="flex items-center gap-2 font-mono text-[9px] tracking-[.06em] text-blue-600">
-                  <Icon size={14} /> {title}
-                </small>
-                <p className="mt-2 text-sm font-semibold leading-6 text-[#0b1220]">{desc}</p>
-              </a>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* 03 / Races: only when there is a scored race to show */}
-      {races.length > 0 && (
-      <section id="races-preview" className="bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] py-14 sm:py-20">
-        <div className={CONTAINER}>
-          <div className="flex items-center justify-between gap-4">
-            <Eyebrow>03 / RACES</Eyebrow>
-            <a href="#races" className="flex shrink-0 items-center gap-1 text-xs font-semibold text-blue-600 no-underline">
-              All races <ArrowRight size={14} />
+            <a href="#faq" className={textLink}>
+              All questions <ArrowRight size={14} aria-hidden="true" />
             </a>
           </div>
-          <div className="mt-6 grid min-w-0 gap-10 lg:grid-cols-[.82fr_1.18fr] lg:gap-20">
-            <div className="min-w-0">
-              <Heading>
-                Scored races.
-                <br />
-                <Gradient>Every number explained.</Gradient>
-              </Heading>
-              <p className="mt-5 max-w-[440px] text-sm leading-7 text-slate-500">
-                {races.every((race) => race.is_demo) ? 'Demonstration races' : 'Races'} their organizers published, all scored with the same open model. A score depends only on the course and the
-                runner's own finish time — never on who else raced. Open one to see its leaderboard.
-              </p>
-              <div className="mt-6 flex flex-wrap items-center gap-2 font-mono text-[8px] text-slate-500">
-                <GitBranch size={16} className="text-blue-600" />
-                same course + same time + same version <b className="text-blue-600">=</b> same score
-              </div>
-            </div>
-            <div className="grid min-w-0 gap-4 sm:grid-cols-2">
-              {races.slice(0, 4).map((race) => (
-                <RaceCard key={race.race_id} race={race} />
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-      )}
-
-      {/* 04 / Method */}
-      <section className="bg-[#0b1220] py-14 text-white sm:py-20">
-        <div className={CONTAINER}>
-          <div className="flex items-center justify-between">
-            {/* Section 03 only appears once a race has been scored, so this one counts itself. */}
-            <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">{races.length > 0 ? '04' : '03'} / METHOD</p>
-            <span className="font-mono text-[9px] tracking-[.08em] text-blue-400">NO BLACK BOX</span>
-          </div>
-          <h2 className="mt-5 text-[clamp(38px,5vw,62px)] font-bold leading-[.94] tracking-[-.06em]">Built in the open.</h2>
-          <div className="mt-9 grid border-t border-slate-700/80 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              [FileText, 'HOW A SCORE IS MADE', 'Plain-language explainer, then every constant and where it comes from.', DOCS.how],
-              [GitBranch, 'VERSIONED MODEL', 'Every score names its model version. A change to the scoring is a new version, never a silent edit.', DOCS.methodology],
-              [ShieldCheck, 'DATA POLICY', 'Which results OTRI will and will not use, and why.', DOCS.dataPolicy],
-              [Database, 'SOURCE CODE', 'Scoring, course measurement and this site, all public.', GITHUB_URL],
-            ].map(([Icon, title, desc, href]) => (
-              <a
-                key={title}
-                href={href}
-                className="group block border-b border-slate-700/80 px-0 py-5 text-white no-underline transition hover:bg-white/5 sm:border-r sm:px-4 lg:border-b-0"
-              >
-                <small className="flex items-center gap-2 font-mono text-[9px] text-white">
-                  <Icon size={14} className="text-blue-400" /> {title}
-                </small>
-                <p className="mt-3 text-[11px] leading-5 text-slate-400">{desc}</p>
-                <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-300 transition group-hover:text-white">
-                  Read <ArrowUpRight size={12} />
-                </span>
-              </a>
-            ))}
-          </div>
-
-          {/* Contribute: the model and the course measurement get better with more eyes and more courses. */}
-          <div id="contribute" className="mt-12 scroll-mt-24 rounded-2xl border border-slate-700/80 bg-white/[.03] p-6 sm:p-8">
-            <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,.9fr)_minmax(0,1.4fr)]">
-              <div className="min-w-0">
-                <p className="font-mono text-[10px] tracking-[.08em] text-blue-400">CONTRIBUTE</p>
-                <h3 className="mt-3 text-[clamp(26px,3.2vw,38px)] font-bold leading-[1.02] tracking-[-.045em]">Help improve the model and the course measurement.</h3>
-                <p className="mt-3 text-sm leading-6 text-slate-400">
-                  OTRI belongs to nobody's federation. The model has known limits, written down where everyone can read them, and it gets better the way open software does: someone shows where it is wrong, with a course or a paper, and the fix becomes a new version.
-                </p>
-                <a href={`${GITHUB_URL}/blob/main/CONTRIBUTING.md`} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-white px-4 text-[13px] font-semibold text-[#0b1220] no-underline hover:bg-blue-50">
-                  <GitBranch size={15} /> How to contribute <ArrowUpRight size={14} />
-                </a>
-              </div>
-              <div className="grid min-w-0 gap-px overflow-hidden rounded-xl border border-slate-700/80 bg-slate-700/80 sm:grid-cols-2">
-                {[
-                  ['Challenge the scoring model', 'Every formula and constant is in one specification, with what it does not know yet. Propose a change as an OEP: tested on real results, versioned, never a silent edit.', 'The model and its open questions', DOCS.how],
-                  ['Improve course measurement', 'How a GPX becomes distance, climb and demand: denoising, terrain data, steep ground, altitude. A course that measures wrong is the most useful bug report there is.', 'The measurement specification', `${GITHUB_URL}/blob/main/docs/methodology/course-measurement/REAL-WORLD-COURSE-MEASUREMENT-SPEC.md`],
-                  ['Report what looks wrong', 'A score that cannot be right, a results file that should have passed, a confusing page. An issue with the file or the link is enough.', 'Open an issue', `${GITHUB_URL}/issues`],
-                  ['Write code', 'Python for scoring, measurement and the API; React for the site. Tests run in a minute and a half, and the good first issues are labelled.', 'Browse the code', GITHUB_URL],
-                ].map(([title, text, cta, href]) => (
-                  <a key={title} href={href} className="group block bg-[#0b1220] p-5 text-white no-underline transition hover:bg-[#101a33]">
-                    <p className="text-sm font-bold tracking-[-.01em]">{title}</p>
-                    <p className="mt-2 text-[12px] leading-5 text-slate-400">{text}</p>
-                    <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-300 transition group-hover:text-white">
-                      {cta} <ArrowUpRight size={12} />
-                    </span>
+          <dl className="mt-8 divide-y divide-slate-200 border-y border-slate-200">
+            {QUESTIONS.map(([question, answer, href]) => (
+              <div key={question} className="grid gap-x-8 gap-y-1 py-4 md:grid-cols-[minmax(0,.7fr)_minmax(0,1.3fr)_auto] md:items-baseline">
+                <dt className="text-[15px] font-bold tracking-[-.01em] text-[#0b1220]">{question}</dt>
+                <dd className="text-[14px] leading-6 text-slate-700">{answer}</dd>
+                <dd className="md:text-right">
+                  <a href={href} className={textLink}>
+                    In the FAQ <ArrowUpRight size={13} aria-hidden="true" />
                   </a>
-                ))}
+                </dd>
               </div>
+            ))}
+          </dl>
+        </div>
+      </section>
+
+      {/* 8 / The primary action, once more, and the open-source note */}
+      <section className="bg-[#0b1220] py-14 text-white sm:py-16">
+        <div className={CONTAINER}>
+          <div className="grid min-w-0 items-center gap-8 lg:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="min-w-0">
+              <p className="font-mono text-[11px] tracking-[.08em] text-blue-300">NO ACCOUNT NEEDED TO TRY</p>
+              <Heading light className="mt-3">
+                Try it with an example race.
+              </Heading>
+              <p className="mt-3 max-w-[56ch] text-[15px] leading-7 text-slate-300">
+                Score the built-in example in a minute, then bring your own files. Trying the scoring tool does not publish anything.
+              </p>
+            </div>
+            <TryButtons onDark />
+          </div>
+
+          <div id="contribute" className="mt-12 scroll-mt-24 flex flex-col gap-4 border-t border-slate-700/80 pt-8 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="flex items-center gap-2 font-mono text-[11px] tracking-[.08em] text-blue-300">
+                <GitBranch size={14} aria-hidden="true" /> BUILT IN THE OPEN
+              </p>
+              <p className="mt-2 max-w-[64ch] text-[14px] leading-6 text-slate-300">
+                The scoring model, the course measurement and this site are open source, and every change to the model is a new version.
+                <span className="block">Report a course that measures wrong, review the methodology, or write code.</span>
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <a href={GITHUB_URL} className={outlineLightButton}>
+                GitHub <ArrowUpRight size={14} aria-hidden="true" />
+              </a>
+              <a href={`${GITHUB_URL}/blob/main/CONTRIBUTING.md`} className={outlineLightButton}>
+                How to contribute <ArrowUpRight size={14} aria-hidden="true" />
+              </a>
             </div>
           </div>
         </div>
       </section>
-
     </>
   )
 }

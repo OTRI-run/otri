@@ -8,7 +8,7 @@ OTRI reads only the track points. Waypoints, timestamps, heart rate and other ex
 
 - **The race website.** Most trail races publish the course GPX weeks before the event, usually on the "Course" or "Route" page next to the map and the elevation profile, sometimes per distance. Look for "Download GPX", "Track" or "Trace".
 - **The organizer's email or race briefing.** Many organizers attach the file to the final participant email or the mandatory-kit briefing.
-- **Verified races on OTRI.** If the organizer has already submitted the course to OTRI, pick the race from the list on the calculator instead of uploading. That file has been measured on the server and cannot be changed.
+- **Races on OTRI.** If the organizer has already submitted the course to OTRI, pick the race from the list on the calculator instead of uploading. That file has been measured on the server and cannot be changed.
 - **Your own recording.** After the race, export the activity from your watch platform: Garmin Connect (activity → gear icon → *Export to GPX*), Strava (activity → *…* → *Export GPX*), Coros, Suunto and Polar have the same option. A recording is a real trace of the course, including the detours you took, so expect a slightly longer distance than the official figure.
 - **Route planners.** Komoot, Strava Routes, Gaia, Caltopo and similar tools export any planned route as GPX.
 

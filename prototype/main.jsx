@@ -102,20 +102,46 @@ function navigate(hash) {
 
 // The header carries what a visitor came to do; the API page and GitHub are in the footer (GitHub
 // also sits in the home page's opening, next to what OTRI is).
+// "How it works" is a place on the home page, not a page: the router only knows whole pages, so
+// the link goes to #home and leaves the section's id for Home.jsx to scroll to (HOME_SECTION_KEY).
+// Runners moved to the footer. The example race is the one highlighted item.
 const NAV = [
+  { id: 'how', label: 'How it works', short: 'How', href: '#home', section: 'how-it-works' },
   { id: 'calculator', label: 'Calculator', href: '#calculator' },
   { id: 'score', label: 'Score a race', short: 'Score', href: '#score' },
   { id: 'races', label: 'Races', href: '#races' },
-  { id: 'runners', label: 'Runners', href: '#runners' },
   { id: 'faq', label: 'FAQ', href: '#faq' },
+  { id: 'example', label: 'Try an example', short: 'Example', href: '#score?example=1', highlight: true },
 ]
 
 function NavLink({ item, active, className = '', short = false }) {
+  const scrollToSection = item.section
+    ? (event) => {
+        const target = document.getElementById(item.section)
+        if (target) {
+          // Already on the home page: scroll, and leave the hash alone so nothing scrolls back up.
+          event.preventDefault()
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          return
+        }
+        try {
+          sessionStorage.setItem('otri_home_section', item.section) // Home.jsx reads this once mounted
+        } catch {
+          // storage unavailable: the home page opens at its top
+        }
+      }
+    : undefined
+  const tone = item.highlight
+    ? 'font-semibold text-blue-700 hover:text-blue-900'
+    : active
+      ? 'text-[#0b1220]'
+      : 'text-slate-500 hover:text-slate-950'
   return (
     <a
       href={item.href}
+      onClick={scrollToSection}
       aria-current={active ? 'page' : undefined}
-      className={`text-[13px] font-medium no-underline ${active ? 'text-[#0b1220]' : 'text-slate-500 hover:text-slate-950'} ${className}`}
+      className={`text-[13px] font-medium no-underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${tone} ${className}`}
     >
       {short ? item.short ?? item.label : item.label}
     </a>
@@ -812,6 +838,14 @@ function Leaderboard({ raceId, onBack, query }) {
             <p className="mt-3 font-mono text-[10px] tracking-[.05em] text-slate-600">
               {modelLabel(race.scoring_version)} · depends only on the course and each runner's own finish time, never the field
             </p>
+            {race.is_published && (
+              // The same badge organizers can put on their own results page (see the organizer's review
+              // step). It says "scored with OTRI", nothing more; the link goes through /go/badge so the
+              // site can count how many people arrive by it.
+              <a href="https://otri.run/go/badge" className="mt-3 inline-block" title="Scored with OTRI">
+                <img src="../brand/otri-badge-scored.svg" alt="Scored with OTRI" height="28" className="h-7 w-auto" />
+              </a>
+            )}
             </>
           )}
           <ReportForm kind="race" subjectId={race.race_id} subjectLabel={`${race.event_name} · ${race.course_name}`} prompt={race.is_published ? 'Wrong result, wrong course, or your name should not be here?' : 'Wrong details, or should this race not be listed?'} />
@@ -871,13 +905,13 @@ function NoRacesYet() {
     [
       'Hello,',
       'I would like to see our race on OTRI (https://otri.run), an open and free score for trail races: every finisher gets a score that depends only on the course and their own time, so it compares across races.',
-      'Scoring the results takes about a minute and needs no account (https://otri.run/prototype/#score). Publishing them as a race page is free and needs no approval: https://otri.run/organizer/',
+      'Scoring the results takes about a minute and needs no account (https://otri.run/prototype/#score). Publishing them as a race page is free and needs no approval: https://otri.run/prototype/organizer/',
       'Thank you!',
     ].join('\n\n'),
   )}`
   const ways = [
     [Mail, 'Ask your organizer', 'Races appear here when their organizers publish results. A prepared email explains what OTRI is and that it is free.', mail, 'Write to them'],
-    [Upload, 'Have the results yourself?', 'A course file and a results file are enough: every finisher scored in a minute, no account, and one click to publish.', '#score', 'Score a race'],
+    [Upload, 'Have the results yourself?', 'A course file and a results file are enough: every finisher scored, no account to try; review your race page and publish when ready.', '#score', 'Score a race'],
     [Play, 'See what a scored race looks like', 'The example race: its course on the map, the elevation profile and 100 finishers with their scores.', '#score?example=1', 'Open the example'],
     [CalculatorIcon, 'Just curious about a time?', 'Pick a course or upload a GPX and see what a finish time is worth, before or after race day.', '#calculator', 'Open the calculator'],
   ]

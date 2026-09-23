@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /prototype/organizer/
+Disallow: /prototype/embed/
+Sitemap: https://otri.run/sitemap.xml

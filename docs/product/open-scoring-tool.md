@@ -16,7 +16,7 @@ This is a choice about where the project's effort goes. ITRA and UTMB are member
 | Transparent scores | Every score explains itself: course demand, human ceiling, every intermediate | `scoring/`, the calculator's explanation, the methodology docs |
 | Results-file validation | Row and field level errors and warnings, header aliases in several languages | `ingestion/`, `POST /score` |
 | Self-service race pages | An organizer account, a race page, publish when ready. No approval step in the way | `prototype/organizer/` |
-| Automated quality and confidence warnings | The model says where it runs out of evidence: Low confidence with reasons, uphill-only courses listed without a score | `scoring/course_standard.py` (`confidence_for`, `not_scored_reason`) |
+| Automated quality and confidence warnings | The model says where it runs out of evidence: Low confidence with reasons, uphill-only courses scored provisionally at Low confidence with the reason shown (OEP-003) | `scoring/course_standard.py` (`confidence_for`, `not_scored_reason`) |
 | API and embeddable calculator | The tool as HTTP calls any site may use, and the calculator as an iframe | `POST /score`, `/gpx/analyze`, `/scoring/models`, `prototype/embed/`, the `#api` page |
 
 ### Not now
