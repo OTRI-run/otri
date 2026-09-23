@@ -132,11 +132,8 @@ export function ExampleExplanation({ className = '', showRunner = true }) {
 
 // ---------------------------------------------------------------------------- the card
 
-/**
- * `base` is the path to the prototype app from the page that renders the card: '' inside the app
- * itself (links are '#score?example=1'), 'prototype/' from the root marketing page.
- */
-export default function ExamplePreview({ base = '', className = '' }) {
+/** The example race as a card; its link opens the example in the scoring page of this app. */
+export default function ExamplePreview({ className = '' }) {
   const { course, rows, summary, label } = example
   return (
     <article className={`relative min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(11,18,32,.12)] ${className}`} aria-label="Example race result">
@@ -196,7 +193,7 @@ export default function ExamplePreview({ base = '', className = '' }) {
 
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
         <p className="min-w-0 max-w-[36ch] text-[11px] leading-4 text-slate-500">{label}</p>
-        <a href={`${base}#score?example=1`} className={`inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg text-[13px] font-semibold text-blue-700 no-underline hover:underline ${focusRing}`}>
+        <a href="#score?example=1" className={`inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg text-[13px] font-semibold text-blue-700 no-underline hover:underline ${focusRing}`}>
           Open this example <ArrowRight size={14} aria-hidden="true" />
         </a>
       </div>

@@ -117,11 +117,11 @@ const textLink = `inline-flex items-center gap-1 text-[13px] font-semibold text-
 function TryButtons({ onDark = false }) {
   return (
     <div className="flex flex-col gap-2 sm:flex-row">
-      <a className={onDark ? lightButton : primaryButton} href="#score?example=1">
-        Try an example race <ArrowRight size={15} aria-hidden="true" />
+      <a className={onDark ? lightButton : primaryButton} href="#calculator">
+        Open the calculator <ArrowRight size={15} aria-hidden="true" />
       </a>
-      <a className={onDark ? outlineLightButton : secondaryButton} href="#calculator">
-        Open the calculator
+      <a className={onDark ? outlineLightButton : secondaryButton} href="#score?example=1">
+        Try an example race
       </a>
     </div>
   )
@@ -218,7 +218,7 @@ export default function Home() {
               Have your own files? Score my race <ArrowRight size={14} aria-hidden="true" />
             </a>
           </div>
-          <ExamplePreview base="" className="min-w-0" />
+          <ExamplePreview className="min-w-0" />
         </div>
       </section>
 

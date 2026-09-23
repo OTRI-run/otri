@@ -13,13 +13,13 @@ const PODIUM = {
 // Anything else gets nothing, and the caller adds its own striping for those.
 const PODIUM_ROW = {
   1: 'bg-[#fff8e1] border-l-4 border-l-[#d4a017] hover:bg-[#fff3c9]',
-  2: 'bg-[#f4f6f9] border-l-4 border-l-[#8a94a6] hover:bg-[#eceff4]',
-  3: 'bg-[#fbf1e8] border-l-4 border-l-[#b0713b] hover:bg-[#f7e7d8]',
+  2: 'bg-[#e8ecf2] border-l-4 border-l-[#6b7788] hover:bg-[#dfe4ec]',
+  3: 'bg-[#f8e6d6] border-l-4 border-l-[#a35c24] hover:bg-[#f3dcc6]',
 }
 
 // Fourth to tenth share one quieter mark, a blue wash and bar, so the top ten reads as a block
 // under the three medals without competing with them.
-const TOP_TEN_ROW = 'bg-blue-50/60 border-l-4 border-l-blue-300 hover:bg-blue-50'
+const TOP_TEN_ROW = 'bg-blue-50 border-l-4 border-l-blue-500 hover:bg-blue-100/70'
 
 /** Row classes for a podium rank, a top-ten rank, or '' for any other. */
 export function podiumRowClass(rank) {

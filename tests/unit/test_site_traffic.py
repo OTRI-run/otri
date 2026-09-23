@@ -24,7 +24,7 @@ CHROME = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, l
 IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1"
 
 
-def _hit(path="/prototype/#races", referrer="", zone="Asia/Bangkok", agent=CHROME, action=None):
+def _hit(path="/#races", referrer="", zone="Asia/Bangkok", agent=CHROME, action=None):
     body = {"p": path, "r": referrer, "tz": zone}
     if action:
         body["e"] = action
@@ -42,13 +42,13 @@ def test_a_page_view_is_counted():
     assert _hit().status_code == 204
     traffic = _traffic()
     assert traffic["totals"]["hits"] == 1 and traffic["totals"]["visitors"] == 1
-    assert traffic["pages"][0]["name"] == "/prototype/#races"
+    assert traffic["pages"][0]["name"] == "/#races"
     assert traffic["devices"][0]["name"] == "desktop"
     assert traffic["zones"][0]["name"] == "Asia/Bangkok"
 
 
 def test_one_person_reading_five_pages_is_one_visitor():
-    for page in ("/", "/prototype/#races", "/prototype/#runners", "/prototype/#faq", "/prototype/#calculator"):
+    for page in ("/", "/#races", "/#runners", "/#faq", "/#calculator"):
         _hit(path=page)
     traffic = _traffic()
     assert traffic["totals"]["hits"] == 5
@@ -108,15 +108,15 @@ def test_what_somebody_searched_for_is_not_kept():
 
 def test_which_race_a_person_looked_at_is_not_kept():
     """Every race page counts as one page. A row per race is a list of what was looked at."""
-    _hit(path="/prototype/#races/race-d8d0c2c5")
-    _hit(path="/prototype/#races/race-1a2b3c4d")
+    _hit(path="/#races/race-d8d0c2c5")
+    _hit(path="/#races/race-1a2b3c4d")
     pages = _traffic()["pages"]
     assert len(pages) == 1 and pages[0]["hits"] == 2
     assert "d8d0c2c5" not in json.dumps(pages)
 
 
 def test_a_visit_from_otri_itself_is_not_a_referral():
-    _hit(referrer="https://otri.run/prototype/")
+    _hit(referrer="https://otri.run/")
     assert _traffic()["sources"][0]["name"] == "direct"
 
 

@@ -1,6 +1,6 @@
 import RankBadge, { podiumRowClass } from '../src/components/RankBadge'
 import { fitFontSize } from '../src/lib/fitText'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ArrowLeft, ArrowUpRight, Mail, Download, Upload, Play, ArrowRight, Share2, Calculator as CalculatorIcon } from 'lucide-react'
 import { countryName } from '../src/components/CountrySelect'
@@ -110,6 +110,7 @@ const NAV = [
   { id: 'calculator', label: 'Calculator', href: '#calculator' },
   { id: 'score', label: 'Score a race', short: 'Score', href: '#score' },
   { id: 'races', label: 'Races', href: '#races' },
+  { id: 'runners', label: 'Runners', href: '#runners' },
   { id: 'faq', label: 'FAQ', href: '#faq' },
   { id: 'example', label: 'Try an example', short: 'Example', href: '#score?example=1', highlight: true },
 ]
@@ -279,7 +280,7 @@ function Footer() {
       <div className="mx-auto w-[min(1120px,calc(100%-28px))] py-14">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.3fr)_repeat(4,minmax(0,1fr))] lg:gap-8">
           <div className="min-w-0">
-            <Logo href="../" showName={false} />
+            <Logo href="./" showName={false} />
             <p className="mt-4 max-w-[34ch] text-[13px] leading-6 text-slate-600">
               One comparable score for a finish time on any trail course. Open, versioned, and free to use.
             </p>
@@ -711,7 +712,12 @@ function Leaderboard({ raceId, onBack, query }) {
   const [course, setCourse] = useState(null)
   const [error, setError] = useState(null)
   const [resultsError, setResultsError] = useState(null)
-  const [sharing, setSharing] = useState(false)
+  // `#races/<id>?share=1` (the organizer's review page links it) lands with the sharing panel open.
+  const [sharing, setSharing] = useState(() => (typeof query?.get === 'function' ? query.get('share') : query?.share) === '1')
+  const sharePanel = useRef(null)
+  useEffect(() => {
+    if (sharing) sharePanel.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [sharing])
   const [view, setView] = useState(() => defaultLeaderboardView(query))
   useDocumentTitle(race ? `${race.event_name} · ${race.course_name} · OTRI` : 'Race · OTRI')
 
@@ -824,11 +830,11 @@ function Leaderboard({ raceId, onBack, query }) {
             )}
             {results?.some((row) => row.status === 'finisher') && (
               <div className="mt-6">
-                <button type="button" onClick={() => setSharing((open) => !open)} aria-expanded={sharing} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-xs font-semibold text-[#0b1220] hover:border-blue-300">
+                <button type="button" onClick={() => setSharing((open) => !open)} aria-expanded={sharing} className={`inline-flex min-h-10 items-center gap-2 rounded-lg px-4 text-xs font-semibold ${sharing ? 'border border-slate-300 bg-white text-[#0b1220] hover:border-blue-300' : 'bg-blue-700 text-white hover:bg-blue-800'}`}>
                   <Share2 size={14} /> {sharing ? 'Close sharing' : 'Share these results: image and post text'}
                 </button>
                 {sharing && (
-                  <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-5">
+                  <div ref={sharePanel} className="mt-3 rounded-2xl border border-slate-200 bg-white p-5">
                     <ShareResults raceName={`${race.event_name} ${race.course_name}`} distanceKm={race.distance_km} elevationGainM={race.elevation_gain_m} scores={results} url={window.location.href} />
                   </div>
                 )}
@@ -905,7 +911,7 @@ function NoRacesYet() {
     [
       'Hello,',
       'I would like to see our race on OTRI (https://otri.run), an open and free score for trail races: every finisher gets a score that depends only on the course and their own time, so it compares across races.',
-      'Scoring the results takes about a minute and needs no account (https://otri.run/prototype/#score). Publishing them as a race page is free and needs no approval: https://otri.run/prototype/organizer/',
+      'Scoring the results takes about a minute and needs no account (https://otri.run/#score). Publishing them as a race page is free and needs no approval: https://otri.run/organizer/',
       'Thank you!',
     ].join('\n\n'),
   )}`

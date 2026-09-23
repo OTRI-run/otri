@@ -7,7 +7,7 @@ import '../../src/styles.css'
 import { action } from '../../src/lib/analytics'
 
 // The score calculator for another website's page:
-//   <iframe src="https://otri.run/prototype/embed/?race=RACE_ID" ...>
+//   <iframe src="https://otri.run/embed/?race=RACE_ID" ...>
 // `?race=` opens a race published on OTRI, `?gpx=` a course shared from the calculator, and
 // `&t=` a target time in seconds; with neither, the visitor chooses or uploads a course. The
 // calculator reads these from the hash, so they are moved there before it mounts.

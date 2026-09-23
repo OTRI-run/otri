@@ -1,6 +1,6 @@
 /**
- * Minimal fetch wrapper for the OTRI API, used only by the prototype (the
- * production marketing site never calls a live backend).
+ * Minimal fetch wrapper for the OTRI API, shared by the public site, the organizer app and the
+ * embedded calculator.
  *
  * Configure the target with VITE_OTRI_API_BASE_URL (see .env.example).
  * Defaults to the local FastAPI dev server.

@@ -80,23 +80,23 @@ def test_a_row_with_no_name_left_does_not_collect_other_people():
 
 def test_a_reset_token_is_not_counted():
     """The organizer app routes on the fragment, so this page address carries a live token."""
-    counted = analytics.clean_path("/prototype/organizer/#/reset?token=AbC-123_xyzAbC123xyzAbC")
-    assert counted == "/prototype/organizer/#/reset"
+    counted = analytics.clean_path("/organizer/#/reset?token=AbC-123_xyzAbC123xyzAbC")
+    assert counted == "/organizer/#/reset"
     assert "token" not in counted
 
 
 def test_no_counted_address_keeps_a_query_string():
     for raw in (
-        "/prototype/?verify_email=AbC-123_xyz",
-        "/prototype/organizer/#/login?challenge=abcdef123456",
-        "/prototype/#races?country=THA",
+        "/?verify_email=AbC-123_xyz",
+        "/organizer/#/login?challenge=abcdef123456",
+        "/#races?country=THA",
     ):
         assert "?" not in analytics.clean_path(raw), raw
 
 
 def test_the_shape_of_a_page_is_still_counted():
-    assert analytics.clean_path("/prototype/#races/race-abc123def") == "/prototype/#races/race-…"
-    assert analytics.clean_path("/prototype/organizer/#/events") == "/prototype/organizer/#/events"
+    assert analytics.clean_path("/#races/race-abc123def") == "/#races/race-…"
+    assert analytics.clean_path("/organizer/#/events") == "/organizer/#/events"
 
 
 # --- What the account page calls private stays private -----------------------------------------

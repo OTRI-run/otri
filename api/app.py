@@ -704,7 +704,7 @@ def _me(organizer: Organizer) -> MeResponse:
 # the app with a short reason code, never in an error page on the API host.
 
 _OAUTH_COOKIE = "otri_oauth"
-_ORGANIZER_APP = f"{_email.APP_BASE_URL}/prototype/organizer/"
+_ORGANIZER_APP = f"{_email.APP_BASE_URL}/organizer/"
 
 
 _API_BASE_URL = os.environ.get("OTRI_API_BASE_URL", "").strip().rstrip("/")
