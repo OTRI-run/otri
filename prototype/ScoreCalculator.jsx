@@ -104,6 +104,13 @@ function fmt1(value) {
   return Number(value).toFixed(1)
 }
 
+// A figure in the maths section: the API's own number, untouched, in kilometres; converted and
+// shown to three decimals in miles, since a converted number has no precision of its own to keep.
+function mathsFigure(km, units) {
+  if (km == null) return '—'
+  return units.distance === 'mi' ? kmToUnit(Number(km), units).toFixed(3) : String(km)
+}
+
 const CONTAINER = 'mx-auto w-[min(1120px,calc(100%-28px))]'
 
 // A course name for a headline: "UTMB® Mont-Blanc 2026 CCC · 108 KM" with the distance held on one
@@ -298,6 +305,7 @@ function ExplanationStep({ n, title, children }) {
 function ScoreExplanation({ estimate, features, targetSeconds }) {
   const units = useUnits()
   const du = distanceUnit(units)
+  const maths = (km) => mathsFigure(km, units)
   const b = estimate.breakdown
   const pct = b?.fraction_of_ceiling != null ? Math.round(b.fraction_of_ceiling * 100) : null
   const terrainPct = b ? Math.round((b.terrain_factor - 1) * 1000) / 10 : 0
@@ -416,15 +424,15 @@ function ScoreExplanation({ estimate, features, targetSeconds }) {
           <div className="border-t border-slate-200 px-5 py-5">
             {b && (
               <pre className="overflow-x-auto rounded-xl bg-[#0b1220] p-4 font-mono text-[11px] leading-relaxed text-slate-100">
-{`demand   = Σ segment_km × Minetti(grade)      = ${b.course_demand_km} demand-km
-terrain  = 1 + 0.5951·steep + 0.07·alt/1000    = ${b.terrain_factor}   (steep ${(b.steep_distance_fraction * 100).toFixed(1)}%, alt +${Math.round(b.altitude_excess_m)} m)
-D        = demand × terrain                    = ${b.adjusted_demand_km} demand-km
-Q        = D / T_hours                         = ${b.performance_rate} demand-km/h`}
+{`demand   = Σ segment_${du} × Minetti(grade)      = ${maths(b.course_demand_km)} demand-${du}
+terrain  = 1 + 0.5951·steep + 0.07·alt_m/1000  = ${b.terrain_factor}   (steep ${(b.steep_distance_fraction * 100).toFixed(1)}%, alt ${formatElevation(b.altitude_excess_m, units, { sign: '+' })})
+D        = demand × terrain                    = ${maths(b.adjusted_demand_km)} demand-${du}
+Q        = D / T_hours                         = ${maths(b.performance_rate)} demand-${du}/h`}
 {b.reference_rate != null
   ? `
-rate(D)  = record-run rate at D  (b = ${b.riegel_exponent})  = ${b.reference_rate} demand-km/h
+rate(D)  = record-run rate at D  (b = ${b.riegel_exponent})  = ${maths(b.reference_rate)} demand-${du}/h
 factor   = rate(D_ref) / rate(D)               = ${b.reference_factor}
-Q_lookup = Q × factor                          = ${b.lookup_rate} demand-km/h`
+Q_lookup = Q × factor                          = ${maths(b.lookup_rate)} demand-${du}/h`
   : ''}
 {estimate.scoring_version?.includes('-power')
   ? `
@@ -435,22 +443,22 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
             )}
 
             <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 text-xs sm:grid-cols-3">
-              <Stat label="Physical distance" value={`${b?.physical_distance_km ?? features.distance_km} km`} />
-              <Stat label="Course demand (gradient integral)" value={`${b?.course_demand_km ?? estimate.equivalent_distance_km} demand-km`} />
+              <Stat label="Physical distance" value={`${maths(b?.physical_distance_km ?? features.distance_km)} ${du}`} />
+              <Stat label="Course demand (gradient integral)" value={`${maths(b?.course_demand_km ?? estimate.equivalent_distance_km)} demand-${du}`} />
               {b && <Stat label="Terrain factor" value={`× ${b.terrain_factor}`} />}
-              {b && <Stat label="Adjusted demand (scored)" value={`${b.adjusted_demand_km} demand-km`} />}
-              <Stat label="Performance rate Q" value={`${estimate.performance_rate} demand-km/h`} />
-              {b?.reference_rate != null && <Stat label="Record-run rate at this demand" value={`${b.reference_rate} demand-km/h`} />}
+              {b && <Stat label="Adjusted demand (scored)" value={`${maths(b.adjusted_demand_km)} demand-${du}`} />}
+              <Stat label="Performance rate Q" value={`${maths(estimate.performance_rate)} demand-${du}/h`} />
+              {b?.reference_rate != null && <Stat label="Record-run rate at this demand" value={`${maths(b.reference_rate)} demand-${du}/h`} />}
               {b?.fraction_of_ceiling != null && <Stat label="Fraction of ceiling" value={`${(b.fraction_of_ceiling * 100).toFixed(2)}%`} />}
-              {b?.lookup_rate != null && <Stat label="Rate looked up in table" value={`${b.lookup_rate} demand-km/h`} />}
+              {b?.lookup_rate != null && <Stat label="Rate looked up in table" value={`${maths(b.lookup_rate)} demand-${du}/h`} />}
               <Stat label="Raw score (unrounded)" value={estimate.otri_raw} />
               <Stat label="Model" value={modelLabel(estimate.scoring_version)} />
             </dl>
 
             <p className="mt-5 text-[11px] text-slate-500">
               One published curve, no anchor table: score = 1000 × (fraction of the human-ceiling rate)^0.85, with Q_1000
-              = {ANCHOR_1000.q.toFixed(3)} demand-km/h at the reference course size. "demand-km" is a kilometre of flat
-              road at Minetti's metabolic cost — the unit called "flat km" above.
+              = {maths(ANCHOR_1000.q)} demand-{du}/h at the reference course size. "demand-{du}" is {du === 'mi' ? 'a mile' : 'a kilometre'} of flat
+              road at Minetti's metabolic cost — the unit called "flat {du}" above.{du === 'mi' ? ' The model works in kilometres; these are the same figures converted.' : ''}
             </p>
 
           </div>

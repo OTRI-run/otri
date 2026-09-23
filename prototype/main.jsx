@@ -52,7 +52,7 @@ import NotFound from '../src/components/NotFound'
 import { modelLabel, notScoredReason } from '../src/lib/model'
 import BackToTop from '../src/components/BackToTop'
 import { FinishArt, TITLE_ART } from '../src/components/PageArt'
-import { installDropGuard, installScrollMemory, installSearchShortcut, willNavigate } from '../src/lib/comfort'
+import { installDropGuard, installScrollMemory, installSearchShortcut, scrollBehavior, willNavigate } from '../src/lib/comfort'
 import '../src/styles.css'
 
 installScrollMemory()
@@ -179,6 +179,14 @@ function useOrganizerSignedIn() {
   return signedIn
 }
 
+// The logo goes home. On the home page itself the hash does not change when it is pressed, so
+// nothing would happen: it scrolls back to the top instead, which is what pressing it means there.
+function goHomeTop(event) {
+  event.preventDefault()
+  if (window.location.hash && window.location.hash !== '#home') window.history.replaceState(null, '', '#home')
+  window.scrollTo({ top: 0, behavior: scrollBehavior() })
+}
+
 function Header({ tab }) {
   // The button said "For organizers", which names an audience rather than what pressing it does.
   // It now says what happens next, which depends on whether there is an account waiting.
@@ -189,7 +197,7 @@ function Header({ tab }) {
     <>
       <header className="sticky top-0 z-50 h-[68px] border-b border-slate-200/90 bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-full min-w-0 w-[min(1120px,calc(100%-28px))] items-center">
-          <Logo href="#home" />
+          <Logo href="#home" onClick={tab === 'home' ? goHomeTop : undefined} />
           <nav className="ml-auto hidden shrink-0 items-center gap-5 md:flex lg:gap-7">
             {NAV.map((item) => (
               <NavLink key={item.id} item={item} active={tab === item.id} />
@@ -277,13 +285,13 @@ const FOOTER_COLUMNS = [
   },
 ]
 
-function Footer() {
+function Footer({ tab }) {
   return (
     <footer className="border-t border-slate-200 bg-white">
       <div className="mx-auto w-[min(1120px,calc(100%-28px))] py-14">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.3fr)_repeat(4,minmax(0,1fr))] lg:gap-8">
           <div className="min-w-0">
-            <Logo href="./" showName={false} />
+            <Logo href="#home" showName={false} onClick={tab === 'home' ? goHomeTop : undefined} />
             <p className="mt-4 max-w-[36ch] text-[15px] font-semibold leading-6 text-[#0b1220]">
               Made by trail runners, for trail runners and the people behind the start line.
             </p>
@@ -1214,7 +1222,7 @@ function App() {
           </section>
         )}
       </main>
-      <Footer />
+      <Footer tab={route.tab} />
       <BackToTop />
       <BuildBanner />
     </div>

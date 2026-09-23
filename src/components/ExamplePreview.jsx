@@ -2,29 +2,37 @@ import { ArrowRight } from 'lucide-react'
 import example from '../data/example-preview.json'
 import Flag from './Flag'
 import RankBadge, { podiumRowClass } from './RankBadge'
+import { DEFAULT_UNITS, distanceUnit, formatDistance, formatElevation, formatRate, kmToUnit, useUnits } from '../lib/units'
 
 // A real product result on the homepage: the built-in synthetic example race, as the live API
 // scored it (src/data/example-preview.json, produced by the API itself). Every figure here is read
 // from that file and formatted; nothing is typed in by hand, so the card can never drift from
 // what the tool actually returns. The race is invented and the card says so on a pill.
+//
+// Every distance and climb is shown in the visitor's display units (src/lib/units.js): the file
+// stays metric, only the formatting changes, and the score with it never does.
 
 export const EXAMPLE = example
 
-const km = (value, digits = 1) => `${Number(value).toFixed(digits)} km`
-const metres = (value) => `${Math.round(value)} m`
+// A distance in km as a number in the display unit, without the unit: "24.0" or "14.9".
+const dist = (km, units, digits = 1) => kmToUnit(Number(km), units).toFixed(digits)
 
 /** "24.0 km · +927 m · High confidence · measured from the course file", from the course block. */
-export function courseLine(course = example.course) {
-  return `${km(course.distance_km)} · +${metres(course.elevation_gain_m)} · ${course.confidence} confidence · measured from the course file`
+export function courseLine(course = example.course, units = DEFAULT_UNITS) {
+  return `${formatDistance(course.distance_km, units)} · ${formatElevation(course.elevation_gain_m, units, { sign: '+' })} · ${course.confidence} confidence · measured from the course file`
 }
 
-/** The three lines of the winner's calculation, written out from the explanation block. */
-export function explanationLines(explanation = example.explanation) {
+/** The three lines of the winner's calculation, written out from the explanation block. The
+ *  rates are the model's flat-road speed in the display unit; the ratio, and so the score, is the
+ *  same whichever unit they are read in. */
+export function explanationLines(explanation = example.explanation, units = DEFAULT_UNITS) {
   const { course_demand_km, terrain_factor, adjusted_demand_km, performance_rate, reference_rate, exponent, row } = explanation
+  const du = distanceUnit(units)
+  const rate = (kmPerHour) => dist(kmPerHour, units, 2)
   return [
-    ['Course demand', `${course_demand_km.toFixed(1)} flat-equivalent km × terrain factor ${terrain_factor.toFixed(3)} = ${adjusted_demand_km.toFixed(1)} km`],
-    ['Rate', `${adjusted_demand_km.toFixed(1)} km ÷ ${row.time} = ${performance_rate.toFixed(2)} km/h against a ceiling of ${reference_rate.toFixed(2)} km/h`],
-    ['Score', `1000 × (${performance_rate.toFixed(2)} ÷ ${reference_rate.toFixed(2)})^${exponent} = ${row.score}`],
+    ['Course demand', `${dist(course_demand_km, units)} flat-equivalent ${du} × terrain factor ${terrain_factor.toFixed(3)} = ${dist(adjusted_demand_km, units)} ${du}`],
+    ['Rate', `${dist(adjusted_demand_km, units)} ${du} ÷ ${row.time} = ${formatRate(performance_rate, units, 2)} against a ceiling of ${formatRate(reference_rate, units, 2)}`],
+    ['Score', `1000 × (${rate(performance_rate)} ÷ ${rate(reference_rate)})^${exponent} = ${row.score}`],
   ]
 }
 
@@ -50,6 +58,7 @@ const PAD = { top: 8, bottom: 4, side: 2 }
  * width; the stroke does not scale with it.
  */
 export function ExampleProfile({ profile = example.profile, course = example.course, className = '' }) {
+  const units = useUnits()
   const points = profile.filter(([d, e]) => Number.isFinite(d) && Number.isFinite(e))
   const maxD = points[points.length - 1][0]
   const minE = Math.min(...points.map((p) => p[1]))
@@ -60,7 +69,7 @@ export function ExampleProfile({ profile = example.profile, course = example.cou
   const line = points.map(([d, e]) => `${toX(d).toFixed(1)},${toY(e).toFixed(1)}`).join(' ')
   const area = `${toX(0).toFixed(1)},${PROFILE_H} ${line} ${toX(maxD).toFixed(1)},${PROFILE_H}`
   const peak = points.reduce((best, p) => (p[1] > best[1] ? p : best), points[0])
-  const label = `Elevation profile of the example course: ${km(course.distance_km)}, from ${metres(course.min_elevation_m)} to ${metres(course.max_elevation_m)}, ${metres(course.elevation_gain_m)} of climb.`
+  const label = `Elevation profile of the example course: ${formatDistance(course.distance_km, units)}, from ${formatElevation(course.min_elevation_m, units)} to ${formatElevation(course.max_elevation_m, units)}, ${formatElevation(course.elevation_gain_m, units)} of climb.`
 
   return (
     <figure className={`min-w-0 ${className}`}>
@@ -84,9 +93,9 @@ export function ExampleProfile({ profile = example.profile, course = example.cou
         <circle cx={toX(peak[0])} cy={toY(peak[1])} r="3" fill="#ffffff" stroke="#1d4ed8" strokeWidth="2" vectorEffect="non-scaling-stroke" />
       </svg>
       <figcaption className="mt-1 flex justify-between font-mono text-[11px] tabular-nums text-slate-500">
-        <span>0 km · {metres(points[0][1])}</span>
-        <span>high point {metres(peak[1])}</span>
-        <span>{km(maxD)}</span>
+        <span>0 {distanceUnit(units)} · {formatElevation(points[0][1], units)}</span>
+        <span>high point {formatElevation(peak[1], units)}</span>
+        <span>{formatDistance(maxD, units)}</span>
       </figcaption>
     </figure>
   )
@@ -99,9 +108,10 @@ export function ExampleProfile({ profile = example.profile, course = example.cou
  * preview card and on its own in the "Every score explains itself" section of the home page.
  */
 export function ExampleExplanation({ className = '', showRunner = true }) {
-  const { explanation, course, model_label, scoring_version } = example
-  const { row, steep_distance_fraction } = explanation
-  const lines = explanationLines(explanation)
+  const units = useUnits()
+  const { explanation } = example
+  const { row } = explanation
+  const lines = explanationLines(explanation, units)
   return (
     <div className={`min-w-0 rounded-xl border border-slate-200 bg-slate-50 p-4 ${className}`}>
       {showRunner && (
@@ -130,6 +140,7 @@ export function ExampleExplanation({ className = '', showRunner = true }) {
 
 /** The example race as a card; its link opens the example in the scoring page of this app. */
 export default function ExamplePreview({ className = '' }) {
+  const units = useUnits()
   const { course, rows, summary, label } = example
   return (
     <article className={`relative min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(11,18,32,.12)] ${className}`} aria-label="Example race result">
@@ -137,7 +148,7 @@ export default function ExamplePreview({ className = '' }) {
         <div className="min-w-0">
           {/* Not a heading: the card sits under an h1 on one page and beside an h2 on another. */}
           <p className="text-[15px] font-bold tracking-[-.02em] text-[#0b1220]">{course.name}</p>
-          <p className="font-mono text-[11px] leading-5 text-slate-500 [overflow-wrap:anywhere]">{courseLine(course)}</p>
+          <p className="font-mono text-[11px] leading-5 text-slate-500 [overflow-wrap:anywhere]">{courseLine(course, units)}</p>
         </div>
         <SyntheticPill />
       </div>
