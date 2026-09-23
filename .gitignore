@@ -10,9 +10,9 @@ __pycache__/
 redeploy.ps1
 redeploy.bat
 
-# Real organizer course files used for local scoring/calibration work. DATA_POLICY.md treats
-# third-party GPX as restricted (typically copyrighted, participant-use only), so these stay
-# local and are never pushed. The synthetic sample course is committed and stays tracked.
+# Real race course files used for local scoring/calibration work. A race's published course is a
+# public fact (DATA_POLICY.md, "Public race facts and course files"); these stay out of git only
+# as large, changing working copies. The synthetic sample course is committed and stays tracked.
 # Tests that measure real courses skip cleanly when these are absent
 # (tests/unit/test_scoring_terrain.py).
 data/demo/gpx/*.gpx
@@ -28,3 +28,6 @@ gpx courses/
 # Race calendars and results collected from third-party sources, kept to pick listings from. Local
 # only (DATA_POLICY.md: facts are re-compiled into a listings CSV, the source files are not published).
 docs/race result data/
+
+# Local marketing research output (product/market strategy). Local only, never pushed.
+marketing/local-research/

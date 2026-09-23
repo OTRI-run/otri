@@ -31,13 +31,13 @@ You keep whatever rights you have in the data you upload. You grant OTRI a world
 Do not:
 
 - upload results you invented or altered, or results of a race that did not take place;
-- upload data you scraped from another platform, or that a timing provider or another organizer has not allowed you to share;
+- publish, as your own, a race that is not yours: an organizer account is for the organizer's own races, and a timing provider's export is yours to upload only for races you organize;
 - try to break, overload or reverse-engineer the service beyond what the public source code already shows, or evade rate limits;
 - use the service to harass anyone or to publish anything unlawful.
 
 ## 5. Public content and scores
 
-Published leaderboards, scores, course measurements and runner profiles are public and may be viewed, linked and reused under the licences stated in the repository (`README.md`, "License"). Scores are computed by a versioned model documented under `docs/methodology/`; they are an index, not an official ranking, and OTRI makes no promise that a score means anything to a race, a sponsor or a selection committee.
+Published leaderboards, scores, course measurements and runner profiles are public and may be viewed, linked and reused under the licences stated in the repository (`README.md`, "License"). The facts of a race that are already public (its course, date, distance and climb, who finished and in what time) are facts: OTRI may use and show them, naming the source, and so may anyone (`DATA_POLICY.md`, "Public race facts and course files"). Scores are computed by a versioned model documented under `docs/methodology/`; they are an index, not an official ranking, and OTRI makes no promise that a score means anything to a race, a sponsor or a selection committee.
 
 Anyone may report a problem with a race, a runner profile or a shared course using the report form on that page. OTRI admins may correct, unpublish or delete content in response to a report, a legal request, or a breach of these terms, and will tell the organizer where possible.
 
