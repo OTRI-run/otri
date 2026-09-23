@@ -411,6 +411,34 @@ class TwoFactorStatus(BaseModel):
     recovery_codes_left: int = 0
 
 
+class CourseProposalOut(BaseModel):
+    """A course a visitor proposed for the calculator. `submitter_email` is shown to admins only."""
+
+    id: int
+    status: str
+    event_name: str
+    course_name: str
+    edition_year: int | None = None
+    location: str | None = None
+    country: str | None = None
+    source_url: str | None = None
+    submitter_email: str | None = None
+    distance_km: float
+    elevation_gain_m: float
+    measurement_status: str | None = None
+    created_at: datetime
+    auto_approve_at: datetime | None = None
+    decided_at: datetime | None = None
+    decided_by: str | None = None
+    note: str | None = None
+    race_id: str | None = None
+
+
+class CourseProposalDecision(BaseModel):
+    action: str  # approve | reject
+    note: str | None = Field(None, max_length=1000)
+
+
 class MaintenanceState(BaseModel):
     """Whether the site is closed for maintenance, as the public sees it."""
 

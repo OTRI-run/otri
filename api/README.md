@@ -69,6 +69,7 @@ Generated from `api/app.py` (`grep '@app\.' api/app.py`); the interactive refere
 | GET | `/runners` | anyone | Search runners by name (`q`), or list every runner with a published result, with the runner index. |
 | GET | `/runners/{runner_id}` | anyone | A runner's published results and index. |
 | POST | `/reports` | anyone | A correction or removal request from a public page (rate-limited; admins are emailed). |
+| POST | `/calculator-courses/proposals` | anyone | Propose the course you uploaded for the calculator's "Pick a race": the file plus `event_name`, `course_name`, `source_url`, `attest` (that it is the official course and may be shared), optional `year`, `location`, `country`, `email`. Measured and kept for an admin; added on its own after `OTRI_COURSE_AUTO_APPROVE_HOURS`. A track already in the calculator, or already proposed, answers 409 with a pointer to it. Rate-limited. |
 
 ### Accounts
 
@@ -106,6 +107,7 @@ Generated from `api/app.py` (`grep '@app\.' api/app.py`); the interactive refere
 | GET | `/admin/reports?status=open\|all` · POST `/admin/reports/{id}/resolve` · DELETE `/admin/reports/{id}` | Correction and removal requests. |
 | GET | `/admin/organizers` · POST `/admin/organizers/{id}/verify` · DELETE `/admin/organizers/{id}` | Accounts: list, confirm an address by hand, delete with everything it owns (never oneself). |
 | DELETE | `/admin/runners/{runner_id}` | Remove a runner's profile and every result attached to it (a removal request, or a bad merge). |
+| GET | `/admin/course-proposals?status=pending\|all` · POST `/admin/course-proposals/{id}` · GET `/admin/course-proposals/{id}/gpx` | Courses visitors proposed for the calculator; decide with `{"action": "approve"\|"reject", "note"}` (the proposer is emailed if they left an address); the proposed track for a look on a map. |
 | GET · POST | `/admin/calculator-courses` · PATCH · DELETE `/admin/calculator-courses/{race_id}` | The courses hand-picked for the calculator's "Pick a race": a GPX, names, location, source link and the edition (`year`) the file is from. Public to try a target time on, never a race page. |
 | GET | `/admin/shared-courses` · DELETE `/admin/shared-courses/{share_id}` | The calculator's share files. |
 | GET | `/admin/emails?limit=50` | The last emails asked of Resend, with the provider's id and any error. |
@@ -132,6 +134,7 @@ Read once at start (`api/app.py`, `api/auth.py`, `api/db.py`, `api/email.py`, `a
 | `OTRI_EMAIL_FROM` · `OTRI_EMAIL_REPLY_TO` | Sender and reply-to of outgoing email. | `OTRI <noreply@otri.run>` · none |
 | `OTRI_GOOGLE_CLIENT_ID` · `OTRI_GOOGLE_CLIENT_SECRET` | "Continue with Google". Either empty: the buttons do not appear and the routes answer 404. | unset |
 | `OTRI_AUTO_VERIFY_HOURS` | How long a clean published race waits before it is marked verified on its own. | 24 |
+| `OTRI_COURSE_AUTO_APPROVE_HOURS` | How long a visitor's proposed calculator course waits for an admin before it is added on its own. | 72 |
 | `OTRI_RANKED_RUNNER_CEILING` | How many runners may be ranked in one `/runners` request (every runner with a published result is ranked, so the table really is by index). | 20000 |
 | `OTRI_SHARED_COURSES_MAX_MB` | Disk budget for the calculator's share files. | 2048 |
 | `OTRI_DEM_MANIFEST` | Manifest of local Copernicus GLO-30 tiles for terrain-corrected elevation ([`course/README.md`](../course/README.md)). Unset, elevations come from the file at Low confidence. | unset |

@@ -270,6 +270,33 @@ CREATE TABLE IF NOT EXISTS site_settings (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- A course a visitor proposed for the calculator's "Pick a race" (api/app.py, /calculator-courses/
+-- proposals): the file, measured and sanitized, with the names an admin would have typed. An admin
+-- approves or rejects it; left alone, it is added on its own once auto_approve_at has passed.
+CREATE TABLE IF NOT EXISTS course_proposals (
+    id SERIAL PRIMARY KEY,
+    status TEXT NOT NULL DEFAULT 'pending',
+    event_name TEXT NOT NULL,
+    course_name TEXT NOT NULL,
+    edition_year INTEGER,
+    location TEXT,
+    country TEXT,
+    source_url TEXT,
+    submitter_email TEXT,
+    filename TEXT,
+    gpx_content TEXT NOT NULL,
+    measurement JSONB NOT NULL,
+    geometry_hash TEXT,
+    distance_km DOUBLE PRECISION NOT NULL,
+    elevation_gain_m DOUBLE PRECISION NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    auto_approve_at TIMESTAMPTZ,
+    decided_at TIMESTAMPTZ,
+    decided_by TEXT,
+    note TEXT,
+    race_id TEXT
+);
+
 CREATE TABLE IF NOT EXISTS reports (
     id SERIAL PRIMARY KEY,
     kind TEXT NOT NULL,
@@ -1374,6 +1401,132 @@ def resolve_report(report_id: int, *, resolved_by: str, resolution: str | None) 
 def delete_report(report_id: int) -> bool:
     with get_connection() as connection:
         return connection.execute("DELETE FROM reports WHERE id = %s", (report_id,)).rowcount > 0
+
+
+# --- Course proposals -----------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class CourseProposal:
+    id: int
+    status: str
+    event_name: str
+    course_name: str
+    edition_year: int | None
+    location: str | None
+    country: str | None
+    source_url: str | None
+    submitter_email: str | None
+    filename: str | None
+    gpx_content: str
+    measurement: dict
+    geometry_hash: str | None
+    distance_km: float
+    elevation_gain_m: float
+    created_at: datetime
+    auto_approve_at: datetime | None = None
+    decided_at: datetime | None = None
+    decided_by: str | None = None
+    note: str | None = None
+    race_id: str | None = None
+
+
+_PROPOSAL_COLUMNS = (
+    "id, status, event_name, course_name, edition_year, location, country, source_url, submitter_email, filename, "
+    "gpx_content, measurement, geometry_hash, distance_km, elevation_gain_m, created_at, auto_approve_at, decided_at, decided_by, note, race_id"
+)
+
+
+def create_course_proposal(
+    *,
+    event_name: str,
+    course_name: str,
+    edition_year: int | None,
+    location: str | None,
+    country: str | None,
+    source_url: str | None,
+    submitter_email: str | None,
+    filename: str | None,
+    gpx_content: str,
+    measurement: dict,
+    distance_km: float,
+    elevation_gain_m: float,
+    auto_approve_at: datetime | None,
+) -> CourseProposal:
+    with get_connection() as connection:
+        row = connection.execute(
+            "INSERT INTO course_proposals (event_name, course_name, edition_year, location, country, source_url, submitter_email, filename, "
+            "gpx_content, measurement, geometry_hash, distance_km, elevation_gain_m, auto_approve_at) "
+            f"VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING {_PROPOSAL_COLUMNS}",
+            (
+                event_name, course_name, edition_year, location, country, source_url, submitter_email, filename,
+                gpx_content, Jsonb(measurement), measurement.get("geometry_hash"), distance_km, elevation_gain_m, auto_approve_at,
+            ),
+        ).fetchone()
+    return CourseProposal(**row)
+
+
+def find_course_proposal(proposal_id: int) -> CourseProposal | None:
+    with get_connection() as connection:
+        row = connection.execute(f"SELECT {_PROPOSAL_COLUMNS} FROM course_proposals WHERE id = %s", (proposal_id,)).fetchone()
+    return CourseProposal(**row) if row else None
+
+
+def list_course_proposals(status: str | None = "pending") -> list[CourseProposal]:
+    """Pending first and oldest first, so nothing waits at the bottom; `None` lists every status."""
+    with get_connection() as connection:
+        if status:
+            rows = connection.execute(f"SELECT {_PROPOSAL_COLUMNS} FROM course_proposals WHERE status = %s ORDER BY created_at", (status,)).fetchall()
+        else:
+            rows = connection.execute(
+                f"SELECT {_PROPOSAL_COLUMNS} FROM course_proposals ORDER BY (status = 'pending') DESC, "
+                "CASE WHEN status = 'pending' THEN created_at END ASC, created_at DESC"
+            ).fetchall()
+    return [CourseProposal(**row) for row in rows]
+
+
+def due_course_proposals() -> list[CourseProposal]:
+    """Pending proposals whose window has passed: nobody objected, so they are added on their own."""
+    with get_connection() as connection:
+        rows = connection.execute(
+            f"SELECT {_PROPOSAL_COLUMNS} FROM course_proposals WHERE status = 'pending' AND auto_approve_at IS NOT NULL AND auto_approve_at <= now() ORDER BY created_at"
+        ).fetchall()
+    return [CourseProposal(**row) for row in rows]
+
+
+def decide_course_proposal(proposal_id: int, *, status: str, decided_by: str, note: str | None, race_id: str | None) -> CourseProposal | None:
+    """Records the decision. Only a pending proposal can be decided; anything else answers None."""
+    with get_connection() as connection:
+        row = connection.execute(
+            "UPDATE course_proposals SET status = %s, decided_at = now(), decided_by = %s, note = %s, race_id = %s "
+            f"WHERE id = %s AND status = 'pending' RETURNING {_PROPOSAL_COLUMNS}",
+            (status, decided_by, note, race_id, proposal_id),
+        ).fetchone()
+    return CourseProposal(**row) if row else None
+
+
+def first_admin_organizer_id() -> int | None:
+    """The account a course added on its own is filed under: a listed race nobody owns is never
+    public, so an auto-approved course needs an owner, and the longest-standing admin is it."""
+    with get_connection() as connection:
+        row = connection.execute("SELECT id FROM organizers WHERE is_admin ORDER BY id LIMIT 1").fetchone()
+    return int(row["id"]) if row else None
+
+
+def find_calculator_course_by_geometry(geometry_hash: str) -> Race | None:
+    """The calculator course, if any, whose track is this one: the same file, or the same route from
+    another recording that measures to the same geometry."""
+    with get_connection() as connection:
+        row = connection.execute(_RACE_JOIN_SELECT + " WHERE r.calculator_only AND r.measurement->>'geometry_hash' = %s LIMIT 1", (geometry_hash,)).fetchone()
+    return Race(**row) if row else None
+
+
+def pending_proposal_with_geometry(geometry_hash: str) -> CourseProposal | None:
+    with get_connection() as connection:
+        row = connection.execute(
+            f"SELECT {_PROPOSAL_COLUMNS} FROM course_proposals WHERE status = 'pending' AND geometry_hash = %s ORDER BY created_at LIMIT 1", (geometry_hash,)
+        ).fetchone()
+    return CourseProposal(**row) if row else None
 
 
 def delete_runner(runner_id: str) -> tuple[int, list[str]]:

@@ -55,7 +55,7 @@ def clean_state():
         with connection.transaction():
             connection.execute(
                 "TRUNCATE organizers, email_verification_tokens, password_reset_tokens, oauth_states, events, races, results, runners, reports, "
-                "site_hits, site_visitors, site_visitor_days, site_actions, site_settings "
+                "site_hits, site_visitors, site_visitor_days, site_actions, site_settings, course_proposals "
                 "RESTART IDENTITY CASCADE"
             )
     for race in race_records(RACES_FILE):

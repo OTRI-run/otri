@@ -500,6 +500,58 @@ export function updateCalculatorCourse(raceId, { file, event_name, course_name, 
   return request(`/admin/calculator-courses/${encodeURIComponent(raceId)}`, { method: 'PATCH', headers: authHeaders(token), body: formData })
 }
 
+/** A visitor proposes the course they uploaded for the calculator's "Pick a race". A track that
+ *  is already there, or already proposed, is refused: the error carries `raceId` when it points at
+ *  a course in the calculator. */
+export async function proposeCalculatorCourse({ file, event_name, course_name, year, location, country, source_url, email, attest }) {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('event_name', event_name.trim())
+  formData.append('course_name', course_name.trim())
+  formData.append('source_url', source_url.trim())
+  formData.append('attest', attest ? 'true' : 'false')
+  if (String(year ?? '').trim()) formData.append('year', String(year).trim())
+  if (location?.trim()) formData.append('location', location.trim())
+  if (country?.trim()) formData.append('country', country.trim())
+  if (email?.trim()) formData.append('email', email.trim())
+  checkUploadSize(formData)
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}/calculator-courses/proposals`, withCredentials({ method: 'POST', body: formData }))
+  } catch {
+    throw new Error('Could not reach OTRI. Check your connection and try again.')
+  }
+  if (response.status === 409) {
+    const body = await response.json().catch(() => ({}))
+    const error = new Error(body?.detail?.message || 'This course is already in the calculator.')
+    error.raceId = body?.detail?.race_id ?? null
+    throw error
+  }
+  if (!response.ok) throw await errorFrom(response)
+  return response.json()
+}
+
+/** Admin: the courses visitors proposed, `pending` (default) or `all`. */
+export function listCourseProposals(token, status = 'pending') {
+  return request(`/admin/course-proposals?status=${encodeURIComponent(status)}`, { headers: authHeaders(token) })
+}
+
+/** Admin: approve (the course is added now) or reject (with a note the proposer receives). */
+export function decideCourseProposal(proposalId, action, note, token) {
+  return request(`/admin/course-proposals/${encodeURIComponent(proposalId)}`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ action, note: note || null }),
+  })
+}
+
+/** Admin: the proposed track, sanitized, as GPX text for the map. */
+export async function fetchCourseProposalGpxText(proposalId, token) {
+  const response = await fetch(`${API_BASE_URL}/admin/course-proposals/${encodeURIComponent(proposalId)}/gpx`, withCredentials({ headers: authHeaders(token) }))
+  if (!response.ok) throw await errorFrom(response)
+  return response.text()
+}
+
 export function deleteCalculatorCourse(raceId, token) {
   return request(`/admin/calculator-courses/${encodeURIComponent(raceId)}`, { method: 'DELETE', headers: authHeaders(token) })
 }
