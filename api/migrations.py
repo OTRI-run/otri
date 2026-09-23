@@ -216,6 +216,26 @@ MIGRATIONS: tuple[Migration, ...] = (
         "every older day showed nobody beside a page count that was still there. The count is kept as it is made; the days "
         "whose digests are still on file are backfilled, and older days stay at nobody because that number is not recoverable.",
     ),
+    Migration(
+        "0011_race_review",
+        """
+        ALTER TABLE races ADD COLUMN IF NOT EXISTS review_status TEXT NOT NULL DEFAULT 'none';
+        ALTER TABLE races ADD COLUMN IF NOT EXISTS review_flags JSONB;
+        ALTER TABLE races ADD COLUMN IF NOT EXISTS auto_verify_at TIMESTAMPTZ;
+        ALTER TABLE races ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+        ALTER TABLE races ADD COLUMN IF NOT EXISTS reviewed_by TEXT;
+        ALTER TABLE races ADD COLUMN IF NOT EXISTS review_note TEXT;
+        ALTER TABLE races ADD COLUMN IF NOT EXISTS publish_attested_at TIMESTAMPTZ;
+        ALTER TABLE races ADD COLUMN IF NOT EXISTS results_fingerprint TEXT;
+        CREATE INDEX IF NOT EXISTS races_review_status_idx ON races (review_status) WHERE review_status IN ('pending', 'held');
+        CREATE INDEX IF NOT EXISTS races_results_fingerprint_idx ON races (results_fingerprint) WHERE results_fingerprint IS NOT NULL;
+        UPDATE races SET review_status = 'verified', reviewed_at = now(), reviewed_by = 'migration'
+        WHERE published_at IS NOT NULL AND review_status = 'none';
+        """,
+        "Publishing is screened: a clean race is public at once and verifies itself after a short window unless an admin "
+        "objects; an obvious fake is held for an admin with the reasons on record. Races already published before the "
+        "screening existed are marked verified as they stand.",
+    ),
 )
 
 _TRACKING_SQL = """

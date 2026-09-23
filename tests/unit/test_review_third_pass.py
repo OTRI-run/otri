@@ -70,7 +70,7 @@ def test_a_published_race_cannot_be_deleted_while_it_is_public():
     headers = _verified("delete-published@example.com")
     _, race_id = _create_event_and_race(headers)
     assert client.post(f"/races/{race_id}/results", files={"file": ("r.csv", SANE, "text/csv")}, headers=headers).status_code == 200
-    assert client.post(f"/races/{race_id}/publish", headers=headers).status_code == 200
+    assert client.post(f"/races/{race_id}/publish", json={"attest": True}, headers=headers).status_code == 200
 
     answer = client.delete(f"/races/{race_id}", headers=headers)
     assert answer.status_code == 409 and "Unpublish it first" in answer.json()["detail"]
@@ -85,7 +85,7 @@ def test_an_event_holding_a_published_race_cannot_be_deleted():
     headers = _verified("delete-event@example.com")
     event_id, race_id = _create_event_and_race(headers)
     assert client.post(f"/races/{race_id}/results", files={"file": ("r.csv", SANE, "text/csv")}, headers=headers).status_code == 200
-    assert client.post(f"/races/{race_id}/publish", headers=headers).status_code == 200
+    assert client.post(f"/races/{race_id}/publish", json={"attest": True}, headers=headers).status_code == 200
 
     answer = client.delete(f"/events/{event_id}", headers=headers)
     assert answer.status_code == 409 and "published races" in answer.json()["detail"]

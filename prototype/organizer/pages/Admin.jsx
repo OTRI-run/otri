@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Activity, ArrowUpRight, Check, Eye, EyeOff, Flag as FlagIcon, HardDrive, Map, Server, ShieldCheck, Trash2, UserCheck } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Activity, ArrowUpRight, Check, Eye, EyeOff, Flag as FlagIcon, HardDrive, Map, PauseCircle, Server, ShieldCheck, Trash2, UserCheck, XCircle } from 'lucide-react'
 import CourseMap from '../../../src/components/CourseMap'
 import {
   setRaceListed,
@@ -17,20 +17,23 @@ import {
   listAdminEvents,
   listAdminOrganizers,
   listAdminReports,
+  listAdminReviews,
   listSharedCourses,
   resolveAdminReport,
+  reviewAdminRace,
   unpublishRace,
   verifyAdminOrganizer,
 } from '../../apiClient'
 import { formatDistance, formatElevation, useUnits } from '../../../src/lib/units'
 import { modelLabel } from '../../../src/lib/model'
 import { fetchNewsletterCsv } from '../../apiClient'
-import { Link } from '../router'
+import { Link, useRoute } from '../router'
 import CalculatorCourses from './CalculatorCourses'
 import { Button, Gradient, Notice, Page, StatusChip, formatDate, raceStatus } from '../ui'
 
 const TABS = [
   ['overview', 'Overview'],
+  ['reviews', 'Reviews'],
   ['reports', 'Reports'],
   ['accounts', 'Accounts'],
   ['events', 'Events & races'],
@@ -214,6 +217,198 @@ function Overview({ session }) {
           </ul>
         </section>
       </div>
+    </div>
+  )
+}
+
+// ------------------------------------------------------------------------------ Reviews
+//
+// Publish, then verify. A publish goes public at once and is verified automatically a little
+// later unless the automatic check held it; every held race waits here for a person. The
+// organizer's screen (Race.jsx, ReviewStep) says the same thing from the other side.
+
+const REVIEW_CHIP = {
+  none: ['not published', 'bg-slate-100 text-slate-600'],
+  pending: ['check pending', 'bg-amber-50 text-amber-700'],
+  verified: ['verified', 'bg-emerald-50 text-emerald-700'],
+  held: ['held', 'bg-red-50 text-red-700'],
+  rejected: ['taken down', 'bg-red-600 text-white'],
+}
+
+function ReviewChip({ status }) {
+  const [label, cls] = REVIEW_CHIP[status] ?? [status, 'bg-slate-100 text-slate-600']
+  return <span className={`inline-block rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-[.06em] ${cls}`}>{label}</span>
+}
+
+function ReviewCard({ row, token, onChanged, highlighted }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const ref = useRef(null)
+  const status = row.review_status ?? 'none'
+  const open = status === 'pending' || status === 'held'
+
+  // The link in the admin email lands on one race: bring it into view, once, when the list is there.
+  useEffect(() => {
+    if (highlighted) ref.current?.scrollIntoView({ block: 'center' })
+  }, [highlighted])
+
+  async function act(action, note = null) {
+    setBusy(true)
+    setError(null)
+    try {
+      await reviewAdminRace(row.race_id, action, note, token)
+      onChanged()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  function reject() {
+    const note = window.prompt(`Why is "${row.event_name} · ${row.course_name}" taken down? The organizer reads this note.`)
+    if (note == null || note.trim().length === 0) return
+    act('reject', note.trim())
+  }
+
+  const flags = [...(row.review_flags ?? [])].sort((a, b) => (a.severity === 'hold' ? 0 : 1) - (b.severity === 'hold' ? 0 : 1))
+  const border = highlighted ? 'border-blue-500 ring-2 ring-blue-200' : open ? 'border-amber-200' : 'border-slate-200'
+  return (
+    <li ref={ref} className={`scroll-mt-24 rounded-2xl border p-4 ${border} ${open ? 'bg-white' : 'bg-slate-50/60'}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="flex flex-wrap items-center gap-2 text-xs">
+            <ReviewChip status={status} />
+            <span className="font-mono text-[10px] text-slate-500">{formatDate(row.event_date)}</span>
+            <span className="font-mono text-[10px] text-slate-500">{row.finisher_count ?? 0} finisher{row.finisher_count === 1 ? '' : 's'}</span>
+            {status === 'pending' && row.auto_verify_at && <span className="font-mono text-[10px] text-amber-700">auto-verifies {when(row.auto_verify_at)}</span>}
+            {row.reviewed_at && status !== 'pending' && (
+              <span className="font-mono text-[10px] text-slate-500">
+                {status === 'verified' ? 'verified' : status === 'held' ? 'held' : status === 'rejected' ? 'taken down' : 'reviewed'} {when(row.reviewed_at)}
+                {row.reviewed_by ? ` by ${row.reviewed_by === 'auto' ? 'the automatic check' : row.reviewed_by}` : ''}
+              </span>
+            )}
+          </p>
+          <p className="mt-2 text-sm font-semibold text-[#0b1220]">
+            {row.is_published ? (
+              <a href={`../#races/${encodeURIComponent(row.race_id)}`} className="no-underline hover:underline">
+                {row.event_name} · {row.course_name} <ArrowUpRight size={12} className="inline" />
+              </a>
+            ) : (
+              <>
+                {row.event_name} · {row.course_name}
+              </>
+            )}
+            <Link to={`/races/${encodeURIComponent(row.race_id)}/review`} className="ml-2 text-xs font-normal text-blue-600 no-underline hover:underline">
+              Open
+            </Link>
+            <span className="ml-2 font-mono text-[10px] font-normal text-slate-400">{row.race_id}</span>
+          </p>
+          <p className="mt-1 font-mono text-[10px] text-slate-500">
+            {row.organizer_email ? (
+              <a href={`mailto:${row.organizer_email}?subject=${encodeURIComponent(`Your OTRI race ${row.event_name} · ${row.course_name}`)}`} className="text-blue-600 no-underline hover:underline">
+                {row.organizer_email}
+              </a>
+            ) : (
+              'no owner'
+            )}
+            {row.publish_attested_at ? ` · attested ${when(row.publish_attested_at)}` : ''}
+          </p>
+          {flags.length > 0 && (
+            <ul className="mt-2 space-y-0.5 text-xs">
+              {flags.map((flag, index) => (
+                <li key={`${flag.code ?? 'flag'}-${index}`} className={flag.severity === 'hold' ? 'text-red-700' : 'text-amber-700'}>
+                  <span className="font-mono text-[9px] uppercase tracking-[.06em]">{flag.severity}</span> {flag.detail}
+                  {flag.code && <span className="ml-1 font-mono text-[9px] text-slate-400">{flag.code}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+          {row.review_note && <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{row.review_note}</p>}
+          {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+        </div>
+        <div className="flex shrink-0 flex-wrap justify-end gap-2">
+          {status !== 'verified' && (
+            <Button busy={busy} className="min-h-9 px-3 text-xs" onClick={() => act('verify')}>
+              <Check size={13} /> Verify
+            </Button>
+          )}
+          {(status === 'pending' || status === 'verified') && (
+            <Button variant="secondary" busy={busy} className="min-h-9 px-3 text-xs" onClick={() => act('hold')}>
+              <PauseCircle size={13} /> Hold
+            </Button>
+          )}
+          {status !== 'rejected' && (
+            <Button variant="danger" busy={busy} className="min-h-9 px-3 text-xs" onClick={reject}>
+              <XCircle size={13} /> Reject
+            </Button>
+          )}
+        </div>
+      </div>
+    </li>
+  )
+}
+
+function Reviews({ session, highlight, onOpenCount }) {
+  const [rows, setRows] = useState(null)
+  const [error, setError] = useState(null)
+  const [showAll, setShowAll] = useState(false)
+  const [version, setVersion] = useState(0)
+  useEffect(() => {
+    listAdminReviews(session.token, showAll ? 'all' : 'open')
+      .then((list) => {
+        setRows(list)
+        onOpenCount?.(list.filter((r) => r.review_status === 'pending' || r.review_status === 'held').length)
+      })
+      .catch((err) => setError(err.message))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.token, showAll, version])
+  const reload = () => setVersion((v) => v + 1)
+  if (error && !rows) return <Notice kind="error">{error}</Notice>
+  if (!rows) return <p className="text-sm text-slate-500">Loading…</p>
+  const held = rows.filter((r) => r.review_status === 'held').length
+  return (
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="flex items-center gap-2 font-mono text-[10px] tracking-[.08em] text-slate-500">
+          <ShieldCheck size={13} className="text-blue-600" /> {rows.length} {showAll ? 'REVIEW' : 'OPEN REVIEW'}{rows.length === 1 ? '' : 'S'}
+          {held > 0 && <span className="text-red-600">· {held} HELD</span>}
+        </p>
+        <div className="flex gap-1.5">
+          {[
+            [false, 'Open'],
+            [true, 'All'],
+          ].map(([all, label]) => (
+            <button
+              key={label}
+              type="button"
+              aria-pressed={showAll === all}
+              onClick={() => setShowAll(all)}
+              className={`min-h-9 rounded-lg px-3 text-[12px] font-semibold ${showAll === all ? 'bg-[#0b1220] text-white' : 'border border-slate-300 bg-white text-slate-600 hover:border-blue-300'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      {error && (
+        <div className="mt-4">
+          <Notice kind="error">{error}</Notice>
+        </div>
+      )}
+      <p className="mt-3 text-xs leading-5 text-slate-500">
+        A published race is public at once and verified by itself at the time shown, unless it is held or rejected first. A held race is
+        not public until somebody here verifies it. Rejecting takes a race down and sends the organizer the note.
+      </p>
+      <ul className="mt-4 grid gap-3">
+        {rows.map((row) => (
+          <ReviewCard key={row.race_id} row={row} token={session.token} onChanged={reload} highlighted={highlight === row.race_id} />
+        ))}
+        {rows.length === 0 && (
+          <li className="rounded-2xl border border-dashed border-slate-300 px-6 py-10 text-center text-sm text-slate-500">
+            {showAll ? 'Nothing has been published yet.' : 'Nothing waits for a look. Held and pending races appear here as they are published.'}
+          </li>
+        )}
+      </ul>
     </div>
   )
 }
@@ -1232,7 +1427,17 @@ function ServerTab({ session }) {
 // ------------------------------------------------------------------------------ page
 
 export function AdminEvents({ session, tab = 'overview' }) {
-  const [active, setActive] = useState(tab)
+  // An admin email links to `#/admin?tab=reviews&race=<id>`: the tab opens on that race.
+  const { query } = useRoute()
+  const [active, setActive] = useState(() => (TABS.some(([id]) => id === query.tab) ? query.tab : tab))
+  const [openReviews, setOpenReviews] = useState(null)
+  useEffect(() => {
+    // The count in the tab label. An API without the endpoint yet says nothing rather than failing the page.
+    listAdminReviews(session.token, 'open')
+      .then((list) => setOpenReviews(list.length))
+      .catch(() => {})
+  }, [session.token])
+  const tabLabel = (id, label) => (id === 'reviews' && openReviews ? `${label} (${openReviews})` : label)
   return (
     <Page
       eyebrow="ADMIN"
@@ -1256,12 +1461,13 @@ export function AdminEvents({ session, tab = 'overview' }) {
             onClick={() => setActive(id)}
             className={`-mb-px border-b-2 px-3 py-2 text-sm font-semibold ${active === id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-[#0b1220]'}`}
           >
-            {label}
+            {tabLabel(id, label)}
           </button>
         ))}
       </nav>
       <div className="mt-6">
         {active === 'overview' && <Overview session={session} />}
+        {active === 'reviews' && <Reviews session={session} highlight={query.race} onOpenCount={setOpenReviews} />}
         {active === 'reports' && <Reports session={session} />}
         {active === 'accounts' && <Accounts session={session} />}
         {active === 'events' && <EventsAdmin session={session} />}

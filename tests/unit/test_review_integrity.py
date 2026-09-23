@@ -48,7 +48,7 @@ def test_figures_edited_after_the_results_passed_cannot_be_published():
     headers, race_id = _race_with_results("edit-then-publish@example.com")
     assert client.patch(f"/races/{race_id}", json={"distance_km": 400, "elevation_gain_m": 30000}, headers=headers).status_code == 200
 
-    answer = client.post(f"/races/{race_id}/publish", headers=headers)
+    answer = client.post(f"/races/{race_id}/publish", json={"attest": True}, headers=headers)
     assert answer.status_code == 422, "an impossible score reached the public index"
     assert "best run ever recorded" in answer.json()["detail"]
     assert db.find_race(race_id).published_at is None
@@ -58,13 +58,13 @@ def test_a_race_with_no_finishers_is_not_published_as_scored():
     headers, race_id = _race_with_results(
         "dnf-only@example.com", b"Rank,Time,Last name,First name,Gender\nDNF,,Stopped,Sam,M\n"
     )
-    answer = client.post(f"/races/{race_id}/publish", headers=headers)
+    answer = client.post(f"/races/{race_id}/publish", json={"attest": True}, headers=headers)
     assert answer.status_code == 422 and "no finishers" in answer.json()["detail"]
 
 
 def test_an_ordinary_race_still_publishes():
     headers, race_id = _race_with_results("ordinary@example.com")
-    assert client.post(f"/races/{race_id}/publish", headers=headers).status_code == 200
+    assert client.post(f"/races/{race_id}/publish", json={"attest": True}, headers=headers).status_code == 200
 
 
 # --- The freeze is in the write, not only in front of it ------------------------------------------
@@ -74,7 +74,7 @@ def test_the_write_refuses_figures_on_a_published_race_without_the_handler():
     """The handler reads the race and then calls the write on another connection; a publish
     committing between those two was enough for the change to land on a public race."""
     headers, race_id = _race_with_results("figures-race@example.com")
-    assert client.post(f"/races/{race_id}/publish", headers=headers).status_code == 200
+    assert client.post(f"/races/{race_id}/publish", json={"attest": True}, headers=headers).status_code == 200
 
     with pytest.raises(db.RacePublished):
         db.update_race(race_id, distance_km=120.0)
@@ -85,13 +85,13 @@ def test_the_write_refuses_figures_on_a_published_race_without_the_handler():
 def test_a_published_race_may_still_be_renamed_through_the_write():
     """The freeze is on what the numbers mean, not on the words around them."""
     headers, race_id = _race_with_results("rename-write@example.com")
-    assert client.post(f"/races/{race_id}/publish", headers=headers).status_code == 200
+    assert client.post(f"/races/{race_id}/publish", json={"attest": True}, headers=headers).status_code == 200
     assert db.update_race(race_id, course_name="Renamed").course_name == "Renamed"
 
 
 def test_restating_the_model_it_already_has_is_not_a_change():
     headers, race_id = _race_with_results("same-model@example.com")
-    assert client.post(f"/races/{race_id}/publish", headers=headers).status_code == 200
+    assert client.post(f"/races/{race_id}/publish", json={"attest": True}, headers=headers).status_code == 200
     current = db.find_race(race_id).scoring_version
     db.update_race(race_id, scoring_version=current)  # a no-op, and must not be refused as one
 
@@ -174,7 +174,7 @@ def test_the_public_event_list_does_not_count_unpublished_drafts():
         client.post(f"/events/{event_id}/races", json={"course_name": name, "distance_km": 50.0, "elevation_gain_m": 2000.0}, headers=headers)
     published = client.get(f"/events/{event_id}", headers=headers).json()["races"][0]["race_id"]
     assert client.post(f"/races/{published}/results", files={"file": ("r.csv", SANE, "text/csv")}, headers=headers).status_code == 200
-    assert client.post(f"/races/{published}/publish", headers=headers).status_code == 200
+    assert client.post(f"/races/{published}/publish", json={"attest": True}, headers=headers).status_code == 200
 
     listed = next(row for row in client.get("/events").json() if row["event_id"] == event_id)
     detail = client.get(f"/events/{event_id}").json()

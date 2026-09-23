@@ -280,7 +280,7 @@ def test_a_published_races_course_cannot_be_swapped_under_its_runners():
     assert client.post(f"/races/{race_id}/gpx", files=upload, headers=headers).status_code == 200
     results = {"file": ("results.csv", DEMO_RESULT_001.read_bytes(), "text/csv")}
     assert client.post(f"/races/{race_id}/results", files=results, headers=headers).status_code == 200
-    assert client.post(f"/races/{race_id}/publish", headers=headers).status_code == 200
+    assert client.post(f"/races/{race_id}/publish", json={"attest": True}, headers=headers).status_code == 200
 
     refused = client.post(f"/races/{race_id}/gpx", files={"file": ("other.gpx", course, "application/gpx+xml")}, headers=headers)
     assert refused.status_code == 409 and "Unpublish" in refused.json()["detail"]

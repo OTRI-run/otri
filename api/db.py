@@ -22,6 +22,7 @@ import random
 import secrets
 from contextlib import contextmanager
 from dataclasses import dataclass
+import json
 from datetime import date, datetime
 from typing import Iterator
 
@@ -328,6 +329,16 @@ class Race:
     # Offered in the calculator's "Pick a race" only; not a race on the races page.
     calculator_only: bool = False
     event_source_url: str | None = None
+    # The publish review (api/screening.py): 'none' until published, then 'pending' (public, verifies
+    # itself at auto_verify_at), 'verified', 'held' (not public, an admin decides) or 'rejected'.
+    review_status: str = "none"
+    review_flags: list | None = None
+    auto_verify_at: datetime | None = None
+    reviewed_at: datetime | None = None
+    reviewed_by: str | None = None
+    review_note: str | None = None
+    publish_attested_at: datetime | None = None
+    results_fingerprint: str | None = None
 
     def to_race_record(self) -> RaceRecord:
         """Adapt to the shape ``scoring.score_race()`` expects."""
@@ -531,6 +542,8 @@ _RACE_JOIN_SELECT = """
            r.listed_at, r.course_permission, NULLIF(e.website, '') AS event_website,
            r.calculator_only, NULLIF(e.source_url, '') AS event_source_url,
            r.published_at, COALESCE(o.is_demo, FALSE) AS is_demo, r.created_at,
+           r.review_status, r.review_flags, r.auto_verify_at, r.reviewed_at, r.reviewed_by, r.review_note,
+           r.publish_attested_at, r.results_fingerprint,
            e.event_name, e.event_date, e.organizer_id, e.location AS event_location, e.country AS event_country,
            -- The organization only. display_name is the organizer's own name, which the account
            -- page promises is shown to admins and not published; falling back to it put a real
@@ -608,6 +621,88 @@ def set_race_published(race_id: str, published: bool) -> Race:
     race = find_race(race_id)
     assert race is not None
     return race
+
+
+# --- The publish review -------------------------------------------------------------------------
+
+
+def set_race_review(
+    race_id: str,
+    *,
+    status: str,
+    flags: list[dict] | None = None,
+    auto_verify_at: datetime | None = None,
+    reviewed_by: str | None = None,
+    note: str | None = None,
+    attested: bool = False,
+    fingerprint: str | None = None,
+) -> Race:
+    """Record where a race stands in the publish review. ``reviewed_by`` is 'auto' or an admin's
+    address; ``reviewed_at`` is set whenever it is given. ``attested`` stamps the organizer's
+    confirmation that they organize the race and may publish its results."""
+    with get_connection() as connection:
+        cursor = connection.execute(
+            "UPDATE races SET review_status = %s, review_flags = %s::jsonb, auto_verify_at = %s, "
+            "reviewed_by = %s, reviewed_at = CASE WHEN %s::text IS NULL THEN reviewed_at ELSE now() END, "
+            "review_note = %s, publish_attested_at = CASE WHEN %s THEN now() ELSE publish_attested_at END, "
+            "results_fingerprint = COALESCE(%s, results_fingerprint), updated_at = now() WHERE race_id = %s",
+            (status, json.dumps(flags) if flags is not None else None, auto_verify_at, reviewed_by, reviewed_by, note, attested, fingerprint, race_id),
+        )
+        if cursor.rowcount == 0:
+            raise NotFoundError(f"race {race_id!r} not found")
+    race = find_race(race_id)
+    assert race is not None
+    return race
+
+
+def settle_pending_reviews() -> int:
+    """A clean race nobody objected to verifies itself once its window has passed. Called from the
+    public reads, so it needs no scheduler and works the same under every worker."""
+    with get_connection() as connection:
+        cursor = connection.execute(
+            "UPDATE races SET review_status = 'verified', reviewed_at = now(), reviewed_by = 'auto', updated_at = now() "
+            "WHERE review_status = 'pending' AND published_at IS NOT NULL AND auto_verify_at IS NOT NULL AND auto_verify_at <= now()"
+        )
+        return cursor.rowcount
+
+
+_REVIEW_SELECT = _RACE_JOIN_SELECT.replace("FROM races r", ", o.email AS organizer_email\n    FROM races r", 1)
+
+
+def list_reviews(*, open_only: bool = True) -> list[tuple[Race, str | None]]:
+    """Races in the publish review with their organizer's address, newest first. ``open_only`` is
+    what an admin has to look at: pending and held."""
+    where = " WHERE r.review_status IN ('pending', 'held')" if open_only else " WHERE r.review_status <> 'none'"
+    with get_connection() as connection:
+        rows = connection.execute(_REVIEW_SELECT + where + " ORDER BY r.updated_at DESC").fetchall()
+    out = []
+    for row in rows:
+        row = dict(row)
+        email = row.pop("organizer_email", None)
+        out.append((Race(**row), email))
+    return out
+
+
+def find_duplicate_results(fingerprint: str, *, exclude_race_id: str) -> str | None:
+    """Another race that carries exactly these results (same names and times), if one is on file."""
+    with get_connection() as connection:
+        row = connection.execute(
+            "SELECT race_id FROM races WHERE results_fingerprint = %s AND race_id <> %s ORDER BY published_at DESC NULLS LAST LIMIT 1",
+            (fingerprint, exclude_race_id),
+        ).fetchone()
+    return row["race_id"] if row else None
+
+
+def course_published_by_other_organizer(geometry_hash: str, *, organizer_id: int | None, exclude_race_id: str) -> bool:
+    """Whether this exact course geometry is already public under a different organizer."""
+    with get_connection() as connection:
+        row = connection.execute(
+            "SELECT 1 FROM races r JOIN events e ON e.event_id = r.event_id "
+            "WHERE r.measurement->>'geometry_hash' = %s AND r.race_id <> %s AND r.published_at IS NOT NULL "
+            "AND e.organizer_id IS DISTINCT FROM %s LIMIT 1",
+            (geometry_hash, exclude_race_id, organizer_id),
+        ).fetchone()
+    return row is not None
 
 
 def count_races_by_event(*, public_only: bool = False) -> dict[str, int]:

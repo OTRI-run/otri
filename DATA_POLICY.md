@@ -9,7 +9,9 @@ OTRI depends on trustworthy, legitimately obtained race-result data. Data proven
 3. Public datasets with an explicit reuse license.
 4. Appropriate government/open-data sources.
 5. Athlete submissions where rights and privacy requirements permit.
-6. Public race-result pages only when the intended collection and reuse are permitted.
+6. Public race pages: the published course and the published facts of a race (see "Public race facts and course files").
+
+Bulk copying of another organisation's results database or calculated scores is not on this list; see "Restricted data".
 
 ## Provenance
 
@@ -28,7 +30,13 @@ Each imported dataset should record, where available:
 
 Do not scrape, mirror, extract, copy, or redistribute proprietary databases or calculated scores where doing so is prohibited. Do not bypass rate limits, access controls, robots restrictions, authentication, or other technical safeguards.
 
-The fact that a result can be viewed online does not by itself establish permission for bulk extraction or republication.
+What stays restricted is the *bulk* copying of a proprietary database and the reuse of another organisation's calculated scores or index values. It is not the facts of a race.
+
+## Public race facts and course files
+
+A race that has been run in public has public facts: its course, its date, its distance and climb, who started, who finished, in what order and in what time. Many sites use a race's published course file, and stating who won a race is stating a fact. OTRI may use and show these facts, and a course file the race has published, without asking first, naming the race and linking the source where one exists. This is how the calculator's well-known courses work (`api/app.py`, admin calculator courses: a name, a course file and a link to where it came from), and it is how OTRI may show a real performance beside the score it would carry, as long as a score OTRI has not computed from the race's own results is labelled illustrative.
+
+What this does not cover: personal data beyond the result itself (contact details, dates of birth, addresses), results that were never public, another organisation's calculated scores or index values, and copying a whole results database. Those follow the source hierarchy and the restrictions above.
 
 ## Privacy
 
@@ -67,7 +75,7 @@ OTRI lists no race on anyone's behalf and keeps no catalogue of races. A race is
 
 ## Stored course files
 
-A course file is reduced to positions and elevations before it is stored or served (`course/sanitize.py`); the measurement is identical. This is data minimisation, not a licence: removing a notice from a file does not change who may publish the course, so the permission rules above apply unchanged. What the uploaded file said about its origin (creator, author, copyright holder, licence, links) is kept with the race's private record, together with the SHA-256 of the original upload, so that a licence's attribution terms can be honoured and a dispute can be answered. This applies to a course an organizer attaches to a race. A course shared anonymously from the calculator publishes nothing and belongs to no race, so there is no attribution to honour and no dispute to answer: nothing about its origin is kept, and neither is the name of the file it came from.
+A course file is reduced to positions and elevations before it is stored or served (`course/sanitize.py`); the measurement is identical. This is data minimisation. A course a race has published is a public fact of that race ("Public race facts and course files" above). What the uploaded file said about its origin (creator, author, copyright holder, licence, links) is kept with the race's private record, together with the SHA-256 of the original upload, so that a licence's attribution terms can be honoured and a dispute can be answered. This applies to a course an organizer attaches to a race. A course shared anonymously from the calculator publishes nothing and belongs to no race, so there is no attribution to honour and no dispute to answer: nothing about its origin is kept, and neither is the name of the file it came from.
 
 ## Licensing
 

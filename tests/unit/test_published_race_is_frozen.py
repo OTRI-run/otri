@@ -35,7 +35,7 @@ def _published_race(email="freeze@example.com"):
     assert client.post(f"/races/{race_id}/gpx", files=course, headers=headers).status_code == 200
     results = {"file": ("results.csv", DEMO_RESULT_001.read_bytes(), "text/csv")}
     assert client.post(f"/races/{race_id}/results", files=results, headers=headers).status_code == 200
-    assert client.post(f"/races/{race_id}/publish", headers=headers).status_code == 200
+    assert client.post(f"/races/{race_id}/publish", json={"attest": True}, headers=headers).status_code == 200
     return headers, race_id
 
 
@@ -93,7 +93,7 @@ def test_taking_the_race_down_first_is_the_way_through():
     assert client.post(
         f"/races/{race_id}/results", files={"file": ("r.csv", DEMO_RESULT_001.read_bytes(), "text/csv")}, headers=headers
     ).status_code == 200
-    assert client.post(f"/races/{race_id}/publish", headers=headers).status_code == 200
+    assert client.post(f"/races/{race_id}/publish", json={"attest": True}, headers=headers).status_code == 200
 
 
 # --- And in the write itself ----------------------------------------------------------------------

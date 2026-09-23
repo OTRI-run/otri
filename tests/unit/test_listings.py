@@ -79,7 +79,7 @@ def test_results_of_a_listed_race_stay_private_until_published():
     assert client.get(f"/races/{race['race_id']}/results").status_code == 403
     assert _public_race()["listing_status"] == "awaiting_results"
 
-    assert client.post(f"/races/{race['race_id']}/publish", headers=organizer).status_code == 200
+    assert client.post(f"/races/{race['race_id']}/publish", json={"attest": True}, headers=organizer).status_code == 200
     assert _public_race()["listing_status"] == "scored"
     assert client.get(f"/races/{race['race_id']}/results").status_code == 200
 

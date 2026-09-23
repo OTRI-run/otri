@@ -87,6 +87,17 @@ class RaceSummary(BaseModel):
     calculator_only: bool = False
     # Where the course file came from (the organizer's page), shown with a calculator course.
     source_url: str | None = None
+    # The publish review (api/screening.py). 'none' until published; 'pending' while public and
+    # waiting to verify itself; 'verified'; 'held' (not public, an admin decides); 'rejected'.
+    review_status: str = "none"
+    # The rest only for the race's owner and admins: what the automatic check noted, when the
+    # race verifies itself, who decided, and the note an admin left.
+    review_flags: list[dict] | None = None
+    auto_verify_at: datetime | None = None
+    reviewed_at: datetime | None = None
+    reviewed_by: str | None = None
+    review_note: str | None = None
+    publish_attested_at: datetime | None = None
 
 class EventDetail(EventSummary):
     races: list[RaceSummary] = []
@@ -443,6 +454,24 @@ class RecoveryCodesOut(BaseModel):
     access_token: str = ""
     token_type: str = "bearer"
     expires_in: int | None = None
+
+
+class PublishRequest(BaseModel):
+    """What the organizer confirms when they press Publish: that they organize the race and have
+    the right to publish these results. Recorded with the race."""
+
+    attest: bool = False
+
+
+class ReviewAction(BaseModel):
+    action: str = Field(max_length=20)  # verify | hold | reject
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class RaceReviewOut(RaceSummary):
+    """A race in the publish review, as the admin sees it."""
+
+    organizer_email: str | None = None
 
 
 class AdminEventOut(EventSummary):

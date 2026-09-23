@@ -76,6 +76,7 @@ from .auth import (
     verify_email,
 )
 from . import email as _email
+from . import screening as _screening
 from . import server_stats as _server
 from .email import send_password_reset_email, send_verification_email
 from . import analytics as _analytics
@@ -84,6 +85,9 @@ from . import rate_limit as _limits
 from .rate_limit import enforce_rate_limit, over_limit
 from . import rate_limit as _rate_limit
 from .schemas import (
+    PublishRequest,
+    RaceReviewOut,
+    ReviewAction,
     SiteHit,
     TrafficSummary,
     ChangePassword,
@@ -397,6 +401,8 @@ _bearer_scheme = HTTPBearer(auto_error=False)
 # admin pages show. It used to be the other way round: the flag was set at sign-in and nothing
 # ever cleared it, so removing an address from the list removed nothing.
 _ADMIN_EMAILS = {email.strip().lower() for email in os.environ.get("OTRI_ADMIN_EMAILS", "").split(",") if email.strip()}
+# How long a clean published race waits before it is marked verified on its own (api/screening.py).
+AUTO_VERIFY_HOURS = float(os.environ.get("OTRI_AUTO_VERIFY_HOURS", "24"))
 
 
 def _with_flags(organizer: Organizer, *, check_session: bool = True) -> Organizer:
@@ -1185,8 +1191,18 @@ def _listing_status(race: db.Race) -> str:
     return "upcoming" if race.event_date and race.event_date > _today() else "awaiting_results"
 
 
-def _race_summary(race: db.Race, finisher_count: int | None = None) -> RaceSummary:
+def _race_summary(race: db.Race, finisher_count: int | None = None, *, viewer: Organizer | None = None) -> RaceSummary:
+    """``viewer`` is who is asking: the race's owner and admins see the review in full (what the
+    automatic check noted, an admin's note); everybody else sees only its status."""
+    private = viewer is not None and (viewer.is_admin or viewer.id == race.organizer_id)
     return RaceSummary(
+        review_status=race.review_status or "none",
+        review_flags=(race.review_flags or []) if private else None,
+        auto_verify_at=race.auto_verify_at if private else None,
+        reviewed_at=race.reviewed_at if private else None,
+        reviewed_by=race.reviewed_by if private else None,
+        review_note=race.review_note if private else None,
+        publish_attested_at=race.publish_attested_at if private else None,
         race_id=race.race_id,
         event_id=race.event_id,
         event_name=race.event_name or "",
@@ -1291,6 +1307,8 @@ def get_event(event_id: str, organizer: Organizer | None = Depends(_optional_org
         races = [race for race in races if _is_public_race(race)]
         if not races:
             raise HTTPException(status_code=404, detail=f"event {event_id!r} not found")
+    else:
+        db.settle_pending_reviews()
     counts = db.count_results_by_race()
     return EventDetail(
         event_id=event.event_id,
@@ -1462,29 +1480,45 @@ def list_races(all: bool = False, organizer: Organizer | None = Depends(_optiona
     if all:
         if organizer is None or not organizer.is_admin:
             raise HTTPException(status_code=403, detail="admin access required")
+    db.settle_pending_reviews()
     counts = db.count_results_by_race()
-    return [_race_summary(race, counts.get(race.race_id, 0)) for race in db.list_races(published_only=not all)]
+    return [_race_summary(race, counts.get(race.race_id, 0), viewer=organizer) for race in db.list_races(published_only=not all)]
 
 
 @app.get("/races/{race_id}", response_model=RaceSummary)
 def get_race(race_id: str, organizer: Organizer | None = Depends(_optional_organizer)) -> RaceSummary:
     """A race's summary: for anyone once it is published or listed, before that for its owner and
     admins only (404 to everyone else, as for a race that does not exist)."""
+    db.settle_pending_reviews()
     race = db.find_race(race_id)
     if race is None or not (_is_public_race(race) or (organizer is not None and (organizer.is_admin or organizer.id == race.organizer_id))):
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
-    return _race_summary(race, db.count_results_by_race().get(race_id, 0))
+    return _race_summary(race, db.count_results_by_race().get(race_id, 0), viewer=organizer)
 
 
 @app.post("/races/{race_id}/publish", response_model=RaceSummary)
-def publish_race(race_id: str, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
-    """Make the race's results, course and measurement public. Owner or admin; needs scored results
-    and a confirmed email address."""
+def publish_race(race_id: str, payload: PublishRequest | None = None, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
+    """Make the race's results, course and measurement public. Owner or admin; needs scored results,
+    a confirmed email address, and the organizer's word that the race is theirs to publish.
+
+    Nobody approves a race. What happens instead: the race is screened (api/screening.py). A clean
+    race is public at once and is marked verified on its own after `AUTO_VERIFY_HOURS` unless an
+    admin objects first; a race with a strong sign of being invented or copied is held, not public,
+    with the reasons in the answer, and an admin decides. The admins hear about every publish.
+    """
     race = db.find_race(race_id)
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
     require_verified(organizer)
+    if payload is None or not payload.attest:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Confirm that you organize this race and have the right to publish these results "
+                "(send {\"attest\": true}). OTRI publishes what you upload under your name."
+            ),
+        )
     if not db.has_results(race_id):
         raise HTTPException(status_code=422, detail="upload results before publishing")
 
@@ -1506,8 +1540,106 @@ def publish_race(race_id: str, organizer: Organizer = Depends(require_organizer)
                 "published so that runners can read a leaderboard, and there is nothing to read here."
             ),
         )
+
+    screening = _screen_race(race, scored, organizer)
+    finisher_count = sum(1 for row in scored if row.status == "finisher")
+    label = f"{race.event_name or ''} · {race.course_name}".strip(" ·")
+    if screening.hold:
+        updated = db.set_race_review(race_id, status="held", flags=screening.to_list(), attested=True, fingerprint=screening.fingerprint)
+        _tell_admins_about_publish(updated, organizer.email, finisher_count, held=True)
+        return _race_summary(updated, finisher_count, viewer=organizer)
+
+    db.set_race_published(race_id, True)
+    auto_verify_at = datetime.now(timezone.utc) + timedelta(hours=AUTO_VERIFY_HOURS)
+    updated = db.set_race_review(
+        race_id, status="pending", flags=screening.to_list(), auto_verify_at=auto_verify_at, attested=True, fingerprint=screening.fingerprint
+    )
     _analytics.count("race_published")
-    return _race_summary(db.set_race_published(race_id, True), db.count_results_by_race().get(race_id, 0))
+    _tell_admins_about_publish(updated, organizer.email, finisher_count, held=False)
+    return _race_summary(updated, finisher_count, viewer=organizer)
+
+
+# --- The publish review -----------------------------------------------------------------------
+#
+# OTRI's own demonstration files, so that "publishing" the example race as if it were real is
+# recognised. Read once; the files ship with the site and do not change at run time.
+_EXAMPLE_RESULTS = (
+    ("the example results file from otri.run", Path(__file__).resolve().parent.parent / "public" / "examples" / "otri-example-results.csv"),
+    ("the small example results file from otri.run", Path(__file__).resolve().parent.parent / "public" / "examples" / "otri-results-example.csv"),
+    ("the example results spreadsheet from otri.run", Path(__file__).resolve().parent.parent / "public" / "examples" / "otri-results-example.xlsx"),
+)
+_EXAMPLE_COURSES = (
+    ("the example course from otri.run", Path(__file__).resolve().parent.parent / "public" / "examples" / "otri-example-course.gpx"),
+    ("OTRI's synthetic sample course", Path(__file__).resolve().parent.parent / "data" / "demo" / "gpx" / "sample-course.gpx"),
+)
+_known_files: dict[str, dict[str, str]] | None = None
+
+
+def _known_example_files() -> dict[str, dict[str, str]]:
+    global _known_files
+    if _known_files is not None:
+        return _known_files
+    fingerprints: dict[str, str] = {}
+    for label, path in _EXAMPLE_RESULTS:
+        try:
+            rows = result_records(path)
+        except Exception:  # noqa: BLE001 - a missing or unreadable example file is not the organizer's problem
+            continue
+        finishers = [(r.family_name, r.first_name, r.finish_time_seconds) for r in rows if r.is_finisher]
+        fingerprints[_screening.results_fingerprint(finishers)] = label
+    courses: dict[str, str] = {}
+    for label, path in _EXAMPLE_COURSES:
+        try:
+            points = read_track_points(path)
+        except Exception:  # noqa: BLE001
+            continue
+        courses[sha256(json.dumps([(p.lat, p.lon, p.segment_id) for p in points]).encode()).hexdigest()] = label
+    _known_files = {"results": fingerprints, "courses": courses}
+    return _known_files
+
+
+def _screen_race(race: db.Race, scored: list[RunnerScoreOut], organizer: Organizer) -> _screening.Screening:
+    """Gather what the screening needs from the race, the scored rows and the database."""
+    finishers = tuple(
+        _screening.Finisher(row.family_name or "", row.first_name or "", int(row.finish_time_seconds or 0), row.otri_score)
+        for row in scored
+        if row.status == "finisher"
+    )
+    measurement = db.get_measurement(race.race_id) if race.has_gpx else None
+    geometry_hash = (measurement or {}).get("geometry_hash")
+    account = db.find_organizer_account(organizer.id)
+    fingerprint = _screening.results_fingerprint([(f.family_name, f.first_name, f.finish_time_seconds) for f in finishers])
+    subject = _screening.Subject(
+        event_name=race.event_name or "",
+        course_name=race.course_name,
+        event_date=race.event_date,
+        has_course_file=race.has_gpx,
+        finishers=finishers,
+        non_finishers=sum(1 for row in scored if row.status != "finisher"),
+        course_geometry_hash=geometry_hash,
+        organizer_created_at=account.created_at if account else None,
+        previous_review_status=race.review_status or "none",
+        duplicate_of_race=db.find_duplicate_results(fingerprint, exclude_race_id=race.race_id),
+        course_published_by_other_organizer=bool(geometry_hash)
+        and db.course_published_by_other_organizer(geometry_hash, organizer_id=race.organizer_id, exclude_race_id=race.race_id),
+    )
+    known = _known_example_files()
+    return _screening.screen(subject, known_fingerprints=known["results"], known_course_hashes=known["courses"], today=_today())
+
+
+def _tell_admins_about_publish(race: db.Race, organizer_email: str, finisher_count: int, *, held: bool) -> None:
+    label = f"{race.event_name or ''} · {race.course_name}".strip(" ·")
+    for address in sorted(_ADMIN_EMAILS):
+        _email.send_review_email(
+            address,
+            race_id=race.race_id,
+            race_label=label,
+            organizer_email=organizer_email,
+            finisher_count=finisher_count,
+            held=held,
+            flags=race.review_flags or [],
+            auto_verify_at=race.auto_verify_at,
+        )
 
 
 @app.delete("/races/{race_id}/publish", response_model=RaceSummary)
@@ -1517,7 +1649,12 @@ def unpublish_race(race_id: str, organizer: Organizer = Depends(require_organize
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
     _require_race_owner(race, organizer)
-    return _race_summary(db.set_race_published(race_id, False), db.count_results_by_race().get(race_id, 0))
+    updated = db.set_race_published(race_id, False)
+    if updated.review_status in ("pending", "verified"):
+        # Taken down by its organizer: the next publish is screened afresh. A hold or a rejection
+        # is an admin's decision and stays until an admin lifts it.
+        updated = db.set_race_review(race_id, status="none", flags=None)
+    return _race_summary(updated, db.count_results_by_race().get(race_id, 0), viewer=organizer)
 
 
 # --- Listings -----------------------------------------------------------------------
@@ -2146,6 +2283,7 @@ def _unscored_rows(results: list, scoring_version: str) -> list[RunnerScoreOut]:
 
 @app.get("/races/{race_id}/results", response_model=list[RunnerScoreOut])
 def get_race_results(race_id: str, organizer: Organizer | None = Depends(_optional_organizer)) -> list[RunnerScoreOut]:
+    db.settle_pending_reviews()
     race = _visible_race(race_id, organizer, results=True)
 
     if not db.has_results(race_id):
@@ -2918,6 +3056,58 @@ def admin_delete_organizer(organizer_id: int, organizer: Organizer = Depends(req
     if not db.delete_organizer(organizer_id):
         raise HTTPException(status_code=404, detail="no account with that id")
     return Response(status_code=204)
+
+
+def _review_out(race: db.Race, organizer_email: str | None, viewer: Organizer) -> RaceReviewOut:
+    summary = _race_summary(race, db.count_results_by_race().get(race.race_id, 0), viewer=viewer)
+    return RaceReviewOut(**summary.model_dump(), organizer_email=organizer_email)
+
+
+@app.get("/admin/reviews", response_model=list[RaceReviewOut])
+def admin_list_reviews(status: str | None = "open", organizer: Organizer = Depends(require_admin)) -> list[RaceReviewOut]:
+    """Races in the publish review: ``open`` (pending and held, the default) or ``all``."""
+    db.settle_pending_reviews()
+    open_only = status not in ("all",)
+    return [_review_out(race, email, organizer) for race, email in db.list_reviews(open_only=open_only)]
+
+
+@app.post("/admin/reviews/{race_id}", response_model=RaceReviewOut)
+def admin_review_race(race_id: str, payload: ReviewAction, organizer: Organizer = Depends(require_admin)) -> RaceReviewOut:
+    """An admin's decision on a published or held race.
+
+    ``verify`` puts (or keeps) the race on the public site and ends the review; ``hold`` takes it off
+    the site until a decision; ``reject`` takes it off with a note the organizer receives. Verifying
+    says only that an admin saw nothing wrong: OTRI approves nothing and issues no certificate.
+    """
+    race = db.find_race(race_id)
+    if race is None or race.review_status == "none" and race.published_at is None:
+        raise HTTPException(status_code=404, detail="no race in review with that id")
+    action = (payload.action or "").strip().lower()
+    note = (payload.note or "").strip() or None
+    label = f"{race.event_name or ''} · {race.course_name}".strip(" ·")
+    owner = db.find_organizer_account(race.organizer_id) if race.organizer_id is not None else None
+    if action == "verify":
+        if race.published_at is None:
+            db.set_race_published(race_id, True)
+        updated = db.set_race_review(race_id, status="verified", flags=race.review_flags, reviewed_by=organizer.email, note=note)
+        if race.review_status in ("held", "rejected") and owner is not None:
+            _email.send_race_review_outcome_email(owner.email, race_label=label, race_id=race_id, rejected=False, note=note)
+    elif action == "hold":
+        if race.published_at is not None:
+            db.set_race_published(race_id, False)
+        updated = db.set_race_review(race_id, status="held", flags=race.review_flags, reviewed_by=organizer.email, note=note)
+    elif action == "reject":
+        if note is None or len(note) < 3:
+            raise HTTPException(status_code=422, detail="a rejection needs a note the organizer can act on")
+        if race.published_at is not None:
+            db.set_race_published(race_id, False)
+        updated = db.set_race_review(race_id, status="rejected", flags=race.review_flags, reviewed_by=organizer.email, note=note)
+        if owner is not None:
+            _email.send_race_review_outcome_email(owner.email, race_label=label, race_id=race_id, rejected=True, note=note)
+    else:
+        raise HTTPException(status_code=422, detail="action must be verify, hold or reject")
+    _, email = next(((r, e) for r, e in db.list_reviews(open_only=False) if r.race_id == race_id), (None, owner.email if owner else None))
+    return _review_out(updated, email, organizer)
 
 
 @app.get("/admin/shared-courses", response_model=list[SharedCourseAdminOut])

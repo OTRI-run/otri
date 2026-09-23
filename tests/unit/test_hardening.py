@@ -232,7 +232,7 @@ def test_deleting_your_own_account_needs_the_password_and_removes_everything():
     headers = _organizer_auth_headers("bye@example.com")
     _, race_id = _create_event_and_race(headers)
     _upload_results(headers, race_id)
-    assert client.post(f"/races/{race_id}/publish", headers=headers).status_code == 200
+    assert client.post(f"/races/{race_id}/publish", json={"attest": True}, headers=headers).status_code == 200
     assert client.request("DELETE", "/auth/account", json={"password": "not it at all"}, headers=headers).status_code == 400
     assert client.request("DELETE", "/auth/account", json={"password": PASSWORD}, headers=headers).status_code == 200
     assert client.get("/auth/me", headers=headers).status_code == 401
@@ -245,7 +245,7 @@ def test_admin_deleting_an_organizer_cascades_to_runners_and_reports(monkeypatch
     headers = _organizer_auth_headers("cascade@example.com")
     _, race_id = _create_event_and_race(headers)
     _upload_results(headers, race_id)
-    assert client.post(f"/races/{race_id}/publish", headers=headers).status_code == 200
+    assert client.post(f"/races/{race_id}/publish", json={"attest": True}, headers=headers).status_code == 200
     rows = client.get(f"/races/{race_id}/results").json()
     runner_id = next(row["runner_id"] for row in rows if row.get("runner_id"))
     assert client.get(f"/runners/{runner_id}").status_code == 200

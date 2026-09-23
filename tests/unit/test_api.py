@@ -47,7 +47,7 @@ def _organizer_auth_headers(email: str = "organizer@example.com", password: str 
 def _create_event_and_race(headers: dict, scoring_version: str | None = None) -> tuple[str, str]:
     """Creates a fresh event + one race distance owned by whoever `headers` authenticates as."""
     event_response = client.post(
-        "/events", json={"event_name": "Test Event", "event_date": "2026-07-01"}, headers=headers
+        "/events", json={"event_name": "Coastal Trail Weekend", "event_date": "2026-07-01"}, headers=headers
     )
     assert event_response.status_code == 201, event_response.text
     event_id = event_response.json()["event_id"]
@@ -93,7 +93,7 @@ def test_a_race_can_name_the_model_explicitly():
 
 def test_race_creation_rejects_unknown_scoring_version():
     headers = _organizer_auth_headers()
-    event_response = client.post("/events", json={"event_name": "Test Event", "event_date": "2026-07-01"}, headers=headers)
+    event_response = client.post("/events", json={"event_name": "Coastal Trail Weekend", "event_date": "2026-07-01"}, headers=headers)
     event_id = event_response.json()["event_id"]
 
     response = client.post(
@@ -648,7 +648,7 @@ def test_an_unconfirmed_account_builds_its_race_but_cannot_make_it_public():
     with db.get_connection() as connection:
         connection.execute("UPDATE organizers SET email_verified = TRUE WHERE email = %s", ("unverified@example.com",))
     assert client.get("/auth/me", headers=headers).json()["email_verified"] is True
-    assert client.post(f"/races/{race_id}/publish", headers=headers).status_code == 200
+    assert client.post(f"/races/{race_id}/publish", json={"attest": True}, headers=headers).status_code == 200
 
 
 def test_an_unconfirmed_admin_address_is_not_an_admin(monkeypatch):
@@ -832,7 +832,7 @@ def test_share_gpx_caps_file_size_and_rate_limits(tmp_path, monkeypatch):
 
 def _scored_race(headers, email_suffix=""):
     _, race_id = _create_event_and_race(headers)
-    csv = "Ranking,Time,Family name,First Name,Gender\n1,05:10:00,Runner,Test,M\n2,05:45:00,Second,Sam,F\n"
+    csv = "Ranking,Time,Family name,First Name,Gender\n1,05:10:00,Okafor,Ama,M\n2,05:45:00,Second,Sam,F\n"
     submitted = client.post(f"/races/{race_id}/results", files={"file": ("results.csv", csv.encode(), "text/csv")}, headers=headers)
     assert submitted.status_code == 200, submitted.text
     return race_id
@@ -855,7 +855,7 @@ def test_publishing_controls_what_the_public_sees():
     assert client.get(f"/races/{race_id}/results", headers=headers).status_code == 200
     assert race_id not in {r["race_id"] for r in client.get("/races").json()}
 
-    published = client.post(f"/races/{race_id}/publish", headers=headers)
+    published = client.post(f"/races/{race_id}/publish", json={"attest": True}, headers=headers)
     assert published.status_code == 200, published.text
     assert published.json()["is_published"] is True and published.json()["published_at"]
     assert published.json()["finisher_count"] == 2
@@ -874,10 +874,10 @@ def test_publishing_controls_what_the_public_sees():
 def test_publish_needs_results_and_ownership():
     headers = _organizer_auth_headers()
     _, race_id = _create_event_and_race(headers)
-    assert client.post(f"/races/{race_id}/publish", headers=headers).status_code == 422
+    assert client.post(f"/races/{race_id}/publish", json={"attest": True}, headers=headers).status_code == 422
     other = _organizer_auth_headers("someone-else@example.com")
     scored = _scored_race(headers)
-    assert client.post(f"/races/{scored}/publish", headers=other).status_code == 403
+    assert client.post(f"/races/{scored}/publish", json={"attest": True}, headers=other).status_code == 403
     assert client.post(f"/races/{scored}/publish").status_code == 401
 
 
@@ -895,7 +895,7 @@ def test_admin_flag_comes_from_the_environment_and_unlocks_moderation(monkeypatc
     api_module = importlib.import_module("api.app")
     owner = _organizer_auth_headers("owner@example.com")
     race_id = _scored_race(owner)
-    assert client.post(f"/races/{race_id}/publish", headers=owner).status_code == 200
+    assert client.post(f"/races/{race_id}/publish", json={"attest": True}, headers=owner).status_code == 200
 
     # Not an admin yet: the admin listing and other people's races are off limits.
     plain = _organizer_auth_headers("mod@example.com")
@@ -944,7 +944,7 @@ def _publish_results(headers, csv_text, event_date="2026-06-01"):
     race_id = race.json()["race_id"]
     submitted = client.post(f"/races/{race_id}/results", files={"file": ("r.csv", csv_text.encode(), "text/csv")}, headers=headers)
     assert submitted.status_code == 200, submitted.text
-    assert client.post(f"/races/{race_id}/publish", headers=headers).status_code == 200
+    assert client.post(f"/races/{race_id}/publish", json={"attest": True}, headers=headers).status_code == 200
     return race_id
 
 
