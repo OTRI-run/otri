@@ -20,7 +20,9 @@ export default function CalculatorCourses({ session }) {
   const [added, setAdded] = useState(null)
   const [busy, setBusy] = useState(false)
   const [busyId, setBusyId] = useState(null)
-  const empty = { event_name: '', course_name: '', location: '', country: '', source_url: '', year: '' }
+  // The year starts at the current one: most courses are added for the coming edition.
+  const thisYear = String(new Date().getFullYear())
+  const empty = { event_name: '', course_name: '', location: '', country: '', source_url: '', year: thisYear }
   const [form, setForm] = useState(empty)
   const [file, setFile] = useState(null)
   // The course being changed, when the form is editing one and not adding one.
@@ -54,7 +56,7 @@ export default function CalculatorCourses({ session }) {
 
   function startEditing(row) {
     setEditing(row)
-    setForm({ event_name: row.event_name ?? '', course_name: row.course_name ?? '', location: row.event_location ?? '', country: row.event_country ?? '', source_url: row.source_url ?? '', year: row.edition_year ? String(row.edition_year) : '' })
+    setForm({ event_name: row.event_name ?? '', course_name: row.course_name ?? '', location: row.event_location ?? '', country: row.event_country ?? '', source_url: row.source_url ?? '', year: row.edition_year ? String(row.edition_year) : thisYear })
     setFile(null)
     setAdded(null)
     setError(null)
@@ -118,13 +120,13 @@ export default function CalculatorCourses({ session }) {
             <input id="cc-name" required value={form.event_name} onChange={set('event_name')} list={RACE_NAME_LIST} autoComplete="off" className={inputClass} placeholder="Lavaredo Ultra Trail" />
             <RaceNameList />
           </Field>
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_140px]">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Distance name" htmlFor="cc-course" hint="How this distance is listed.">
               <input id="cc-course" required value={form.course_name} onChange={set('course_name')} list={DISTANCE_NAME_LIST} autoComplete="off" className={inputClass} placeholder="120K" />
               <DistanceNameList />
             </Field>
-            <Field label="Year" htmlFor="cc-year" hint="The edition this file is from. Optional.">
-              <input id="cc-year" type="number" inputMode="numeric" min="1900" max="2100" step="1" value={form.year} onChange={set('year')} className={inputClass} placeholder={String(new Date().getFullYear())} />
+            <Field label="Year" htmlFor="cc-year" hint="The edition this file is from.">
+              <input id="cc-year" type="number" inputMode="numeric" min="1900" max="2100" step="1" value={form.year} onChange={set('year')} className={inputClass} placeholder={thisYear} />
             </Field>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
