@@ -268,8 +268,10 @@ const FOOTER_COLUMNS = [
   {
     heading: 'The model',
     links: [
-      ['How a score is made', `${GITHUB_URL}/blob/main/docs/methodology/0.1.0/HOW-OTRI-SCORES.md`],
+      ['How a score is made', '/how-otri-scores/'],
       ['Methodology', `${GITHUB_URL}/blob/main/docs/methodology/README.md`],
+      ['What is a GPX file?', '/what-is-a-gpx/'],
+      ['Result files', '/result-files/'],
       ['Data policy', '/data-policy/'],
       ['GitHub', GITHUB_URL],
     ],
@@ -875,7 +877,7 @@ function Leaderboard({ raceId, onBack, query }) {
             items={[
               ['Where would you land?', race.has_gpx ? 'Try a target time on this exact course.' : 'Pick a course and a target time. The score updates live.', race.has_gpx ? 'Calculate your score here' : 'Calculate your score', race.has_gpx ? `#calculator?race=${encodeURIComponent(race.race_id)}` : '#calculator'],
               ['Organize a race like this?', 'Upload official results and the course file; every finisher gets a score.', 'For organizers', 'organizer/'],
-              ['Why these numbers?', 'The plain-language explainer, then every constant in the model.', 'How a score is made', 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/0.1.0/HOW-OTRI-SCORES.md'],
+              ['Why these numbers?', 'The plain-language explainer, then every constant in the model.', 'How a score is made', '/how-otri-scores/'],
             ]}
           />
         </>
@@ -1174,7 +1176,7 @@ function RacesPage({ raceId, raceQuery }) {
               items={[
                 ['Your race is not here?', 'Organizers score a race in a minute, with no account. Runners can try a target time on any course.', 'Score a race', '#score'],
                 ['Just a target time?', 'Pick a course or upload a GPX and see what a finish time would be worth.', 'Open the calculator', '#calculator'],
-                ['Why these numbers?', 'The plain-language explainer, then every constant in the model.', 'How a score is made', 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/0.1.0/HOW-OTRI-SCORES.md'],
+                ['Why these numbers?', 'The plain-language explainer, then every constant in the model.', 'How a score is made', '/how-otri-scores/'],
               ]}
             />
           </>

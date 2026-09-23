@@ -114,7 +114,7 @@ WantedBy=multi-user.target
 
 Notes on the hardening directives:
 - `NoNewPrivileges=true` / `ProtectSystem=strict` / `ProtectHome=true` restrict what the service can touch on disk, limiting blast radius if the process is ever compromised.
-- `ReadWritePaths=/opt/otri/data` is the **one** exception, required because `POST /races` writes to `data/demo/races.csv` and organizer accounts are stored in `data/organizers.db` (see `api/README.md` "Known gaps" — both are prototype-only persistence, not a real database).
+- `ReadWritePaths=/opt/otri/data` is the **one** exception, required because the API writes there: the measurement cache, the calculator's shared course files, and the terrain tiles it fetches on demand (see `api/README.md` "Known gaps" — both are prototype-only persistence, not a real database).
 - 2 workers is enough for a low-traffic prototype; increase only if you see real load (`(2 × CPU cores) + 1` is the usual Gunicorn rule of thumb).
 
 Create `/opt/otri/.env` (not committed to git — see `.gitignore`):
@@ -221,7 +221,7 @@ For less manual work later, a GitHub Actions workflow that SSHes in and runs the
 
 ## 9. Backups and monitoring
 
-- **Data**: `data/demo/races.csv` is the only mutable state right now (via `POST /races`). Since it's prototype-only persistence, back it up manually before demos if it matters, or just re-clone from git (it's tracked) — a real database replaces this entirely before any production organizer use.
+- **Data**: everything lives in PostgreSQL, backed up nightly by `04-backup-db.sh`; what is under `data/` is a cache and can be rebuilt.
 - **Droplet snapshots**: enable DigitalOcean's automatic weekly backups (Droplet → Backups) for disaster recovery of the whole server config.
 - **Monitoring**: enable DigitalOcean's free Droplet monitoring (CPU, memory, disk, bandwidth graphs + alert policies) from the control panel — no extra setup needed.
 - **Logs**: `journalctl -u otri-api` (API) and `/var/log/nginx/access.log` / `error.log` (Nginx).

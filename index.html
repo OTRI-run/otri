@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="robots" content="noindex" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="description" content="Turn a course GPX and race results into explained trail scores. Free to score, public to view, open to inspect. No account to try." />
 <meta property="og:type" content="website" />
@@ -15,11 +14,13 @@
 <meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="theme-color" content="#0b1220" />
+<link rel="canonical" href="https://otri.run/" />
 <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
 <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png" />
 <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
 <link rel="manifest" href="./site.webmanifest" />
 <title>OTRI — Explained trail scores from your course and results</title>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://otri.run/#org","name":"OTRI, the Open Trail Running Index","alternateName":"OTRI","url":"https://otri.run/","logo":"https://otri.run/icon-512.png","email":"hello@otri.run","sameAs":["https://github.com/OTRI-run/otri"]},{"@type":"WebSite","@id":"https://otri.run/#site","url":"https://otri.run/","name":"OTRI","publisher":{"@id":"https://otri.run/#org"},"inLanguage":"en"},{"@type":"WebApplication","name":"OTRI score calculator","url":"https://otri.run/#calculator","applicationCategory":"SportsApplication","operatingSystem":"Any","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"description":"Turn a trail race course (GPX) and a finish time into an explained OTRI score; score a whole results file and publish a race page.","publisher":{"@id":"https://otri.run/#org"}}]}</script>
 <style>
 .otri-boot{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;background:#f7f9fc;color:#0b1220;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;text-align:center}
 .otri-boot-mark{width:168px;height:104px}
@@ -49,8 +50,15 @@
 </div>
 <noscript>
 <main style="max-width:720px;margin:48px auto;padding:0 20px;font-family:Arial,sans-serif;line-height:1.6;color:#0b1220">
-<h1>OTRI needs JavaScript to run.</h1>
-<p>Please enable JavaScript and reload the page.</p>
+<h1>OTRI, the Open Trail Running Index</h1>
+<p>An open calculator and scoring tool for trail running: a course file (GPX) and a results file in, an explained, reproducible score for every finisher out. Free to score, public to view, open to inspect. The calculator and the race pages need JavaScript; these pages do not:</p>
+<ul>
+<li><a href="/faq/">Frequently asked questions</a>: what a score means, which races can be scored, courses and GPX files, the runner index, publishing a race.</li>
+<li><a href="/how-otri-scores/">How a score is made</a>: the model, every constant, and what it does not see.</li>
+<li><a href="/what-is-a-gpx/">What is a GPX file?</a> and <a href="/result-files/">Result files</a>: what to bring.</li>
+<li><a href="/privacy/">Privacy</a>, <a href="/terms/">Terms</a>, <a href="/data-policy/">Data policy</a>.</li>
+</ul>
+<p>The code and the methodology are on <a href="https://github.com/OTRI-run/otri">GitHub</a>.</p>
 </main>
 </noscript>
 <script type="module" src="./prototype/main.jsx"></script>
