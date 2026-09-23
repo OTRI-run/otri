@@ -204,7 +204,7 @@ export function ShareTarget({ courseName, distanceKm, elevationGainM, seconds, s
     `🎯 My target for ${courseName}: ${time}.`,
     `That would be worth ${score} OTRI points${percent != null ? `, ${percent}% of record-run speed on this course` : ''}.`,
     '',
-    url ? `What would your time be worth? Try it: ${url}` : 'What would your time be worth? Try any course at otri.run',
+    url ? `What would your time be worth? Try it: ${url}` : 'What would your time be worth? Try any course at otri.run/go/share',
     '',
     [hashtag(courseName), '#trailrunning', '#OTRI'].filter(Boolean).join(' '),
   ].join('\n')

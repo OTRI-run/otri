@@ -161,6 +161,11 @@ const FAQ = [
         tags: 'correct fix remove unpublish delete race event',
       },
       {
+        q: 'What happens to the files I score without an account?',
+        a: 'They are deleted once the answer is sent. The only thing kept is the course measurement, cached under a hash of the GPX so the same course is not measured twice; it holds no names and no results. Nothing is published, and nobody but you sees the scores, until you create an account and press Publish.',
+        tags: 'privacy files deleted delete hash cache cached stored retained upload anonymous account',
+      },
+      {
         q: 'Do you use my results to change the model?',
         a: 'No. A score never depends on the field, and the production model is not fitted to uploaded results. Calibration studies, when they happen, use separately licensed data and are published as a new model version.',
         link: ['/data-policy/', 'Data policy'],
@@ -176,6 +181,11 @@ const FAQ = [
         a: 'Start with the plain-language explainer, which also lists every constant and where it comes from, then the specification of the model in production.',
         link: [`${DOCS}/docs/methodology/0.1.0/HOW-OTRI-SCORES.md`, 'How a score is made'],
         tags: 'method methodology documentation spec paper',
+      },
+      {
+        q: 'Is OTRI a federation or a governing body?',
+        a: 'No. OTRI is a calculator, not a governing body. It measures a course and scores a finish time; it does not sanction races, accredit organizers or keep a ranking of them, and nobody has to be approved to use it.',
+        tags: 'governing body federation ranking approval sanction independent itra utmb calculator',
       },
       {
         q: 'Is this the finished product?',

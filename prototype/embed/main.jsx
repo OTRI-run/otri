@@ -35,7 +35,7 @@ function Embed() {
       <ScoreCalculator embedded />
       <footer className="border-t border-slate-200 bg-white px-4 py-3 text-center text-xs text-slate-500">
         Scored by the open{' '}
-        <a href="https://otri.run/prototype/#calculator" className="inline-flex items-center gap-0.5 font-semibold text-blue-600 no-underline hover:underline">
+        <a href="https://otri.run/go/embed" className="inline-flex items-center gap-0.5 font-semibold text-blue-600 no-underline hover:underline">
           OTRI model <ArrowUpRight size={12} />
         </a>
         . The score depends on the course and the time, never on who else races.

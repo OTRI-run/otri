@@ -618,7 +618,7 @@ function NoCourseHelp({ name, onClose }) {
   const body = [
     'Hello,',
     `I would like to see ${name} on OTRI (https://otri.run), an open and free score for trail races. Runners can then work out what a finish time on your course is worth, and you can score and publish your results.`,
-    'Listing the course takes a few minutes and needs no approval: https://otri.run/organizer/',
+    'Listing the course takes a few minutes and needs no approval: https://otri.run/prototype/organizer/',
     'Thank you!',
   ].join('\n\n')
   const mail = `mailto:?subject=${encodeURIComponent(`${name} on OTRI`)}&body=${encodeURIComponent(body)}`
@@ -1393,9 +1393,9 @@ export default function ScoreCalculator({ embedded = false }) {
                 <div className="mt-5 flex items-center gap-4 sm:gap-6">
                   <SummitArt className={TITLE_ART} />
                   <h1 className="min-w-0 max-w-[760px] text-[clamp(40px,6.5vw,76px)] font-bold leading-[1.06] tracking-[-.065em] text-[#0b1220]">
-                    Know your score
+                    Explore a target time
                     <br />
-                    <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">before you race.</em>
+                    <em className="not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent">on your course.</em>
                   </h1>
                 </div>
                 <p className="mt-6 max-w-[620px] text-[15px] leading-7 text-slate-500 sm:text-[17px]">

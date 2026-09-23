@@ -22,7 +22,7 @@ import {
   unpublishRace,
 } from '../../apiClient'
 import { Link, navigate } from '../router'
-import { ArrowRight, Eye, EyeOff } from 'lucide-react'
+import { ArrowRight, Check, Copy, Eye, EyeOff } from 'lucide-react'
 import { Button, Card, ChecklistRow, Dropzone, Eyebrow, Field, Gradient, Notice, Page, StatusChip, Stepper, formatDate, inputClass, raceStatus } from '../ui'
 
 function raceSteps(raceId) {
@@ -701,6 +701,43 @@ const REVIEW_DETAIL = {
   rejected: ' · taken down',
 }
 
+/** The "Scored with OTRI" badge as HTML an organizer pastes into their own results page. */
+function badgeSnippet(raceId) {
+  return `<a href="https://otri.run/prototype/#races/${encodeURIComponent(raceId)}"><img src="https://otri.run/brand/otri-badge-scored.svg" alt="Scored with OTRI" height="28"></a>`
+}
+
+function BadgeCard({ raceId }) {
+  const [copied, setCopied] = useState(false)
+  const snippet = badgeSnippet(raceId)
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(snippet)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1600)
+    } catch {
+      // no clipboard access: the text is selectable
+    }
+  }
+  return (
+    <Card>
+      <Eyebrow>BADGE FOR YOUR RESULTS PAGE</Eyebrow>
+      <a href="https://otri.run/go/badge" className="mt-3 inline-block" title="Scored with OTRI">
+        <img src="../../brand/otri-badge-scored.svg" alt="Scored with OTRI" height="28" className="h-7 w-auto" />
+      </a>
+      <div className="mt-3 overflow-hidden rounded-xl border border-slate-800 bg-[#0b1220]">
+        <div className="flex items-center justify-between border-b border-slate-800 px-3 py-2">
+          <span className="font-mono text-[9px] uppercase tracking-[.08em] text-slate-400">HTML</span>
+          <button type="button" onClick={copy} className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-300 hover:text-white">
+            {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? 'copied' : 'Copy'}
+          </button>
+        </div>
+        <pre className="overflow-x-auto px-3 py-2 text-[11px] leading-5 text-slate-100"><code>{snippet}</code></pre>
+      </div>
+      <p className="mt-2 text-xs leading-5 text-slate-500">The badge says the results were scored with OTRI. It is not a certificate or an approval.</p>
+    </Card>
+  )
+}
+
 export function ReviewStep({ session, raceId }) {
   const units = useUnits()
   const { race, error: loadError, reload } = useRace(raceId)
@@ -925,17 +962,20 @@ export function ReviewStep({ session, raceId }) {
             </Button>
           </div>
         </Card>
-        <Card>
-          <Eyebrow>TOP FINISHERS</Eyebrow>
-          {hasResults ? (
-            <div className="mt-3">
-              <ScoresTable rows={results} limit={12} compact />
-              {results.length > 12 && <p className="mt-2 text-xs text-slate-500">The full list, sortable and by gender, is below.</p>}
-            </div>
-          ) : (
-            <p className="mt-3 text-sm text-slate-500">Appears once results are scored.</p>
-          )}
-        </Card>
+        <div className="grid gap-4 content-start">
+          <Card>
+            <Eyebrow>TOP FINISHERS</Eyebrow>
+            {hasResults ? (
+              <div className="mt-3">
+                <ScoresTable rows={results} limit={12} compact />
+                {results.length > 12 && <p className="mt-2 text-xs text-slate-500">The full list, sortable and by gender, is below.</p>}
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-slate-500">Appears once results are scored.</p>
+            )}
+          </Card>
+          {race.is_published && <BadgeCard raceId={race.race_id} />}
+        </div>
       </div>
 
       {hasResults && (

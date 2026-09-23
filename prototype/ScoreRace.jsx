@@ -548,7 +548,7 @@ export default function ScoreRace() {
           <div className="min-w-0 lg:col-start-1">
             <ul className="space-y-2 text-sm text-slate-600">
               <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Free and instant: no account, no approval, every score in about a minute.</li>
-              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Publish with one click: a leaderboard page for your runners, and podium images with a post for your channels.</li>
+              <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Review your race page and publish when ready: a leaderboard page for your runners, and podium images with a post for your channels.</li>
               <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> A score depends on the course and the runner's own time, never on who else raced, so it compares across races.</li>
               <li className="flex gap-2"><ShieldCheck size={16} className="mt-0.5 shrink-0 text-blue-600" /> Where the model runs out of evidence it says so, per course, instead of guessing.</li>
             </ul>

@@ -1,7 +1,7 @@
 {
   "name": "OTRI · Open Trail Running Index",
   "short_name": "OTRI",
-  "description": "One comparable score for any trail race: open, transparent, reproducible.",
+  "description": "Explained trail scores from a course file and race results. Free, open, no account to try.",
   "start_url": "/prototype/",
   "scope": "/",
   "display": "browser",
