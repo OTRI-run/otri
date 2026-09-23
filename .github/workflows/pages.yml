@@ -40,12 +40,15 @@ jobs:
           test -s dist/index.html
           test -d dist/assets
           ! grep -Eq '(^|["'\''(=])/(assets|src)/' dist/index.html
+          test -s dist/organizer/index.html
+          ! grep -Eq '(^|["'\''(=])/(assets|src)/' dist/organizer/index.html
+          test -s dist/embed/index.html
+          ! grep -Eq '(^|["'\''(=])/(assets|src)/' dist/embed/index.html
+          # The old /prototype/ addresses forward to the root (static stubs under public/).
           test -s dist/prototype/index.html
-          ! grep -Eq '(^|["'\''(=])/(assets|src)/' dist/prototype/index.html
           test -s dist/prototype/organizer/index.html
-          ! grep -Eq '(^|["'\''(=])/(assets|src)/' dist/prototype/organizer/index.html
           test -s dist/prototype/embed/index.html
-          ! grep -Eq '(^|["'\''(=])/(assets|src)/' dist/prototype/embed/index.html
+          test -s dist/privacy/index.html
           echo "Pages artifact looks valid and uses relative asset paths."
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0

@@ -618,7 +618,7 @@ function NoCourseHelp({ name, onClose }) {
   const body = [
     'Hello,',
     `I would like to see ${name} on OTRI (https://otri.run), an open and free score for trail races. Runners can then work out what a finish time on your course is worth, and you can score and publish your results.`,
-    'Listing the course takes a few minutes and needs no approval: https://otri.run/prototype/organizer/',
+    'Listing the course takes a few minutes and needs no approval: https://otri.run/organizer/',
     'Thank you!',
   ].join('\n\n')
   const mail = `mailto:?subject=${encodeURIComponent(`${name} on OTRI`)}&body=${encodeURIComponent(body)}`

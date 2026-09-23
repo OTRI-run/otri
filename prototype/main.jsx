@@ -280,7 +280,7 @@ function Footer() {
       <div className="mx-auto w-[min(1120px,calc(100%-28px))] py-14">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.3fr)_repeat(4,minmax(0,1fr))] lg:gap-8">
           <div className="min-w-0">
-            <Logo href="../" showName={false} />
+            <Logo href="./" showName={false} />
             <p className="mt-4 max-w-[34ch] text-[13px] leading-6 text-slate-600">
               One comparable score for a finish time on any trail course. Open, versioned, and free to use.
             </p>
@@ -911,7 +911,7 @@ function NoRacesYet() {
     [
       'Hello,',
       'I would like to see our race on OTRI (https://otri.run), an open and free score for trail races: every finisher gets a score that depends only on the course and their own time, so it compares across races.',
-      'Scoring the results takes about a minute and needs no account (https://otri.run/prototype/#score). Publishing them as a race page is free and needs no approval: https://otri.run/prototype/organizer/',
+      'Scoring the results takes about a minute and needs no account (https://otri.run/#score). Publishing them as a race page is free and needs no approval: https://otri.run/organizer/',
       'Thank you!',
     ].join('\n\n'),
   )}`

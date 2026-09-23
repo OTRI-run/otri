@@ -1,6 +1,6 @@
 # OTRI Prototype
 
-A separate, working demonstration of the full pipeline built so far — kept apart from the production marketing site (`index.html`) so that finished design never gets disturbed by in-progress feature work, while reusing the same visual design system (colors, type, Tailwind classes).
+The code of the OTRI web app. The HTML entry points live where the pages are served: `index.html` at the repository root (the public site, https://otri.run/), `organizer/index.html` (/organizer/) and `embed/index.html` (/embed/); each loads its `main.jsx` from this directory.
 
 ## What it wires together
 
@@ -44,7 +44,7 @@ npm install
 npm run dev
 ```
 
-Then open the printed local URL and navigate to `/prototype/`. Start the API too (see above) if you want the calculator / organizer tabs to work.
+Then open the printed local URL. Start the API too (see above) if you want the calculator / organizer tabs to work.
 
 ## Known limitations
 

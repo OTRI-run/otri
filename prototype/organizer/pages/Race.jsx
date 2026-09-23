@@ -703,7 +703,7 @@ const REVIEW_DETAIL = {
 
 /** The "Scored with OTRI" badge as HTML an organizer pastes into their own results page. */
 function badgeSnippet(raceId) {
-  return `<a href="https://otri.run/prototype/#races/${encodeURIComponent(raceId)}"><img src="https://otri.run/brand/otri-badge-scored.svg" alt="Scored with OTRI" height="28"></a>`
+  return `<a href="https://otri.run/#races/${encodeURIComponent(raceId)}"><img src="https://otri.run/brand/otri-badge-scored.svg" alt="Scored with OTRI" height="28"></a>`
 }
 
 function BadgeCard({ raceId }) {

@@ -236,7 +236,7 @@ def test_a_report_keeps_only_a_page_of_this_site(monkeypatch):
     report = {"kind": "other", "subject_id": "x", "message": "please look at this, the score is wrong"}
     kept = {}
     for url in (
-        "https://otri.run/prototype/#races/race-1",
+        "https://otri.run/#races/race-1",
         "https://otri.run.evil.example/organizer/#/login",
         "https://otri.run@evil.example/",
         "javascript:fetch('https://evil.example/')",
@@ -246,7 +246,7 @@ def test_a_report_keeps_only_a_page_of_this_site(monkeypatch):
         answer = client.post("/reports", json={**report, "page_url": url})
         assert answer.status_code == 201
         kept[url] = answer.json()["page_url"]
-    assert [url for url, stored in kept.items() if stored] == ["https://otri.run/prototype/#races/race-1"]
+    assert [url for url, stored in kept.items() if stored] == ["https://otri.run/#races/race-1"]
 
 
 def test_reports_are_all_kept_but_the_admins_inbox_is_not_filled(monkeypatch):

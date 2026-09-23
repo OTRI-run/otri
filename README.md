@@ -31,7 +31,7 @@ Race results + course data
  Scored result list / race page / API / embedded calculator
 ```
 
-Try it: **Score my race** at [otri.run/prototype/#score](https://otri.run/prototype/#score), or as one call:
+Try it: **Score my race** at [otri.run/#score](https://otri.run/#score), or as one call:
 
 ```bash
 curl -X POST https://api.otri.run/score -F "results=@results.csv" -F "gpx=@course.gpx"

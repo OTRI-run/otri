@@ -8,7 +8,7 @@ Most of this is scripted under [`scripts/deploy/`](../../scripts/deploy) — see
 
 ## Architecture: what goes where
 
-- **Frontend** (marketing site + `/prototype/`) stays on **GitHub Pages**, built by the existing [`.github/workflows/pages.yml`](../../.github/workflows/pages.yml). It's static; nothing about it needs a server.
+- **Frontend** (the site: the app at `/`, the organizer app at `/organizer/`, the embeddable calculator at `/embed/`; old `/prototype/` links redirect) stays on **GitHub Pages**, built by the existing [`.github/workflows/pages.yml`](../../.github/workflows/pages.yml). It's static; nothing about it needs a server.
 - **`api/`** is the only piece that needs an always-on process — it's the only part of this project that requires a Droplet at all.
 
 This keeps cost and attack surface minimal: one small Droplet running one Python process behind Nginx, nothing else public-facing. Point the frontend at it via `VITE_OTRI_API_BASE_URL=https://api.otri.run` (see `.env.example`) at build time.

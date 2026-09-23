@@ -172,7 +172,7 @@ def _send(to: str, subject: str, html: str, text: str, *, log_subject: str | Non
 
 
 def send_verification_email(to: str, token: str) -> None:
-    link = f"{APP_BASE_URL}/prototype/?verify_email={token}"
+    link = f"{APP_BASE_URL}/?verify_email={token}"
     html, text = _render(
         preheader="One click to activate your organizer account.",
         heading="Confirm your email address",
@@ -190,7 +190,7 @@ def send_verification_email(to: str, token: str) -> None:
 
 
 def send_password_reset_email(to: str, token: str) -> None:
-    link = f"{APP_BASE_URL}/prototype/?reset_token={token}"
+    link = f"{APP_BASE_URL}/?reset_token={token}"
     html, text = _render(
         preheader="Choose a new password for your OTRI organizer account.",
         heading="Reset your password",
@@ -227,7 +227,7 @@ def send_login_code_email(to: str, code: str) -> None:
 
 def send_report_email(to: str, kind: str, subject_label: str, message: str, page_url: str | None) -> None:
     """A new correction/removal request for the admins. Best effort, like every email here."""
-    link = f"{APP_BASE_URL}/prototype/organizer/#/admin"
+    link = f"{APP_BASE_URL}/organizer/#/admin"
     safe_page = page_url if page_url and page_url.startswith(("http://", "https://")) else None
     html, text = _render(
         preheader=f"{kind}: {subject_label}",
@@ -258,7 +258,7 @@ def send_review_email(
 ) -> None:
     """A race was published (or held): the admins hear about it. If nobody acts on a clean race it
     verifies itself at ``auto_verify_at``; a held race waits for a decision."""
-    link = f"{APP_BASE_URL}/prototype/organizer/#/admin?tab=reviews&race={quote(race_id)}"
+    link = f"{APP_BASE_URL}/organizer/#/admin?tab=reviews&race={quote(race_id)}"
     reasons = [f"- {flag.get('severity', '').upper()}: {flag.get('detail', '')}" for flag in flags] or ["- nothing noted"]
     if held:
         heading = "A published race is held for review"
@@ -289,7 +289,7 @@ def send_review_email(
 
 def send_race_review_outcome_email(to: str, *, race_label: str, race_id: str, rejected: bool, note: str | None) -> None:
     """The organizer hears when an admin takes their race down, or lifts a hold."""
-    link = f"{APP_BASE_URL}/prototype/organizer/#/races/{quote(race_id)}/review"
+    link = f"{APP_BASE_URL}/organizer/#/races/{quote(race_id)}/review"
     if rejected:
         html, text = _render(
             preheader=f"{race_label} was taken down",
@@ -325,7 +325,7 @@ def send_security_alert_email(to: str) -> None:
             f"Somebody signed in to {to} with the right password and then entered ten wrong sign-in codes. We have paused signing in with a code for this account for an hour.",
             "If that was you, wait an hour and try again, or use one of your recovery codes then.",
         ],
-        cta=("Choose a new password", f"{APP_BASE_URL}/prototype/organizer/#/forgot"),
+        cta=("Choose a new password", f"{APP_BASE_URL}/organizer/#/forgot"),
         after=[
             "If it was not you, your password is known to someone else. Your second factor kept them out. Choose a new password now, and change it wherever else you used the same one.",
         ],
@@ -357,7 +357,7 @@ def send_password_changed_email(to: str, *, after_reset: bool = False) -> None:
             f"{lead} Everywhere else that was signed in has been signed out.",
             "If that was you, there is nothing to do.",
         ],
-        cta=("Set a new password", f"{APP_BASE_URL}/prototype/organizer/#/forgot"),
+        cta=("Set a new password", f"{APP_BASE_URL}/organizer/#/forgot"),
         after=[
             "If it was not you, somebody else is in your account. Set a new password from this mailbox with the button "
             "above, which signs them out, and then turn on two-factor sign-in from the account page.",
@@ -388,7 +388,7 @@ def send_google_linked_email(to: str, *, reclaimed: bool) -> None:
         preheader=preheader,
         heading="Google sign-in was added",
         paragraphs=paragraphs,
-        cta=("Open your account", f"{APP_BASE_URL}/prototype/organizer/#/account"),
+        cta=("Open your account", f"{APP_BASE_URL}/organizer/#/account"),
         after=after,
         reason="You received this email because a Google account was linked to your OTRI organizer account.",
     )

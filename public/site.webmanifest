@@ -2,7 +2,7 @@
   "name": "OTRI · Open Trail Running Index",
   "short_name": "OTRI",
   "description": "Explained trail scores from a course file and race results. Free, open, no account to try.",
-  "start_url": "/prototype/",
+  "start_url": "/",
   "scope": "/",
   "display": "browser",
   "background_color": "#f7f9fc",
