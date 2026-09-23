@@ -148,7 +148,7 @@ export default function ResultsTable({ rows, initialPageSize = PAGE_SIZES[0] }) 
           </thead>
           <tbody>
             {filtered.slice(0, visible).map((row, index) => (
-              <tr key={`${row.runner_id ?? row.bib_number ?? index}-${row.rank}-${index}`} className={`border-b border-slate-100 last:border-0 ${podiumRowClass(row.rank) || 'odd:bg-white even:bg-slate-50/70 hover:bg-blue-50/50'}`}>
+              <tr key={`${row.runner_id ?? row.bib_number ?? index}-${row.rank}-${index}`} className={`border-b border-slate-100 last:border-b-0 ${podiumRowClass(row.rank) || 'odd:bg-white even:bg-slate-50/70 hover:bg-blue-50/50'}`}>
                 <td className="px-3 py-2 font-mono text-xs text-slate-500"><RankBadge rank={row.rank} /></td>
                 <td className="px-3 py-2 font-medium text-[#0b1220]">{row.first_name} {row.family_name}</td>
                 <td className="px-3 py-2">{row.nationality ? <Flag code={row.nationality} /> : <span className="text-slate-300">—</span>}</td>
