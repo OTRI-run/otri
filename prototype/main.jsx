@@ -856,7 +856,7 @@ function Leaderboard({ raceId, onBack, query }) {
               // step). It says "scored with OTRI", nothing more; the link goes through /go/badge so the
               // site can count how many people arrive by it.
               <a href="https://otri.run/go/badge" className="mt-3 inline-block" title="Scored with OTRI">
-                <img src="../brand/otri-badge-scored.svg" alt="Scored with OTRI" height="28" className="h-7 w-auto" />
+                <img src="../brand/otri-badge-scored.svg?v=2" alt="Scored with OTRI" height="28" className="h-7 w-auto" />
               </a>
             )}
             </>

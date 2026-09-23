@@ -703,7 +703,7 @@ const REVIEW_DETAIL = {
 
 /** The "Scored with OTRI" badge as HTML an organizer pastes into their own results page. */
 function badgeSnippet(raceId) {
-  return `<a href="https://otri.run/#races/${encodeURIComponent(raceId)}"><img src="https://otri.run/brand/otri-badge-scored.svg" alt="Scored with OTRI" height="28"></a>`
+  return `<a href="https://otri.run/#races/${encodeURIComponent(raceId)}"><img src="https://otri.run/brand/otri-badge-scored.svg?v=2" alt="Scored with OTRI" height="28"></a>`
 }
 
 function BadgeCard({ raceId }) {
@@ -722,7 +722,7 @@ function BadgeCard({ raceId }) {
     <Card>
       <Eyebrow>BADGE FOR YOUR RESULTS PAGE</Eyebrow>
       <a href="https://otri.run/go/badge" className="mt-3 inline-block" title="Scored with OTRI">
-        <img src="../../brand/otri-badge-scored.svg" alt="Scored with OTRI" height="28" className="h-7 w-auto" />
+        <img src="../../brand/otri-badge-scored.svg?v=2" alt="Scored with OTRI" height="28" className="h-7 w-auto" />
       </a>
       <div className="mt-3 overflow-hidden rounded-xl border border-slate-800 bg-[#0b1220]">
         <div className="flex items-center justify-between border-b border-slate-800 px-3 py-2">
