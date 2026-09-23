@@ -1,20 +1,18 @@
 # API
 
-The OTRI public API — events, race distances, scored results, and the organizer workflow, built on `ingestion/`, `scoring/`, and `course/`.
+The OTRI API — scoring calls, events, races, results, organizer accounts and the admin tools — built on `ingestion/`, `scoring/` and `course/`. FastAPI, PostgreSQL, one process behind nginx ([`docs/operations/digitalocean-deployment.md`](../docs/operations/digitalocean-deployment.md)). The generated reference with every field is at `https://api.otri.run/docs`.
 
-GPX analysis uses a shared, versioned course measurement with a server-generated elevation profile. See [measurement setup and limitations](../course/README.md) and the [research specification](../docs/methodology/course-measurement/REAL-WORLD-COURSE-MEASUREMENT-SPEC.md). New races use Course Standard V0.2; existing scoring versions are retained.
-
-**Persisted in PostgreSQL** (`api/db.py`). Events, race distances (with optional GPX), results, and organizer accounts survive a server restart. Uploaded result files are still always re-validated and re-scored from the raw file before being stored — an organizer can never supply a score directly (`HANDBOOK.md` "Validation and anti-gaming").
+Every score is computed here from the raw files: an organizer can never supply a score directly (`HANDBOOK.md`, "Validation and anti-gaming"). The scoring model is OTRI model 0.1.0 ([`docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md`](../docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md)); the API returns its build id, `0.10.0-course-standard-vertical`, as `scoring_version` with every score, and a race stores the one it was scored under. Courses are measured by `course/` (`course-measurement-v3`, [`course/README.md`](../course/README.md)) and the measurement is stored with the race, so a result replays byte-for-byte whatever terrain data is configured later.
 
 ## Data model
 
-An **event** (e.g. "Phuket Mountain Trail Weekend") is owned by one organizer and has a name + date. Each event can have one or more **race distances** under it (e.g. "50K", "25K"), each with its own course stats, a selectable **scoring model** (`scoring_version`, see `scoring/README.md` — defaults to the no-competitor "Course Standard" model), and, optionally, an attached GPX file — attaching a GPX recomputes `distance_km`/`elevation_gain_m` from the real parsed course, making the GPX authoritative. Results are submitted per race distance.
+An **event** ("Phuket Mountain Trail Weekend") belongs to one organizer and has a name and a date. Each event has one or more **races** under it ("50K", "25K"), each with its own course figures, an attached GPX (which, once attached, is the authority on distance and climb), a measurement snapshot, and results. Results are uploaded per race, validated (`ingestion/`) and scored from the raw file; a new upload replaces the stored results.
 
-Every event/race mutation (create/edit/delete, GPX attach, result submission) requires the requesting organizer to own the event — enforced server-side, 403 otherwise. `GET` endpoints (list/detail races, events, results) stay fully public.
+Every mutation of an event or race needs the owning organizer (or an admin); `GET` endpoints are public for what has been published or listed. A race's results, course and measurement are private to its organizer until it is published; a race may be **listed** ahead of results so its page exists, and publishing runs the screening described under "Publishing" below.
 
 ## The public contract
 
-Three calls need no account, no key and no approval, answer any origin (CORS `*`, no credentials), and are what OTRI commits to as a tool ([docs/product/open-scoring-tool.md](../docs/product/open-scoring-tool.md)). The human-readable version with examples is the site's API page (`prototype/ApiDocs.jsx`, `#api`).
+Three calls need no account, no key and no approval, answer any origin (CORS `*`, no credentials), and are what OTRI commits to as a tool ([`docs/product/open-scoring-tool.md`](../docs/product/open-scoring-tool.md)). The human-readable version with examples is the site's API page (`#api`).
 
 | Call | Purpose | Limit |
 | --- | --- | --- |
@@ -22,126 +20,166 @@ Three calls need no account, no key and no approval, answer any origin (CORS `*`
 | `POST /gpx/analyze` | One course measured and, with `finish_time_seconds`, one time scored with its full breakdown. | 60 a minute, 600 an hour per address |
 | `GET /scoring/models` | The scoring versions available; pass one to `/score` to pin it. | |
 
-20 MB per request, 50,000 result rows; over the limit answers `429` with `Retry-After`.
+20 MB per request, 50,000 result rows; over a limit answers `429` with `Retry-After`.
 
-### Stability, pre-1.0
-
-- Fields are added, not renamed or removed, on the three calls above.
-- A change to how scores are computed is always a new `scoring_version`; an existing version never changes its output (the replay tests in `tests/` hold every released version to that).
-- Everything else in the API serves OTRI's own pages and may change without notice.
+Stability, pre-1.0: fields are added, not renamed or removed, on these three calls. A change to how scores are computed is always a new `scoring_version`; an existing version never changes its output (the replay tests in `tests/` hold it to that). Everything else in the API serves OTRI's own pages and may change without notice.
 
 ## Endpoints
 
-| Method | Path | Description |
+Generated from `api/app.py` (`grep '@app\.' api/app.py`); the interactive reference at `/docs` has the request and response fields. **Organizer** means a signed-in account (bearer token or session cookie), **owner** the organizer who owns the event or race, or an admin; **admin** an account on `OTRI_ADMIN_EMAILS`.
+
+### Status
+
+| Method | Path | Who | What |
+| --- | --- | --- | --- |
+| GET | `/` | anyone | App status with `started_at` (the last restart). |
+| GET | `/health` | anyone | Database reachable, migrations applied, disk not full: `{status: ok\|degraded}`, 503 when degraded; the individual checks are shown to the watchdog on the server and to admins. |
+| GET | `/site/status` | anyone | Whether the site is closed for maintenance and what the notice says. Never cached: a closed page polls it. |
+| GET | `/docs` | anyone | The generated API reference. |
+
+### Scoring (public)
+
+| Method | Path | Who | What |
+| --- | --- | --- | --- |
+| POST | `/score` | anyone | Validate a results file (`results`, CSV/TSV/XLSX) and score it against `gpx`. Optional `race_name`, `scoring_version`; `?format=csv` downloads the scored list. An invalid results file answers 200 with `is_valid: false` and the issues; an unreadable file or course answers 422. Nothing is stored. |
+| POST | `/gpx/analyze` | anyone | Measure an uploaded GPX and, with `finish_time_seconds`, score that time with the full breakdown (`breakdown`, `measurement`, confidence, quality flags). |
+| GET | `/scoring/models` | anyone | The scoring versions (`version`, `name`, `description`, `uses_competitors`). |
+| POST | `/gpx/share` | anyone | Store a calculator upload, with the uploader's consent, so a share link can reopen it (10 MB, rate-limited per address, capped in total by `OTRI_SHARED_COURSES_MAX_MB`, oldest evicted first). |
+| GET | `/gpx/shared/{share_id}` | anyone | The track behind a share link, as sanitized when shared. |
+
+### Races, events, runners
+
+| Method | Path | Who | What |
+| --- | --- | --- | --- |
+| GET | `/races` | anyone | Published races, and races listed ahead of results (`listing_status`: `scored`, `upcoming`, `awaiting_results`); `?all=true` (admin) lists every race. |
+| GET | `/races/{race_id}` | anyone / owner | A race's summary: for anyone once published or listed, before that for its owner. |
+| GET | `/races/{race_id}/results` | anyone / owner | Scored results; 403 while unpublished for anyone but the owner, 404 when none were uploaded. |
+| GET | `/races/{race_id}/gpx` | anyone / owner | The course file, sanitized (`?download=1` names the file). |
+| GET | `/races/{race_id}/measurement` | anyone / owner | The stored measurement: profile, version, source, quality status. |
+| GET | `/events` | anyone | Every event; `?mine=true` with a session lists the caller's. |
+| GET | `/events/{event_id}` | anyone / owner | The event and its races: all of them for the owner, the public ones for anyone. |
+| POST | `/events` | organizer | Create an event. An unconfirmed address may hold a few; more needs a confirmed one. |
+| PATCH · DELETE | `/events/{event_id}` | owner | Edit the event; delete it with its races and results. |
+| POST | `/events/{event_id}/races` | owner | Add a race to the event (`course_name`, figures, optional `scoring_version`). |
+| PATCH · DELETE | `/races/{race_id}` | owner | Edit the race's facts (measured totals cannot be overwritten while a GPX is attached); delete it with its results. |
+| POST | `/races/{race_id}/gpx` | owner | Attach or replace the course file; measures it and stores the snapshot, recomputing distance and climb. 422 on an unusable file. |
+| POST | `/races/{race_id}/results` | owner | Upload the results file: validated, then scored from the raw file with the race's model. Returns `is_valid`, `errors`, `warnings`, `scores`. Replaces earlier results. |
+| POST · DELETE | `/races/{race_id}/publish` | owner | Make results, course and measurement public (needs scored results, a confirmed address and `{"attest": true}`); hide them again. See "Publishing". |
+| POST · DELETE | `/races/{race_id}/listing` | owner | Show the race publicly before it has results; take the listing down. Needs a confirmed address. |
+| GET | `/runners` | anyone | Search runners by name (`q`), or list every runner with a published result, with the runner index. |
+| GET | `/runners/{runner_id}` | anyone | A runner's published results and index. |
+| POST | `/reports` | anyone | A correction or removal request from a public page (rate-limited; admins are emailed). |
+
+### Accounts
+
+| Method | Path | Who | What |
+| --- | --- | --- | --- |
+| POST | `/auth/register` | anyone | `email`, `password` (10–128 characters, not common, not built from the email), `accept_terms` (must be true; the time is stored), optional `marketing_opt_in`. Creates the account, emails a confirmation link and signs the organizer in; `email_verified` is false until the link is opened. 400 when the address already has an account. |
+| POST | `/auth/login` | anyone | Sign in; `remember: true` for a 30-day session instead of 12 hours. With two-factor on, answers `requires_2fa` and a `challenge`. |
+| POST | `/auth/login/2fa` | anyone | The second step: an authenticator code, an emailed code or a recovery code (five tries per challenge). |
+| POST | `/auth/logout` | organizer | Ends this session: clears the cookie and revokes the token. |
+| POST | `/auth/logout-all` | organizer | With the password: ends every session of the account. |
+| POST | `/auth/verify-email` · `/auth/resend-verification` | anyone | Confirm an address with the emailed token; ask for the email again (always 200, so addresses cannot be enumerated). |
+| POST | `/auth/request-password-reset` · `/auth/reset-password` | anyone | Ask for a reset email (always 200); set a new password with its token. A completed reset ends every session of the account. |
+| GET | `/auth/me` | organizer | Who the session belongs to: flags, profile, two-factor status. |
+| PATCH | `/auth/profile` | organizer | Organization, website, country, bio, news opt-in. |
+| POST | `/auth/change-password` | organizer | Changes the password and signs out every other device. |
+| POST | `/auth/2fa/totp/setup` · `/auth/2fa/totp/enable` | organizer | Authenticator-app two-factor: a secret to scan, then the code that confirms it. Issues ten recovery codes. |
+| POST | `/auth/2fa/email/start` · `/auth/2fa/email/enable` | organizer | Emailed-code two-factor, the same way. |
+| POST | `/auth/2fa/recovery-codes` · `/auth/2fa/disable` | organizer | Fresh recovery codes; turn two-factor off. Each needs the password. |
+| POST | `/auth/export` | organizer | Everything held for the account, as a JSON download (`PRIVACY.md`, "Your rights"). |
+| DELETE | `/auth/account` | organizer | With the password: deletes the account with every event, race and result it owns. |
+| GET | `/auth/providers` | anyone | Which outside sign-ins this deployment offers. |
+| GET | `/auth/google/start` · `/auth/google/callback` · `/auth/google/confirm-link` · `/auth/google/pending` | anyone | "Continue with Google" (`api/oauth_google.py`), on when `OTRI_GOOGLE_CLIENT_ID` and `OTRI_GOOGLE_CLIENT_SECRET` are set. |
+| GET | `/auth/unsubscribe` | anyone | The link in a news email: turns the news off, signs nobody in. |
+
+### Admin
+
+| Method | Path | What |
 | --- | --- | --- |
-| GET | `/` | App status. |
-| POST | `/auth/register` | Organizer sign-up: `email`, `password` (10–128 characters, not a common password, not built from the email), `accept_terms` (must be `true`; the acceptance time is stored) and optional `marketing_opt_in`. Creates the account, emails a confirmation link and **signs the organizer in** (the same answer as `/auth/login`, plus `message`); `email_verified` is false until the link is opened. 400 if the email already has an account, the password is rejected, or the terms are not accepted. Rate-limited. |
-| POST | `/auth/login` | Organizer sign-in. Returns an access token and `email_verified`. 401 on wrong email/password. An unconfirmed address may sign in and prepare a race; `POST /races/{id}/publish` and `/listing` answer 403 until it is confirmed, and it is never an admin. Rate-limited. |
-| POST | `/auth/verify-email` | Confirm an organizer's email using the token from the verification email. 400 if the token is invalid/expired. |
-| POST | `/auth/resend-verification` | Resend the verification email. Always returns 200 with the same message whether or not the account exists/is already verified (prevents account enumeration). Rate-limited. |
-| POST | `/auth/request-password-reset` | Request a password reset email. Always returns 200 with the same message whether or not the email exists. Rate-limited. |
-| POST | `/auth/reset-password` | Set a new password using a reset token, returns a fresh access token. 400 if the token is invalid, expired, or already used. Rate-limited. |
-| GET | `/events` | List all events. Pass `?mine=true` with a bearer token to list only events owned by the requesting organizer. |
-| GET | `/events/{event_id}` | Event detail including its race distances, 404 if unknown. |
-| POST | `/events` | **Requires an organizer bearer token.** Creates an event owned by the caller. 422 if `event_name` is blank. |
-| PATCH | `/events/{event_id}` | **Requires ownership.** Partial update of `event_name`/`event_date`. 403 if not the owner, 404 if unknown. |
-| DELETE | `/events/{event_id}` | **Requires ownership.** Deletes the event, cascading to its race distances and their results. 403/404 as above. |
-| POST | `/score` | **Public, nothing stored.** Validate a results file (`results`, CSV or Excel) and score it against the course file (`gpx`, required: there is no scoring from official figures here). Optional `race_name`, `scoring_version`; `?format=csv` downloads the scored list. An invalid results file answers 200 with `is_valid: false` and the issues; an unreadable file or course answers 422. Answers any origin (CORS `*`), as do `/gpx/analyze` and `/scoring/models`. 10 calls a minute per address. See `docs/product/open-scoring-tool.md`. |
-| GET | `/races` | Public races: those with published results, and races their organizer listed ahead of them (`listing_status`: `scored`, `upcoming`, `awaiting_results`; `is_listed`). A listed race nobody owns is never public. `?all=true` (admin) lists every race. |
-| POST · DELETE | `/races/{race_id}/listing` | **Requires ownership.** Show the race publicly before it has results, or take the listing down. Results stay behind publishing (`docs/product/open-scoring-tool.md`). |
-| GET | `/races/{race_id}` | Race distance detail, 404 if unknown. |
-| GET | `/scoring/models` | List every available scoring algorithm (`version`, `name`, `description`, `uses_competitors`) a race distance can be configured to use — see `scoring/README.md`. |
-| POST | `/events/{event_id}/races` | **Requires ownership of the event.** Add a race distance. Optional `scoring_version` (defaults to OTRI model 0.1.0, build id `0.10.0-course-standard-vertical`), 422 if unknown, if `course_name` is blank, or if distance/elevation are invalid. |
-| GET | `/health` | Database reachable, migrations applied, disk not full: `{status: ok|degraded, checks}`; 503 when degraded. |
-| POST | `/auth/logout-all` | **Requires auth** + password. Invalidates every token for the account, the caller's included. |
-| GET | `/auth/export` | **Requires auth.** JSON download of everything held for the account (profile, consents, events, races, result rows, emails sent). |
-| DELETE | `/auth/account` | **Requires auth** + password in the body. Deletes the account with every event, race and result it owns. |
-| GET | `/admin/emails?limit=50` | **Admin.** Recent sends with Resend message id, status and error, newest first. |
-| GET | `/admin/newsletter` · `/admin/newsletter.csv` | **Admin.** Verified, non-demo organizers who opted in to OTRI news (email, name, organization, country, consent time), as JSON or a CSV download for a mailing tool. |
-| PATCH | `/races/{race_id}` | **Requires ownership.** Partial update of `course_name`/`distance_km`/`elevation_gain_m`/`scoring_version`. 422 on an unknown `scoring_version`. |
-| DELETE | `/races/{race_id}` | **Requires ownership.** Deletes the race distance, cascading to its results. |
-| GET | `/races/{race_id}/measurement` | Saved cleaned profile, measurement version, source and quality status; 404 for legacy GPX attachments without a snapshot. |
-| POST | `/races/{race_id}/gpx` | **Requires ownership.** Attach/replace a GPX file for a race distance — recomputes `distance_km`/`elevation_gain_m` from the parsed course. 422 on an unparseable GPX. |
-| GET | `/races/{race_id}/gpx` | Raw GPX content for a race distance (`application/gpx+xml`), 404 if none attached. |
-| GET | `/races/{race_id}/results` | Scored results for a race already on file (scored with whichever model the race is configured for), 404 if unknown race or no results submitted yet. |
-| POST | `/races/{race_id}/results` | **Requires ownership of the race's event.** Upload a CSV/XLSX result file. Always validates first, then re-scores from the raw file using the race's configured scoring model — **the organizer can never supply a score directly** (`HANDBOOK.md` "Validation and anti-gaming"). A successful submission replaces any previously stored results for that race. Returns `is_valid`, `errors`, `warnings`, and `scores` (empty if invalid). |
-| POST | `/gpx/analyze` | Standalone tool (unrelated to stored races): upload a `.gpx` file, optionally with `finish_time_seconds`. Returns parsed course features and, if a time was given, the Course Standard model's predicted score (`scoring.estimator`) — the exact score that finish time will earn once real results are submitted for the same course, since that model has no competitor dependency. 422 if the course has a grade outside the model's supported ±45% domain. See `docs/methodology/0.1.0/HOW-OTRI-SCORES.md`. |
+| GET | `/admin/overview` | Platform statistics plus the API's configuration and security posture (no secrets). |
+| GET | `/admin/server` | Host load, memory, disk, services, the watchdog's last check, backup age, firewall and fail2ban, 24-hour usage, TLS expiry. Cached 30 s. |
+| GET | `/admin/traffic?days=30` | Visits, visitors and what they had in common (`api/analytics.py`: no addresses kept, nothing joins one day to the next). |
+| PUT | `/admin/site/maintenance` | Close the site for maintenance with a message, or open it again (`{"on": true\|false, "message": "…"}`). See the operations guide. |
+| GET | `/admin/events` | Every event with its owner and each race's publish state. |
+| GET | `/admin/reviews?status=open\|all` · POST `/admin/reviews/{race_id}` | Races in the publish review; decide with `{"action": "verify"\|"hold"\|"reject", "note"}` (a rejection needs a note, which the organizer receives). |
+| GET | `/admin/reports?status=open\|all` · POST `/admin/reports/{id}/resolve` · DELETE `/admin/reports/{id}` | Correction and removal requests. |
+| GET | `/admin/organizers` · POST `/admin/organizers/{id}/verify` · DELETE `/admin/organizers/{id}` | Accounts: list, confirm an address by hand, delete with everything it owns (never oneself). |
+| DELETE | `/admin/runners/{runner_id}` | Remove a runner's profile and every result attached to it (a removal request, or a bad merge). |
+| GET · POST | `/admin/calculator-courses` · PATCH · DELETE `/admin/calculator-courses/{race_id}` | The courses hand-picked for the calculator's "Pick a race": a GPX, names, location, source link. Public to try a target time on, never a race page. |
+| GET | `/admin/shared-courses` · DELETE `/admin/shared-courses/{share_id}` | The calculator's share files. |
+| GET | `/admin/emails?limit=50` | The last emails asked of Resend, with the provider's id and any error. |
+| GET | `/admin/newsletter` · `/admin/newsletter.csv` | Verified organizers who opted in to OTRI news, as JSON or a CSV for a mailing tool. |
+
+`POST /site/hit` (anyone) is the page-view beacon; it answers 204 whatever happens.
 
 ## Environment variables
 
+Read once at start (`api/app.py`, `api/auth.py`, `api/db.py`, `api/email.py`, `api/oauth_google.py`, `course/`). `.env.example` at the repository root lists the ones a local run needs; the deploy script writes the production `.env`.
+
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `DATABASE_URL` | PostgreSQL connection string. | `postgresql://postgres:otri_dev_password@localhost:5432/otri` (local dev only) |
-| `OTRI_API_JWT_SECRET` | Signs organizer session tokens. **Set this for any real deployment** — see "Authentication" below. | randomly generated per process (warns on startup) |
-| `RESEND_API_KEY` | [Resend](https://resend.com) API key for verification/password-reset emails. | unset — emails are printed to the console instead of sent (safe for local dev) |
-| `OTRI_EMAIL_FROM` | "From" address for outgoing emails. | `OTRI <noreply@otri.run>` |
-| `OTRI_APP_BASE_URL` | Base URL used to build verification/reset links. | `http://localhost:5173` |
-| `OTRI_API_ALLOWED_ORIGINS` | CORS allow-list, comma-separated. | `http://localhost:5173` |
+| `DATABASE_URL` | PostgreSQL connection string. | `postgresql://postgres:otri_dev_password@localhost:5432/otri` (local only) |
+| `OTRI_DB_POOL_MAX` | Connections in the pool. | 10 |
+| `OTRI_API_JWT_SECRET` | Signs sessions. **Set it** for anything that should survive a restart; unset, a random one is generated per process and every session dies with a restart. | random per process (warns) |
+| `OTRI_ADMIN_EMAILS` | Comma-separated addresses that are admins while confirmed and on the list (checked on every request). | none |
+| `OTRI_API_ALLOWED_ORIGINS` | CORS allow-list for the site and the organizer app, comma-separated. The three public scoring calls answer any origin regardless. | `http://localhost:5173` |
+| `OTRI_APP_BASE_URL` | Where emailed links point (the site). | `http://localhost:5173` |
+| `OTRI_API_BASE_URL` | This API's own public address, for Google's redirect and emailed links. Set it behind a proxy. | read from the request |
+| `OTRI_SITE_URL` | The public site, for links in emails and pages the API writes. | `https://otri.run` |
+| `OTRI_ENV` | The environment label sent with Sentry events. | `production` |
+| `RESEND_API_KEY` | [Resend](https://resend.com) key for account emails. Unset, emails are logged, not sent. | unset |
+| `OTRI_EMAIL_FROM` · `OTRI_EMAIL_REPLY_TO` | Sender and reply-to of outgoing email. | `OTRI <noreply@otri.run>` · none |
+| `OTRI_GOOGLE_CLIENT_ID` · `OTRI_GOOGLE_CLIENT_SECRET` | "Continue with Google". Either empty: the buttons do not appear and the routes answer 404. | unset |
+| `OTRI_AUTO_VERIFY_HOURS` | How long a clean published race waits before it is marked verified on its own. | 24 |
+| `OTRI_RANKED_RUNNER_CEILING` | How many runners may be ranked in one `/runners` request (every runner with a published result is ranked, so the table really is by index). | 20000 |
+| `OTRI_SHARED_COURSES_MAX_MB` | Disk budget for the calculator's share files. | 2048 |
+| `OTRI_DEM_MANIFEST` | Manifest of local Copernicus GLO-30 tiles for terrain-corrected elevation ([`course/README.md`](../course/README.md)). Unset, elevations come from the file at Low confidence. | unset |
+| `OTRI_DEM_AUTOFETCH` · `OTRI_DEM_BUDGET_MB` · `OTRI_DEM_FETCH_PER_HOUR` | Fetch the tiles a course needs on demand; keep them within a budget; cap fetches an hour. | off · 8192 · 30 |
+| `OTRI_BACKUP_DIR` | Where the admin server view looks for the newest backup. | `backups/` under the repository |
+| `SENTRY_DSN` | Send unhandled exceptions to Sentry (no request bodies, no personal data). | unset |
+
+The site's own build variables (`VITE_OTRI_API_BASE_URL`, `VITE_SENTRY_DSN`, `VITE_OTRI_MAINTENANCE`) are read by Vite, not the API; see `.github/workflows/pages.yml`.
 
 ## Authentication
 
-Organizer accounts live in the `organizers` table (PostgreSQL), passwords hashed with `bcrypt`. Every mutating event/race/GPX/result endpoint requires a session: either an `Authorization: Bearer <token>` header (API clients, scripts, tests; the token is in the login response body) or, for the organizer web app, the `otri_session` cookie. The app sends `X-OTRI-Client: web` on every request; login-type endpoints then set an HttpOnly, SameSite=Lax cookie (Secure behind HTTPS) and leave `access_token` empty, so page scripts never hold the token. Cookie-authenticated state-changing requests must carry that header (the CSRF guard; `POST /auth/logout` clears the cookie). **Registering does not log you in** — organizers must verify their email (via the link sent by `/auth/register`) before `/auth/login` will succeed.
+Organizer accounts live in the `organizers` table, passwords hashed with bcrypt and checked against `api/security.py`'s policy. Every mutating call needs a session: either `Authorization: Bearer <token>` (scripts, tests; the token is in the login body) or, for the web app, the `otri_session` cookie. The app sends `X-OTRI-Client: web` on every request; sign-in endpoints then set an HttpOnly, SameSite=Lax cookie (Secure behind HTTPS) and leave `access_token` empty, so page scripts never hold the token, and cookie-authenticated state-changing requests must carry that header (the CSRF guard).
 
-**Set `OTRI_API_JWT_SECRET`** for any deployment that should survive a restart:
+Sessions are signed JWTs (12 hours, or 30 days with "remember me") carrying the account's `session_version`: a password change, turning two-factor off or on, "sign out everywhere" or deleting the account bumps it and every earlier token fails on the next request. `POST /auth/logout` revokes the token it is called with. There are no refresh tokens; a session simply expires.
 
-```powershell
-$env:OTRI_API_JWT_SECRET = "<a long random value>"
-```
+Registering signs the organizer in at once, with `email_verified: false`: they can build a race straight away, and publishing, listing, two-factor and admin rights wait for the confirmed address. `/auth/register` says when an address already has an account (the reset and resend endpoints do not); a decision, so that a new organizer is not kept out until the address is confirmed, limited to 5 registrations a minute, 10 an hour and 30 a day per address.
 
-If unset, a random secret is generated per process (logged as a warning) — safe, but every organizer session is invalidated whenever the server restarts. Generate a real one with:
+Rate limits are counted in the `rate_limits` table (`api/rate_limit.py`), so they hold across workers and restarts, as sliding windows, with hourly and daily caps on what is cheap per minute and ruinous per day. Locks live in `login_failures`: ten wrong passwords in 15 minutes lock the address they came from out of the account for 15 minutes, fifty from anywhere lock the account; ten wrong second-factor codes pause the second step for an hour and the owner is emailed.
 
-```powershell
-python -c "import secrets; print(secrets.token_hex(32))"
-```
+There is no runner-facing login; race, result and runner pages are public once published.
 
-**Email verification and password reset** are sent via Resend (`api/email.py`). Without `RESEND_API_KEY` set, emails are printed to the console instead — useful for local dev, but you'll need a real key (and a verified sending domain) before real organizers can receive these emails.
+## Publishing
 
-There is currently no runner-facing login — race/result/event viewing (`GET` endpoints) stays fully public. Runner accounts (athlete profiles) are future work, not yet scoped.
+A race's results, course and measurement are private to its organizer until `POST /races/{id}/publish`, which needs scored results, a confirmed address and `{"attest": true}`: the organizer's word that they organize the race and may publish its results. Every publish is screened (`api/screening.py`; [`docs/product/open-scoring-tool.md`](../docs/product/open-scoring-tool.md), "Published, then verified"): a clean race is public at once with `review_status: pending` and verifies itself after `OTRI_AUTO_VERIFY_HOURS`; a race with a strong sign of being invented or copied answers `is_published: false`, `review_status: held`, with `review_flags` for its owner, and waits for an admin. Admins are emailed for every publish and decide under `/admin/reviews`.
 
-## CORS
+`scripts/seed_demo_data.py` owns the demo races through the flagged `demo@otri.run` account, so the site can label them DEMO DATA; they are created unpublished unless `--publish` is given.
 
-Configurable via `OTRI_API_ALLOWED_ORIGINS` (comma-separated), e.g.:
+## Uploads and hardening
 
-```powershell
-$env:OTRI_API_ALLOWED_ORIGINS = "https://otri.run,https://www.otri.run"
-```
+20 MB per request, enforced before the body is read (a chunked body is refused with 411); GPX parsed with defusedxml (no entity expansion, at most 100,000 points); results files at most 50,000 rows. Responses carry `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, a `Referrer-Policy`, and `Cache-Control: no-store` on anything personal; nginx adds HSTS and a per-address request budget. `tests/unit/test_api_security.py` derives the list of routes from the app and fails if a new state-changing route is reachable without a session or an `/admin` route without the admin flag.
 
-Defaults to `http://localhost:5173` (the Vite dev server) if unset.
+Every email the API asks Resend to send is recorded in `email_log` (`GET /admin/emails`); a sign-in code is in the subject of its email and never in the log. Schema changes are the idempotent baseline in `api/db.py` plus numbered one-shot migrations in `api/migrations.py`, applied on every start and by `python scripts/migrate.py upgrade`; older code refuses to start on a database with migrations it does not know.
+
+## Measurement and terrain
+
+`POST /gpx/analyze` and every attached course return a `measurement` with `version`, `parameters`, `profile`, `source`, hashes, `coverage_fraction`, `status` and `quality_flags`; race summaries carry `measurement_version` and `measurement_status`. Missing endpoint elevations or gaps longer than 30 m answer 422. A course is measured at High confidence where its terrain tiles are available and from the file's own elevations at Low confidence elsewhere, with the reason shown; with `OTRI_DEM_AUTOFETCH=1` the tiles a course needs are downloaded the first time (only the tile name is requested; nothing about the course leaves the server). Details in [`course/README.md`](../course/README.md).
 
 ## Run it locally
 
-1. Install PostgreSQL and create a database (see `docs/operations/` for a production setup guide; for local dev, `createdb otri` after installing PostgreSQL is enough).
+1. Install PostgreSQL and create a database (`createdb otri`).
 2. `pip install -r requirements-dev.txt`
-3. `python scripts/seed_demo_data.py --publish` — creates the schema and loads the synthetic demo events/races/results. Without `--publish` the demo races are created unpublished (test data is not public by default; admins see them under Admin → Events & races); `--unpublish` hides them all again.
+3. `python scripts/seed_demo_data.py --publish` — creates the schema and loads the synthetic demo events, races and results (without `--publish` they stay unpublished, as in production).
 4. `uvicorn api.app:app --reload`
 
-Then open `http://127.0.0.1:8000/docs` for interactive Swagger docs (generated automatically by FastAPI).
+Then open `http://127.0.0.1:8000/docs`. The tests (`pytest tests/unit -q`) use a separate `otri_test` database that `tests/conftest.py` insists on, so they never touch this one.
 
-## Known gaps (intentional, for now)
+## Known limits
 
-- `POST /auth/register` says when an address already has an account (the reset and resend endpoints do not). A decision, not an oversight: hiding it means a new organizer is not signed in until the address is confirmed, and building a race straight away is worth more here than hiding which timing companies have an account. What limits it: one address tries 5 registrations a minute, 10 an hour, 30 a day. To reverse the decision, make registration answer 202 "check your inbox" in both cases and sign nobody in.
-- Organizer sessions are signed JWTs (12 h, or 30 days with "remember me") carrying the account's `session_version`; a password change, turning 2FA off, "sign out everywhere" (`POST /auth/logout-all`) or deleting the account bumps it and every earlier token fails on the next request. Two-factor needs a confirmed address (or whoever registered somebody else's address could lock its owner out for good). Turning 2FA on bumps it too (whoever was in the account is out; the device that turned it on gets a fresh session with the recovery codes). `POST /auth/logout` revokes the token it is called with (`revoked_tokens` keeps its digest until it would have expired), so a copied token dies with the sign-out. There are no refresh tokens; a session simply expires.
-- Rate limits are counted in the `rate_limits` table (`api/rate_limit.py`), so they hold across gunicorn workers and restarts; if the database is unreachable the limiter falls back to an in-process counter rather than switching off. A limit is a sliding window (this window plus the share of the previous one still inside it), so an allowance cannot be spent twice across a minute boundary; what is cheap per minute and ruinous per day is also limited per hour or day (accounts made per address, account emails per recipient, result uploads, new terrain tiles, reports). Locks live in `login_failures`: ten wrong passwords within 15 minutes lock the address they came from out of that account for 15 minutes, fifty from anywhere lock the account (a stranger cannot lock an owner out with ten guesses; a guess spread over many addresses still stops); ten wrong passwords on the signed-in "confirm with your password" actions pause those for the account; ten wrong second-factor codes, counted across sign-in attempts, pause the second step for an hour and the owner is emailed. A password reset clears the password locks, never the second-factor one.
-- Schema changes: the idempotent baseline in `api/db.py` (`CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`) plus numbered one-shot migrations in `api/migrations.py`, recorded in `schema_migrations` and applied on every start and by `python scripts/migrate.py upgrade`; `python scripts/migrate.py status` exits 1 while anything is pending. Older code refuses to start on a database with migrations it does not know.
-- Uploads: 20 MB cap enforced before the body is read (a chunked body, which announces no length, is refused with 411); GPX parsed with defusedxml (no entity expansion, no external entities, at most 100,000 points); results files at most 50,000 rows; temp files get a plain extension only. `/gpx/analyze` and `/gpx/share` are rate-limited per IP. Responses carry `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, and `Cache-Control: no-store` on anything personal; nginx adds HSTS and a per-IP request budget. `tests/unit/test_api_security.py` derives the list of routes from the app and fails if a new state-changing route is reachable without a session or an `/admin` route without the admin flag.
-- Every email the API asks Resend to send is recorded in `email_log` with the provider's message id and any error (`GET /admin/emails`); a sign-in code is in the subject of its email and never in the log; `/health` reports the database, pending migrations and free disk (503 when degraded) for the watchdog and uptime checks; setting `SENTRY_DSN` sends unhandled exceptions to Sentry without request bodies or personal data.
-- `GET /events`/`GET /races` compute `race_count`/joins with one query per event (N+1) — acceptable at prototype scale, would need optimizing for a large number of events.
-- The production model is OTRI model 0.1.0 (`docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md`); the API returns its build id `0.10.0-course-standard-vertical` as `scoring_version`. Its course-demand engine is grounded in published gradient-cost research (Minetti et al.), but the `Q_500`/`Q_1000` scale anchors (`scoring.course_standard`) are explicit OTRI design choices, not yet validated against real race results.
-- Races whose GPX contains a segment grade outside the model's supported ±45% domain fail explicitly (422) rather than being silently approximated — by design (spec section 13), but it means genuinely extreme courses currently can't be scored under Course Standard until reviewed.
-
-These are necessary before any real public deployment and are tracked as future roadmap work, not silently assumed solved.
-
-
-## Measurement response and optional terrain
-
-`POST /gpx/analyze` adds `measurement` with `version`, `parameters`, `profile` (distanceKm/elevation/segmentId), `source`, `raw_sha256`, `geometry_hash`, `profile_hash`, `coverage_fraction`, `status` and `quality_flags`. Race summaries add `measurement_version` and `measurement_status`. Missing endpoint elevations or missing intervals longer than 30 m return 422; uploads over 20 MB return 413. Short tracks return null for maximum 50 m grades.
-
-The additive startup migration creates `races.measurement JSONB`. GPX attachment saves an immutable measurement snapshot for that attachment; V0.2 scoring reuses it. Existing GPX content is not automatically recalculated. PATCH cannot replace measured totals on a GPX race. The predictor and stored-race scoring agree when they share the same measurement and model version; legacy models intentionally preserve their previous processing.
-
-Sign-in security: passwords must pass `api/security.py`'s policy (10 to 128 characters, not on the common-password list, not built from the email); `remember: true` on login issues a 30-day token instead of 12 hours. Two-factor: `POST /auth/2fa/totp/setup` (needs `password`) + `/enable` (authenticator app, RFC 6238) or `POST /auth/2fa/email/start` (needs `password`) + `/enable` (emailed codes); both issue ten hashed recovery codes (`POST /auth/2fa/recovery-codes` regenerates, `POST /auth/2fa/disable` turns it off, each with the password). With two-factor on, `POST /auth/login` returns `requires_2fa` and a 10-minute `challenge` to finish with `POST /auth/login/2fa` (5 attempts). `POST /auth/change-password`, `PATCH /auth/profile` and `GET /auth/me` complete the account API. A second-factor challenge allows five codes, counted whether or not they match. A completed password reset ends every session of the account and any other open reset link; with two-factor on it signs nobody in (`requires_2fa: true`, no token), and the owner signs in as usual. Creating events and races and uploading files are limited per account and per address (`_limit_writes`), and an unconfirmed address may hold 3 events.
-
-Publishing: a race's results, course and measurement are private to its organizer until `POST /races/{id}/publish` (needs scored results, a confirmed address, and the body `{"attest": true}`: the organizer's word that they organize the race and may publish its results); `DELETE /races/{id}/publish` hides it again. Every publish is screened (`api/screening.py`; `docs/product/open-scoring-tool.md`, "Published, then verified"): a clean race is public at once with `review_status: pending` and verifies itself after `OTRI_AUTO_VERIFY_HOURS` (default 24); a race with a strong sign of being invented or copied answers `is_published: false`, `review_status: held`, with `review_flags` for its owner, and waits for an admin. Admins get an email for every publish; `GET /admin/reviews?status=open|all` lists races in review with the organizer's address and `POST /admin/reviews/{race_id}` with `{"action": "verify"|"hold"|"reject", "note"}` decides (a rejection needs a note, which the organizer receives by email). `GET /races` lists published races only. Accounts in `OTRI_ADMIN_EMAILS` (comma-separated) are admins while their confirmed address is on that list: it is checked on every request, so taking an address off and restarting ends that admin's rights, open sessions included (the `is_admin` flag on the account follows the list, at sign-in and at start, and counts for nothing without it). `GET /admin/overview` reports platform statistics and the API's configuration and security posture (no secrets); `GET /admin/server` reports host load, memory, disk, service states, the watchdog's last check and the age of the newest database backup, ufw and fail2ban status (read-only, via `sudo -n … status`), 24-hour API usage parsed from the journal, and TLS expiry; `GET /admin/organizers`, `POST /admin/organizers/{id}/verify` and `DELETE /admin/organizers/{id}` manage accounts; `GET /admin/shared-courses` and `DELETE /admin/shared-courses/{id}` manage calculator share files; `GET`/`POST /admin/calculator-courses`, and `PATCH` / `DELETE /admin/calculator-courses/{race_id}`, manage the courses hand-picked for the calculator's "Pick a race" (a GPX, a race name, a distance name and the source link; measured, public for trying a target time, never a race page); `GET /admin/events` lists everything with owners, `GET /races?all=true` lists every race, and admins may unpublish or delete any race. `scripts/seed_demo_data.py` owns the demo races through the flagged `demo@otri.run` account, so the site can label them DEMO DATA.
-
-`POST /gpx/share` stores a calculator upload (with the user's consent) so a share link can reopen it: rate limited per IP, 10 MB per file, gzip on disk under `data/cache/shared-courses/`, and capped in total by `OTRI_SHARED_COURSES_MAX_MB` (default 2048) with oldest-first eviction. `GET /gpx/shared/{id}` serves it back.
-
-Without `OTRI_DEM_MANIFEST`, elevations come from the cleaned uploaded GPX and remain provisional. To enable checksum-pinned local raster terrain correction, follow [course setup](../course/README.md). No remote DEM service or third-party upload is performed by default. With `OTRI_DEM_AUTOFETCH=1` the API downloads the public Copernicus GLO-30 tiles a course needs into the manifest's folder (only the tile name is requested, no course data leaves the server) and keeps them within `OTRI_DEM_BUDGET_MB` (default 8192); see [tiles on demand](../course/README.md#tiles-on-demand).
+- `GET /events` and `GET /races` run one query per event for counts; fine at the present scale.
+- The `Q_500`/`Q_1000` scale anchors of the model (`scoring/course_standard.py`) are OTRI design choices, calibrated on record runs, not yet validated against a large body of real race results; the specification says what it does not know.
+- Courses with a segment steeper than the model's ±45 % domain are clamped and flagged, never silently approximated.

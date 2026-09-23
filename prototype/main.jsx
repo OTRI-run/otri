@@ -269,7 +269,7 @@ const FOOTER_COLUMNS = [
     heading: 'The model',
     links: [
       ['How a score is made', `${GITHUB_URL}/blob/main/docs/methodology/0.1.0/HOW-OTRI-SCORES.md`],
-      ['Methodology', `${GITHUB_URL}/blob/main/METHODOLOGY.md`],
+      ['Methodology', `${GITHUB_URL}/blob/main/docs/methodology/README.md`],
       ['Data policy', '/data-policy/'],
       ['GitHub', GITHUB_URL],
     ],

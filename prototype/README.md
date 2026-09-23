@@ -1,41 +1,47 @@
-# OTRI Prototype
+# The web app
 
-The code of the OTRI web app. The HTML entry points live where the pages are served: `index.html` at the repository root (the public site, https://otri.run/), `organizer/index.html` (/organizer/) and `embed/index.html` (/embed/); each loads its `main.jsx` from this directory.
+The code of the OTRI website. The HTML entry points sit where the pages are served — `index.html` at the repository root (https://otri.run/), `organizer/index.html` (`/organizer/`) and `embed/index.html` (`/embed/`) — and each loads its `main.jsx` from here. Vite builds the three together (`vite.config.js`); GitHub Actions deploys the result to GitHub Pages on every push to `main`.
 
-## What it wires together
+Everything the pages show comes from the API at runtime (`apiClient.js`, `VITE_OTRI_API_BASE_URL`); nothing is baked in at build time except the example race preview (`src/data/example-preview.json`, produced by the API itself).
 
-- **`ingestion/`** — validates the synthetic demo race/result files.
-- **`scoring/`** — computes each finisher's OTRI score under OTRI model 0.1.0 (`docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md`).
-- **`course/`** — parses a sample GPX file and extracts distance/elevation features.
-- **`src/components/CourseMap.jsx`** — renders that GPX as a map + elevation profile (Phase 3 component, now actually used somewhere).
-- **`api/`** — the live FastAPI backend, called directly by the "GPX tester" and "Organizer upload" tabs below.
+## The public site (`main.jsx`)
 
-## Three tabs
+Hash-routed pages, one component each:
 
-1. **Races** — static, pre-computed leaderboards (see "Why it's static" below).
-2. **Calculate score** — the guided runner pre-race calculator: pick a course (search races with a verified/attached GPX via the live API, or upload your own), confirm it, enter a target finish time, watch the real computation stages, then see the projected OTRI score with a "why this score" explain layer and a nearby-times table — every number comes from real `POST /gpx/analyze` calls, nothing is hardcoded.
-3. **Organizer upload** — a full organizer dashboard against the live API: register + verify an email, create events, add one or more race distances per event, edit/delete either, attach a GPX to a distance, and submit a result file (`POST /races/{race_id}/results`) — shows validation errors/warnings or the computed leaderboard.
+| Page | File | What it does |
+| --- | --- | --- |
+| Home | `Home.jsx` | What you get, the example race scored by the live API, how it works, a target time on the example course. |
+| Calculator | `ScoreCalculator.jsx` | A course (a listed race, a shared link or your own GPX) and a target time; the score, the plain-language explanation and "Show the maths". |
+| Score a race | `ScoreRace.jsx` | Results file plus course file in, every finisher scored, nothing stored; download, share, or hand the race to the organizer app (`publishHandoff.js`). |
+| Races | `RaceListing.jsx`, `RaceCard.jsx`, the race page in `main.jsx` | Published races and their results pages, with the course map and explanation. |
+| Runners | `Runners.jsx` | Runner search and profiles with the runner index. |
+| FAQ | `Faq.jsx` | Searchable answers; deep links such as `#faq?q=columns`. |
+| API | `ApiDocs.jsx` | The three public calls with examples, the embed snippet, the badge. |
+| Media | `Media.jsx` | The brand kit and press facts. |
 
-The calculator and organizer tabs need the API running locally (or wherever `VITE_OTRI_API_BASE_URL` points — see `.env.example`):
+Also here: `SharePanel.jsx` and `shareImage.js` (the podium image and share text), `ReportForm.jsx` (correction and removal requests), `NextSteps.jsx` (the "what next" block under a result).
 
-```powershell
-pip install -r requirements-dev.txt
-uvicorn api.app:app --reload
-```
+## The organizer app (`organizer/`)
 
-## Where the races come from
+`main.jsx` with its own hash router (`router.jsx`), session handling (`session.js`) and UI kit (`ui.jsx`). Pages under `pages/`:
 
-The Races page and every leaderboard read the live API (`GET /races` lists races their organizers have
-published; `GET /races/{id}/results` is public once published). Nothing is baked into the site at build
-time. The synthetic demo races belong to a flagged demo account seeded by `scripts/seed_demo_data.py`
-(run by the deploy script) and are labelled DEMO DATA. They are test data and are not public by
-default: the seed creates them unpublished (`--publish` shows them on a local site). Organizers publish and unpublish from the race
-wizard's review step; accounts listed in `OTRI_ADMIN_EMAILS` see every event under "Admin · all events"
-in the organizer app and can take a race down.
+| Page | What it does |
+| --- | --- |
+| `Auth.jsx` | Sign up, sign in (password, Google, two-factor), email confirmation, password reset. |
+| `Events.jsx` | The organizer's events and races. |
+| `Race.jsx` | One race: facts, course file, results upload, review and publish. |
+| `Publish.jsx` | A race scored on the public site, handed over to be published. |
+| `Account.jsx` | Profile, password, two-factor, data export, deletion. |
+| `Admin.jsx` | Admins: overview, publish reviews, reports, accounts, all events, calculator courses, shared courses, traffic, the server, and the site's maintenance switch. |
+| `CalculatorCourses.jsx` | Admins: the courses offered in the calculator's "Pick a race". |
 
-## Data
+## The embedded calculator (`embed/`)
 
-All races are synthetic (`data/demo/`), spanning very different distances/elevations on purpose — a flat 10K, a rolling half, the original 30K/50K/80K set, and a 100-mile ultra with DNFs — to exercise the pipeline across a realistic range rather than just one race shape.
+The calculator for other websites to put in an iframe (`?race=` opens a listed race's course). The snippet is on the API page.
+
+## Shared code (`../src/`)
+
+`src/components/` holds what more than one page uses (the course map, the results table, the score scale, the units menu, the gate and maintenance screens, the page and step art); `src/lib/` the small libraries (units, comfort, analytics, monitoring, names, score levels); `src/styles.css` the styles and animations; `src/brand/` the mark's geometry.
 
 ## Run it locally
 
@@ -44,12 +50,6 @@ npm install
 npm run dev
 ```
 
-Then open the printed local URL. Start the API too (see above) if you want the calculator / organizer tabs to work.
+The pages need the API: `pip install -r requirements-dev.txt`, then `uvicorn api.app:app --reload` (see `api/README.md`), with `VITE_OTRI_API_BASE_URL` in `.env` pointing at it (`.env.example`).
 
-## Known limitations
-
-- The organizer "create race" endpoint appends to a demo CSV file on the server — not a real database, and not safe under concurrent writes. See `api/README.md`.
-- Calculator scores are **illustrative/provisional projections** — not a calibrated cross-race prediction (see `scoring/estimator.py`'s disclaimer, also shown in the UI).
-- The sample GPX course shown on the Races tab is illustrative, not any listed race's real course.
-- "Search existing race" only lists races that already have a GPX attached (`has_gpx`); races without one aren't calculable yet.
-
+While the site is not yet open, every page asks for a password once per browser (`src/components/Gate.jsx`, `GATE_ENABLED`).

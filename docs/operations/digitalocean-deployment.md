@@ -226,10 +226,11 @@ For less manual work later, a GitHub Actions workflow that SSHes in and runs the
 - **Monitoring**: enable DigitalOcean's free Droplet monitoring (CPU, memory, disk, bandwidth graphs + alert policies) from the control panel — no extra setup needed.
 - **Logs**: `journalctl -u otri-api` (API) and `/var/log/nginx/access.log` / `error.log` (Nginx).
 
-## 10. Before this becomes the real production API (not just the prototype)
+## 10. Maintenance mode: closing the site
 
-Per `api/README.md`'s "Known gaps" and `docs/roadmap.md`, do **not** point real organizers at this setup as-is. Required first:
+The site is static files on GitHub Pages, so the switch that closes it lives in the API. Two ways to use it:
 
-- Replace the CSV-append `POST /races` with a real database (PostgreSQL, per `HANDBOOK.md`'s recommended stack).
-- Replace the SQLite/hand-rolled JWT organizer auth with a battle-tested auth provider once real accounts matter.
-- Add rate limiting (e.g. Nginx `limit_req`, or a proper API gateway) before any public announcement — `/auth/login` and `/auth/register` are currently unthrottled.
+- **From the admin page** (the normal way, no deploy): Admin → Site → "Close the site for maintenance", with a message in your words. Every page asks `GET /site/status` as it opens and shows the notice instead of itself; a closed page asks again every half minute, so "Open the site again" reaches visitors within a minute. Admins who are signed in, and anyone who enters the site password on the notice (the same password as the pre-launch gate, `src/components/Gate.jsx`), still see the site. A page that was already open keeps working and shows a banner. The API keeps answering throughout, so nothing in flight is lost and you can still turn it off; stop `otri-api` separately if the work needs that.
+- **When the API itself is down** (the switch above cannot reach anyone): on GitHub, set the repository variable `VITE_OTRI_MAINTENANCE` to `1` (Settings → Secrets and variables → Actions → Variables) and run the "Deploy OTRI website" workflow. Every page is then closed whatever the API says. Delete the variable and run the workflow again to open it.
+
+The setting is one row in `site_settings` (`PUT /admin/site/maintenance`; `api/README.md`). A closed site still answers the three public scoring calls.

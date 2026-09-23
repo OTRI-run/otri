@@ -52,10 +52,9 @@ Be respectful, evidence-driven, and open to disagreement. See `CODE_OF_CONDUCT.m
 
 ## Tests
 
-Automated tests are organized by scope:
+Automated tests live under `tests/`:
 
-- `unit/` — isolated logic and calculations
-- `integration/` — interactions between components and data pipelines
+- `unit/` — every test: the pure logic (course measurement, scoring, ingestion) and the API against a real PostgreSQL test database
 - `fixtures/` — small synthetic or explicitly redistributable test inputs
 
 Never add private athlete data to test fixtures.

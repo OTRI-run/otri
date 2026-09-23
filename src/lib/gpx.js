@@ -4,7 +4,7 @@
  * This mirrors the scope of the Python `course/gpx.py` reader (trkpt
  * lat/lon/elevation) but exists purely for map/elevation-profile rendering.
  * It is NOT the authoritative source for course-difficulty scoring — that
- * lives in the Python `course/` package, per METHODOLOGY.md's reproducibility
+ * lives in the Python `course/` package, per HANDBOOK.md's reproducibility
  * requirements. Keep the two in sync in spirit, not by sharing code.
  */
 

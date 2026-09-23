@@ -20,8 +20,7 @@ setWorkerUrl(maplibreWorkerUrl)
 
 // Real OpenStreetMap-based vector style, free and keyless (OpenFreeMap is a
 // public service built for exactly this use case). Swap via the `styleUrl`
-// prop for a self-hosted Protomaps/OpenMapTiles style in production (see
-// docs/roadmap.md Phase 3).
+// prop for a self-hosted Protomaps/OpenMapTiles style if that is ever wanted.
 const DEFAULT_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
 const GLYPHS_URL = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf'
 

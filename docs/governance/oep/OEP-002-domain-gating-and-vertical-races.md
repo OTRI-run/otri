@@ -1,6 +1,6 @@
 # OEP-002: Domain gating — vertical races are not scored yet, and confidence reports the model's own limits
 
-- **Status:** Proposed
+- **Status:** Superseded by [OEP-003](OEP-003-scoring-vertical-races.md) (2026-09-19), which scores vertical races instead of refusing them. The confidence reporting this introduced stands.
 - **Author(s):** OTRI maintainers
 - **Date:** 2026-09-18
 - **Affects:** new build id `0.9.0-course-standard-domain-gated` (default for new races; still OTRI model 0.1.0), `scoring/course_standard.py`, `scoring/course_demand.py`, `RaceSummary.is_vertical`

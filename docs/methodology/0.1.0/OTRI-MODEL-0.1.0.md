@@ -2,7 +2,7 @@
 
 **Status:** The model in production. Every published race, runner profile and calculator estimate is scored under it.
 **Public name:** `OTRI model 0.1.0` · **Measurement:** `course-measurement-v3` · **Elevation:** Copernicus GLO-30 where installed
-**Internal build id:** `0.9.0-course-standard-domain-gated` — the identifier the API returns as `scoring_version` and stores with every score, so old results replay byte-for-byte. It is a build label, not a second model; the website shows it, and `0.8.0-course-standard-power` before it (same scores, §7.4), as "OTRI model 0.1.0".
+**Internal build id:** `0.10.0-course-standard-vertical` — the identifier the API returns as `scoring_version` and stores with every score, so old results replay byte-for-byte. It is a build label, not a second model; the website shows it, and `0.8.0-course-standard-power` before it (same scores, §7.4), as "OTRI model 0.1.0".
 **Code:** `scoring/course_demand.py` (course demand), `scoring/terrain.py` (terrain factor), `scoring/course_standard.py` (ceiling and curve), `course/` (measurement). If this page and the code disagree, the code wins and this page has a bug.
 
 This page is the complete specification of model 0.1.0: every formula, every constant, where each came from, the evidence, the tests that pin it, and its limits. It is self-contained. The development builds it consolidates (§14) live only in git history.

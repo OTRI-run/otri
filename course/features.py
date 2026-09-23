@@ -2,7 +2,7 @@
 
 These features feed directly into scoring, so per OTRI's transparency
 principle they live in reviewable, documented OTRI code — not hidden inside a
-third-party library (docs/roadmap.md Phase 2, METHODOLOGY.md §3).
+third-party library (HANDBOOK.md, "Scoring philosophy").
 """
 
 from __future__ import annotations
