@@ -47,6 +47,7 @@ const PAGE_TITLES = {
 import { fetchRaceGpxFile, getRace, getRaceMeasurement, getRaceResults, listRaces, raceGpxDownloadUrl } from './apiClient'
 import BuildBanner from '../src/components/BuildBanner'
 import ErrorBoundary from '../src/components/ErrorBoundary'
+import Gate from '../src/components/Gate'
 import NotFound from '../src/components/NotFound'
 import { modelLabel, notScoredReason } from '../src/lib/model'
 import BackToTop from '../src/components/BackToTop'
@@ -713,7 +714,8 @@ function Leaderboard({ raceId, onBack, query }) {
   const [error, setError] = useState(null)
   const [resultsError, setResultsError] = useState(null)
   // `#races/<id>?share=1` (the organizer's review page links it) lands with the sharing panel open.
-  const [sharing, setSharing] = useState(() => (typeof query?.get === 'function' ? query.get('share') : query?.share) === '1')
+  // Open by default: the podium image and post text are the reason to come back, and a closed panel is never found.
+  const [sharing, setSharing] = useState(true)
   const sharePanel = useRef(null)
   useEffect(() => {
     if (sharing) sharePanel.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
@@ -1221,6 +1223,8 @@ forgetExpiredHandoff()
 
 createRoot(document.getElementById('root')).render(
   <ErrorBoundary home="./">
-    <App />
+    <Gate>
+      <App />
+    </Gate>
   </ErrorBoundary>,
 )

@@ -1128,7 +1128,7 @@ function TargetTimeControls({ targetSeconds, onChange, distanceKm, analysisError
 // `embedded`: the calculator inside another website's page (prototype/embed/): no share links and no
 // links into the rest of OTRI, which the host page does not have.
 export default function ScoreCalculator({ embedded = false }) {
-  const [shareImageOpen, setShareImageOpen] = useState(false)
+  const [shareImageOpen, setShareImageOpen] = useState(true)
   useEffect(() => {
     if (shareImageOpen) setTimeout(() => document.getElementById('calculator-share')?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' }), 50)
   }, [shareImageOpen])

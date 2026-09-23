@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { ArrowUpRight } from 'lucide-react'
 import ScoreCalculator from '../ScoreCalculator'
 import ErrorBoundary from '../../src/components/ErrorBoundary'
+import Gate from '../../src/components/Gate'
 import '../../src/styles.css'
 import { action } from '../../src/lib/analytics'
 
@@ -48,6 +49,8 @@ action('embed_loaded')
 
 createRoot(document.getElementById('root')).render(
   <ErrorBoundary home="./">
-    <Embed />
+    <Gate>
+      <Embed />
+    </Gate>
   </ErrorBoundary>,
 )

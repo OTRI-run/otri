@@ -284,7 +284,7 @@ export function RunnerProfilePage({ runnerId, onBack }) {
   const [profile, setProfile] = useState(null)
   const [error, setError] = useState(null)
   useDocumentTitle(profile ? `${profile.first_name} ${profile.family_name} · OTRI` : 'Runner · OTRI')
-  const [shareOpen, setShareOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(true)
   const [linkCopied, setLinkCopied] = useState(false)
   const profileUrl = `${window.location.origin}${window.location.pathname}#runners/${encodeURIComponent(runnerId)}`
 
