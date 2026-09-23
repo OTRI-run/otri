@@ -116,8 +116,6 @@ export function renderLegalPage(page, root, { commitDate = '' } = {}) {
 <link rel="canonical" href="https://otri.run/${page.path}/" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <title>${escape(page.title)} · OTRI</title>
-<meta name="robots" content="noindex" />
-<script>try{if(localStorage.getItem('otri_gate')!=='67a9689fda9c251b4df5d80d8480b236fe164ac91219806b83a319a083643d1f')location.replace('/')}catch(e){location.replace('/')}</script>
 <style>${CSS}</style>
 </head>
 <body>

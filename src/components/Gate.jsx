@@ -1,4 +1,6 @@
-// A site-wide gate while OTRI is not yet meant to be seen.
+// The site-wide gate OTRI stood behind before it opened (2026-09-23). Off now, and kept: the
+// password's hash is also what maintenance mode accepts (Maintenance.jsx), and the gate can be
+// put back with one constant should the site ever need to close to everyone again.
 //
 // The site is static, so this is a browser-side check: the page asks for a password, hashes it,
 // compares it with the hash below, and remembers a match in this browser. It keeps the site out
@@ -10,7 +12,7 @@
 import { useEffect, useState } from 'react'
 import Logo from './Logo'
 
-export const GATE_ENABLED = true
+export const GATE_ENABLED = false
 // sha256 of the password. The password itself is not in the code.
 export const GATE_HASH = '67a9689fda9c251b4df5d80d8480b236fe164ac91219806b83a319a083643d1f'
 export const GATE_KEY = 'otri_gate'
