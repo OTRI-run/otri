@@ -2,6 +2,8 @@
 // target time for the runner. Nothing is uploaded to make them; the PNG exists only where it is
 // drawn.
 
+import geometry from '../src/brand/uphill.json'
+
 export const FORMATS = {
   post: { label: 'Post 4:5', width: 1080, height: 1350, hint: 'Facebook and Instagram feed' },
   square: { label: 'Square 1:1', width: 1080, height: 1080, hint: 'Works everywhere' },
@@ -79,28 +81,26 @@ function footer(ctx, { width, height, pad }, text) {
   ctx.moveTo(pad, y - 66)
   ctx.lineTo(width - pad, y - 66)
   ctx.stroke()
-  // the mark: a ring with a ridge line, then the word
-  ctx.strokeStyle = '#60a5fa'
-  ctx.lineWidth = 7
-  ctx.beginPath()
-  ctx.arc(pad + 24, y - 14, 21, 0, Math.PI * 2)
-  ctx.stroke()
+  // Use the same outlined wordmark as the header; no image loading or font dependency.
+  const [minX, minY, logoWidth, logoHeight] = geometry.viewBox.split(' ').map(Number)
+  const logoScale = 52 / logoHeight
+  ctx.save()
+  ctx.translate(pad, y - 46)
+  ctx.scale(logoScale, logoScale)
+  ctx.translate(-minX, -minY)
+  ctx.fillStyle = INK
+  ctx.fill(new Path2D(`${geometry.letters} ${geometry.stem}`))
+  ctx.fillStyle = '#3576f6'
+  ctx.fill(new Path2D(geometry.summit))
+  ctx.strokeStyle = '#3576f6'
   ctx.lineWidth = 5
   ctx.lineJoin = 'round'
-  ctx.beginPath()
-  ctx.moveTo(pad + 9, y - 6)
-  ctx.lineTo(pad + 19, y - 15)
-  ctx.lineTo(pad + 25, y - 10)
-  ctx.lineTo(pad + 33, y - 20)
-  ctx.lineTo(pad + 40, y - 13)
-  ctx.stroke()
-  ctx.font = `800 40px ${SANS}`
-  ctx.fillStyle = INK
-  ctx.fillText('OTRI', pad + 62, y)
+  ctx.stroke(new Path2D(geometry.arrow))
+  ctx.restore()
   ctx.font = `500 25px ${SANS}`
   ctx.fillStyle = SOFT
   ctx.textAlign = 'right'
-  ctx.fillText(fit(ctx, text, width - pad * 2 - 190), width - pad, y - 4)
+  ctx.fillText(fit(ctx, text, width - pad * 2 - logoWidth * logoScale - 36), width - pad, y - 4)
   ctx.textAlign = 'left'
 }
 
