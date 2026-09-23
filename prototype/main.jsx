@@ -714,7 +714,8 @@ function Leaderboard({ raceId, onBack, query }) {
   const [error, setError] = useState(null)
   const [resultsError, setResultsError] = useState(null)
   // `#races/<id>?share=1` (the organizer's review page links it) lands with the sharing panel open.
-  const [sharing, setSharing] = useState(() => (typeof query?.get === 'function' ? query.get('share') : query?.share) === '1')
+  // Open by default: the podium image and post text are the reason to come back, and a closed panel is never found.
+  const [sharing, setSharing] = useState(true)
   const sharePanel = useRef(null)
   useEffect(() => {
     if (sharing) sharePanel.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })

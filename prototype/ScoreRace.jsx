@@ -144,7 +144,7 @@ function Tile({ label, value, sub }) {
 
 function Scored({ result, fileStem, gpxText, children }) {
   const units = useUnits()
-  const [sharing, setSharing] = useState(false)
+  const [sharing, setSharing] = useState(true)
   const { course, summary, scores } = result
   // The reasons in words; the full machine-readable list stays one click away.
   const flags = course.quality_flags ?? []
