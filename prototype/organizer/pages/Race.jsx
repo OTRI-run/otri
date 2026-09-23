@@ -857,6 +857,10 @@ export function ReviewStep({ session, raceId }) {
                 <a href={`../#races/${encodeURIComponent(raceId)}`} className="font-semibold underline">
                   View the public page
                 </a>
+                {' or '}
+                <a href={`../#races/${encodeURIComponent(raceId)}?share=1`} className="font-semibold underline">
+                  share the results: image and post text
+                </a>
                 .
                 {flags.some((flag) => flag.severity === 'warn') && (
                   <>
@@ -870,6 +874,10 @@ export function ReviewStep({ session, raceId }) {
                 This race is on the public races page{race.has_gpx ? ' and its course is offered in the score calculator' : ''}.{' '}
                 <a href={`../#races/${encodeURIComponent(raceId)}`} className="font-semibold underline">
                   View the public page
+                </a>
+                {' or '}
+                <a href={`../#races/${encodeURIComponent(raceId)}?share=1`} className="font-semibold underline">
+                  share the results: image and post text
                 </a>
                 .{review === 'verified' && race.reviewed_at ? ` Verified ${formatDate(String(race.reviewed_at).slice(0, 10))}, ${race.reviewed_by === 'auto' ? 'automatically' : 'by an admin'}.` : ''} Unpublishing takes the results down
                 {race.is_listed ? ', and the race stays listed: its page and course remain public until you also remove the listing.' : '.'}
