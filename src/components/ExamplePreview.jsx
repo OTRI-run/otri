@@ -122,10 +122,6 @@ export function ExampleExplanation({ className = '', showRunner = true }) {
           </div>
         ))}
       </dl>
-      <p className="mt-3 border-t border-slate-200 pt-3 text-[12px] leading-5 text-slate-600">
-        <b className="font-semibold text-[#0b1220]">{course.confidence} confidence.</b> The course was measured from the GPX file. Steep ground (20 % and steeper) makes up{' '}
-        {(steep_distance_fraction * 100).toFixed(1)} % of the distance. {model_label} · scoring {scoring_version}.
-      </p>
     </div>
   )
 }
@@ -162,7 +158,7 @@ export default function ExamplePreview({ className = '' }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {rows.slice(0, 3).map((row) => (
               <tr key={row.rank} className={`border-b border-slate-100 last:border-0 ${podiumRowClass(row.rank) || 'odd:bg-white even:bg-slate-50/70'}`}>
                 <td className="px-3 py-1.5 font-mono text-[12px] text-slate-500">
                   <RankBadge rank={row.rank} />
