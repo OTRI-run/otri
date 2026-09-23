@@ -88,7 +88,10 @@ from .schemas import (
     PublishRequest,
     RaceReviewOut,
     ReviewAction,
+    MaintenanceState,
+    MaintenanceUpdate,
     SiteHit,
+    SiteStatus,
     TrafficSummary,
     ChangePassword,
     PasswordConfirm,
@@ -3267,6 +3270,48 @@ async def site_hit(request: Request) -> Response:
     except Exception as error:  # noqa: BLE001 - counting must never be why a page fails
         print(f"site/hit: {error!r}")
     return Response(status_code=204)
+
+
+# --- Maintenance mode -----------------------------------------------------------------------
+# The site is static and served from a CDN, so the switch that closes it lives here: an admin turns
+# it on from the admin page, every page asks /site/status as it opens and shows the closed notice
+# instead of itself. Admins who are signed in, and anyone holding the site password, still get
+# the site (src/components/Maintenance.jsx). The API itself keeps answering throughout, so the
+# admin can turn it off again and a page that is already open can finish what it was doing.
+
+_MAINTENANCE_KEY = "maintenance"
+
+
+def _maintenance_state() -> MaintenanceState:
+    stored = db.get_setting(_MAINTENANCE_KEY) or {}
+    if not stored.get("on"):
+        return MaintenanceState()
+    return MaintenanceState(on=True, message=stored.get("message") or "", since=stored.get("since"))
+
+
+@app.get("/site/status", response_model=SiteStatus)
+def site_status(response: Response) -> SiteStatus:
+    """What a page needs to know before it shows anything: whether the site is closed for
+    maintenance, and what the notice should say. Public, never cached: a closed page asks again
+    every half minute so it opens itself the moment the site is back."""
+    response.headers["Cache-Control"] = "no-store"
+    return SiteStatus(maintenance=_maintenance_state())
+
+
+@app.put("/admin/site/maintenance", response_model=SiteStatus)
+def set_maintenance(payload: MaintenanceUpdate, organizer: Organizer = Depends(require_admin)) -> SiteStatus:
+    """Close the site for maintenance, with a message in the admin's words, or open it again."""
+    if payload.on:
+        current = db.get_setting(_MAINTENANCE_KEY) or {}
+        # Turning it on while it is on only changes the message; the start time stays.
+        since = current.get("since") if current.get("on") else None
+        db.set_setting(
+            _MAINTENANCE_KEY,
+            {"on": True, "message": payload.message.strip(), "since": since or datetime.now(timezone.utc).isoformat(), "by": organizer.email},
+        )
+    else:
+        db.set_setting(_MAINTENANCE_KEY, {"on": False, "message": "", "since": None, "by": organizer.email})
+    return SiteStatus(maintenance=_maintenance_state())
 
 
 @app.get("/admin/traffic", response_model=TrafficSummary)

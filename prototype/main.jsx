@@ -48,6 +48,7 @@ import { fetchRaceGpxFile, getRace, getRaceMeasurement, getRaceResults, listRace
 import BuildBanner from '../src/components/BuildBanner'
 import ErrorBoundary from '../src/components/ErrorBoundary'
 import Gate from '../src/components/Gate'
+import Maintenance from '../src/components/Maintenance'
 import NotFound from '../src/components/NotFound'
 import { modelLabel, notScoredReason } from '../src/lib/model'
 import BackToTop from '../src/components/BackToTop'
@@ -1237,7 +1238,9 @@ forgetExpiredHandoff()
 createRoot(document.getElementById('root')).render(
   <ErrorBoundary home="./">
     <Gate>
-      <App />
+      <Maintenance>
+        <App />
+      </Maintenance>
     </Gate>
   </ErrorBoundary>,
 )

@@ -11,6 +11,7 @@ import { logoutOrganizer, getMe, resendVerification, whenSessionEnds } from '../
 import BuildBanner from '../../src/components/BuildBanner'
 import ErrorBoundary from '../../src/components/ErrorBoundary'
 import Gate from '../../src/components/Gate'
+import Maintenance from '../../src/components/Maintenance'
 import { initMonitoring } from '../../src/lib/monitoring'
 import { countPages } from '../../src/lib/analytics'
 import { useDocumentTitle } from '../../src/lib/title'
@@ -416,7 +417,9 @@ installSearchShortcut()
 createRoot(document.getElementById('root')).render(
   <ErrorBoundary home="./">
     <Gate>
-      <App />
+      <Maintenance>
+        <App />
+      </Maintenance>
     </Gate>
   </ErrorBoundary>,
 )

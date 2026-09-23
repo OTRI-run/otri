@@ -538,6 +538,21 @@ export function setRaceListed(raceId, listed, token) {
   return request(`/races/${encodeURIComponent(raceId)}/listing`, { method: listed ? 'POST' : 'DELETE', headers: authHeaders(token) })
 }
 
+/** Whether the site is closed for maintenance, and what the notice says (Maintenance.jsx).
+ *  `signal` lets a page stop waiting: the answer decides what it shows first. */
+export function getSiteStatus(signal) {
+  return request('/site/status', { signal })
+}
+
+/** Admin: close the site for maintenance with a message in your words, or open it again. */
+export function setSiteMaintenance({ on, message = '' }, token) {
+  return request('/admin/site/maintenance', {
+    method: 'PUT',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ on, message }),
+  })
+}
+
 /** The live API's root status, including `started_at` — the last time this API process
  * (re)started, i.e. the last deploy/restart. */
 export function getApiStatus() {

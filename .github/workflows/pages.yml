@@ -24,6 +24,11 @@ env:
   # Optional browser error reporting: set the VITE_SENTRY_DSN repository variable (Settings,
   # Secrets and variables, Actions, Variables). Empty means the SDK is never loaded.
   VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
+  # Maintenance mode is normally switched from the admin page and needs no deploy. This is the
+  # switch for the day the API itself is down: set the VITE_OTRI_MAINTENANCE repository variable
+  # to 1, run this workflow, and every page shows the closed notice whatever the API says. Unset
+  # it and run the workflow again to open the site (src/components/Maintenance.jsx).
+  VITE_OTRI_MAINTENANCE: ${{ vars.VITE_OTRI_MAINTENANCE }}
 
 jobs:
   build:
