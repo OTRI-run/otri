@@ -931,7 +931,7 @@ export function ReviewStep({ session, raceId }) {
                   className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600"
                 />
                 <span className="font-semibold text-[#0b1220]">
-                  I organize this race. I have the right to publish these results, and the runners were told their results would be published.
+                  I organize this race and have the right to publish these results.
                 </span>
               </label>
               <p id="publish-attest-note" className="mt-1.5 pl-6 text-xs leading-5 text-slate-500">
