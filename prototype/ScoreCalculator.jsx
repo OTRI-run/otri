@@ -15,7 +15,7 @@ import WhatWeScore from '../src/components/WhatWeScore'
 import useFileDrop from '../src/lib/useFileDrop'
 import { scrollBehavior } from '../src/lib/comfort'
 import { knownButNotHere, matchRank } from '../src/lib/suggest'
-import { distanceUnit, formatDistance, formatElevation, formatPace as formatPaceUnits, formatRate, kmToUnit, useUnits } from '../src/lib/units'
+import { distanceUnit, elevationUnit, formatDistance, formatElevation, formatPace as formatPaceUnits, formatRate, kmToUnit, metresToUnit, useUnits } from '../src/lib/units'
 
 // Published anchor tables, shown for context in the "why this score" breakdown. The actual
 // score always comes from the API. Scores 0-544 are V0.1's real demo/test anchors in every
@@ -876,9 +876,14 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
     ['DISTANCE', formatDistance(features.distance_km, units)],
     ['CLIMB', formatElevation(features.elevation_gain_m, units, { sign: '+' })],
     ['DESCENT', formatElevation(features.elevation_loss_m, units, { sign: '-' })],
+    // Climb per unit of distance, the figure trail runners size a course by ("40 m/km"). The
+    // steepest 50 m used to sit here; a single extreme says little about a course, and the map
+    // below already shows where the steep ground is and how much of it there is.
     [
-      'STEEPEST 50 M',
-      features.max_climb_grade == null ? 'n/a' : `+${(features.max_climb_grade * 100).toFixed(0)}% / -${(features.max_descent_grade * 100).toFixed(0)}%`,
+      `CLIMB PER ${distanceUnit(units).toUpperCase()}`,
+      features.distance_km > 0
+        ? `+${Math.round(metresToUnit(features.elevation_gain_m, units) / kmToUnit(features.distance_km, units))} ${elevationUnit(units)}/${distanceUnit(units)}`
+        : 'n/a',
     ],
   ]
 
