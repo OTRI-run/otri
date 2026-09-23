@@ -107,12 +107,14 @@ function navigate(hash) {
 // the link goes to #home and leaves the section's id for Home.jsx to scroll to (HOME_SECTION_KEY).
 // Runners moved to the footer. The example race is the one highlighted item.
 const NAV = [
-  { id: 'how', label: 'How it works', short: 'How', href: '#home', section: 'how-it-works' },
+  // `mobile: false` keeps an item off the phone row: the logo already goes home, and the FAQ is in the
+  // footer and on the home page, so the row holds the four places and the example.
+  { id: 'how', label: 'How it works', short: 'How', href: '#home', section: 'how-it-works', mobile: false },
   { id: 'calculator', label: 'Calculator', href: '#calculator' },
   { id: 'score', label: 'Score a race', short: 'Score', href: '#score' },
   { id: 'races', label: 'Races', href: '#races' },
   { id: 'runners', label: 'Runners', href: '#runners' },
-  { id: 'faq', label: 'FAQ', href: '#faq' },
+  { id: 'faq', label: 'FAQ', href: '#faq', mobile: false },
   { id: 'example', label: 'Try an example', short: 'Example', href: '#score?example=1', highlight: true },
 ]
 
@@ -213,7 +215,7 @@ function Header({ tab }) {
       {/* Small screens: the section links live in their own row under the header. */}
       <div className="border-b border-slate-200 bg-white md:hidden">
         <div className="mx-auto flex w-[min(1120px,calc(100%-28px))] items-center gap-4 overflow-x-auto">
-          {NAV.map((item) => (
+          {NAV.filter((item) => item.mobile !== false).map((item) => (
             <NavLink
               key={item.id}
               item={item}
