@@ -70,7 +70,7 @@ Project-wide:
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — how to contribute, and what a scoring change has to bring
 - [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 - [`SECURITY.md`](SECURITY.md) — how to report a vulnerability
-- [`TERMS.md`](TERMS.md) and [`PRIVACY.md`](PRIVACY.md) — the terms for organizer accounts and what personal data OTRI keeps (drafts, published on the site)
+- [`TERMS.md`](TERMS.md) and [`PRIVACY.md`](PRIVACY.md) — the terms for organizer accounts and what personal data OTRI keeps, published on the site as /terms/ and /privacy/
 - [`CHANGELOG.md`](CHANGELOG.md) — what changed, and why
 
 The model and how it is used:

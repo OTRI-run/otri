@@ -5,8 +5,12 @@
 // the dev and preview servers on every request.
 import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { marked } from 'marked'
+
+// The mark's geometry, the same file the site's Logo component draws from.
+const GEOMETRY = JSON.parse(readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../src/brand/uphill.json'), 'utf8'))
 
 export const LEGAL_PAGES = [
   { path: 'privacy', file: 'PRIVACY.md', title: 'Privacy policy' },
@@ -23,10 +27,10 @@ body{margin:0;background:#f7f9fc;color:#17202c;font-family:ui-sans-serif,system-
 a{color:#3576f6}
 header{background:#fff;border-bottom:1px solid #e2e8f0}
 .bar{margin:0 auto;width:min(1120px,calc(100% - 32px));display:flex;align-items:center;justify-content:space-between;gap:16px;height:68px}
-.word{display:inline-flex;align-items:flex-start;font-weight:900;font-size:30px;line-height:1;letter-spacing:-.045em;color:#17202c;text-decoration:none;font-family:"Archivo Black",ui-sans-serif,system-ui,sans-serif}
-.word .i{position:relative;display:inline-block}
-.word .tittle{position:absolute;left:50%;bottom:.63em;width:.32em;transform:translateX(-50%)}
-.word .arrow{width:.33em;height:.33em;margin-left:.06em;margin-top:.08em}
+.logo{display:flex;align-items:center;gap:12px;min-width:0;flex-shrink:0;text-decoration:none;color:#17202c}
+.logo svg{display:block;flex-shrink:0;max-width:100%;overflow:visible}
+.logo .name{display:flex;flex-direction:column;justify-content:center;flex-shrink:0;border-left:1px solid #cbd5e1;padding-left:12px;font-size:13px;font-weight:600;line-height:1.12;letter-spacing:-.02em}
+@media (min-width:640px){.logo .name{font-size:16px}}
 nav{display:flex;gap:18px;font-size:13px;font-weight:600}
 nav a{color:#475569;text-decoration:none}
 nav a[aria-current]{color:#17202c}
@@ -58,11 +62,14 @@ footer{border-top:1px solid #e2e8f0;background:#fff}
 @media (max-width:560px){.bar{height:auto;flex-direction:column;align-items:flex-start;padding:14px 0}nav{flex-wrap:wrap;gap:12px 16px}}
 `
 
+// The site's header lockup: the wordmark at 30 px, a rule, and the name written out.
 const WORDMARK =
-  '<a class="word" href="/" aria-label="OTRI home">otr<span class="i">&#305;' +
-  '<svg class="tittle" viewBox="0 0 10 8" aria-hidden="true"><path d="M5 0 10 8H0z" fill="#3576f6"/></svg></span>' +
-  '<svg class="arrow" viewBox="0 0 12 12" fill="none" stroke="#3576f6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-  '<path d="M2.4 9.6 9.6 2.4"/><path d="M4 2.4h5.6V8"/></svg></a>'
+  '<a class="logo" href="/" aria-label="OTRI, the Open Trail Running Index. Home">' +
+  `<svg aria-hidden="true" focusable="false" viewBox="${GEOMETRY.viewBox}" width="${(30 * 203) / 74}" height="30">` +
+  `<path d="${GEOMETRY.letters} ${GEOMETRY.stem}" fill="#17202c"/>` +
+  `<path d="${GEOMETRY.summit}" fill="#3576f6"/>` +
+  `<path d="${GEOMETRY.arrow}" fill="none" stroke="#3576f6" stroke-width="5" stroke-linejoin="round"/>` +
+  '</svg><span class="name"><span>Open Trail</span><span>Running Index</span></span></a>'
 
 const escape = (text) => text.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
 
@@ -95,13 +102,10 @@ export function lastChanged(file, root) {
 export function renderLegalPage(page, root, { commitDate = '' } = {}) {
   // Windows line endings would stop the title regex: a carriage return is a line end in JavaScript.
   const markdown = readFileSync(resolve(root, page.file), 'utf8').replace(/\r\n/g, '\n')
-  const heading = (markdown.match(/^# (.*)$/m) || [null, page.title])[1]
-  const draft = /\(Draft\)\s*$/.test(heading)
-  const title = heading.replace(/\s*\(Draft\)\s*$/, '')
+  const title = (markdown.match(/^# (.*)$/m) || [null, page.title])[1]
   const nav = LEGAL_PAGES.map((p) => `<a href="/${p.path}/"${p === page ? ' aria-current="page"' : ''}>${p.title}</a>`).join('')
   const changed = lastChanged(page.file, root) || commitDate
-  const updated = changed ? `Last changed ${changed.slice(0, 10)}. ` : ''
-  const draftNote = draft ? 'A draft while OTRI is a prototype, not yet legally reviewed. ' : ''
+  const updated = changed ? `Last changed ${changed.slice(0, 10)}.` : ''
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -111,8 +115,6 @@ export function renderLegalPage(page, root, { commitDate = '' } = {}) {
 <meta name="description" content="${escape(page.title)} of OTRI, the Open Trail Running Index." />
 <link rel="canonical" href="https://otri.run/${page.path}/" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-<link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&display=swap" />
 <title>${escape(page.title)} · OTRI</title>
 <meta name="robots" content="noindex" />
 <script>try{if(localStorage.getItem('otri_gate')!=='67a9689fda9c251b4df5d80d8480b236fe164ac91219806b83a319a083643d1f')location.replace('/')}catch(e){location.replace('/')}</script>
@@ -123,7 +125,7 @@ export function renderLegalPage(page, root, { commitDate = '' } = {}) {
 <main>
 <p class="eyebrow">OTRI · Open Trail Running Index</p>
 <h1>${escape(title)}</h1>
-<p class="meta">${updated}${draftNote}The source of this page is <a href="${REPO}/${page.file}">${page.file}</a> in the open repository, where every change is recorded.</p>
+<p class="meta">${updated}</p>
 <article class="doc">${renderBody(markdown)}</article>
 </main>
 <footer><div class="foot"><span>OTRI · Open Trail Running Index</span><span>${LEGAL_PAGES.map((p) => `<a href="/${p.path}/">${p.title}</a>`).join(' · ')} · <a href="mailto:hello@otri.run">hello@otri.run</a></span></div></footer>

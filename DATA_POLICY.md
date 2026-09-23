@@ -82,7 +82,3 @@ A course file is reduced to positions and elevations before it is stored or serv
 Software licensing and dataset licensing are separate. Code may be open-source under a software license while individual race datasets remain under their organizer's terms.
 
 Before publishing a dataset, confirm that OTRI has the right to redistribute it in the proposed form.
-
-## Legal review
-
-OTRI should obtain qualified legal advice before operating internationally at scale, particularly regarding privacy, copyright/database rights, terms of service, data licensing, and trademarks.
