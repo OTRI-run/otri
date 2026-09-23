@@ -163,6 +163,26 @@ def mark_body(arrow_colour: str, summit_colour: str, ground: str | None) -> str:
     return body
 
 
+def build_badge(word: Face, mono: Face, name: str, *, ground: str, stroke: str, caption: str, letters: str, accent: str) -> None:
+    """"Scored with OTRI", for a results page: a pill with the caption in mono and the wordmark."""
+    size = 100.0                      # the wordmark's cap height
+    pad_x, pad_y = 44.0, 36.0
+    cap_size = 46.0                   # the caption's cap height
+    h = size * 1.34 + pad_y * 2
+    baseline = pad_y + size * 1.17    # the wordmark sits a little low so the summit has room
+    caption_d, caption_w = mono.draw("SCORED WITH", cap_size, 0.12, pad_x, baseline)
+    gap = 40.0
+    mark_x = pad_x + caption_w + gap
+    mark_svg, mark_w = wordmark(word, size, letters, accent, mark_x, baseline)
+    w = mark_x + mark_w + pad_x
+    body = (
+        f'<rect x="2" y="2" width="{w - 4:.0f}" height="{h - 4:.0f}" rx="{(h - 4) / 2:.0f}" fill="{ground}" stroke="{stroke}" stroke-width="4"/>'
+        f'<path d="{caption_d}" fill="{caption}"/>'
+        + mark_svg
+    )
+    (OUT / name).write_text(document(w, h, body, "Scored with OTRI"), encoding="utf-8")
+
+
 def build_mark(path: Path, arrow_colour: str, summit_colour: str, ground: str | None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(document(128, 128, mark_body(arrow_colour, summit_colour, ground), "OTRI"), encoding="utf-8")
@@ -202,9 +222,12 @@ def main() -> None:
     build_mark(OUT / "otri-mark-white.svg", WHITE, WHITE, None)
     build_mark(OUT / "otri-mark-black.svg", INK, INK, None)
 
+    build_badge(word, mono, "otri-badge-scored.svg", ground=WHITE, stroke="#d3deeb", caption="#4b5a6e", letters=INK, accent=BLUE)
+    build_badge(word, mono, "otri-badge-scored-dark.svg", ground=INK, stroke="#33415c", caption="#94a3b8", letters=WHITE, accent=BLUE)
+
     build_favicon(ROOT / "public" / "favicon.svg")
 
-    written = sorted(OUT.glob("otri-logo*.svg")) + sorted(OUT.glob("otri-mark*.svg"))
+    written = sorted(OUT.glob("otri-logo*.svg")) + sorted(OUT.glob("otri-mark*.svg")) + sorted(OUT.glob("otri-badge*.svg"))
     for path in written + [ROOT / "public" / "favicon.svg"]:
         if path.suffix == ".svg":
             print(f"{path.name:34} {path.stat().st_size:6} bytes")
