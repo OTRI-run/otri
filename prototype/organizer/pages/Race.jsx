@@ -671,12 +671,43 @@ export function ResultsStep({ session, raceId }) {
 
 // --------------------------------------------------------------------------- Step 4: review
 
+// A moment, not a day: the automatic verification lands at an hour, and "on 3 October" alone would
+// have the organizer looking for it all day.
+function whenAt(iso) {
+  if (!iso) return '—'
+  try {
+    return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+  } catch {
+    return iso
+  }
+}
+
+// What the automatic check said, holds before warnings, as a bullet list of its own sentences.
+function ReviewFlags({ flags, className = '' }) {
+  const ordered = [...flags].sort((a, b) => (a.severity === 'hold' ? 0 : 1) - (b.severity === 'hold' ? 0 : 1))
+  return (
+    <ul className={`list-disc space-y-0.5 pl-5 ${className}`}>
+      {ordered.map((flag, index) => (
+        <li key={`${flag.code ?? 'flag'}-${index}`}>{flag.detail}</li>
+      ))}
+    </ul>
+  )
+}
+
+const REVIEW_DETAIL = {
+  pending: ' · automatic check pending',
+  verified: ' · verified',
+  held: ' · held for review',
+  rejected: ' · taken down',
+}
+
 export function ReviewStep({ session, raceId }) {
   const units = useUnits()
   const { race, error: loadError, reload } = useRace(raceId)
   const [results, setResults] = useState(null)
   const [busy, setBusy] = useState(false)
   const [publishing, setPublishing] = useState(false)
+  const [attested, setAttested] = useState(false)
   const [error, setError] = useState(null)
 
   useEffect(() => {
@@ -689,6 +720,8 @@ export function ReviewStep({ session, raceId }) {
     try {
       if (publish) await publishRace(raceId, session.token)
       else await unpublishRace(raceId, session.token)
+      // The attestation is for this publish, not the account: the next one asks again.
+      if (publish) setAttested(false)
       reload()
     } catch (err) {
       setError(err.message)
@@ -739,6 +772,13 @@ export function ReviewStep({ session, raceId }) {
   const lowConfidence = results.filter((r) => r.confidence === 'Low').length
   const notScored = notScoredReason(results)
   const complete = race.has_gpx && hasResults
+  // The publish check: 'pending' is public and waiting for its automatic verification, 'held' is
+  // not public until an admin has looked, 'rejected' is an admin's take-down with a note.
+  const review = race.review_status ?? 'none'
+  const flags = race.review_flags ?? []
+  const held = review === 'held' && !race.is_published
+  const rejected = review === 'rejected' && !race.is_published
+  const canPublish = !race.is_published && !held
 
   return (
     <RaceShell race={race} step={3}>
@@ -769,18 +809,49 @@ export function ReviewStep({ session, raceId }) {
             <ChecklistRow
               ok={race.is_published}
               label="Published"
-              detail={race.is_published ? `On the public races page since ${formatDate(String(race.published_at).slice(0, 10))}.` : race.is_listed ? 'Listed on the public races page without results.' : 'Not on the public site yet.'}
+              detail={`${race.is_published ? `On the public races page since ${formatDate(String(race.published_at).slice(0, 10))}.` : race.is_listed ? 'Listed on the public races page without results.' : 'Not on the public site yet.'}${REVIEW_DETAIL[review] ?? ''}`}
             />
           </ul>
           <div className="mt-5">
-            {race.is_published ? (
+            {race.is_published && review === 'pending' ? (
+              <Notice kind="success" title="Published. Automatic check passed.">
+                This race is public now. It is marked verified automatically on {whenAt(race.auto_verify_at)} unless an admin has a
+                question first.{' '}
+                <a href={`../#races/${encodeURIComponent(raceId)}`} className="font-semibold underline">
+                  View the public page
+                </a>
+                .
+                {flags.some((flag) => flag.severity === 'warn') && (
+                  <>
+                    <p className="mt-2 text-xs font-semibold">Noted by the automatic check:</p>
+                    <ReviewFlags flags={flags.filter((flag) => flag.severity === 'warn')} className="mt-1 text-xs" />
+                  </>
+                )}
+              </Notice>
+            ) : race.is_published ? (
               <Notice kind="success" title="Published.">
                 This race is on the public races page{race.has_gpx ? ' and its course is offered in the score calculator' : ''}.{' '}
                 <a href={`../#races/${encodeURIComponent(raceId)}`} className="font-semibold underline">
                   View the public page
                 </a>
-                . Unpublishing takes the results down
+                .{review === 'verified' && race.reviewed_at ? ` Verified ${formatDate(String(race.reviewed_at).slice(0, 10))}, ${race.reviewed_by === 'auto' ? 'automatically' : 'by an admin'}.` : ''} Unpublishing takes the results down
                 {race.is_listed ? ', and the race stays listed: its page and course remain public until you also remove the listing.' : '.'}
+              </Notice>
+            ) : held ? (
+              <Notice kind="warning" title="Held for review. Not public yet.">
+                The automatic check found things an admin has to look at before this race goes public:
+                <ReviewFlags flags={flags} className="mt-1" />
+                <p className="mt-2">
+                  An admin looks at every held race, usually within a day. If you think this is wrong, write to{' '}
+                  <a href="mailto:hello@otri.run" className="font-semibold underline">hello@otri.run</a> and mention the race name.
+                </p>
+              </Notice>
+            ) : rejected ? (
+              <Notice kind="error" title="Taken down by an admin.">
+                {race.review_note && <p className="whitespace-pre-wrap">{race.review_note}</p>}
+                <p className={race.review_note ? 'mt-2' : ''}>
+                  Fix what the note describes and publish again; an admin will check it before it goes public.
+                </p>
               </Notice>
             ) : complete ? (
               <Notice kind="success" title="Ready to publish.">
@@ -795,7 +866,7 @@ export function ReviewStep({ session, raceId }) {
             ) : (
               <Notice kind="info">Finish the items marked above, then publish.</Notice>
             )}
-            {!race.is_published && (
+            {!race.is_published && !held && (
               <p className="mt-3 text-xs leading-5 text-slate-500">
                 {race.is_listed ? (
                   <>
@@ -810,17 +881,38 @@ export function ReviewStep({ session, raceId }) {
             )}
           </div>
           {error && <div className="mt-3"><Notice kind="error">{error}</Notice></div>}
+          {canPublish && (
+            <div className="mt-5 rounded-xl bg-slate-50 px-4 py-3">
+              {/* OTRI publishes under the organizer's name. The box is the organizer saying so, each time. */}
+              <label className="flex items-start gap-2 text-sm text-slate-700">
+                <input
+                  id="publish-attest"
+                  type="checkbox"
+                  checked={attested}
+                  onChange={(e) => setAttested(e.target.checked)}
+                  aria-describedby="publish-attest-note"
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600"
+                />
+                <span className="font-semibold text-[#0b1220]">
+                  I organize this race. I have the right to publish these results, and the runners were told their results would be published.
+                </span>
+              </label>
+              <p id="publish-attest-note" className="mt-1.5 pl-6 text-xs leading-5 text-slate-500">
+                OTRI publishes what you upload under your name. If you are not the organizer, do not publish.
+              </p>
+            </div>
+          )}
           <div className="mt-5 flex flex-wrap gap-3">
             {race.is_published ? (
               <Button variant="secondary" busy={publishing} onClick={() => togglePublish(false)}>
                 <EyeOff size={15} /> Unpublish
               </Button>
-            ) : (
-              <Button busy={publishing} disabled={!hasResults} onClick={() => togglePublish(true)}>
+            ) : held ? null : (
+              <Button busy={publishing} disabled={!hasResults || !attested} onClick={() => togglePublish(true)}>
                 <Eye size={15} /> Publish results
               </Button>
             )}
-            {(!race.is_published || race.is_listed) && (
+            {!held && (!race.is_published || race.is_listed) && (
               <Button variant="secondary" busy={publishing} onClick={() => toggleListed(!race.is_listed)}>
                 {race.is_listed ? <EyeOff size={15} /> : <Eye size={15} />} {race.is_listed ? 'Remove listing' : 'List without results'}
               </Button>

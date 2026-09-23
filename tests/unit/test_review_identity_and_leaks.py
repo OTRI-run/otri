@@ -152,16 +152,16 @@ def test_the_strongest_runner_is_in_the_ranking_whatever_their_name():
     headers = _verified("ranking@example.com")
     # More than the 500 the database used to hand over, so the alphabetical cut really bites.
     rows = ["Rank,Time,Last name,First name,Gender"]
-    rows.append("1,2:30:00,Zzz,Fastest,M")  # quickest, and last in the alphabet
+    rows.append("1,2:30:00,Zyx,Fastest,M")  # quickest, and last in the alphabet
     for i in range(560):
-        rows.append(f"{i + 2},{4 + i // 60}:{i % 60:02d}:00,Aaa{i:03d},Runner,M")
+        rows.append(f"{i + 2},{4 + i // 60}:{i % 60:02d}:00,Aaa{i:03d},Rune,M")
     race_id = _publish_results(headers, "\n".join(rows) + "\n")
     assert race_id
 
     listed = client.get("/runners", params={"limit": 500}).json()
     names = [runner["family_name"] for runner in listed]
-    assert "Zzz" in names, "the quickest runner was cut away before anything was ranked"
-    assert names.index("Zzz") < names.index("Aaa000"), "the list is not ordered by index"
+    assert "Zyx" in names, "the quickest runner was cut away before anything was ranked"
+    assert names.index("Zyx") < names.index("Aaa000"), "the list is not ordered by index"
     assert len(listed) <= 500, "limit is still a page size"
 
 

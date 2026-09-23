@@ -89,12 +89,12 @@ def test_another_organizer_cannot_touch_your_event_or_race():
         client.post(f"/events/{event_id}/races", json={"course_name": "x", "distance_km": 5, "elevation_gain_m": 10}, headers=b),
         client.patch(f"/races/{race_id}", json={"course_name": "Hijacked"}, headers=b),
         client.delete(f"/races/{race_id}", headers=b),
-        client.post(f"/races/{race_id}/publish", headers=b),
+        client.post(f"/races/{race_id}/publish", json={"attest": True}, headers=b),
         client.post(f"/races/{race_id}/gpx", files={"file": ("c.gpx", FLAT_LOOP_GPX.read_bytes(), "application/gpx+xml")}, headers=b),
         client.post(f"/races/{race_id}/results", files={"file": ("r.csv", b"rank,name,time\n1,x,1:00:00\n", "text/csv")}, headers=b),
     ]
     assert all(r.status_code in (403, 404, 405) for r in checks), [r.status_code for r in checks]
-    assert client.get(f"/events/{event_id}", headers=a).json()["event_name"] == "Test Event"
+    assert client.get(f"/events/{event_id}", headers=a).json()["event_name"] == "Coastal Trail Weekend"
     # Nor read it: a draft is its owner's, down to its name. To anyone else it does not exist.
     for path in (f"/events/{event_id}", f"/races/{race_id}"):
         assert client.get(path, headers=b).status_code == 404 and client.get(path).status_code == 404

@@ -376,9 +376,16 @@ export function getRaceMeasurement(raceId, token) {
   return request(`/races/${encodeURIComponent(raceId)}/measurement`, token ? { headers: authHeaders(token) } : undefined)
 }
 
-/** Make a race's results, course and measurement public (owner or admin). */
+/** Make a race's results, course and measurement public (owner or admin). The organizer attests
+ *  that the race is theirs and the runners knew; the API refuses a publish without it. The answer
+ *  carries `review_status`: 'pending' (public now, verified automatically later) or 'held' (an
+ *  admin has to look first, `review_flags` say why). */
 export function publishRace(raceId, token) {
-  return request(`/races/${encodeURIComponent(raceId)}/publish`, { method: 'POST', headers: authHeaders(token) })
+  return request(`/races/${encodeURIComponent(raceId)}/publish`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ attest: true }),
+  })
 }
 
 export function unpublishRace(raceId, token) {
@@ -426,6 +433,20 @@ export function resolveAdminReport(reportId, resolution, token) {
 
 export function deleteAdminReport(reportId, token) {
   return request(`/admin/reports/${reportId}`, { method: 'DELETE', headers: authHeaders(token) })
+}
+
+/** Admin: races waiting on the publish check. 'open' is pending + held; 'all' includes verified and rejected. */
+export function listAdminReviews(token, status = 'open') {
+  return request(`/admin/reviews?status=${encodeURIComponent(status)}`, { headers: authHeaders(token) })
+}
+
+/** Admin: 'verify' | 'hold' | 'reject' a published race. A rejection needs a note (the organizer reads it). */
+export function reviewAdminRace(raceId, action, note, token) {
+  return request(`/admin/reviews/${encodeURIComponent(raceId)}`, {
+    method: 'POST',
+    headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ action, note: note ?? null }),
+  })
 }
 
 export function deleteAdminRunner(runnerId, token) {

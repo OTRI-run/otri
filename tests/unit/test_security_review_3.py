@@ -39,12 +39,12 @@ def _sign_in(email, password=PASSWORD):
 
 
 def _race(headers, name="10K"):
-    event = client.post("/events", json={"event_name": f"Event {name}", "event_date": "2027-01-01"}, headers=headers).json()
+    event = client.post("/events", json={"event_name": f"Event {name}", "event_date": "2026-01-01"}, headers=headers).json()
     return client.post(f"/events/{event['event_id']}/races", json={"course_name": name, "distance_km": 10, "elevation_gain_m": 100}, headers=headers).json()["race_id"]
 
 
-def _upload(headers, race_id, rows):
-    body = "Rank,Time,Last name,First name,Gender,Year of birth,Nationality\n" + "".join(f"{i},1:0{i}:00,{last},{first},M,{year},{nat}\n" for i, (last, first, year, nat) in enumerate(rows, start=1))
+def _upload(headers, race_id, rows, hour=1):
+    body = "Rank,Time,Last name,First name,Gender,Year of birth,Nationality\n" + "".join(f"{i},{hour}:0{i}:00,{last},{first},M,{year},{nat}\n" for i, (last, first, year, nat) in enumerate(rows, start=1))
     answer = client.post(f"/races/{race_id}/results", files={"file": ("r.csv", body.encode(), "text/csv")}, headers=headers)
     assert answer.status_code == 200 and answer.json()["is_valid"], answer.text
     return answer
@@ -234,7 +234,7 @@ def test_a_draft_does_not_write_into_a_runner_the_public_sees():
     organizer = _account("real-organizer@example.com")
     published = _race(organizer, "Published 10K")
     _upload(organizer, published, [("Publicrunner", "Pat", "", "")])
-    assert client.post(f"/races/{published}/publish", headers=organizer).status_code == 200
+    assert client.post(f"/races/{published}/publish", json={"attest": True}, headers=organizer).status_code == 200
     (before,) = _runner("Publicrunner")
     assert before["birth_year"] is None and before["nationality"] is None
 
@@ -246,9 +246,9 @@ def test_a_draft_does_not_write_into_a_runner_the_public_sees():
 
     # The organizer's own next race says it in public, under a confirmed address: that completes the runner.
     second = _race(organizer, "Second 10K")
-    _upload(organizer, second, [("Publicrunner", "Pat", "1988", "FRA")])
+    _upload(organizer, second, [("Publicrunner", "Pat", "1988", "FRA")], hour=2)
     assert _runner("Publicrunner")[0]["birth_year"] is None, "still a draft"
-    assert client.post(f"/races/{second}/publish", headers=organizer).status_code == 200
+    assert client.post(f"/races/{second}/publish", json={"attest": True}, headers=organizer).status_code == 200
     (completed,) = _runner("Publicrunner")
     assert (completed["birth_year"], completed["nationality"]) == (1988, "FRA")
 
@@ -381,7 +381,7 @@ def test_a_runner_planted_in_a_draft_is_not_who_a_later_publication_is_matched_t
     organizer = _account("honest@example.com")
     race_id = _race(organizer, "Real 10K")
     _upload(organizer, race_id, [("Seededname", "Sam", "", "")])
-    assert client.post(f"/races/{race_id}/publish", headers=organizer).status_code == 200
+    assert client.post(f"/races/{race_id}/publish", json={"attest": True}, headers=organizer).status_code == 200
 
     rows = _runner("Seededname")
     assert len(rows) == 2, "the published result got a runner of its own"

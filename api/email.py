@@ -14,7 +14,9 @@ footer that says why they received it. Each message also carries a plain-text al
 from __future__ import annotations
 
 import os
+from datetime import datetime
 from html import escape
+from urllib.parse import quote
 
 import resend
 
@@ -241,6 +243,77 @@ def send_report_email(to: str, kind: str, subject_label: str, message: str, page
         reason="You received this email because you are an OTRI admin.",
     )
     _send(to, f"New report: {kind} · {subject_label}"[:150], html, text)
+
+
+def send_review_email(
+    to: str,
+    *,
+    race_id: str,
+    race_label: str,
+    organizer_email: str,
+    finisher_count: int,
+    held: bool,
+    flags: list[dict],
+    auto_verify_at: datetime | None,
+) -> None:
+    """A race was published (or held): the admins hear about it. If nobody acts on a clean race it
+    verifies itself at ``auto_verify_at``; a held race waits for a decision."""
+    link = f"{APP_BASE_URL}/prototype/organizer/#/admin?tab=reviews&race={quote(race_id)}"
+    reasons = [f"- {flag.get('severity', '').upper()}: {flag.get('detail', '')}" for flag in flags] or ["- nothing noted"]
+    if held:
+        heading = "A published race is held for review"
+        preheader = f"Held: {race_label}"
+        what = "It is not public. It stays down until you verify it, or reject it with a note the organizer receives."
+    else:
+        heading = "A race was published"
+        preheader = f"Published: {race_label}"
+        when = auto_verify_at.strftime("%Y-%m-%d %H:%M UTC") if auto_verify_at else "shortly"
+        what = f"It is public now. If you do nothing it is marked verified automatically at {when}. Hold or reject it before then if something is wrong."
+    html, text = _render(
+        preheader=preheader,
+        heading=heading,
+        paragraphs=[
+            f"Race: {race_label}",
+            f"Organizer: {organizer_email}",
+            f"Finishers: {finisher_count}",
+            what,
+            "What the automatic check noted:",
+            *reasons,
+        ],
+        cta=("Open the reviews", link),
+        after=["Verifying says only that an admin saw nothing wrong; OTRI approves nothing and the badge is not a certificate."],
+        reason="You received this email because you are an OTRI admin.",
+    )
+    _send(to, f"{'Held' if held else 'Published'}: {race_label}"[:150], html, text)
+
+
+def send_race_review_outcome_email(to: str, *, race_label: str, race_id: str, rejected: bool, note: str | None) -> None:
+    """The organizer hears when an admin takes their race down, or lifts a hold."""
+    link = f"{APP_BASE_URL}/prototype/organizer/#/races/{quote(race_id)}/review"
+    if rejected:
+        html, text = _render(
+            preheader=f"{race_label} was taken down",
+            heading="Your race was taken down",
+            paragraphs=[
+                f"An admin took “{race_label}” off the public site.",
+                f"The note they left: {note or '(no note)'}",
+                "Fix what the note describes and publish again; an admin will check it before it goes public. If you think this is wrong, reply to this email.",
+            ],
+            cta=("Open the race", link),
+            reason="You received this email because your OTRI organizer account published this race.",
+        )
+        _send(to, f"Taken down: {race_label}"[:150], html, text)
+    else:
+        html, text = _render(
+            preheader=f"{race_label} is public",
+            heading="Your race is public",
+            paragraphs=[
+                f"An admin looked at “{race_label}” and it is on the public site now.",
+            ],
+            cta=("Open the race", link),
+            reason="You received this email because your OTRI organizer account published this race.",
+        )
+        _send(to, f"Public: {race_label}"[:150], html, text)
 
 
 def send_security_alert_email(to: str) -> None:
