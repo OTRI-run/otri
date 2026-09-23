@@ -120,8 +120,8 @@ function TryButtons({ onDark = false }) {
       <a className={onDark ? lightButton : primaryButton} href="#score?example=1">
         Try an example race <ArrowRight size={15} aria-hidden="true" />
       </a>
-      <a className={onDark ? outlineLightButton : secondaryButton} href="#score">
-        Score my race
+      <a className={onDark ? outlineLightButton : secondaryButton} href="#calculator">
+        Open the calculator
       </a>
     </div>
   )
@@ -214,8 +214,8 @@ export default function Home() {
               <TryButtons />
             </div>
             <p className="mt-5 text-[12px] font-medium text-slate-500">Free scoring · Public results without sign-in · Open methodology</p>
-            <a href="#calculator" className={`${textLink} mt-4`}>
-              Running a course yourself? Explore the calculator <ArrowRight size={14} aria-hidden="true" />
+            <a href="#score" className={`${textLink} mt-4`}>
+              Have your own files? Score my race <ArrowRight size={14} aria-hidden="true" />
             </a>
           </div>
           <ExamplePreview base="" className="min-w-0" />
