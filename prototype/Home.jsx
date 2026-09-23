@@ -120,8 +120,8 @@ function TryButtons({ onDark = false }) {
       <a className={onDark ? lightButton : primaryButton} href="#score?example=1">
         Try an example race <ArrowRight size={15} aria-hidden="true" />
       </a>
-      <a className={onDark ? outlineLightButton : secondaryButton} href="#score">
-        Score my race
+      <a className={onDark ? outlineLightButton : secondaryButton} href="#calculator">
+        Open the calculator
       </a>
     </div>
   )
@@ -202,9 +202,9 @@ export default function Home() {
           <div className="min-w-0">
             <Eyebrow className="text-blue-700">TRAIL SCORES. OPEN TO EVERYONE.</Eyebrow>
             <h1 className="mt-4 text-[clamp(38px,5.6vw,68px)] font-bold leading-[1.04] tracking-[-.06em] text-[#0b1220]">
-              Your race. Explained scores.
+              Know your score.
               <br />
-              <span className="bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text pb-1 text-transparent">Open for everyone to see.</span>
+              <span className="bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text pb-1 text-transparent">Before you race.</span>
             </h1>
             <p className="mt-6 max-w-[58ch] text-[16px] leading-7 text-slate-700 sm:text-[17px]">
               Turn your course GPX and race results into explained trail scores. Try scoring without an account, then choose whether to publish a
@@ -214,8 +214,8 @@ export default function Home() {
               <TryButtons />
             </div>
             <p className="mt-5 text-[12px] font-medium text-slate-500">Free scoring · Public results without sign-in · Open methodology</p>
-            <a href="#calculator" className={`${textLink} mt-4`}>
-              Running a course yourself? Explore the calculator <ArrowRight size={14} aria-hidden="true" />
+            <a href="#score" className={`${textLink} mt-4`}>
+              Have your own files? Score my race <ArrowRight size={14} aria-hidden="true" />
             </a>
           </div>
           <ExamplePreview base="" className="min-w-0" />
