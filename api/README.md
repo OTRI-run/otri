@@ -69,7 +69,7 @@ Generated from `api/app.py` (`grep '@app\.' api/app.py`); the interactive refere
 | GET | `/runners` | anyone | Search runners by name (`q`), or list every runner with a published result, with the runner index. |
 | GET | `/runners/{runner_id}` | anyone | A runner's published results and index. |
 | POST | `/reports` | anyone | A correction or removal request from a public page (rate-limited; admins are emailed). |
-| POST | `/calculator-courses/proposals` | anyone | Propose the course you uploaded for the calculator's "Pick a race": the file plus `event_name`, `course_name`, `source_url`, `attest` (that it is the official course and may be shared), optional `year`, `location`, `country`, `email`. Measured and kept for an admin; added on its own after `OTRI_COURSE_AUTO_APPROVE_HOURS`. A track already in the calculator, or already proposed, answers 409 with a pointer to it. Rate-limited. |
+| POST | `/calculator-courses/proposals` | anyone | Propose the course you uploaded for the calculator's "Pick a race": the file plus `event_name`, `course_name`, and optional `year`, `location`, `country`, `source_url`, `email`. Measured and kept for an admin; added on its own after `OTRI_COURSE_AUTO_APPROVE_HOURS`. A track already in the calculator, or already proposed, answers 409 with a pointer to it. Rate-limited. |
 
 ### Accounts
 

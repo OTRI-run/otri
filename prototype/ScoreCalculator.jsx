@@ -155,13 +155,13 @@ const fieldClass = 'mt-1 w-full rounded-lg border border-slate-300 bg-white px-3
 function ProposeCourse({ courseFile }) {
   const thisYear = String(new Date().getFullYear())
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ event_name: '', course_name: '', year: thisYear, location: '', country: '', source_url: '', email: '', attest: false })
+  const [form, setForm] = useState({ event_name: '', course_name: '', year: thisYear, location: '', country: '', source_url: '', email: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [existingRaceId, setExistingRaceId] = useState(null)
   const [done, setDone] = useState(null)
-  const set = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.type === 'checkbox' ? event.target.checked : event.target.value }))
-  const missing = !form.event_name.trim() ? 'Enter the race name.' : !form.course_name.trim() ? 'Enter the distance name.' : !form.source_url.trim() ? 'Say where the file came from.' : !form.attest ? 'Confirm that this is the official course and may be shared.' : null
+  const set = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }))
+  const missing = !form.event_name.trim() ? 'Enter the race name.' : !form.course_name.trim() ? 'Enter the distance name.' : null
 
   async function submit(event) {
     event.preventDefault()
@@ -249,9 +249,9 @@ function ProposeCourse({ courseFile }) {
           <CountrySelect value={form.country} onChange={(value) => setForm((current) => ({ ...current, country: value }))} className={fieldClass} />
         </label>
         <label className="block text-xs font-semibold text-slate-700 sm:col-span-2">
-          Where the file came from
-          <input type="url" required value={form.source_url} onChange={set('source_url')} className={fieldClass} placeholder="https://www.example-race.com/course" />
-          <span className="mt-1 block text-[11px] font-normal text-slate-500">The organizer's page you downloaded it from. Shown with the course.</span>
+          Where the file came from <span className="font-normal text-slate-500">(optional)</span>
+          <input type="url" value={form.source_url} onChange={set('source_url')} className={fieldClass} placeholder="https://www.example-race.com/course" />
+          <span className="mt-1 block text-[11px] font-normal text-slate-500">The organizer's page you downloaded it from, if you know it. Shown with the course.</span>
         </label>
         <label className="block text-xs font-semibold text-slate-700 sm:col-span-2">
           Your email <span className="font-normal text-slate-500">(optional)</span>
@@ -259,10 +259,6 @@ function ProposeCourse({ courseFile }) {
           <span className="mt-1 block text-[11px] font-normal text-slate-500">Only to tell you when the course is live, or why it was not added. Not shown anywhere.</span>
         </label>
       </div>
-      <label className="mt-4 flex items-start gap-2 text-sm text-slate-700">
-        <input type="checkbox" checked={form.attest} onChange={set('attest')} className="mt-1" />
-        <span>This is the official course of the race as its organizer published it, and it may be shared here for anyone to try a target time on.</span>
-      </label>
       {error && (
         <p className="mt-3 text-sm text-red-600" role="alert">
           {error}
@@ -285,6 +281,7 @@ function ProposeCourse({ courseFile }) {
         </button>
         {!busy && missing && <span className="text-xs text-slate-500">{missing}</span>}
       </div>
+      <p className="mt-3 text-[11px] leading-4 text-slate-500">Propose only the official course of a race, as its organizer published it; it is shared here for anyone to try a target time on.</p>
     </form>
   )
 }
