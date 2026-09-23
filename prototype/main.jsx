@@ -284,8 +284,11 @@ function Footer() {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.3fr)_repeat(4,minmax(0,1fr))] lg:gap-8">
           <div className="min-w-0">
             <Logo href="./" showName={false} />
-            <p className="mt-4 max-w-[34ch] text-[13px] leading-6 text-slate-600">
-              One comparable score for a finish time on any trail course. Open, versioned, and free to use.
+            <p className="mt-4 max-w-[36ch] text-[15px] font-semibold leading-6 text-[#0b1220]">
+              Made by trail runners, for trail runners and the people behind the start line.
+            </p>
+            <p className="mt-2 max-w-[36ch] text-[13px] leading-6 text-slate-600">
+              Open source and community-driven on GitHub: every formula, every line, every decision in the open. Bring your race, your course, or a pull request.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
               <a
@@ -853,7 +856,7 @@ function Leaderboard({ raceId, onBack, query }) {
               // step). It says "scored with OTRI", nothing more; the link goes through /go/badge so the
               // site can count how many people arrive by it.
               <a href="https://otri.run/go/badge" className="mt-3 inline-block" title="Scored with OTRI">
-                <img src="../brand/otri-badge-scored.svg" alt="Scored with OTRI" height="28" className="h-7 w-auto" />
+                <img src="../brand/otri-badge-scored.svg?v=2" alt="Scored with OTRI" height="28" className="h-7 w-auto" />
               </a>
             )}
             </>
