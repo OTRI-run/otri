@@ -211,7 +211,7 @@ export function Welcome({ onSignedIn }) {
             ))}
           </div>
           <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-xs font-semibold text-blue-600">
-            <a className="inline-flex items-center gap-1 no-underline hover:underline" href={`${DOCS}/docs/methodology/0.1.0/HOW-OTRI-SCORES.md`} target="_blank" rel="noreferrer">
+            <a className="inline-flex items-center gap-1 no-underline hover:underline" href={'/how-otri-scores/'} target="_blank" rel="noreferrer">
               How scores are calculated <ArrowUpRight size={12} />
             </a>
             <a className="inline-flex items-center gap-1 no-underline hover:underline" href="/data-policy/" target="_blank" rel="noreferrer">

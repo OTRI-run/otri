@@ -31,7 +31,7 @@ import { distanceUnit, formatDistance, formatElevation, formatPace as formatPace
 //   - V0.8:      one power law, no anchor table (docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md section 6)
 const ANCHOR_1000 = { score: 1000, q: 21.5331347785071 }
 
-const METHODOLOGY_URL = 'https://github.com/OTRI-run/otri/blob/main/docs/methodology/0.1.0/HOW-OTRI-SCORES.md'
+const METHODOLOGY_URL = '/how-otri-scores/'
 
 // Where the slider starts for a freshly chosen course: the finish time that scores this.
 const DEFAULT_TARGET_SCORE = 500
@@ -942,7 +942,7 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
                 <p>
                   A file with a point at least every 30 m scores at High confidence; a heavily simplified file still scores, labelled Low.
                   Uploads are measured and forgotten unless you share the score.{' '}
-                  <a href="https://github.com/OTRI-run/otri/blob/main/docs/WHAT-IS-A-GPX.md" target="_blank" rel="noreferrer" className="font-semibold text-blue-600">
+                  <a href="/what-is-a-gpx/" target="_blank" rel="noreferrer" className="font-semibold text-blue-600">
                     Full guide ↗
                   </a>
                 </p>

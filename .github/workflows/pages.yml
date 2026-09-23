@@ -54,6 +54,9 @@ jobs:
           test -s dist/prototype/organizer/index.html
           test -s dist/prototype/embed/index.html
           test -s dist/privacy/index.html
+          test -s dist/faq/index.html
+          test -s dist/how-otri-scores/index.html
+          test -s dist/sitemap.xml
           echo "Pages artifact looks valid and uses relative asset paths."
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
