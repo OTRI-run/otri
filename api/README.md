@@ -100,7 +100,7 @@ Generated from `api/app.py` (`grep '@app\.' api/app.py`); the interactive refere
 | GET | `/admin/overview` | Platform statistics plus the API's configuration and security posture (no secrets). |
 | GET | `/admin/server` | Host load, memory, disk, services, the watchdog's last check, backup age, firewall and fail2ban, 24-hour usage, TLS expiry. Cached 30 s. |
 | GET | `/admin/traffic?days=30` | Visits, visitors and what they had in common (`api/analytics.py`: no addresses kept, nothing joins one day to the next). |
-| PUT | `/admin/site/maintenance` | Close the site for maintenance with a message, or open it again (`{"on": true\|false, "message": "…"}`). See the operations guide. |
+| POST | `/admin/site/maintenance` | Close the site for maintenance with a message, or open it again (`{"on": true\|false, "message": "…"}`). See the operations guide. |
 | GET | `/admin/events` | Every event with its owner and each race's publish state. |
 | GET | `/admin/reviews?status=open\|all` · POST `/admin/reviews/{race_id}` | Races in the publish review; decide with `{"action": "verify"\|"hold"\|"reject", "note"}` (a rejection needs a note, which the organizer receives). |
 | GET | `/admin/reports?status=open\|all` · POST `/admin/reports/{id}/resolve` · DELETE `/admin/reports/{id}` | Correction and removal requests. |

@@ -1,7 +1,7 @@
 // The site closed for maintenance, and the way past it for the people doing the maintenance.
 //
 // The pages are static files on a CDN, so the switch lives in the API: an admin closes the site
-// from the admin page (PUT /admin/site/maintenance) and every page asks GET /site/status as it
+// from the admin page (POST /admin/site/maintenance) and every page asks GET /site/status as it
 // opens. Closed, it shows this notice instead of itself and asks again every half minute, so it
 // opens on its own when the site is back. Three ways through, so the site can be checked while
 // it is closed: an admin who is signed in (the API says so), anyone who enters the site password
@@ -96,8 +96,13 @@ export default function Maintenance({ children, compact = false }) {
   useEffect(() => {
     let cancelled = false
     let timer = null
+    // The first answer decides what the page shows; a later one, while the visitor is inside,
+    // only adds the banner.
+    let first = true
 
     const check = async () => {
+      const initial = first
+      first = false
       const closed = FORCED ? { on: true, message: '', since: null } : await askStatus()
       if (cancelled) return
       if (!closed || !closed.on) {
@@ -115,7 +120,8 @@ export default function Maintenance({ children, compact = false }) {
         setState('open')
         return
       }
-      setState((current) => (current === 'open' ? 'open' : 'closed'))
+      if (initial) setState('closed')
+      else setState((current) => (current === 'checking' ? 'closed' : current))
     }
 
     // While closed, ask again every half minute; while open, ask again when the tab comes back.

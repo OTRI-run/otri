@@ -3298,7 +3298,7 @@ def site_status(response: Response) -> SiteStatus:
     return SiteStatus(maintenance=_maintenance_state())
 
 
-@app.put("/admin/site/maintenance", response_model=SiteStatus)
+@app.post("/admin/site/maintenance", response_model=SiteStatus)
 def set_maintenance(payload: MaintenanceUpdate, organizer: Organizer = Depends(require_admin)) -> SiteStatus:
     """Close the site for maintenance, with a message in the admin's words, or open it again."""
     if payload.on:
