@@ -88,6 +88,8 @@ from .schemas import (
     PublishRequest,
     RaceReviewOut,
     ReviewAction,
+    CourseProposalDecision,
+    CourseProposalOut,
     MaintenanceState,
     MaintenanceUpdate,
     SiteHit,
@@ -406,6 +408,8 @@ _bearer_scheme = HTTPBearer(auto_error=False)
 _ADMIN_EMAILS = {email.strip().lower() for email in os.environ.get("OTRI_ADMIN_EMAILS", "").split(",") if email.strip()}
 # How long a clean published race waits before it is marked verified on its own (api/screening.py).
 AUTO_VERIFY_HOURS = float(os.environ.get("OTRI_AUTO_VERIFY_HOURS", "24"))
+# How long a visitor's proposed calculator course waits for an admin before it is added on its own.
+COURSE_AUTO_APPROVE_HOURS = float(os.environ.get("OTRI_COURSE_AUTO_APPROVE_HOURS", "72"))
 
 
 def _with_flags(organizer: Organizer, *, check_session: bool = True) -> Organizer:
@@ -1312,7 +1316,7 @@ def get_event(event_id: str, organizer: Organizer | None = Depends(_optional_org
         if not races:
             raise HTTPException(status_code=404, detail=f"event {event_id!r} not found")
     else:
-        db.settle_pending_reviews()
+        _settle_pending()
     counts = db.count_results_by_race()
     return EventDetail(
         event_id=event.event_id,
@@ -1484,7 +1488,7 @@ def list_races(all: bool = False, organizer: Organizer | None = Depends(_optiona
     if all:
         if organizer is None or not organizer.is_admin:
             raise HTTPException(status_code=403, detail="admin access required")
-    db.settle_pending_reviews()
+    _settle_pending()
     counts = db.count_results_by_race()
     return [_race_summary(race, counts.get(race.race_id, 0), viewer=organizer) for race in db.list_races(published_only=not all)]
 
@@ -1493,7 +1497,7 @@ def list_races(all: bool = False, organizer: Organizer | None = Depends(_optiona
 def get_race(race_id: str, organizer: Organizer | None = Depends(_optional_organizer)) -> RaceSummary:
     """A race's summary: for anyone once it is published or listed, before that for its owner and
     admins only (404 to everyone else, as for a race that does not exist)."""
-    db.settle_pending_reviews()
+    _settle_pending()
     race = db.find_race(race_id)
     if race is None or not (_is_public_race(race) or (organizer is not None and (organizer.is_admin or organizer.id == race.organizer_id))):
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
@@ -2302,7 +2306,7 @@ def _unscored_rows(results: list, scoring_version: str) -> list[RunnerScoreOut]:
 
 @app.get("/races/{race_id}/results", response_model=list[RunnerScoreOut])
 def get_race_results(race_id: str, organizer: Organizer | None = Depends(_optional_organizer)) -> list[RunnerScoreOut]:
-    db.settle_pending_reviews()
+    _settle_pending()
     race = _visible_race(race_id, organizer, results=True)
 
     if not db.has_results(race_id):
@@ -3085,7 +3089,7 @@ def _review_out(race: db.Race, organizer_email: str | None, viewer: Organizer) -
 @app.get("/admin/reviews", response_model=list[RaceReviewOut])
 def admin_list_reviews(status: str | None = "open", organizer: Organizer = Depends(require_admin)) -> list[RaceReviewOut]:
     """Races in the publish review: ``open`` (pending and held, the default) or ``all``."""
-    db.settle_pending_reviews()
+    _settle_pending()
     open_only = status not in ("all",)
     return [_review_out(race, email, organizer) for race, email in db.list_reviews(open_only=open_only)]
 
@@ -3328,6 +3332,195 @@ def set_maintenance(payload: MaintenanceUpdate, organizer: Organizer = Depends(r
     else:
         db.set_setting(_MAINTENANCE_KEY, {"on": False, "message": "", "since": None, "by": organizer.email})
     return SiteStatus(maintenance=_maintenance_state())
+
+
+# --- Courses proposed for the calculator --------------------------------------------------
+# A visitor who has uploaded a course to the calculator may propose it for "Pick a race", with the
+# same facts an admin would type. The file is measured and sanitized at once and the proposal
+# waits for an admin, who is emailed; left alone for COURSE_AUTO_APPROVE_HOURS it is added on its
+# own, so a course nobody objects to never waits on a person. A track already in the calculator,
+# or already proposed, is refused with a pointer to it.
+
+
+def _settle_pending() -> None:
+    db.settle_pending_reviews()
+    due = db.due_course_proposals()
+    if not due:
+        return
+    # A course nobody owns is never public, so one added on its own is filed under an admin's
+    # account; with no admin account yet it simply waits.
+    owner = db.first_admin_organizer_id()
+    if owner is None:
+        return
+    for proposal in due:
+        try:
+            _approve_course_proposal(proposal, decided_by="auto", organizer_id=owner)
+        except Exception as error:  # noqa: BLE001 - one bad proposal must not stop the others, or the read
+            print(f"course proposal {proposal.id}: auto-approval failed: {error!r}")
+
+
+def _proposal_out(proposal: db.CourseProposal, *, admin: bool) -> CourseProposalOut:
+    return CourseProposalOut(
+        id=proposal.id,
+        status=proposal.status,
+        event_name=proposal.event_name,
+        course_name=proposal.course_name,
+        edition_year=proposal.edition_year,
+        location=proposal.location,
+        country=proposal.country,
+        source_url=proposal.source_url,
+        submitter_email=proposal.submitter_email if admin else None,
+        distance_km=proposal.distance_km,
+        elevation_gain_m=proposal.elevation_gain_m,
+        measurement_status=(proposal.measurement or {}).get("status"),
+        created_at=proposal.created_at,
+        auto_approve_at=proposal.auto_approve_at,
+        decided_at=proposal.decided_at,
+        decided_by=proposal.decided_by,
+        note=proposal.note,
+        race_id=proposal.race_id,
+    )
+
+
+def _approve_course_proposal(proposal: db.CourseProposal, *, decided_by: str, organizer_id: int | None) -> db.CourseProposal:
+    """Makes the calculator course out of a proposal, exactly as the admin form would, and records
+    the decision. The submitter hears about it if they left an address."""
+    event = db.create_event(
+        proposal.event_name,
+        date(proposal.edition_year, 1, 1) if proposal.edition_year else _today(),
+        organizer_id,
+        location=proposal.location,
+        country=proposal.country,
+        source_url=proposal.source_url,
+    )
+    race = db.create_race(event.event_id, proposal.course_name, proposal.distance_km, proposal.elevation_gain_m)
+    db.attach_gpx(race.race_id, filename=proposal.filename or "course.gpx", content=proposal.gpx_content, distance_km=proposal.distance_km, elevation_gain_m=proposal.elevation_gain_m, measurement=proposal.measurement)
+    db.set_race_calculator_only(race.race_id, True)
+    db.update_calculator_course(
+        race.race_id,
+        event_name=proposal.event_name,
+        course_name=proposal.course_name,
+        location=proposal.location,
+        country=proposal.country,
+        source_url=proposal.source_url,
+        edition_year=proposal.edition_year,
+    )
+    decided = db.decide_course_proposal(proposal.id, status="approved", decided_by=decided_by, note=None, race_id=race.race_id)
+    if decided is None:  # decided by somebody else in between: the course made here would be a double
+        db.delete_event(event.event_id)
+        raise HTTPException(status_code=409, detail="this proposal was decided already")
+    if proposal.submitter_email:
+        _email.send_course_proposal_outcome_email(
+            proposal.submitter_email, course_label=f"{proposal.event_name} · {proposal.course_name}", race_id=race.race_id, approved=True, note=None
+        )
+    return decided
+
+
+@app.post("/calculator-courses/proposals", response_model=CourseProposalOut, status_code=201)
+async def propose_calculator_course(
+    request: Request,
+    file: UploadFile,
+    event_name: str = Form(..., min_length=2, max_length=200),
+    course_name: str = Form(..., min_length=1, max_length=120),
+    source_url: str = Form(..., max_length=500),
+    attest: bool = Form(...),
+    year: int | None = Form(default=None, ge=1900, le=2100),
+    location: str | None = Form(default=None, max_length=200),
+    country: str | None = Form(default=None, max_length=3),
+    email: str | None = Form(default=None, max_length=254),
+) -> CourseProposalOut:
+    """A visitor proposes the course they uploaded for the calculator's "Pick a race": the race's
+    names, the edition, where the file came from, and their word that it is the official course
+    and may be shared. Measured and kept for an admin; added on its own after the waiting time."""
+    enforce_rate_limit(request, max_requests=3, scope="course-proposal")
+    enforce_rate_limit(request, max_requests=10, scope="course-proposal-day", window_seconds=86400)
+    if not attest:
+        raise HTTPException(status_code=422, detail="Confirm that this is the race's official course and that it may be shared")
+    source_url = source_url.strip()
+    if not re.match(r"^https?://", source_url):
+        raise HTTPException(status_code=422, detail="The source link must start with http:// or https://")
+    email = (email or "").strip().lower() or None
+    if email and ("@" not in email or len(email) > 254):
+        raise HTTPException(status_code=422, detail="that does not look like an email address")
+    contents = await file.read(20_000_001)
+    if len(contents) > 20_000_000:
+        raise HTTPException(status_code=413, detail="Upload exceeds 20 MB")
+    temp_path = _save_upload(contents, _safe_suffix(file.filename, ".gpx"))
+    try:
+        points, measurement = await run_in_threadpool(_measure_gpx_path, temp_path, None)
+        features = features_from_measurement(measurement)
+    except (GpxParseError, ValueError, UnicodeError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    finally:
+        _discard_temp(temp_path)
+    stored = _stored_gpx_fields(points, measurement, contents, f"{event_name.strip()} {course_name.strip()}")
+    geometry_hash = stored["measurement"].get("geometry_hash")
+    if geometry_hash:
+        existing = db.find_calculator_course_by_geometry(geometry_hash)
+        if existing is not None:
+            raise HTTPException(
+                status_code=409,
+                detail={"message": f"This course is already in the calculator as {existing.event_name} · {existing.course_name}.", "race_id": existing.race_id},
+            )
+        if db.pending_proposal_with_geometry(geometry_hash) is not None:
+            raise HTTPException(status_code=409, detail={"message": "This course has already been proposed and is waiting for an admin.", "race_id": None})
+    proposal = db.create_course_proposal(
+        event_name=event_name.strip(),
+        course_name=course_name.strip(),
+        edition_year=year,
+        location=(location or "").strip() or None,
+        country=(country or "").strip().upper() or None,
+        source_url=source_url,
+        submitter_email=email,
+        filename=_safe_suffix(file.filename, ".gpx") if file.filename else None,
+        gpx_content=stored["content"],
+        measurement=stored["measurement"],
+        distance_km=features.distance_km,
+        elevation_gain_m=features.elevation_gain_m,
+        auto_approve_at=datetime.now(timezone.utc) + timedelta(hours=COURSE_AUTO_APPROVE_HOURS),
+    )
+    # The proposals are all kept; the emails about them are what is limited (as with reports).
+    notify = not over_limit(None, max_requests=12, scope="proposal-mail", subject="admins", window_seconds=3600)
+    for admin_email in sorted(_ADMIN_EMAILS) if notify else ():
+        _email.send_course_proposal_email(admin_email, proposal_id=proposal.id, course_label=f"{proposal.event_name} · {proposal.course_name}", source_url=source_url, auto_approve_at=proposal.auto_approve_at)
+    return _proposal_out(proposal, admin=False)
+
+
+@app.get("/admin/course-proposals", response_model=list[CourseProposalOut])
+def admin_list_course_proposals(status: str | None = "pending", organizer: Organizer = Depends(require_admin)) -> list[CourseProposalOut]:
+    """Courses visitors proposed: ``pending`` (the default) or ``all``."""
+    _settle_pending()
+    return [_proposal_out(p, admin=True) for p in db.list_course_proposals(None if status in (None, "", "all") else status)]
+
+
+@app.get("/admin/course-proposals/{proposal_id}/gpx")
+def admin_course_proposal_gpx(proposal_id: int, organizer: Organizer = Depends(require_admin)) -> Response:
+    """The proposed track, sanitized, so an admin can look at it on a map before deciding."""
+    proposal = db.find_course_proposal(proposal_id)
+    if proposal is None:
+        raise HTTPException(status_code=404, detail="no proposal with that id")
+    return Response(content=proposal.gpx_content, media_type="application/gpx+xml", headers={"Cache-Control": "no-store"})
+
+
+@app.post("/admin/course-proposals/{proposal_id}", response_model=CourseProposalOut)
+def admin_decide_course_proposal(proposal_id: int, payload: CourseProposalDecision, organizer: Organizer = Depends(require_admin)) -> CourseProposalOut:
+    """Approve (the course is added now) or reject (with a note the submitter receives)."""
+    proposal = db.find_course_proposal(proposal_id)
+    if proposal is None:
+        raise HTTPException(status_code=404, detail="no proposal with that id")
+    if proposal.status != "pending":
+        raise HTTPException(status_code=409, detail=f"this proposal was already {proposal.status}")
+    if payload.action == "approve":
+        return _proposal_out(_approve_course_proposal(proposal, decided_by=organizer.email, organizer_id=organizer.id), admin=True)
+    if payload.action == "reject":
+        note = (payload.note or "").strip() or None
+        decided = db.decide_course_proposal(proposal.id, status="rejected", decided_by=organizer.email, note=note, race_id=None)
+        if decided is None:
+            raise HTTPException(status_code=409, detail="this proposal was decided already")
+        if proposal.submitter_email:
+            _email.send_course_proposal_outcome_email(proposal.submitter_email, course_label=f"{proposal.event_name} · {proposal.course_name}", race_id=None, approved=False, note=note)
+        return _proposal_out(decided, admin=True)
+    raise HTTPException(status_code=422, detail="action must be approve or reject")
 
 
 @app.get("/admin/traffic", response_model=TrafficSummary)

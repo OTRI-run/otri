@@ -416,3 +416,49 @@ def send_google_link_email(to: str, link: str, *, unconfirmed: bool) -> None:
         reason="You received this email because somebody asked to connect a Google account to an OTRI account with this address.",
     )
     _send(to, "Connect your Google account to OTRI", html, text)
+
+
+def send_course_proposal_email(to: str, *, proposal_id: int, course_label: str, source_url: str, auto_approve_at) -> None:
+    """A visitor proposed a course for the calculator; the admins hear at once."""
+    link = f"{APP_BASE_URL}/organizer/#/admin?tab=calculator"
+    when = auto_approve_at.strftime("%Y-%m-%d %H:%M UTC") if auto_approve_at else "later"
+    html, text = _render(
+        preheader=f"Proposed: {course_label}",
+        heading="A visitor proposed a course for the calculator",
+        paragraphs=[
+            f"Course: {course_label}",
+            f"Where the file came from: {source_url}",
+            f"Unless an admin rejects it, it is added to the calculator on its own on {when}.",
+        ],
+        cta=("Open the calculator courses", link),
+        after=["Approve it to add it now, or reject it with a note; the person who proposed it is emailed either way if they left an address."],
+        reason="You received this email because you are an OTRI admin.",
+    )
+    _send(to, f"Proposed course: {course_label}"[:150], html, text)
+
+
+def send_course_proposal_outcome_email(to: str, *, course_label: str, race_id: str | None, approved: bool, note: str | None) -> None:
+    """The person who proposed a course hears whether it is in the calculator."""
+    if approved and race_id:
+        link = f"{SITE_URL}/#calculator?race={quote(race_id)}"
+        html, text = _render(
+            preheader=f"{course_label} is in the calculator",
+            heading="Your course is in the calculator",
+            paragraphs=[f"“{course_label}” is now offered under “Pick a race” in the OTRI calculator. Thank you."],
+            cta=("Open it in the calculator", link),
+            reason="You received this email because you left this address when proposing a course for the OTRI calculator.",
+        )
+        _send(to, f"In the calculator: {course_label}"[:150], html, text)
+    else:
+        html, text = _render(
+            preheader=f"{course_label} was not added",
+            heading="Your course was not added",
+            paragraphs=[
+                f"An admin looked at “{course_label}” and did not add it to the calculator.",
+                f"The note they left: {note or '(no note)'}",
+                "If you think this is wrong, reply to this email.",
+            ],
+            reason="You received this email because you left this address when proposing a course for the OTRI calculator.",
+        )
+        _send(to, f"Not added: {course_label}"[:150], html, text)
+

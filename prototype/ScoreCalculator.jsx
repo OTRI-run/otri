@@ -4,7 +4,12 @@ import { fitFontSize } from '../src/lib/fitText'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUpRight, Check, Copy, GitBranch, Link2, Mountain, RefreshCw, Search, Share2, Upload, Image as ImageIcon, Download } from 'lucide-react'
 import CourseMap from '../src/components/CourseMap'
-import { analyzeGpx, fetchRaceGpxFile, fetchSharedGpxFile, getRace, listRaces, shareGpx, raceGpxDownloadUrl } from './apiClient'
+import { analyzeGpx, fetchRaceGpxFile, fetchSharedGpxFile, getRace, listRaces, proposeCalculatorCourse, shareGpx, raceGpxDownloadUrl } from './apiClient'
+import CountrySelect from '../src/components/CountrySelect'
+import Flag from '../src/components/Flag'
+import RaceNameList, { RACE_NAME_LIST } from '../src/components/RaceNameList'
+import PlaceNameList, { DISTANCE_NAME_LIST, DistanceNameList, PLACE_NAME_LIST } from '../src/components/PlaceNameList'
+import { countryOfPlace } from '../src/lib/placeNames'
 import { ShareTarget } from './SharePanel'
 import NextSteps from './NextSteps'
 import ReportForm from './ReportForm'
@@ -137,6 +142,150 @@ function EditionLabel({ year, large = false }) {
     >
       {year}
     </span>
+  )
+}
+
+// ----------------------------------------------------------------------------- propose a course
+// A visitor who uploaded the official course of a race can put it up for everybody: the same facts
+// an admin would type, their word that it may be shared, and an address to hear back on. The API
+// keeps it for an admin and adds it on its own after the waiting time (api/app.py, course proposals).
+
+const fieldClass = 'mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-[#0b1220] focus:border-blue-500 focus:outline-none'
+
+function ProposeCourse({ courseFile }) {
+  const thisYear = String(new Date().getFullYear())
+  const [open, setOpen] = useState(false)
+  const [form, setForm] = useState({ event_name: '', course_name: '', year: thisYear, location: '', country: '', source_url: '', email: '', attest: false })
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const [existingRaceId, setExistingRaceId] = useState(null)
+  const [done, setDone] = useState(null)
+  const set = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.type === 'checkbox' ? event.target.checked : event.target.value }))
+  const missing = !form.event_name.trim() ? 'Enter the race name.' : !form.course_name.trim() ? 'Enter the distance name.' : !form.source_url.trim() ? 'Say where the file came from.' : !form.attest ? 'Confirm that this is the official course and may be shared.' : null
+
+  async function submit(event) {
+    event.preventDefault()
+    if (missing) return
+    setBusy(true)
+    setError(null)
+    setExistingRaceId(null)
+    try {
+      setDone(await proposeCalculatorCourse({ ...form, file: courseFile }))
+    } catch (err) {
+      setError(err.message)
+      setExistingRaceId(err.raceId ?? null)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const box = 'mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,.04)]'
+
+  if (done) {
+    const when = done.auto_approve_at ? new Date(done.auto_approve_at).toLocaleDateString(undefined, { day: 'numeric', month: 'long' }) : null
+    return (
+      <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5" role="status">
+        <p className="text-sm font-semibold text-[#0b1220]">
+          Thanks. {done.event_name} · {done.course_name} is proposed for the calculator.
+        </p>
+        <p className="mt-1 text-sm leading-6 text-slate-600">
+          An admin checks it{when ? `; unless they object, it is added automatically on ${when}` : ''}.{form.email.trim() ? ` We email ${form.email.trim()} when it is live.` : ''}
+        </p>
+      </div>
+    )
+  }
+
+  if (!open) {
+    return (
+      <div className={`${box} flex flex-wrap items-center justify-between gap-3`}>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-[#0b1220]">Is this the official course of a race?</p>
+          <p className="mt-0.5 text-sm text-slate-600">Add it to the calculator so every runner can try a target time on it. An admin checks it first.</p>
+        </div>
+        <button type="button" onClick={() => setOpen(true)} className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-[13px] font-semibold text-[#0b1220] hover:border-blue-300">
+          <Upload size={14} /> Propose this course
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <form onSubmit={submit} className={box} noValidate>
+      <p className="text-sm font-semibold text-[#0b1220]">Propose this course for the calculator</p>
+      <p className="mt-1 text-sm leading-6 text-slate-600">
+        The file you uploaded, with the race's facts. An admin checks it; unless they object, it is added automatically after three days.
+      </p>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <label className="block text-xs font-semibold text-slate-700">
+          Race name
+          <input required value={form.event_name} onChange={set('event_name')} list={RACE_NAME_LIST} autoComplete="off" className={fieldClass} placeholder="Lavaredo Ultra Trail" />
+          <RaceNameList />
+        </label>
+        <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-3">
+          <label className="block text-xs font-semibold text-slate-700">
+            Distance name
+            <input required value={form.course_name} onChange={set('course_name')} list={DISTANCE_NAME_LIST} autoComplete="off" className={fieldClass} placeholder="120K" />
+            <DistanceNameList />
+          </label>
+          <label className="block text-xs font-semibold text-slate-700">
+            Year
+            <input type="number" inputMode="numeric" min="1900" max="2100" step="1" value={form.year} onChange={set('year')} className={fieldClass} />
+          </label>
+        </div>
+        <label className="block text-xs font-semibold text-slate-700">
+          Location <span className="font-normal text-slate-500">(optional)</span>
+          <input
+            value={form.location}
+            onChange={(event) => setForm((current) => ({ ...current, location: event.target.value, country: current.country || countryOfPlace(event.target.value) || '' }))}
+            list={PLACE_NAME_LIST}
+            autoComplete="off"
+            className={fieldClass}
+            placeholder="Cortina d’Ampezzo"
+          />
+          <PlaceNameList />
+        </label>
+        <label className="block text-xs font-semibold text-slate-700">
+          Country <span className="font-normal text-slate-500">(optional)</span>
+          <CountrySelect value={form.country} onChange={(value) => setForm((current) => ({ ...current, country: value }))} className={fieldClass} />
+        </label>
+        <label className="block text-xs font-semibold text-slate-700 sm:col-span-2">
+          Where the file came from
+          <input type="url" required value={form.source_url} onChange={set('source_url')} className={fieldClass} placeholder="https://www.example-race.com/course" />
+          <span className="mt-1 block text-[11px] font-normal text-slate-500">The organizer's page you downloaded it from. Shown with the course.</span>
+        </label>
+        <label className="block text-xs font-semibold text-slate-700 sm:col-span-2">
+          Your email <span className="font-normal text-slate-500">(optional)</span>
+          <input type="email" value={form.email} onChange={set('email')} className={fieldClass} placeholder="you@example.com" />
+          <span className="mt-1 block text-[11px] font-normal text-slate-500">Only to tell you when the course is live, or why it was not added. Not shown anywhere.</span>
+        </label>
+      </div>
+      <label className="mt-4 flex items-start gap-2 text-sm text-slate-700">
+        <input type="checkbox" checked={form.attest} onChange={set('attest')} className="mt-1" />
+        <span>This is the official course of the race as its organizer published it, and it may be shared here for anyone to try a target time on.</span>
+      </label>
+      {error && (
+        <p className="mt-3 text-sm text-red-600" role="alert">
+          {error}
+          {existingRaceId && (
+            <>
+              {' '}
+              <a href={`#calculator?race=${encodeURIComponent(existingRaceId)}`} className="font-semibold text-blue-700 underline">
+                Open it
+              </a>
+            </>
+          )}
+        </p>
+      )}
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button type="submit" disabled={busy || Boolean(missing)} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-blue-700 px-4 text-[13px] font-semibold text-white hover:bg-blue-800 disabled:opacity-60">
+          {busy ? 'Sending…' : 'Propose this course'}
+        </button>
+        <button type="button" onClick={() => setOpen(false)} className="text-[13px] font-semibold text-slate-500 hover:text-[#0b1220]">
+          Cancel
+        </button>
+        {!busy && missing && <span className="text-xs text-slate-500">{missing}</span>}
+      </div>
+    </form>
   )
 }
 
@@ -638,7 +787,7 @@ function NoCourseHelp({ name, onClose }) {
   const body = [
     'Hello,',
     `I would like to see ${name} on OTRI (https://otri.run), an open and free score for trail races. Runners can then work out what a finish time on your course is worth, and you can score and publish your results.`,
-    'Listing the course takes a few minutes and needs no approval: https://otri.run/organizer/',
+    'Listing the course takes a few minutes: https://otri.run/organizer/',
     'Thank you!',
   ].join('\n\n')
   const mail = `mailto:?subject=${encodeURIComponent(`${name} on OTRI`)}&body=${encodeURIComponent(body)}`
@@ -659,7 +808,7 @@ function NoCourseHelp({ name, onClose }) {
         </label>
       </div>
       <p className="mt-3 text-xs leading-5 text-slate-500">
-        Know the organizer? Listing a race on OTRI is free and needs no approval.{' '}
+        Know the organizer? Listing a race on OTRI is free.{' '}
         <a href={mail} className="font-semibold text-blue-600 no-underline hover:underline">
           Write to them
         </a>
@@ -811,8 +960,11 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
                       </span>
                       {race.calculator_only && race.edition_year && <EditionLabel year={race.edition_year} />}
                     </span>
-                    <span className="mt-0.5 block font-mono text-[12px] text-slate-500">
-                      {race.calculator_only ? [race.event_location, race.event_country].filter(Boolean).join(', ') || 'course' : race.event_date} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
+                    <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 font-mono text-[12px] text-slate-500">
+                      {race.event_country && <Flag code={race.event_country} />}
+                      <span>
+                        {race.calculator_only ? race.event_location || 'course' : race.event_date} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
+                      </span>
                     </span>
                   </span>
                   <ArrowUpRight size={14} className="shrink-0 text-slate-400" />
@@ -884,7 +1036,8 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
 
 // ----------------------------------------------------------------------------- loaded course
 
-function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCourse, shareId }) {
+function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCourse, shareId, courseFile, embedded }) {
+  const ownUpload = !courseLabel.verified && courseLabel.meta !== 'Shared course'
   const units = useUnits()
   const tooSparse = measurement?.quality_flags?.includes('sparse_geometry_median_over_30m')
   const stats = [
@@ -952,6 +1105,8 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
             <CourseMap gpxText={gpxText} measurement={measurement} className="p-3" />
           </div>
         )}
+
+        {ownUpload && !embedded && courseFile && <ProposeCourse key={courseFile.name + courseFile.size} courseFile={courseFile} />}
 
         {courseLabel.meta === 'Shared course' && shareId && (
           <ReportForm kind="shared_course" subjectId={shareId} subjectLabel={courseLabel.name} prompt="Is this course file yours, or wrong?" />
@@ -1353,7 +1508,7 @@ export default function ScoreCalculator({ embedded = false }) {
   const course = (
     <div id="calculator-course" className="scroll-mt-[68px]">
       {hasCourse ? (
-        <CourseDetails gpxText={gpxText} measurement={measurement} features={features} courseLabel={courseLabel} onChangeCourse={startOver} shareId={shareId} />
+        <CourseDetails gpxText={gpxText} measurement={measurement} features={features} courseLabel={courseLabel} onChangeCourse={startOver} shareId={shareId} courseFile={courseFile} embedded={embedded} />
       ) : loadingCourse ? (
         <CourseLoading name={loadingName} />
       ) : (
@@ -1396,6 +1551,7 @@ export default function ScoreCalculator({ embedded = false }) {
                     <br />
                     <em className="otri-gradient-text not-italic bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent"><HeadlineName name={courseLabel.name} /></em>
                   </h1>
+                  {courseLabel.year && <EditionLabel year={courseLabel.year} large />}
                 </div>
                 <p className="mt-4 max-w-[620px] text-[15px] leading-7 text-slate-600">
                   It starts at the time that scores {DEFAULT_TARGET_SCORE} here. Set your own target: type it, drag the slider, or pick
