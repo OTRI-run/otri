@@ -202,9 +202,9 @@ export default function Home() {
           <div className="min-w-0">
             <Eyebrow className="text-blue-700">TRAIL SCORES. OPEN TO EVERYONE.</Eyebrow>
             <h1 className="mt-4 text-[clamp(38px,5.6vw,68px)] font-bold leading-[1.04] tracking-[-.06em] text-[#0b1220]">
-              Your race. Explained scores.
+              Know your score.
               <br />
-              <span className="bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text pb-1 text-transparent">Open for everyone to see.</span>
+              <span className="bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text pb-1 text-transparent">Before you race.</span>
             </h1>
             <p className="mt-6 max-w-[58ch] text-[16px] leading-7 text-slate-700 sm:text-[17px]">
               Turn your course GPX and race results into explained trail scores. Try scoring without an account, then choose whether to publish a
