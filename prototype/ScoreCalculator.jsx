@@ -6,6 +6,7 @@ import { ArrowUpRight, Check, Copy, GitBranch, Link2, Mountain, RefreshCw, Searc
 import CourseMap from '../src/components/CourseMap'
 import { analyzeGpx, fetchRaceGpxFile, fetchSharedGpxFile, getRace, listRaces, proposeCalculatorCourse, shareGpx, raceGpxDownloadUrl } from './apiClient'
 import CountrySelect from '../src/components/CountrySelect'
+import Flag from '../src/components/Flag'
 import RaceNameList, { RACE_NAME_LIST } from '../src/components/RaceNameList'
 import PlaceNameList, { DISTANCE_NAME_LIST, DistanceNameList, PLACE_NAME_LIST } from '../src/components/PlaceNameList'
 import { countryOfPlace } from '../src/lib/placeNames'
@@ -959,8 +960,11 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
                       </span>
                       {race.calculator_only && race.edition_year && <EditionLabel year={race.edition_year} />}
                     </span>
-                    <span className="mt-0.5 block font-mono text-[12px] text-slate-500">
-                      {race.calculator_only ? [race.event_location, race.event_country].filter(Boolean).join(', ') || 'course' : race.event_date} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
+                    <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 font-mono text-[12px] text-slate-500">
+                      {race.event_country && <Flag code={race.event_country} />}
+                      <span>
+                        {race.calculator_only ? race.event_location || 'course' : race.event_date} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
+                      </span>
                     </span>
                   </span>
                   <ArrowUpRight size={14} className="shrink-0 text-slate-400" />
