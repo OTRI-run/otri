@@ -212,6 +212,8 @@ ALTER TABLE races ADD COLUMN IF NOT EXISTS listed_at TIMESTAMPTZ;
 -- A course an admin put up for the calculator's "Pick a race" only: public for trying a target time,
 -- never shown as a race on the races page (OTRI lists no race on anyone's behalf).
 ALTER TABLE races ADD COLUMN IF NOT EXISTS calculator_only BOOLEAN NOT NULL DEFAULT FALSE;
+-- The edition a calculator course's file is from: courses change between years.
+ALTER TABLE races ADD COLUMN IF NOT EXISTS edition_year INTEGER;
 ALTER TABLE races ADD COLUMN IF NOT EXISTS course_permission TEXT;
 CREATE INDEX IF NOT EXISTS races_listed_at_idx ON races (listed_at) WHERE listed_at IS NOT NULL;
 CREATE TABLE IF NOT EXISTS score_requests (
@@ -336,6 +338,8 @@ class Race:
     # Offered in the calculator's "Pick a race" only; not a race on the races page.
     calculator_only: bool = False
     event_source_url: str | None = None
+    # The edition (year) a calculator course's file is from; None when not given.
+    edition_year: int | None = None
     # The publish review (api/screening.py): 'none' until published, then 'pending' (public, verifies
     # itself at auto_verify_at), 'verified', 'held' (not public, an admin decides) or 'rejected'.
     review_status: str = "none"
@@ -547,7 +551,7 @@ _RACE_JOIN_SELECT = """
            r.measurement->>'status' AS measurement_status,
            (r.measurement->'snapshot'->>'loss_m')::double precision AS elevation_loss_m,
            r.listed_at, r.course_permission, NULLIF(e.website, '') AS event_website,
-           r.calculator_only, NULLIF(e.source_url, '') AS event_source_url,
+           r.calculator_only, NULLIF(e.source_url, '') AS event_source_url, r.edition_year,
            r.published_at, COALESCE(o.is_demo, FALSE) AS is_demo, r.created_at,
            r.review_status, r.review_flags, r.auto_verify_at, r.reviewed_at, r.reviewed_by, r.review_note,
            r.publish_attested_at, r.results_fingerprint,
@@ -908,11 +912,14 @@ def set_race_calculator_only(race_id: str, calculator_only: bool) -> Race:
     return race
 
 
-def update_calculator_course(race_id: str, *, event_name: str, course_name: str, location: str | None, country: str | None, source_url: str | None) -> Race:
-    """Set a calculator course's names and where it is; None clears a field (unlike update_event,
-    which keeps what it is not given)."""
+def update_calculator_course(race_id: str, *, event_name: str, course_name: str, location: str | None, country: str | None, source_url: str | None, edition_year: int | None = None) -> Race:
+    """Set a calculator course's names, where it is and which edition it is; None clears a field
+    (unlike update_event, which keeps what it is not given)."""
     with get_connection() as connection:
-        row = connection.execute("UPDATE races SET course_name = %s, updated_at = now() WHERE race_id = %s AND calculator_only RETURNING event_id", (course_name, race_id)).fetchone()
+        row = connection.execute(
+            "UPDATE races SET course_name = %s, edition_year = %s, updated_at = now() WHERE race_id = %s AND calculator_only RETURNING event_id",
+            (course_name, edition_year, race_id),
+        ).fetchone()
         if row is None:
             raise NotFoundError(f"calculator course {race_id!r} not found")
         connection.execute(

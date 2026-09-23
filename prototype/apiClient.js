@@ -474,7 +474,7 @@ export function listCalculatorCourses(token) {
   return request('/admin/calculator-courses', { headers: authHeaders(token) })
 }
 
-export function addCalculatorCourse({ file, event_name, course_name, location, country, source_url }, token) {
+export function addCalculatorCourse({ file, event_name, course_name, location, country, source_url, year }, token) {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('event_name', event_name.trim())
@@ -482,11 +482,12 @@ export function addCalculatorCourse({ file, event_name, course_name, location, c
   if (location?.trim()) formData.append('location', location.trim())
   if (country?.trim()) formData.append('country', country.trim())
   if (source_url?.trim()) formData.append('source_url', source_url.trim())
+  if (String(year ?? '').trim()) formData.append('year', String(year).trim())
   return request('/admin/calculator-courses', { method: 'POST', headers: authHeaders(token), body: formData })
 }
 
 /** Change a calculator course; `file` is optional and replaces its GPX. Empty fields are cleared. */
-export function updateCalculatorCourse(raceId, { file, event_name, course_name, location, country, source_url }, token) {
+export function updateCalculatorCourse(raceId, { file, event_name, course_name, location, country, source_url, year }, token) {
   const formData = new FormData()
   if (file) formData.append('file', file)
   formData.append('event_name', event_name.trim())
@@ -494,6 +495,8 @@ export function updateCalculatorCourse(raceId, { file, event_name, course_name, 
   formData.append('location', (location ?? '').trim())
   formData.append('country', (country ?? '').trim())
   formData.append('source_url', (source_url ?? '').trim())
+  // An empty year clears it: the field is left out, and the API reads that as none.
+  if (String(year ?? '').trim()) formData.append('year', String(year).trim())
   return request(`/admin/calculator-courses/${encodeURIComponent(raceId)}`, { method: 'PATCH', headers: authHeaders(token), body: formData })
 }
 

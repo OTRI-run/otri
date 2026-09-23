@@ -1231,6 +1231,7 @@ def _race_summary(race: db.Race, finisher_count: int | None = None, *, viewer: O
         is_listed=race.listed_at is not None,
         calculator_only=race.calculator_only,
         source_url=race.event_source_url if race.calculator_only else None,
+        edition_year=race.edition_year if race.calculator_only else None,
     )
 
 
@@ -1964,9 +1965,11 @@ async def admin_add_calculator_course(
     location: str | None = Form(default=None, max_length=200),
     country: str | None = Form(default=None, max_length=3),
     source_url: str | None = Form(default=None, max_length=500),
+    year: int | None = Form(default=None, ge=1900, le=2100),
     organizer: Organizer = Depends(require_admin),
 ) -> RaceSummary:
-    """Measure a GPX and put it up for the calculator under a race name. Admin only."""
+    """Measure a GPX and put it up for the calculator under a race name, with the edition (year)
+    the file is from. Admin only."""
     if source_url and not re.match(r"^https?://", source_url.strip()):
         raise HTTPException(status_code=422, detail="The source link must start with http:// or https://")
     contents = await file.read(20_000_001)
@@ -1997,7 +2000,18 @@ async def admin_add_calculator_course(
         elevation_gain_m=features.elevation_gain_m,
         **_stored_gpx_fields(points, measurement, contents, f"{event_name.strip()} {course_name.strip()}"),
     )
-    return _race_summary(db.set_race_calculator_only(race.race_id, True))
+    course = db.set_race_calculator_only(race.race_id, True)
+    if year is not None:
+        course = db.update_calculator_course(
+            race.race_id,
+            event_name=event_name.strip(),
+            course_name=course_name.strip(),
+            location=(location or "").strip() or None,
+            country=(country or "").strip().upper() or None,
+            source_url=(source_url or "").strip() or None,
+            edition_year=year,
+        )
+    return _race_summary(course)
 
 
 @app.patch("/admin/calculator-courses/{race_id}", response_model=RaceSummary)
@@ -2008,11 +2022,12 @@ async def admin_edit_calculator_course(
     location: str | None = Form(default=None, max_length=200),
     country: str | None = Form(default=None, max_length=3),
     source_url: str | None = Form(default=None, max_length=500),
+    year: int | None = Form(default=None, ge=1900, le=2100),
     file: UploadFile | None = None,
     organizer: Organizer = Depends(require_admin),
 ) -> RaceSummary:
-    """Change a calculator course's names, place or source link; with a file, replace its course
-    too (measured again). A field left empty is cleared. Admin only."""
+    """Change a calculator course's names, place, source link or edition; with a file, replace its
+    course too (measured again). A field left empty is cleared. Admin only."""
     race = db.find_race(race_id)
     if race is None or not race.calculator_only:
         raise HTTPException(status_code=404, detail="no calculator course with that id")
@@ -2045,6 +2060,7 @@ async def admin_edit_calculator_course(
         location=(location or "").strip() or None,
         country=(country or "").strip().upper() or None,
         source_url=(source_url or "").strip() or None,
+        edition_year=year,
     )
     return _race_summary(updated)
 

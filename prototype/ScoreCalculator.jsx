@@ -797,7 +797,7 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
                       {race.event_name} · {race.course_name}
                     </span>
                     <span className="mt-0.5 block font-mono text-[12px] text-slate-500">
-                      {race.calculator_only ? [race.event_location, race.event_country].filter(Boolean).join(', ') || 'course' : race.event_date} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
+                      {race.calculator_only ? [[race.event_location, race.event_country].filter(Boolean).join(', '), race.edition_year].filter(Boolean).join(' · ') || 'course' : race.event_date} · {formatDistance(race.distance_km, units)} · {formatElevation(race.elevation_gain_m, units, { sign: '+' })}
                     </span>
                   </span>
                   <ArrowUpRight size={14} className="shrink-0 text-slate-400" />
@@ -1273,7 +1273,7 @@ export default function ScoreCalculator({ embedded = false }) {
   }
 
   function raceLabel(race) {
-    return { name: `${race.event_name} · ${race.course_name}`, meta: race.calculator_only ? [race.event_location, race.event_country].filter(Boolean).join(', ') : race.event_date, verified: true, raceId: race.race_id, sourceUrl: race.source_url ?? null }
+    return { name: `${race.event_name} · ${race.course_name}`, meta: race.calculator_only ? [[race.event_location, race.event_country].filter(Boolean).join(', '), race.edition_year].filter(Boolean).join(' · ') : race.event_date, verified: true, raceId: race.race_id, sourceUrl: race.source_url ?? null }
   }
 
   function chooseExistingRace(race) {
