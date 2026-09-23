@@ -644,7 +644,7 @@ function ResultsTable({ results, resultsError, view, onView }) {
           </thead>
           <tbody>
             {visible.map((row) => (
-              <tr key={`${row.rank}-${row.bib_number ?? row.family_name}-${row.first_name}`} className={`border-b border-slate-100 last:border-0 ${row.status !== 'finisher' ? 'bg-slate-50/60 text-slate-500 hover:bg-blue-50/50' : podiumRowClass(row.rank) || 'even:bg-slate-50/70 hover:bg-blue-50/50'}`}>
+              <tr key={`${row.rank}-${row.bib_number ?? row.family_name}-${row.first_name}`} className={`border-b border-slate-100 last:border-b-0 ${row.status !== 'finisher' ? 'bg-slate-50/60 text-slate-500 hover:bg-blue-50/50' : podiumRowClass(row.rank) || 'even:bg-slate-50/70 hover:bg-blue-50/50'}`}>
                 <td className="px-4 py-3 font-mono text-xs text-slate-500"><RankBadge rank={row.rank} /></td>
                 <td className="px-4 py-3 font-medium text-[#0b1220]">
                   {row.runner_id ? (
