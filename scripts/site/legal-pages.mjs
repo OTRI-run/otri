@@ -6,12 +6,13 @@
 // them. Each page is rendered at build time, and in the dev and preview servers on every request;
 // the Markdown and the data stay the single source.
 import { execSync } from 'node:child_process'
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, posix, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { marked } from 'marked'
 import { FAQ } from '../../src/data/faq.js'
 import { NOT_MEASURED, WHAT_WE_SCORE } from '../../src/data/whatWeScore.js'
+import { prerenderPublic } from './prerender.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const SITE = 'https://otri.run'
@@ -264,13 +265,15 @@ export function renderFaqPage(root) {
 /** Backwards-compatible name for the legal pages. */
 export const renderLegalPage = (page, root) => renderMarkdownPage(page, root)
 
-/** The sitemap: the real addresses, with the day each one's source last changed. */
-export function renderSitemap(root, { commitDate = '' } = {}) {
+/** The sitemap: the real addresses, with the day each one's source last changed. `extra` are the
+ *  race and runner pages of a build (scripts/site/prerender.mjs). */
+export function renderSitemap(root, { commitDate = '', extra = [] } = {}) {
   const day = (iso) => (iso || commitDate || new Date().toISOString()).slice(0, 10)
   const urls = [
     { loc: `${SITE}/`, lastmod: day(commitDate) },
     { loc: `${SITE}/${FAQ_PAGE.path}/`, lastmod: day(lastChanged('src/data/faq.js', root)) },
     ...MARKDOWN_PAGES.map((page) => ({ loc: `${SITE}/${page.path}/`, lastmod: day(lastChanged(page.file, root)) })),
+    ...extra.map((entry) => ({ loc: entry.loc, lastmod: day(entry.lastmod) })),
   ]
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -283,12 +286,22 @@ export const ALL_PAGES = [FAQ_PAGE, ...MARKDOWN_PAGES]
 
 export default function legalPages({ commitDate = '' } = {}) {
   let root = process.cwd()
+  let building = false
+  let outDir = 'dist'
   const render = (page) => (page === FAQ_PAGE ? renderFaqPage(root) : renderMarkdownPage(page, root))
-  function serve(req, res, next) {
+  function serve(req, res, next, { redirectEntities = true } = {}) {
     const url = (req.url || '').split('?')[0]
     if (url === '/sitemap.xml') {
       res.setHeader('Content-Type', 'application/xml; charset=utf-8')
       return res.end(renderSitemap(root, { commitDate }))
+    }
+    // The race and runner pages exist as files only in a build; in the dev server the app's own
+    // route is the same page.
+    const entity = redirectEntities && url.match(/^\/(races|runners)\/([^/]+)\/?(?:index\.html)?$/)
+    if (entity) {
+      res.statusCode = 302
+      res.setHeader('Location', `/#${entity[1]}/${entity[2]}`)
+      return res.end()
     }
     const page = ALL_PAGES.find((p) => url === `/${p.path}` || url === `/${p.path}/` || url === `/${p.path}/index.html`)
     if (!page) return next()
@@ -299,18 +312,33 @@ export default function legalPages({ commitDate = '' } = {}) {
     name: 'otri-static-pages',
     configResolved(config) {
       root = config.root
+      building = config.command === 'build'
+      outDir = config.build.outDir
     },
     configureServer(server) {
       server.middlewares.use(serve)
     },
     configurePreviewServer(server) {
-      server.middlewares.use(serve)
+      // The preview serves a build, where the race and runner pages are real files.
+      server.middlewares.use((req, res, next) => serve(req, res, next, { redirectEntities: false }))
     },
     generateBundle() {
       for (const page of ALL_PAGES) {
         this.emitFile({ type: 'asset', fileName: `${page.path}/index.html`, source: render(page) })
       }
-      this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: renderSitemap(root, { commitDate }) })
+    },
+    // With the bundle written, the race and runner pages are rendered from the API around the
+    // app's own script and stylesheet tags, and the sitemap lists everything.
+    async closeBundle() {
+      if (!building) return
+      const dist = resolve(root, outDir)
+      const index = readFileSync(resolve(dist, 'index.html'), 'utf8')
+      const assetTags = [...index.matchAll(/<(?:script[^>]*type="module"[^>]*|link[^>]*rel="(?:stylesheet|modulepreload)"[^>]*)>(?:<\/script>)?/g)]
+        .map((match) => match[0].replaceAll('"./assets/', '"/assets/'))
+        .join('\n')
+      const apiBase = (process.env.VITE_OTRI_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '')
+      const extra = await prerenderPublic({ apiBase, distDir: dist, assetTags })
+      writeFileSync(resolve(dist, 'sitemap.xml'), renderSitemap(root, { commitDate, extra }))
     },
   }
 }

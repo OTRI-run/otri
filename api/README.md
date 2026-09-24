@@ -133,6 +133,7 @@ Read once at start (`api/app.py`, `api/auth.py`, `api/db.py`, `api/email.py`, `a
 | `RESEND_API_KEY` | [Resend](https://resend.com) key for account emails. Unset, emails are logged, not sent. | unset |
 | `OTRI_EMAIL_FROM` · `OTRI_EMAIL_REPLY_TO` | Sender and reply-to of outgoing email. | `OTRI <noreply@otri.run>` · none |
 | `OTRI_GOOGLE_CLIENT_ID` · `OTRI_GOOGLE_CLIENT_SECRET` | "Continue with Google". Either empty: the buttons do not appear and the routes answer 404. | unset |
+| `OTRI_GITHUB_DISPATCH_TOKEN` · `OTRI_GITHUB_REPO` | Ask GitHub for a site build when a race is published, unpublished or listed, so its page in search is fresh (a fine-grained token with Contents: read and write). Unset, the daily schedule catches up. | unset · `OTRI-run/otri` |
 | `OTRI_AUTO_VERIFY_HOURS` | How long a clean published race waits before it is marked verified on its own. | 24 |
 | `OTRI_COURSE_AUTO_APPROVE_HOURS` | How long a visitor's proposed calculator course waits for an admin before it is added on its own. | 72 |
 | `OTRI_RANKED_RUNNER_CEILING` | How many runners may be ranked in one `/runners` request (every runner with a published result is ranked, so the table really is by index). | 20000 |

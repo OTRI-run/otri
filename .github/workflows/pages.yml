@@ -8,6 +8,14 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+  # The race and runner pages are built from the API (scripts/site/prerender.mjs), so a race
+  # published since the last build has no page until the next one: once a day at the latest,
+  # and at once when the API asks (repository_dispatch, sent on publish, unpublish and listing;
+  # api/app.py, OTRI_GITHUB_DISPATCH_TOKEN).
+  schedule:
+    - cron: '17 3 * * *'
+  repository_dispatch:
+    types: [site-rebuild]
 
 permissions:
   contents: read

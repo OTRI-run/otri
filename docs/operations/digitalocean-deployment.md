@@ -234,3 +234,13 @@ The site is static files on GitHub Pages, so the switch that closes it lives in 
 - **When the API itself is down** (the switch above cannot reach anyone): on GitHub, set the repository variable `VITE_OTRI_MAINTENANCE` to `1` (Settings → Secrets and variables → Actions → Variables) and run the "Deploy OTRI website" workflow. Every page is then closed whatever the API says. Delete the variable and run the workflow again to open it.
 
 The setting is one row in `site_settings` (`POST /admin/site/maintenance`; `api/README.md`). A closed site still answers the three public scoring calls.
+
+## 11. Race pages in search
+
+The site's race and runner pages (`/races/<id>/`, `/runners/<id>/`) are written at build time from this API (`scripts/site/prerender.mjs`), so search engines can read them. A race published after the last build has no page until the next one. Two things keep them fresh:
+
+- The Pages workflow runs once a day on a schedule.
+- The API asks GitHub for a build the moment a race is published, unpublished or listed. For that, make a fine-grained personal access token on GitHub (Settings → Developer settings → Personal access tokens → Fine-grained) for the `OTRI-run/otri` repository with **Contents: read and write**, and put it in the droplet's `.env` as `OTRI_GITHUB_DISPATCH_TOKEN` (the deploy script keeps it across deploys). Requests are coalesced to one build per ten minutes.
+
+A rebuild takes a few minutes; until it lands, the app's own `#races/<id>` page is live at once, as it always was.
+
