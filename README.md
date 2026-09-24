@@ -55,7 +55,6 @@ curl -X POST https://api.otri.run/score -F "results=@results.csv" -F "gpx=@cours
 ├── docs/                            # methodology, governance, operations, product direction, user guides
 ├── scripts/                         # deploy scripts, seeding, migrations, brand kit builds, diagnostics
 ├── tests/                           # the pytest suite (unit/) and its fixtures
-├── media/brand/                     # canonical brand assets
 └── .github/                         # CI: the site build and deploy, the Python tests, Dependabot, templates
 ```
 

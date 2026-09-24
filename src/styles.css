@@ -1,15 +1,5 @@
 @import 'tailwindcss';
 
-/* The wordmark's letters. One face, four glyphs, so the logo on the site and the logo in the
-   brand files are the same shapes. Archivo Black, SIL Open Font License 1.1. */
-@font-face {
-  font-family: 'OTRI Wordmark';
-  src: url('./fonts/archivo-black-latin.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-  unicode-range: U+006F, U+0074, U+0072, U+0131;
-}
 
 /* The header is sticky and 68px tall, so an anchor that scrolls to the top of a section puts that
    section underneath it -- the eyebrow and the top of the heading are covered. This also applies

@@ -15,5 +15,5 @@ for name, ink, accent in [('color','#17202c','#3576f6'),('black','#111111','#111
     (out / f'otri-run-{name}.svg').write_text(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{domain["viewBox"]}" role="img" aria-label="otri.run"><title>otri.run — Uphill / Black electric</title>{body}</svg>', encoding='utf8')
 with zipfile.ZipFile(out / 'otri-uphill-kit.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
     for path in sorted(out.iterdir()):
-        if path.suffix in ['.svg', '.txt']:
+        if path.suffix in ['.svg', '.txt', '.png']:
             archive.write(path, path.name)
