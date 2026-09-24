@@ -324,7 +324,7 @@ function Spinner({ className = '' }) {
 // The dark "index engine" panel from the landing page, now showing a live number. It is rendered
 // in every state — empty, calculating, live — so the hero never jumps when a course arrives.
 
-function ScorePanel({ estimate, scoring, targetSeconds, features }) {
+function ScorePanel({ estimate, scoring, targetSeconds, features, onChangeCourse }) {
   const units = useUnits()
   const b = estimate?.breakdown
   const pct = b?.fraction_of_ceiling != null ? Math.round(b.fraction_of_ceiling * 100) : null
@@ -356,14 +356,26 @@ function ScorePanel({ estimate, scoring, targetSeconds, features }) {
     >
       {/* Only while the score is being worked out. A permanent "Live" badge told the reader
           nothing they could act on and competed with the number underneath it. */}
-      <div className="flex min-h-[22px] items-center justify-between text-[11px] text-slate-400">
+      <div className="flex min-h-[22px] items-center justify-between gap-2 text-[11px] text-slate-400">
         <span className="font-semibold uppercase tracking-[.08em]">OTRI score</span>
-        {scoring && (
-          <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-2 py-0.5 font-medium text-slate-200">
-            <i className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(96,165,250,.9)]" />
-            Calculating
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {scoring && (
+            <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-2 py-0.5 font-medium text-slate-200">
+              <i className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(96,165,250,.9)]" />
+              Calculating
+            </span>
+          )}
+          {onChangeCourse && (
+            <button
+              type="button"
+              onClick={onChangeCourse}
+              title="Choose another race course or upload a GPX"
+              className="inline-flex items-center gap-1.5 rounded-md border border-white/20 bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-slate-200 transition-colors hover:border-white/40 hover:bg-white/20 hover:text-white"
+            >
+              <RefreshCw size={11} /> Change course
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="border-b border-slate-700/70 py-8 text-center">
@@ -1638,7 +1650,13 @@ export default function ScoreCalculator({ embedded = false }) {
           </div>
           {/* Loading a course counts as calculating: the panel then shows its spinner instead of
               inviting the visitor to pick a course they have already picked. */}
-          <ScorePanel estimate={estimate} scoring={scoring || loadingCourse} targetSeconds={targetSeconds} features={features} />
+          <ScorePanel
+            estimate={estimate}
+            scoring={scoring || loadingCourse}
+            targetSeconds={targetSeconds}
+            features={features}
+            onChangeCourse={hasCourse ? startOver : null}
+          />
         </div>
       </section>
 
