@@ -154,7 +154,6 @@ const fieldClass = 'mt-1 w-full rounded-lg border border-slate-300 bg-white px-3
 
 function ProposeCourse({ courseFile }) {
   const thisYear = String(new Date().getFullYear())
-  const [open, setOpen] = useState(false)
   const [form, setForm] = useState({ event_name: '', course_name: '', year: thisYear, location: '', country: '', source_url: '', email: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
@@ -195,25 +194,11 @@ function ProposeCourse({ courseFile }) {
     )
   }
 
-  if (!open) {
-    return (
-      <div className={`${box} flex flex-wrap items-center justify-between gap-3`}>
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#0b1220]">Is this the official course of a race?</p>
-          <p className="mt-0.5 text-sm text-slate-600">Add it to the calculator so every runner can try a target time on it. An admin checks it first.</p>
-        </div>
-        <button type="button" onClick={() => setOpen(true)} className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-[13px] font-semibold text-[#0b1220] hover:border-blue-300">
-          <Upload size={14} /> Propose this course
-        </button>
-      </div>
-    )
-  }
-
   return (
     <form onSubmit={submit} className={box} noValidate>
-      <p className="text-sm font-semibold text-[#0b1220]">Propose this course for the calculator</p>
+      <p className="text-sm font-semibold text-[#0b1220]">Is this the official course of a race? Propose it for the calculator</p>
       <p className="mt-1 text-sm leading-6 text-slate-600">
-        The file you uploaded, with the race's facts. An admin checks it; unless they object, it is added automatically after three days.
+        The file you uploaded, with the race's facts, so every runner can try a target time on it. An admin checks it; unless they object, it is added automatically after three days.
       </p>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <label className="block text-xs font-semibold text-slate-700">
@@ -275,9 +260,6 @@ function ProposeCourse({ courseFile }) {
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button type="submit" disabled={busy || Boolean(missing)} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-blue-700 px-4 text-[13px] font-semibold text-white hover:bg-blue-800 disabled:opacity-60">
           {busy ? 'Sending…' : 'Propose this course'}
-        </button>
-        <button type="button" onClick={() => setOpen(false)} className="text-[13px] font-semibold text-slate-500 hover:text-[#0b1220]">
-          Cancel
         </button>
         {!busy && missing && <span className="text-xs text-slate-500">{missing}</span>}
       </div>
