@@ -69,6 +69,8 @@ function document({ title, description, canonical, jsonLd, body, assetTags }) {
 <title>${escape(title)}</title>
 <meta name="description" content="${escape(description)}" />
 <link rel="canonical" href="${canonical}" />
+<link rel="alternate" type="text/plain" href="${SITE}/llms.txt" title="LLM context" />
+<link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="OTRI Search" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="OTRI" />
 <meta property="og:title" content="${escape(title)}" />

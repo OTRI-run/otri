@@ -3,3 +3,6 @@ Allow: /
 Disallow: /organizer/
 Disallow: /embed/
 Sitemap: https://otri.run/sitemap.xml
+
+# Machine-readable context for AI assistants and LLM search agents (https://llmstxt.org/)
+# llms.txt: https://otri.run/llms.txt
