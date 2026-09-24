@@ -8,7 +8,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "indexnow": "node scripts/site/indexnow.mjs",
+    "indexnow:all": "node scripts/site/indexnow.mjs --all-endpoints --archive"
   },
   "dependencies": {
     "@sentry/browser": "^10.75.0",

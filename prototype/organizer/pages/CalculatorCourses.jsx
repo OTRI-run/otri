@@ -4,6 +4,7 @@ import { addCalculatorCourse, decideCourseProposal, deleteCalculatorCourse, fetc
 import CourseMap from '../../../src/components/CourseMap'
 import { revealElement } from '../../../src/lib/comfort'
 import CountrySelect from '../../../src/components/CountrySelect'
+import YearSelect from '../../../src/components/YearSelect'
 import RaceNameList, { RACE_NAME_LIST } from '../../../src/components/RaceNameList'
 import PlaceNameList, { DISTANCE_NAME_LIST, DistanceNameList, PLACE_NAME_LIST } from '../../../src/components/PlaceNameList'
 import { countryOfPlace } from '../../../src/lib/placeNames'
@@ -134,7 +135,7 @@ export default function CalculatorCourses({ session }) {
               <DistanceNameList />
             </Field>
             <Field label="Year" htmlFor="cc-year" hint="The edition this file is from.">
-              <input id="cc-year" type="number" inputMode="numeric" min="1900" max="2100" step="1" value={form.year} onChange={set('year')} className={inputClass} placeholder={thisYear} />
+              <YearSelect id="cc-year" value={form.year} onChange={(year) => setForm((current) => ({ ...current, year }))} className={inputClass} />
             </Field>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">

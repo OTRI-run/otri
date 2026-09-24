@@ -215,6 +215,8 @@ function shell({ page, body, changed, lead = '', jsonLd, cta = '' }) {
 <title>${escape(page.title)} · OTRI</title>
 <meta name="description" content="${escape(page.description)}" />
 <link rel="canonical" href="${SITE}/${page.path}/" />
+<link rel="alternate" type="text/plain" href="${SITE}/llms.txt" title="LLM context" />
+<link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="OTRI Search" />
 <meta property="og:type" content="article" />
 <meta property="og:site_name" content="OTRI" />
 <meta property="og:title" content="${escape(page.title)} · OTRI" />
