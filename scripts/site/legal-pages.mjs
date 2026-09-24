@@ -297,10 +297,10 @@ export default function legalPages({ commitDate = '' } = {}) {
     }
     // The race and runner pages exist as files only in a build; in the dev server the app's own
     // route is the same page.
-    const entity = redirectEntities && url.match(/^\/(races|runners)\/([^/]+)\/?(?:index\.html)?$/)
+    const entity = redirectEntities && url.match(/^\/(races|runners|courses)\/([^/]+)\/?(?:index\.html)?$/)
     if (entity) {
       res.statusCode = 302
-      res.setHeader('Location', `/#${entity[1]}/${entity[2]}`)
+      res.setHeader('Location', entity[1] === 'courses' ? `/#calculator?race=${entity[2]}` : `/#${entity[1]}/${entity[2]}`)
       return res.end()
     }
     const page = ALL_PAGES.find((p) => url === `/${p.path}` || url === `/${p.path}/` || url === `/${p.path}/index.html`)
