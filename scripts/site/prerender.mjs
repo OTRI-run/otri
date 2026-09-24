@@ -1,4 +1,5 @@
-// Real pages for the races and runners the app shows under #races/<id> and #runners/<id>.
+// Real pages for the races, runners and calculator courses the app shows under #races/<id>,
+// #runners/<id> and #calculator?race=<id>.
 //
 // A hash route is one address to a search engine, so at build time every published race and
 // every runner with a published result gets a page of its own: /races/<id>/ and /runners/<id>/,
@@ -52,6 +53,8 @@ const CSS = `
 .otri-static td.n{font-variant-numeric:tabular-nums;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 .otri-static td.score{font-weight:700;color:#1d4ed8}
 .otri-static .note{margin:20px 0 0;font-size:13px;line-height:1.6;color:#64748b}
+.otri-static .profile{display:block;width:100%;height:auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin:0 0 8px}
+.otri-static .axis{display:flex;justify-content:space-between;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;color:#64748b;margin:0 0 24px}
 .otri-static footer{margin:48px auto 0;width:min(1120px,calc(100% - 32px));padding:22px 0;border-top:1px solid #e2e8f0;font-size:13px;color:#64748b}
 `
 
@@ -162,6 +165,56 @@ ${results.length ? `<table><thead><tr><th>Date</th><th>Race</th><th>Rank</th><th
   return document({ title: `${title} · OTRI`, description, canonical, jsonLd, body, assetTags })
 }
 
+/** The course's elevation profile as a drawing, from the stored measurement. */
+function profileSvg(measurement) {
+  const points = (measurement?.profile ?? []).filter((p) => Number.isFinite(p.distanceKm) && Number.isFinite(p.elevation))
+  if (points.length < 2) return ''
+  const W = 640
+  const H = 160
+  const pad = { top: 10, bottom: 6, side: 4 }
+  const maxD = points[points.length - 1].distanceKm || 1
+  let minE = Infinity
+  let maxE = -Infinity
+  for (const p of points) {
+    if (p.elevation < minE) minE = p.elevation
+    if (p.elevation > maxE) maxE = p.elevation
+  }
+  const x = (d) => pad.side + (d / maxD) * (W - pad.side * 2)
+  const y = (e) => pad.top + (1 - (e - minE) / (maxE - minE || 1)) * (H - pad.top - pad.bottom)
+  // At most two points per pixel column: a 100,000-point file draws as fast as a small one.
+  const step = Math.max(1, Math.floor(points.length / W / 2))
+  const line = points.filter((_, i) => i % step === 0 || i === points.length - 1).map((p) => `${x(p.distanceKm).toFixed(1)},${y(p.elevation).toFixed(1)}`).join(' ')
+  const area = `${x(0).toFixed(1)},${H} ${line} ${x(maxD).toFixed(1)},${H}`
+  return `<svg class="profile" viewBox="0 0 ${W} ${H}" role="img" aria-label="Elevation profile: ${km(maxD)}, from ${metres(minE)} to ${metres(maxE)}"><polygon points="${area}" fill="#dbeafe"/><polyline points="${line}" fill="none" stroke="#1d4ed8" stroke-width="2" stroke-linejoin="round"/></svg>
+<p class="axis"><span>0 km · ${metres(points[0].elevation)}</span><span>high point ${metres(maxE)}</span><span>${km(maxD)}</span></p>`
+}
+
+export function renderCoursePage(race, measurement, assetTags) {
+  const place = [race.event_location, race.event_country].filter(Boolean).join(', ')
+  const edition = race.edition_year ? ` ${race.edition_year}` : ''
+  const title = `${raceLabel(race)}${edition} course: ${km(race.distance_km)}, +${metres(race.elevation_gain_m)}`
+  const description = `The ${raceLabel(race)}${edition} course${place ? ` in ${place}` : ''} on OTRI: ${km(race.distance_km)} with ${metres(race.elevation_gain_m)} of climb${race.elevation_loss_m != null ? ` and ${metres(race.elevation_loss_m)} of descent` : ''}, measured from the official course file. Type a target finish time and see the OTRI score it would earn, with every step of the calculation explained.`
+  const canonical = `${SITE}/courses/${encodeURIComponent(race.race_id)}/`
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: title,
+    url: canonical,
+    description,
+    about: { '@type': 'SportsEvent', name: raceLabel(race), sport: 'Trail running', location: place ? { '@type': 'Place', name: place } : undefined, url: race.source_url || undefined },
+  }
+  const facts = [place, race.edition_year ? `${race.edition_year} edition` : null, `${km(race.distance_km)} · +${metres(race.elevation_gain_m)}${race.elevation_loss_m != null ? ` · −${metres(race.elevation_loss_m)}` : ''}`, race.measurement_status ? `measured at ${race.measurement_status === 'ok' ? 'High' : 'Low'} confidence` : null].filter(Boolean).map(escape).join(' · ')
+  const body = `
+<p class="eyebrow">Course in the calculator</p>
+<h1>${escape(raceLabel(race))}</h1>
+<p class="facts">${facts}${race.source_url ? `<br>Course file from <a href="${escape(race.source_url)}" rel="nofollow">${escape(race.source_url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0])}</a>` : ''}</p>
+<a class="open" href="/#calculator?race=${encodeURIComponent(race.race_id)}">Try a target time on this course</a>
+${profileSvg(measurement)}
+<p class="note">Pick a finish time and OTRI says what it would score, from the course and the time alone: the course is measured every 50 m and costed by gradient, and your speed over that flat-equivalent distance is compared with the fastest anyone has sustained over that much ground. <a href="/how-otri-scores/">How a score is made</a>. This is a course for trying a target time, not a race page; results are never expected here.</p>
+`
+  return document({ title: `${title} · OTRI`, description, canonical, jsonLd, body, assetTags })
+}
+
 async function getJson(base, path) {
   const response = await fetch(`${base}${path}`, { headers: { Accept: 'application/json' } })
   if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`)
@@ -183,6 +236,7 @@ export async function prerenderPublic({ apiBase, distDir, assetTags, log = conso
     return entries
   }
   const racePages = races.filter((race) => !race.calculator_only && (race.is_published || race.is_listed))
+  const coursePages = races.filter((race) => race.calculator_only && race.has_gpx)
   for (const race of racePages) {
     let results = []
     if (race.is_published) {
@@ -196,6 +250,18 @@ export async function prerenderPublic({ apiBase, distDir, assetTags, log = conso
     mkdirSync(dir, { recursive: true })
     writeFileSync(join(dir, 'index.html'), renderRacePage(race, results, assetTags))
     entries.push({ loc: `${SITE}/races/${encodeURIComponent(race.race_id)}/`, lastmod: String(race.published_at || race.event_date || '').slice(0, 10) })
+  }
+  for (const course of coursePages) {
+    let measurement = null
+    try {
+      measurement = await getJson(apiBase, `/races/${encodeURIComponent(course.race_id)}/measurement`)
+    } catch (error) {
+      log.warn(`prerender: course ${course.race_id}: measurement unavailable (${error.message}); page without the profile`)
+    }
+    const dir = join(distDir, 'courses', course.race_id)
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, 'index.html'), renderCoursePage(course, measurement, assetTags))
+    entries.push({ loc: `${SITE}/courses/${encodeURIComponent(course.race_id)}/`, lastmod: String(course.published_at || course.event_date || '').slice(0, 10) })
   }
   let runners = []
   try {
@@ -216,6 +282,6 @@ export async function prerenderPublic({ apiBase, distDir, assetTags, log = conso
       log.warn(`prerender: runner ${summary.runner_id}: ${error.message}`)
     }
   }
-  log.info(`prerender: ${racePages.length} race page${racePages.length === 1 ? '' : 's'}, ${runnerPages} runner page${runnerPages === 1 ? '' : 's'} from ${apiBase}`)
+  log.info(`prerender: ${racePages.length} race page${racePages.length === 1 ? '' : 's'}, ${coursePages.length} course page${coursePages.length === 1 ? '' : 's'}, ${runnerPages} runner page${runnerPages === 1 ? '' : 's'} from ${apiBase}`)
   return entries
 }
