@@ -244,3 +244,9 @@ The site's race and runner pages (`/races/<id>/`, `/runners/<id>/`) are written 
 
 A rebuild takes a few minutes; until it lands, the app's own `#races/<id>` page is live at once, as it always was.
 
+## 12. Search engines
+
+What is automatic: every deploy ends by pushing the sitemap's addresses to the search engines that take IndexNow (Bing and the engines built on it, Yandex, Naver, Seznam) with the key published at `https://otri.run/39ab71f432335e9f52c801e0382195f1.txt` (`scripts/site/indexnow.mjs`); `robots.txt` names the sitemap; `llms.txt` at the root describes the site for AI crawlers and assistants; every page carries a canonical address and structured data.
+
+What is not, and is done once by hand: verify `otri.run` in Google Search Console and submit `https://otri.run/sitemap.xml` there (Google does not take IndexNow); verify it in Bing Webmaster Tools, which offers to import the Google property in one click. Wikis and directories are for people: Wikipedia removes self-written entries, and a bot filling in third-party forms gets the domain blacklisted.
+

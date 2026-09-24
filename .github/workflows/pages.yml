@@ -80,3 +80,14 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+      # With the site live, every address in its sitemap is pushed to the search engines that
+      # take IndexNow (Bing, DuckDuckGo, Yahoo, Ecosia, Yandex, Naver, Seznam), so a new race
+      # page is picked up in hours. The key is public by design: the engines check it against the
+      # file of the same name at the site's root (public/<key>.txt). Google reads the sitemap
+      # through Search Console instead. A hiccup here never undoes a deploy.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Tell search engines which addresses changed (IndexNow)
+        continue-on-error: true
+        env:
+          INDEXNOW_KEY: 39ab71f432335e9f52c801e0382195f1
+        run: node scripts/site/indexnow.mjs

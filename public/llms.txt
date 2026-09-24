@@ -1,0 +1,36 @@
+# OTRI, the Open Trail Running Index
+
+> An open, free scoring tool for trail running: a race's course file (GPX) and its results file in, an explained, reproducible OTRI score for every finisher out. Anyone can score a race without an account; organizers can publish a race page; runners can try a target time on a course in the calculator. The methodology and the code are public (MIT), the model is versioned, and every score explains itself down to the maths.
+
+OTRI is independent and not affiliated with any commercial ranking organization. It is a calculator, not an approval body: it does not rank races, approve organizers or keep a catalogue of the world's races.
+
+## Pages
+
+- [Home](https://otri.run/): what OTRI does, with a real example race scored by the live API.
+- [Score calculator](https://otri.run/#calculator): pick a course or upload a GPX, type a target finish time, see the score and how it was worked out.
+- [Score my race](https://otri.run/#score): a course file plus a results file, every finisher scored, nothing stored.
+- [Scored races](https://otri.run/#races): race pages organizers published, each also at https://otri.run/races/<id>/.
+- [Runners](https://otri.run/#runners): runner profiles with the runner index, each also at https://otri.run/runners/<id>/.
+- [FAQ](https://otri.run/faq/): what a score means, which races can be scored, courses and GPX files, the runner index, publishing.
+- [How a score is made](https://otri.run/how-otri-scores/): the model in plain language, every constant and its source, what the model does not see.
+- [What is a GPX file?](https://otri.run/what-is-a-gpx/) and [Result files](https://otri.run/result-files/): what to bring.
+- [API and embed](https://otri.run/#api): three public calls, no key needed, and an embeddable calculator.
+
+## The model, in one paragraph
+
+A score is computed from the course and the finish time alone, never from who else raced. The course is measured every 50 m and each piece is costed by its gradient (Minetti's energy-cost model), giving a flat-equivalent distance; sustained steep ground and altitude add a terrain factor. The runner's speed over that flat-equivalent distance is compared with the fastest a human has sustained over the same amount of ground, a curve through the 5000 m, marathon and 24-hour records, so 1000 is record-run level for that course size and is a reference line, not a maximum. Score = 1000 × (share of the ceiling rate)^0.85. Same course, same time, same model version: same score.
+
+## API
+
+- Base: https://api.otri.run
+- `POST /score`: results file (CSV, TSV or XLSX) plus course file (GPX), JSON or CSV back, nothing stored.
+- `POST /gpx/analyze`: one course measured, and with `finish_time_seconds` one time scored with its full breakdown.
+- `GET /scoring/models`: the scoring versions.
+- Reference: https://api.otri.run/docs
+
+## Source and documents
+
+- Code and methodology: https://github.com/OTRI-run/otri
+- Model specification: https://github.com/OTRI-run/otri/blob/main/docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md
+- Privacy: https://otri.run/privacy/ · Terms: https://otri.run/terms/ · Data policy: https://otri.run/data-policy/
+- Contact: hello@otri.run
