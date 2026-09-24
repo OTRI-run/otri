@@ -28,6 +28,9 @@ from datetime import date, datetime, timedelta, timezone
 import re
 import sys
 import tempfile
+import threading
+import time
+import urllib.request
 import unicodedata
 from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
@@ -395,6 +398,72 @@ def health(request: Request, response: Response) -> dict:
         payload["checks"] = checks
     return payload
 
+
+
+# --- Asking GitHub for a site build ---------------------------------------------------------
+# The site is static and its race and runner pages are built from this API (scripts/site/
+# prerender.mjs), so when what is public changes the API asks GitHub to build the site again:
+# a repository_dispatch the Pages workflow listens for. It needs a fine-grained token with
+# "Contents: read and write" on the repository in OTRI_GITHUB_DISPATCH_TOKEN; without one
+# nothing is sent and the workflow's daily schedule catches up. Requests are coalesced: one build
+# per cooldown, and a change inside the cooldown is sent when it ends, so the last change always
+# reaches a build.
+_GITHUB_REPO = os.environ.get("OTRI_GITHUB_REPO", "OTRI-run/otri")
+_GITHUB_DISPATCH_TOKEN = os.environ.get("OTRI_GITHUB_DISPATCH_TOKEN", "").strip()
+_REBUILD_COOLDOWN_SECONDS = float(os.environ.get("OTRI_SITE_REBUILD_COOLDOWN", "600"))
+_REBUILD_SETTLE_SECONDS = 5.0  # after the change is committed, before the build reads it
+_rebuild_lock = threading.Lock()
+_rebuild_last = 0.0
+_rebuild_pending = False
+
+
+def request_site_rebuild(reason: str) -> bool:
+    """Something public changed: ask for a site build, coalesced. Returns whether one is on its way."""
+    global _rebuild_last, _rebuild_pending
+    if not _GITHUB_DISPATCH_TOKEN:
+        return False
+    with _rebuild_lock:
+        now = time.monotonic()
+        wait = _REBUILD_COOLDOWN_SECONDS - (now - _rebuild_last)
+        if wait <= 0:
+            _rebuild_last = now
+            delay = _REBUILD_SETTLE_SECONDS
+        elif _rebuild_pending:
+            return True
+        else:
+            _rebuild_pending = True
+            delay = wait + _REBUILD_SETTLE_SECONDS
+    timer = threading.Timer(delay, _send_site_rebuild, args=(reason,))
+    timer.daemon = True
+    timer.start()
+    return True
+
+
+def _send_site_rebuild(reason: str) -> bool:
+    """The request itself: POST /repos/{repo}/dispatches. Best effort, like every email here."""
+    global _rebuild_last, _rebuild_pending
+    with _rebuild_lock:
+        _rebuild_pending = False
+        _rebuild_last = time.monotonic()
+    body = json.dumps({"event_type": "site-rebuild", "client_payload": {"reason": reason[:100]}}).encode("utf-8")
+    request = urllib.request.Request(
+        f"https://api.github.com/repos/{_GITHUB_REPO}/dispatches",
+        data=body,
+        method="POST",
+        headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {_GITHUB_DISPATCH_TOKEN}",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "Content-Type": "application/json",
+            "User-Agent": "otri-api",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response:  # noqa: S310 - a fixed https host
+            return 200 <= response.status < 300
+    except Exception as error:  # noqa: BLE001 - a build not asked for is a build the schedule makes
+        print(f"site rebuild: dispatch failed: {error!r}")
+        return False
 
 _bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -1514,6 +1583,7 @@ def publish_race(race_id: str, payload: PublishRequest | None = None, organizer:
     admin objects first; a race with a strong sign of being invented or copied is held, not public,
     with the reasons in the answer, and an admin decides. The admins hear about every publish.
     """
+    request_site_rebuild("publish")
     race = db.find_race(race_id)
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
@@ -1653,6 +1723,7 @@ def _tell_admins_about_publish(race: db.Race, organizer_email: str, finisher_cou
 @app.delete("/races/{race_id}/publish", response_model=RaceSummary)
 def unpublish_race(race_id: str, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
     """Hide the race again. Owner or admin."""
+    request_site_rebuild("unpublish")
     race = db.find_race(race_id)
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
@@ -1675,6 +1746,7 @@ def unpublish_race(race_id: str, organizer: Organizer = Depends(require_organize
 @app.post("/races/{race_id}/listing", response_model=RaceSummary)
 def list_race(race_id: str, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
     """Show this race publicly before it has results. Owner or admin, with a confirmed email address."""
+    request_site_rebuild("listing")
     race = db.find_race(race_id)
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
@@ -1685,6 +1757,7 @@ def list_race(race_id: str, organizer: Organizer = Depends(require_organizer)) -
 
 @app.delete("/races/{race_id}/listing", response_model=RaceSummary)
 def unlist_race(race_id: str, organizer: Organizer = Depends(require_organizer)) -> RaceSummary:
+    request_site_rebuild("unlisting")
     race = db.find_race(race_id)
     if race is None:
         raise HTTPException(status_code=404, detail=f"race {race_id!r} not found")
@@ -3102,6 +3175,7 @@ def admin_review_race(race_id: str, payload: ReviewAction, organizer: Organizer 
     the site until a decision; ``reject`` takes it off with a note the organizer receives. Verifying
     says only that an admin saw nothing wrong: OTRI approves nothing and issues no certificate.
     """
+    request_site_rebuild("review")
     race = db.find_race(race_id)
     if race is None or race.review_status == "none" and race.published_at is None:
         raise HTTPException(status_code=404, detail="no race in review with that id")
@@ -3556,6 +3630,7 @@ def admin_delete_runner(runner_id: str, organizer: Organizer = Depends(require_a
     races are unpublished rather than left advertising results that are gone, and they are named
     here so the admin knows what else changed.
     """
+    request_site_rebuild("runner removed")
     removed, unpublished = db.delete_runner(runner_id)
     if removed == 0 and db.find_runner(runner_id) is None:
         raise HTTPException(status_code=404, detail="no runner with that id")

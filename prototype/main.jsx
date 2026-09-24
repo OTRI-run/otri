@@ -1197,6 +1197,12 @@ function redirectAuthLinks() {
 }
 redirectAuthLinks()
 
+// A prerendered page (/races/<id>/ or /runners/<id>/, written at build time by
+// scripts/site/prerender.mjs for search engines) loads this same app. The app knows the route as
+// a hash, so the path becomes one before anything renders and every link from here on is the usual.
+const prerendered = window.location.pathname.match(/^\/(races|runners)\/([^/]+)\/?(?:index\.html)?$/)
+if (prerendered && !window.location.hash) window.history.replaceState(null, '', `/#${prerendered[1]}/${decodeURIComponent(prerendered[2])}`)
+
 function App() {
   const route = useRoute()
   // Race and runner pages set a more specific title once their data has loaded.
