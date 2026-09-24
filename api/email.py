@@ -30,7 +30,8 @@ SITE_URL = os.environ.get("OTRI_SITE_URL", "https://otri.run")
 # No logo image. The header is the wordmark as text, which every client renders: most block remote
 # images until the reader allows them, so the mark was a blank box on first open, and a remote
 # image is also what tells a sender the message was opened. public/email/otri-mark.png stays in
-# place, unreferenced, so the images in mail already delivered do not turn into broken ones.
+# place, unreferenced and redrawn with the current mark (scripts/build_icons.mjs), so the images in
+# mail already delivered do not turn into broken ones.
 
 if RESEND_API_KEY:
     resend.api_key = RESEND_API_KEY

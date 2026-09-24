@@ -1,4 +1,7 @@
-"""Builds the logo files of the media page (public/brand/*.svg) from the site's own lockup.
+"""Builds the "Scored with OTRI" badge files (public/brand/otri-badge-scored*.svg).
+
+The logo files themselves come from src/brand/uphill.json (scripts/build_uphill_kit.py) and the
+icons from scripts/build_icons.mjs; this script is what is left of the previous kit's generator.
 
 On the site the wordmark is live text, so that it stays selectable and scales with the page. In a
 file that is useless, because the reader may not have the face. Here the same letters are drawn as
@@ -16,9 +19,9 @@ The wordmark is the word and nothing else. Only two things are drawn: the summit
 for the tittle of the i, and the arrow that follows the word. The i is written with a dotless ı
 (U+0131) so the summit has the place to itself.
 
-Usage:  python scripts/build_brand_kit.py
+Usage:  python scripts/build_badge.py
 Needs fonttools and brotli (pip install fonttools brotli). The PNGs and the zip are made from
-these SVGs by scripts/build_brand_png.mjs, which needs Chrome.
+these SVGs where a PNG is needed (scripts/build_icons.mjs shows how, with Chrome).
 """
 
 from __future__ import annotations
@@ -207,28 +210,10 @@ def main() -> None:
     mono = Face(MONO_FONT)
     OUT.mkdir(parents=True, exist_ok=True)
 
-    build_full(word, mono, "otri-logo.svg", INK, BLUE, "#d3deeb", "#6b7d96", None)
-    build_full(word, mono, "otri-logo-on-dark.svg", WHITE, BLUE, "#33415c", "#94a3b8", None)
-    build_full(word, mono, "otri-logo-white.svg", WHITE, WHITE, "#ffffff59", "#ffffffb3", None)
-    build_full(word, mono, "otri-logo-black.svg", INK, INK, "#17202c40", INK, None)
-
-    build_compact(word, "otri-logo-compact.svg", INK, BLUE, None)
-    build_compact(word, "otri-logo-compact-on-dark.svg", WHITE, BLUE, None)
-    build_compact(word, "otri-logo-compact-white.svg", WHITE, WHITE, None)
-    build_compact(word, "otri-logo-compact-black.svg", INK, INK, None)
-
-    build_mark(OUT / "otri-mark.svg", INK, BLUE, None)
-    build_mark(OUT / "otri-mark-on-dark.svg", WHITE, BLUE, None)
-    build_mark(OUT / "otri-mark-white.svg", WHITE, WHITE, None)
-    build_mark(OUT / "otri-mark-black.svg", INK, INK, None)
-
     build_badge(word, mono, "otri-badge-scored.svg", ground=WHITE, stroke="#d3deeb", caption="#4b5a6e", letters=INK, accent=BLUE)
     build_badge(word, mono, "otri-badge-scored-dark.svg", ground=INK, stroke="#33415c", caption="#94a3b8", letters=WHITE, accent=BLUE)
 
-    build_favicon(ROOT / "public" / "favicon.svg")
-
-    written = sorted(OUT.glob("otri-logo*.svg")) + sorted(OUT.glob("otri-mark*.svg")) + sorted(OUT.glob("otri-badge*.svg"))
-    for path in written + [ROOT / "public" / "favicon.svg"]:
+    for path in sorted(OUT.glob("otri-badge*.svg")):
         if path.suffix == ".svg":
             print(f"{path.name:34} {path.stat().st_size:6} bytes")
 
