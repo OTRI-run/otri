@@ -6,6 +6,7 @@ import { ArrowUpRight, Check, Copy, GitBranch, Link2, Mountain, RefreshCw, Searc
 import CourseMap from '../src/components/CourseMap'
 import { analyzeGpx, fetchRaceGpxFile, fetchSharedGpxFile, getRace, listRaces, proposeCalculatorCourse, shareGpx, raceGpxDownloadUrl } from './apiClient'
 import CountrySelect from '../src/components/CountrySelect'
+import YearSelect from '../src/components/YearSelect'
 import Flag from '../src/components/Flag'
 import RaceNameList, { RACE_NAME_LIST } from '../src/components/RaceNameList'
 import PlaceNameList, { DISTANCE_NAME_LIST, DistanceNameList, PLACE_NAME_LIST } from '../src/components/PlaceNameList'
@@ -214,7 +215,7 @@ function ProposeCourse({ courseFile }) {
           </label>
           <label className="block text-xs font-semibold text-slate-700">
             Year
-            <input type="number" inputMode="numeric" min="1900" max="2100" step="1" value={form.year} onChange={set('year')} className={fieldClass} />
+            <YearSelect value={form.year} onChange={(year) => setForm((current) => ({ ...current, year }))} className={fieldClass} />
           </label>
         </div>
         <label className="block text-xs font-semibold text-slate-700">
