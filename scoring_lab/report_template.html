@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OTRI Scoring Lab</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.10);
+  --wash: rgba(11, 11, 11, 0.04);
+  --steep: rgba(235, 104, 52, 0.13);
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
+  --up-1: #f6c9c8; --up-2: #ee9594; --up-3: #e34948; --up-4: #b3302f;
+  --down-1: #b7d3f6; --down-2: #6da7ec; --down-3: #2a78d6; --down-4: #184f95;
+  --flat: #c3c2b7;
+  --good: #006300; --bad: #d03b3b;
+  --accent: #2a78d6;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10); --wash: rgba(255, 255, 255, 0.05);
+    --steep: rgba(217, 89, 38, 0.18);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+    --up-1: #5a2524; --up-2: #963837; --up-3: #d04b4a; --up-4: #ef8a89;
+    --down-1: #173a66; --down-2: #1c5cab; --down-3: #3987e5; --down-4: #86b6ef;
+    --flat: #52514e; --good: #0ca30c; --bad: #e66767; --accent: #3987e5;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255, 255, 255, 0.10); --wash: rgba(255, 255, 255, 0.05);
+  --steep: rgba(217, 89, 38, 0.18);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  --up-1: #5a2524; --up-2: #963837; --up-3: #d04b4a; --up-4: #ef8a89;
+  --down-1: #173a66; --down-2: #1c5cab; --down-3: #3987e5; --down-4: #86b6ef;
+  --flat: #52514e; --good: #0ca30c; --bad: #e66767; --accent: #3987e5;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1240px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+h2 { font-size: 16px; margin: 0 0 12px; }
+h3 { font-size: 13px; margin: 0 0 8px; color: var(--ink-2); font-weight: 600; }
+a { color: var(--accent); }
+.meta { color: var(--ink-2); font-size: 12.5px; }
+.meta code { font-size: 12px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+section { margin-top: 20px; }
+.controls { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center;
+  padding: 10px 0; background: var(--page); border-bottom: 1px solid var(--border); margin-top: 16px; }
+.controls label { display: flex; gap: 6px; align-items: center; color: var(--ink-2); font-size: 12.5px; }
+select, input[type="search"], input[type="text"], button {
+  font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 5px 9px; }
+button { cursor: pointer; }
+button:hover { background: var(--wash); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border: 1px solid var(--border); border-radius: 999px;
+  cursor: pointer; font-size: 12.5px; color: var(--ink-2); user-select: none; }
+.chip[aria-pressed="true"] { color: var(--ink); background: var(--wash); border-color: var(--axis); }
+.chip[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
+.key { width: 14px; height: 2px; border-radius: 1px; display: inline-block; }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.tile .v { font-size: 24px; font-weight: 600; }
+.tile .l { color: var(--ink-2); font-size: 12.5px; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+th, td { padding: 6px 8px; border-bottom: 1px solid var(--grid); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+th { color: var(--ink-2); font-weight: 600; cursor: pointer; user-select: none; position: sticky; top: 0; background: var(--surface); }
+th:first-child, td:first-child { text-align: left; }
+th[aria-sort]::after { content: " ▾"; color: var(--muted); }
+th[aria-sort="ascending"]::after { content: " ▴"; }
+tbody tr:hover { background: var(--wash); }
+td.name { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+td.name a { color: var(--ink); text-decoration: none; }
+td.name a:hover { text-decoration: underline; }
+.badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11.5px; border: 1px solid var(--border); color: var(--ink-2); }
+.badge.high::before { content: "✓ "; color: var(--good); }
+.badge.low::before { content: "! "; color: var(--bad); font-weight: 700; }
+.delta.up { color: var(--good); } .delta.down { color: var(--bad); } .delta { font-size: 11.5px; margin-left: 4px; }
+.course { margin-top: 16px; scroll-margin-top: 70px; }
+.course-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+.course-head h2 { margin: 0; }
+.facts { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--ink-2); font-size: 12.5px; margin-bottom: 12px; }
+.facts b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
+.chart { width: 100%; min-height: 40px; }
+.chart svg { display: block; overflow: visible; }
+.chart text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart .ink2 { fill: var(--ink-2); }
+.chart .lbl { fill: var(--ink); font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ink-2); margin: 4px 0 6px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.try { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 10px 0 0; font-size: 12.5px; }
+.try input { width: 100px; }
+.try .out { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.try .out b { font-size: 15px; }
+.ladder td, .ladder th { padding: 4px 8px; }
+details { margin-top: 10px; font-size: 12.5px; color: var(--ink-2); }
+details summary { cursor: pointer; }
+details li { margin: 3px 0; word-break: break-word; }
+.error { color: var(--bad); }
+.empty { color: var(--ink-2); padding: 24px; text-align: center; }
+#tip { position: fixed; pointer-events: none; z-index: 20; background: var(--surface); color: var(--ink); border: 1px solid var(--border);
+  border-radius: 8px; padding: 7px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .12); display: none; max-width: 320px; }
+#tip .t { color: var(--ink-2); margin-bottom: 4px; }
+#tip .r { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+#tip .r b { font-variant-numeric: tabular-nums; }
+#tip .r span.n { color: var(--ink-2); }
+.theme { margin-left: auto; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>OTRI Scoring Lab</h1>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <div class="controls" role="region" aria-label="Filters">
+    <label>Model <select id="primary"></select></label>
+    <label>Compare <span class="chips" id="compare"></span></label>
+    <label><input type="search" id="query" placeholder="Filter courses" aria-label="Filter courses"></label>
+    <label><input type="checkbox" id="onlyTimes"> with finish times only</label>
+    <button class="theme" id="theme" type="button" title="Switch light / dark">◐</button>
+  </div>
+
+  <section class="tiles" id="tiles"></section>
+
+  <section class="card">
+    <h2>How hard is each course per kilometre</h2>
+    <div class="meta" style="margin:-8px 0 8px">Scored demand ÷ measured distance: 1.00 is flat road. Click a course to jump to it.</div>
+    <div class="legend" id="diffLegend"></div>
+    <div class="chart" id="diffChart"></div>
+  </section>
+
+  <section class="card">
+    <h2>All courses <span class="meta" id="tableModel"></span></h2>
+    <div class="table-wrap"><table id="table"></table></div>
+    <div style="margin-top:10px; display:flex; gap:8px"><button id="csv" type="button">Download CSV</button></div>
+  </section>
+
+  <div id="courses"></div>
+  <div id="tip" role="tooltip"></div>
+</main>
+
+<script>
+const DATA = /*__LAB_DATA__*/null;
+
+// ---------- state ---------------------------------------------------------------------------
+const MODELS = DATA.models;
+const MODEL = Object.fromEntries(MODELS.map((m, i) => [m.key, { ...m, slot: (i % 8) + 1 }]));
+const MAX_COMPARE = 2;
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('otri-lab:' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('otri-lab:' + k, JSON.stringify(v)); } catch {} },
+};
+const state = {
+  primary: MODEL[store.get('primary', 'prod')] ? store.get('primary', 'prod') : 'prod',
+  compare: store.get('compare', []).filter(k => MODEL[k]),
+  query: '',
+  onlyTimes: false,
+  sort: store.get('sort', { key: 'name', dir: 1 }),
+};
+const visible = () => [state.primary, ...state.compare.filter(k => k !== state.primary)].slice(0, 1 + MAX_COMPARE);
+const color = key => `var(--s${MODEL[key].slot})`;
+const courses = DATA.courses;
+const scored = courses.filter(c => !c.error);
+
+// ---------- helpers -------------------------------------------------------------------------
+const NS = 'http://www.w3.org/2000/svg';
+function h(tag, attrs = {}, ...kids) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k.startsWith('on')) node.addEventListener(k.slice(2), v); else node.setAttribute(k, v === true ? '' : v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) node.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+  return node;
+}
+function s(tag, attrs = {}, parent) {
+  const node = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) if (v != null) node.setAttribute(k, v);
+  if (parent) parent.append(node);
+  return node;
+}
+function text(parent, x, y, str, attrs = {}) { const t = s('text', { x, y, ...attrs }, parent); t.textContent = str; return t; }
+const dur = sec => { if (!isFinite(sec)) return '–'; sec = Math.round(sec); const hh = Math.floor(sec / 3600), mm = Math.floor(sec % 3600 / 60), ss = sec % 60; return `${hh}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`; };
+const durShort = sec => { sec = Math.round(sec); const hh = Math.floor(sec / 3600), mm = Math.floor(sec % 3600 / 60); return hh ? `${hh}:${String(mm).padStart(2, '0')}` : `${mm}m`; };
+const num = (v, d = 1) => v == null || !isFinite(v) ? '–' : Number(v).toLocaleString('en', { minimumFractionDigits: d, maximumFractionDigits: d });
+function parseDuration(str) {
+  const parts = String(str).trim().split(':');
+  if (!parts[0] || parts.length > 3 || !parts.every(p => /^\d+(\.\d+)?$/.test(p))) return null;
+  const secs = parts.reduce((a, p) => a * 60 + Number(p), 0);
+  return secs > 0 ? secs : null;
+}
+// score = 1000 x (world-best time / time) ^ exponent: the model's own curve restated per course
+// (Python checks this identity against score_for_time in tests/unit/test_scoring_lab.py).
+const scoreAt = (m, t) => 1000 * Math.pow(m.world_best_seconds / t, m.exponent);
+const timeFor = (m, score) => m.world_best_seconds * Math.pow(1000 / score, 1 / m.exponent);
+const LEVELS = [...DATA.levels].sort((a, b) => b.from - a.from);
+const levelFor = score => LEVELS.find(l => score >= l.from)?.name ?? '';
+function niceTicks(lo, hi, count = 5) {
+  const span = hi - lo, step0 = span / count, mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const step = [1, 2, 2.5, 5, 10].map(f => f * mag).find(st => span / st <= count) || 10 * mag;
+  const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(10));
+  return out;
+}
+function timeTicks(lo, hi) {
+  const steps = [60, 300, 600, 900, 1800, 3600, 7200, 10800, 21600, 43200, 86400];
+  const step = steps.find(st => (hi - lo) / st <= 6) || 86400;
+  const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) out.push(v);
+  return out;
+}
+function widthOf(node) { return Math.max(280, Math.floor(node.getBoundingClientRect().width)); }
+
+// ---------- tooltip -------------------------------------------------------------------------
+const tip = document.getElementById('tip');
+function showTip(ev, title, rows) {
+  tip.replaceChildren(h('div', { class: 't' }, title), ...rows.map(r => h('div', { class: 'r' },
+    r.color ? h('span', { class: 'key', style: `background:${r.color}` }) : null, h('b', {}, r.value), h('span', { class: 'n' }, r.label))));
+  tip.style.display = 'block';
+  const pad = 14, box = tip.getBoundingClientRect();
+  let x = ev.clientX + pad, y = ev.clientY + pad;
+  if (x + box.width > innerWidth - 8) x = ev.clientX - box.width - pad;
+  if (y + box.height > innerHeight - 8) y = ev.clientY - box.height - pad;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+const hideTip = () => { tip.style.display = 'none'; };
+
+// ---------- header & controls ---------------------------------------------------------------
+function renderMeta() {
+  const base = DATA.baseline ? `compared with baseline of ${DATA.baseline.generated_at}` : 'no baseline (run with --save-baseline to keep one)';
+  const elev = DATA.terrain === 'dem' ? 'DEM terrain' : 'elevations from the GPX files';
+  document.getElementById('meta').replaceChildren(
+    `${courses.length} course file(s) from `, ...DATA.sources.flatMap((src, i) => [i ? ', ' : '', h('code', {}, src)]),
+    ` · ${elev} · ${DATA.measurement_version} · generated ${new Date(DATA.generated_at).toLocaleString()} in ${DATA.elapsed_seconds} s · ${base}`);
+}
+function renderControls() {
+  const sel = document.getElementById('primary');
+  sel.replaceChildren(...MODELS.map(m => h('option', { value: m.key, selected: m.key === state.primary }, m.name + (m.production ? ' (production)' : ''))));
+  sel.title = MODEL[state.primary].description;
+  const box = document.getElementById('compare');
+  box.replaceChildren(...MODELS.filter(m => m.key !== state.primary).map(m => {
+    const on = state.compare.includes(m.key);
+    const full = !on && state.compare.filter(k => k !== state.primary).length >= MAX_COMPARE;
+    return h('span', { class: 'chip', role: 'button', tabindex: 0, 'aria-pressed': String(on), 'aria-disabled': String(full),
+      title: m.description + (full ? ` (compare at most ${MAX_COMPARE} at once)` : ''),
+      onclick: () => toggleCompare(m.key, full), onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCompare(m.key, full); } } },
+      h('span', { class: 'key', style: `background:${color(m.key)}` }), m.name);
+  }));
+}
+function toggleCompare(key, full) {
+  if (full) return;
+  state.compare = state.compare.includes(key) ? state.compare.filter(k => k !== key) : [...state.compare, key];
+  store.set('compare', state.compare); renderAll();
+}
+document.getElementById('primary').addEventListener('change', e => {
+  state.primary = e.target.value; state.compare = state.compare.filter(k => k !== state.primary);
+  store.set('primary', state.primary); store.set('compare', state.compare); renderAll();
+});
+document.getElementById('query').addEventListener('input', e => { state.query = e.target.value.toLowerCase(); renderAll(); });
+document.getElementById('onlyTimes').addEventListener('change', e => { state.onlyTimes = e.target.checked; renderAll(); });
+document.getElementById('theme').addEventListener('click', () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark'; store.set('theme', root.dataset.theme);
+});
+{ const t = store.get('theme', null); if (t) document.documentElement.dataset.theme = t; }
+
+function filtered() {
+  return courses.filter(c => (!state.query || (c.name + ' ' + c.file).toLowerCase().includes(state.query))
+    && (!state.onlyTimes || (!c.error && c.models[state.primary].times.length)));
+}
+
+// ---------- tiles ---------------------------------------------------------------------------
+function renderTiles(list) {
+  const ok = list.filter(c => !c.error);
+  const km = ok.reduce((a, c) => a + c.distance_km, 0), gain = ok.reduce((a, c) => a + c.gain_m, 0);
+  const diffs = ok.map(c => c.models[state.primary].difficulty).sort((a, b) => a - b);
+  const median = diffs.length ? diffs[Math.floor(diffs.length / 2)] : null;
+  const high = ok.filter(c => c.models[state.primary].confidence === 'High').length;
+  const times = ok.reduce((a, c) => a + c.models[state.primary].times.length, 0);
+  const tiles = [
+    [ok.length + (list.length > ok.length ? ` + ${list.length - ok.length} failed` : ''), 'courses scored'],
+    [num(km, 0) + ' km', `${num(gain, 0)} m of climb`],
+    [median ? '×' + num(median, 2) : '–', 'median demand per km'],
+    [`${high}/${ok.length}`, 'High confidence'],
+    [times, 'finish times scored'],
+  ];
+  document.getElementById('tiles').replaceChildren(...tiles.map(([v, l]) => h('div', { class: 'card tile' }, h('div', { class: 'v' }, v), h('div', { class: 'l' }, l))));
+}
+
+// ---------- difficulty dot plot -------------------------------------------------------------
+function renderDifficulty(list) {
+  const host = document.getElementById('diffChart');
+  const keys = visible();
+  document.getElementById('diffLegend').replaceChildren(...(keys.length > 1 ? keys.map(k => h('span', {}, h('span', { class: 'dot', style: `background:${color(k)}` }), MODEL[k].name)) : []));
+  const ok = list.filter(c => !c.error).sort((a, b) => a.models[state.primary].difficulty - b.models[state.primary].difficulty);
+  if (!ok.length) { host.replaceChildren(h('div', { class: 'empty' }, 'No courses match.')); return; }
+  const W = widthOf(host), left = Math.min(240, W * 0.34), right = 56, top = 8, row = 24, H = top + ok.length * row + 26;
+  const vals = ok.flatMap(c => keys.map(k => c.models[k].difficulty));
+  const lo = Math.min(1, ...vals), hi = Math.max(...vals) * 1.04;
+  const x = v => left + (v - lo) / (hi - lo) * (W - left - right);
+  const svg = s('svg', { width: W, height: H, role: 'img', 'aria-label': 'Demand per kilometre by course' });
+  for (const t of niceTicks(lo, hi, 6)) {
+    s('line', { x1: x(t), x2: x(t), y1: top, y2: H - 22, stroke: 'var(--grid)' }, svg);
+    text(svg, x(t), H - 6, '×' + num(t, 2), { 'text-anchor': 'middle' });
+  }
+  ok.forEach((c, i) => {
+    const y = top + i * row + row / 2;
+    const g = s('g', { tabindex: 0, style: 'cursor:pointer' }, svg);
+    const hit = s('rect', { x: 0, y: y - row / 2, width: W, height: row, fill: 'transparent' }, g);
+    text(g, left - 10, y + 4, c.name.length > 34 ? c.name.slice(0, 33) + '…' : c.name, { 'text-anchor': 'end', class: 'ink2' });
+    const ds = keys.map(k => c.models[k].difficulty);
+    s('line', { x1: x(Math.min(...ds)), x2: x(Math.max(...ds)), y1: y, y2: y, stroke: 'var(--axis)', 'stroke-width': 2 }, g);
+    [...keys].reverse().forEach(k => s('circle', { cx: x(c.models[k].difficulty), cy: y, r: 5, fill: color(k), stroke: 'var(--surface)', 'stroke-width': 2 }, g));
+    text(g, x(Math.max(...ds)) + 10, y + 4, '×' + num(c.models[state.primary].difficulty, 2));
+    const show = ev => { hit.setAttribute('fill', 'var(--wash)'); showTip(ev, c.name, keys.map(k => ({ color: color(k), value: '×' + num(c.models[k].difficulty, 3), label: `${MODEL[k].name} · ${num(c.models[k].adjusted_demand_km)} demand-km` }))); };
+    g.addEventListener('pointermove', show);
+    g.addEventListener('pointerleave', () => { hit.setAttribute('fill', 'transparent'); hideTip(); });
+    g.addEventListener('focus', () => { const b = hit.getBoundingClientRect(); show({ clientX: b.left + left, clientY: b.top }); });
+    g.addEventListener('blur', hideTip);
+    g.addEventListener('click', () => document.getElementById('c-' + c.id).scrollIntoView({ behavior: 'smooth' }));
+    g.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('c-' + c.id).scrollIntoView({ behavior: 'smooth' }); });
+  });
+  host.replaceChildren(svg);
+}
+
+// ---------- table ---------------------------------------------------------------------------
+const COLUMNS = [
+  { key: 'name', label: 'Course', get: c => c.name },
+  { key: 'km', label: 'km', get: c => c.distance_km, fmt: v => num(v, 1) },
+  { key: 'gain', label: 'Climb m', get: c => c.gain_m, fmt: v => num(v, 0) },
+  { key: 'demand', label: 'Demand km', get: c => c.course_demand_km, fmt: v => num(v, 1) },
+  { key: 'terrain', label: 'Terrain ×', get: (c, m) => m.terrain_factor, fmt: v => num(v, 3) },
+  { key: 'adj', label: 'Scored km', get: (c, m) => m.adjusted_demand_km, fmt: v => num(v, 1), delta: (m, b) => m.adjusted_demand_km - b.adjusted_demand_km, deltaFmt: v => num(v, 2), upGood: null },
+  { key: 'diff', label: 'Per km ×', get: (c, m) => m.difficulty, fmt: v => num(v, 2) },
+  { key: 'steep', label: 'Steep %', get: c => c.steep_fraction * 100, fmt: v => num(v, 1) },
+  { key: 'alt', label: 'Alt. m', get: c => c.altitude_excess_m, fmt: v => num(v, 0) },
+  { key: 'conf', label: 'Confidence', get: (c, m) => m.confidence, cell: v => h('span', { class: 'badge ' + v.toLowerCase() }, v) },
+  { key: 'wb', label: '1000 =', get: (c, m) => m.world_best_seconds, fmt: dur },
+  { key: 't800', label: '800 =', get: (c, m) => timeFor(m, 800), fmt: dur },
+  { key: 't600', label: '600 =', get: (c, m) => timeFor(m, 600), fmt: dur },
+  { key: 't400', label: '400 =', get: (c, m) => timeFor(m, 400), fmt: dur },
+  { key: 'times', label: 'Finish times → score', get: (c, m) => m.times[0]?.score ?? -1, cell: (v, c, m, b) => h('span', {}, m.times.length ? m.times.flatMap((t, i) => {
+      const d = b && b.scores[t.label] != null ? t.score - b.scores[t.label] : 0;
+      return [i ? ', ' : '', `${t.label} ${dur(t.seconds)} → `, h('b', {}, t.score), d ? h('span', { class: 'delta ' + (d > 0 ? 'up' : 'down') }, (d > 0 ? '+' : '') + d) : null];
+    }) : '–') },
+];
+function renderTable(list) {
+  const key = state.primary;
+  document.getElementById('tableModel').textContent = '· ' + MODEL[key].name;
+  const col = COLUMNS.find(c => c.key === state.sort.key) || COLUMNS[0];
+  const rows = [...list].sort((a, b) => {
+    if (a.error || b.error) return (a.error ? 1 : 0) - (b.error ? 1 : 0);
+    const va = col.get(a, a.models[key]), vb = col.get(b, b.models[key]);
+    return (typeof va === 'string' ? va.localeCompare(vb) : va - vb) * state.sort.dir;
+  });
+  const head = h('tr', {}, COLUMNS.map(c => h('th', { scope: 'col', 'aria-sort': c.key === col.key ? (state.sort.dir > 0 ? 'ascending' : 'descending') : null,
+    onclick: () => { state.sort = { key: c.key, dir: c.key === col.key ? -state.sort.dir : 1 }; store.set('sort', state.sort); renderTable(filtered()); } }, c.label)));
+  const body = rows.map(c => {
+    if (c.error) return h('tr', {}, h('td', { class: 'name' }, c.name), h('td', { colspan: COLUMNS.length - 1, class: 'error', style: 'text-align:left' }, c.error));
+    const m = c.models[key], b = DATA.baseline?.courses[c.sha256]?.[key];
+    return h('tr', {}, COLUMNS.map((col, i) => {
+      const v = col.get(c, m);
+      if (i === 0) return h('td', { class: 'name', title: c.file }, h('a', { href: '#c-' + c.id }, v));
+      if (col.cell) return h('td', {}, col.cell(v, c, m, b));
+      const d = b && col.delta ? col.delta(m, b) : 0;
+      return h('td', {}, col.fmt(v), Math.abs(d) > 1e-6 ? h('span', { class: 'delta', title: 'change since baseline' }, (d > 0 ? '+' : '') + col.deltaFmt(d)) : null);
+    }));
+  });
+  document.getElementById('table').replaceChildren(h('thead', {}, head), h('tbody', {}, body));
+}
+document.getElementById('csv').addEventListener('click', () => {
+  const key = state.primary, cols = COLUMNS.filter(c => c.key !== 'times');
+  const esc = v => /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  const lines = [[...cols.map(c => c.label), 'finish times'].map(esc).join(',')];
+  for (const c of filtered().filter(c => !c.error)) {
+    const m = c.models[key];
+    lines.push([...cols.map(col => { const v = col.get(c, m); return col.fmt ? col.fmt(v) : String(v); }),
+      m.times.map(t => `${t.label} ${dur(t.seconds)} = ${t.score}`).join('; ')].map(v => esc(String(v))).join(','));
+  }
+  const a = h('a', { href: URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' })), download: `otri-lab-${key}.csv` });
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+// ---------- per-course charts ---------------------------------------------------------------
+function profileChart(host, c) {
+  const W = widthOf(host), H = 200, L = 44, R = 10, T = 10, B = 24;
+  const pts = c.profile, maxX = pts[pts.length - 1][0];
+  const zs = pts.map(p => p[1]), zlo = Math.min(...zs), zhi = Math.max(...zs), pad = Math.max(20, (zhi - zlo) * 0.08);
+  const y0 = zlo - pad, y1 = zhi + pad;
+  const x = v => L + v / maxX * (W - L - R), y = v => T + (1 - (v - y0) / (y1 - y0)) * (H - T - B);
+  const svg = s('svg', { width: W, height: H, role: 'img', 'aria-label': `Elevation profile of ${c.name}` });
+  for (const [a, b] of c.steep) s('rect', { x: x(a), y: T, width: Math.max(1, x(b) - x(a)), height: H - T - B, fill: 'var(--steep)' }, svg);
+  for (const t of niceTicks(y0, y1, 4)) { s('line', { x1: L, x2: W - R, y1: y(t), y2: y(t), stroke: 'var(--grid)' }, svg); text(svg, L - 6, y(t) + 4, num(t, 0), { 'text-anchor': 'end' }); }
+  for (const t of niceTicks(0, maxX, 6)) text(svg, x(t), H - 6, num(t, maxX < 3 ? 1 : 0) + ' km', { 'text-anchor': 'middle' });
+  s('line', { x1: L, x2: W - R, y1: H - B, y2: H - B, stroke: 'var(--axis)' }, svg);
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join('');
+  s('path', { d: `${line}L${x(maxX)},${H - B}L${x(0)},${H - B}Z`, fill: 'var(--s1)', opacity: 0.12 }, svg);
+  s('path', { d: line, fill: 'none', stroke: 'var(--s1)', 'stroke-width': 2, 'stroke-linejoin': 'round' }, svg);
+  const cross = s('line', { y1: T, y2: H - B, stroke: 'var(--axis)', visibility: 'hidden' }, svg);
+  const dot = s('circle', { r: 4, fill: 'var(--s1)', stroke: 'var(--surface)', 'stroke-width': 2, visibility: 'hidden' }, svg);
+  svg.addEventListener('pointermove', ev => {
+    const r = svg.getBoundingClientRect(), km = Math.max(0, Math.min(maxX, (ev.clientX - r.left - L) / (W - L - R) * maxX));
+    let i = pts.findIndex(p => p[0] >= km); if (i < 0) i = pts.length - 1;
+    const p = pts[i], steep = c.steep.some(([a, b]) => p[0] >= a && p[0] <= b);
+    cross.setAttribute('x1', x(p[0])); cross.setAttribute('x2', x(p[0])); cross.setAttribute('visibility', 'visible');
+    dot.setAttribute('cx', x(p[0])); dot.setAttribute('cy', y(p[1])); dot.setAttribute('visibility', 'visible');
+    showTip(ev, `${num(p[0], 2)} km`, [{ color: 'var(--s1)', value: num(p[1], 0) + ' m', label: steep ? 'in a ≥20% stretch' : 'elevation' }]);
+  });
+  svg.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); hideTip(); });
+  host.replaceChildren(svg);
+}
+
+function scoreChart(host, c) {
+  const keys = visible(), W = widthOf(host), H = 240, L = 44, R = 12, T = 10, B = 24;
+  const ms = keys.map(k => c.models[k]), times = ms[0].times;
+  const t0 = Math.min(...ms.map(m => timeFor(m, 1080)), ...times.map(t => t.seconds * 0.95));
+  const t1 = Math.max(...ms.map(m => timeFor(m, 280)), ...times.map(t => t.seconds * 1.05));
+  const sLo = Math.min(250, ...times.map(t => t.score - 40)), sHi = Math.max(1080, ...times.map(t => t.score + 40));
+  const x = t => L + (t - t0) / (t1 - t0) * (W - L - R), y = v => T + (1 - (v - sLo) / (sHi - sLo)) * (H - T - B);
+  const svg = s('svg', { width: W, height: H, role: 'img', 'aria-label': `Score against finish time on ${c.name}` });
+  for (const lv of LEVELS.filter(l => l.from >= sLo && l.from <= sHi)) {
+    s('line', { x1: L, x2: W - R, y1: y(lv.from), y2: y(lv.from), stroke: 'var(--grid)' }, svg);
+    text(svg, L - 6, y(lv.from) + 4, lv.from, { 'text-anchor': 'end' });
+    if (lv.from >= 300) text(svg, W - R - 4, y(lv.from) - 4, lv.name, { 'text-anchor': 'end' });
+  }
+  for (const t of timeTicks(t0, t1)) text(svg, x(t), H - 6, durShort(t), { 'text-anchor': 'middle' });
+  s('line', { x1: L, x2: W - R, y1: H - B, y2: H - B, stroke: 'var(--axis)' }, svg);
+  const N = 160;
+  [...keys].reverse().forEach(k => {
+    const m = c.models[k];
+    const d = Array.from({ length: N + 1 }, (_, i) => { const t = t0 + (t1 - t0) * i / N; return `${i ? 'L' : 'M'}${x(t).toFixed(1)},${y(Math.max(sLo, Math.min(sHi, scoreAt(m, t)))).toFixed(1)}`; }).join('');
+    s('path', { d, fill: 'none', stroke: color(k), 'stroke-width': 2, 'stroke-linejoin': 'round' }, svg);
+  });
+  for (const t of times) {
+    const cx = x(t.seconds), cy = y(t.score);
+    s('line', { x1: cx, x2: cx, y1: cy, y2: H - B, stroke: 'var(--axis)', 'stroke-dasharray': '3 3' }, svg);
+    s('circle', { cx, cy, r: 5, fill: color(keys[0]), stroke: 'var(--surface)', 'stroke-width': 2 }, svg);
+    text(svg, cx + 8, cy - 8, `${t.score}`, { class: 'lbl' });
+  }
+  const cross = s('line', { y1: T, y2: H - B, stroke: 'var(--axis)', visibility: 'hidden' }, svg);
+  const dots = keys.map(k => s('circle', { r: 4, fill: color(k), stroke: 'var(--surface)', 'stroke-width': 2, visibility: 'hidden' }, svg));
+  svg.addEventListener('pointermove', ev => {
+    const r = svg.getBoundingClientRect(), t = t0 + Math.max(0, Math.min(1, (ev.clientX - r.left - L) / (W - L - R))) * (t1 - t0);
+    cross.setAttribute('x1', x(t)); cross.setAttribute('x2', x(t)); cross.setAttribute('visibility', 'visible');
+    keys.forEach((k, i) => { const v = scoreAt(c.models[k], t); dots[i].setAttribute('cx', x(t)); dots[i].setAttribute('cy', y(Math.max(sLo, Math.min(sHi, v)))); dots[i].setAttribute('visibility', 'visible'); });
+    showTip(ev, `Finish in ${dur(t)}`, keys.map(k => { const v = Math.round(scoreAt(c.models[k], t)); return { color: color(k), value: v, label: `${levelFor(v)} · ${MODEL[k].name}` }; }));
+  });
+  svg.addEventListener('pointerleave', () => { cross.setAttribute('visibility', 'hidden'); dots.forEach(d => d.setAttribute('visibility', 'hidden')); hideTip(); });
+  host.replaceChildren(svg);
+}
+
+const BAND_COLORS = ['var(--down-4)', 'var(--down-3)', 'var(--down-2)', 'var(--down-1)', 'var(--flat)', 'var(--up-1)', 'var(--up-2)', 'var(--up-3)', 'var(--up-4)'];
+function bandsChart(host, c) {
+  const W = widthOf(host), row = 22, L = 96, R = 120, T = 4, H = T + c.bands.length * row + 4;
+  const max = Math.max(...c.bands.map(b => b.demand_km), 0.001), total = c.bands.reduce((a, b) => a + b.demand_km, 0);
+  const svg = s('svg', { width: W, height: H, role: 'img', 'aria-label': `Demand by grade on ${c.name}` });
+  c.bands.forEach((b, i) => {
+    const y = T + i * row, w = b.demand_km / max * (W - L - R);
+    const g = s('g', {}, svg);
+    s('rect', { x: 0, y, width: W, height: row, fill: 'transparent' }, g);
+    text(g, L - 8, y + row / 2 + 4, b.label, { 'text-anchor': 'end', class: 'ink2' });
+    if (b.demand_km > 0) s('rect', { x: L, y: y + 4, width: Math.max(2, w), height: row - 8, rx: 3, fill: BAND_COLORS[i] }, g);
+    text(g, L + Math.max(2, w) + 6, y + row / 2 + 4, b.demand_km ? `${num(b.demand_km)} km · ${num(b.demand_km / total * 100, 0)}%` : '');
+    g.addEventListener('pointermove', ev => showTip(ev, `Grade ${b.label}`, [
+      { value: num(b.distance_km, 2) + ' km', label: `of distance (${num(b.distance_km / c.distance_km * 100, 1)}%)` },
+      { value: num(b.demand_km, 2) + ' km', label: `of demand (${num(b.demand_km / total * 100, 1)}%)` },
+      { value: b.distance_km ? '×' + num(b.demand_km / b.distance_km, 2) : '–', label: 'cost vs flat' }]));
+    g.addEventListener('pointerleave', hideTip);
+  });
+  host.replaceChildren(svg);
+}
+
+function courseCard(c) {
+  const card = h('article', { class: 'card course', id: 'c-' + c.id });
+  if (c.error) {
+    card.append(h('div', { class: 'course-head' }, h('h2', {}, c.name), h('span', { class: 'meta' }, c.file)), h('div', { class: 'error' }, 'Could not score: ' + c.error));
+    return card;
+  }
+  const keys = visible(), m = c.models[state.primary], base = DATA.baseline?.courses[c.sha256]?.[state.primary];
+  card.append(
+    h('div', { class: 'course-head' }, h('h2', {}, c.name), h('span', { class: 'meta', title: c.sha256 }, c.file + (c.cached ? ' · cached' : ''))),
+    h('div', { class: 'facts' },
+      ...[['Distance', num(c.distance_km, 2) + ' km'], ['Climb', `+${num(c.gain_m, 0)} / −${num(c.loss_m, 0)} m`],
+        ['Elevation', `${num(c.min_elevation_m, 0)}–${num(c.max_elevation_m, 0)} m (${c.elevation_source})`],
+        ['Demand', num(c.course_demand_km, 2) + ' km'], ['Terrain', '×' + num(m.terrain_factor, 3)],
+        ['Scored', num(m.adjusted_demand_km, 2) + ' km' + (base ? ` (baseline ${num(base.adjusted_demand_km, 2)})` : '')],
+        ['Steep ≥20%', num(c.steep_fraction * 100, 1) + '%'], ['Grades', `${num(c.min_grade * 100, 0)}% to ${num(c.max_grade * 100, 0)}%`],
+        ['Points', `${c.points.toLocaleString()} · median ${c.median_edge_m ?? '–'} m apart`]]
+        .map(([k, v]) => h('span', {}, k + ' ', h('b', {}, v))),
+      h('span', { class: 'badge ' + m.confidence.toLowerCase() }, m.confidence + ' confidence')));
+  const prof = h('div', { class: 'chart' }), score = h('div', { class: 'chart' }), bands = h('div', { class: 'chart' });
+  const out = h('div', { class: 'out' });
+  const input = h('input', { type: 'text', placeholder: 'h:mm:ss', 'aria-label': 'Finish time to try', value: store.get('try:' + c.id, '') });
+  const tryIt = () => {
+    store.set('try:' + c.id, input.value);
+    const t = parseDuration(input.value);
+    out.replaceChildren(...(t ? keys.map(k => { const v = Math.round(scoreAt(c.models[k], t)); return h('span', {}, h('span', { class: 'key', style: `background:${color(k)};margin-right:6px;vertical-align:middle` }), h('b', {}, v), ` ${levelFor(v)}${keys.length > 1 ? ' · ' + MODEL[k].name : ''}`); })
+      : input.value ? [h('span', { class: 'error' }, 'Use h:mm:ss, mm:ss or seconds')] : []));
+  };
+  input.addEventListener('input', tryIt);
+  card.append(h('div', { class: 'grid2' },
+    h('div', {}, h('h3', {}, 'Elevation profile'), h('div', { class: 'legend' }, h('span', {}, h('span', { class: 'key', style: 'background:var(--s1)' }), c.elevation_source === 'DEM' ? 'DEM terrain' : 'from the GPX'), h('span', {}, h('span', { class: 'dot', style: 'background:var(--steep);border-radius:2px' }), '≥20% grade')), prof),
+    h('div', {}, h('h3', {}, 'Score against finish time'),
+      h('div', { class: 'legend' }, keys.map(k => h('span', {}, h('span', { class: 'key', style: `background:${color(k)}` }), MODEL[k].name))), score,
+      h('div', { class: 'try' }, h('label', {}, 'Try a time ', input), out))));
+  const ladder = h('table', { class: 'ladder' },
+    h('thead', {}, h('tr', {}, h('th', {}, 'Score'), keys.map(k => h('th', { title: MODEL[k].description }, MODEL[k].name)))),
+    h('tbody', {}, ms_ladder(c, keys)));
+  card.append(h('div', { class: 'grid2', style: 'margin-top:16px' },
+    h('div', {}, h('h3', {}, 'Where the demand comes from (by grade)'), bands),
+    h('div', {}, h('h3', {}, 'Finish time for each score'), h('div', { class: 'table-wrap' }, ladder))));
+  const flags = [...new Set([...m.flags, ...c.measurement_flags, ...c.notes])];
+  if (flags.length) card.append(h('details', {}, h('summary', {}, `${flags.length} flag(s) · measurement ${c.measurement_status}`), h('ul', {}, flags.map(f => h('li', {}, f)))));
+  card._draw = () => { profileChart(prof, c); scoreChart(score, c); bandsChart(bands, c); tryIt(); };
+  return card;
+}
+function ms_ladder(c, keys) {
+  const scores = c.models[keys[0]].ladder.map(r => r.score);
+  return scores.map(sc => h('tr', {}, h('td', {}, `${sc} `, h('span', { class: 'meta' }, levelFor(sc))), keys.map(k => h('td', {}, dur(timeFor(c.models[k], sc))))));
+}
+
+// Charts are drawn when a card scrolls into view, and redrawn on resize, so a folder of a hundred
+// courses opens instantly.
+const drawn = new Set();
+const observer = new IntersectionObserver(entries => entries.forEach(e => {
+  if (e.isIntersecting && e.target._draw) { e.target._draw(); drawn.add(e.target); observer.unobserve(e.target); }
+}), { rootMargin: '400px' });
+function renderCourses(list) {
+  drawn.clear(); observer.disconnect();
+  const host = document.getElementById('courses');
+  const cards = list.map(courseCard);
+  host.replaceChildren(...(cards.length ? cards : [h('div', { class: 'card empty' }, courses.length ? 'No courses match the filter.' : 'No GPX files found. Drop some into scoring_lab/courses/ and run python -m scoring_lab again.')]));
+  cards.forEach(card => card._draw && observer.observe(card));
+}
+
+function renderAll() {
+  const list = filtered();
+  renderControls(); renderTiles(list); renderDifficulty(list); renderTable(list); renderCourses(list);
+}
+let resizeTimer;
+addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { renderDifficulty(filtered()); drawn.forEach(card => card._draw()); }, 150); });
+renderMeta();
+renderAll();
+</script>
+</body>
+</html>

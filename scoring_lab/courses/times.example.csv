@@ -1,0 +1,5 @@
+gpx,time,label
+# Copy to times.csv (in this folder or any subfolder) and add finish times to score.
+# gpx: the file name, with or without .gpx. time: h:mm:ss, mm:ss or seconds. label: optional.
+my-course.gpx,4:05:30,winner
+my-course,6:12:00,me
