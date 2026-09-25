@@ -5,6 +5,7 @@ from __future__ import annotations
 import http.client
 import json
 import shutil
+import socket
 import threading
 from http.server import ThreadingHTTPServer
 from pathlib import Path
@@ -58,6 +59,25 @@ def test_times_replace_only_this_course_and_removed_courses_leave_the_report(sta
     state.remove("courses/a.gpx")
     assert (state.courses_dir / "_removed" / "a.gpx").exists()
     assert [c["name"] for c in state.report()["courses"]] == ["b"]
+
+
+def test_a_new_lab_takes_over_from_a_running_one_instead_of_sharing_its_port(state):
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    first = serve.bind_lab(port, lambda p: serve.make_handler(state, p))
+    running = threading.Thread(target=lambda: (first.serve_forever(), first.server_close()), daemon=True)  # as main() runs it
+    running.start()
+    try:
+        second = serve.bind_lab(port, lambda p: serve.make_handler(state, p))
+        try:
+            assert second.server_address[1] == port
+            running.join(timeout=5)
+            assert not running.is_alive()  # the old lab stopped rather than kept answering
+        finally:
+            second.server_close()
+    finally:
+        first.server_close()
 
 
 def test_server_answers_only_its_own_host_and_changes_only_with_its_header(state):

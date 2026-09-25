@@ -16,8 +16,12 @@ import io
 import json
 import re
 import shutil
+import socket
 import sys
 import threading
+import time
+import urllib.error
+import urllib.request
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -30,6 +34,55 @@ from .models import select_models
 
 MAX_UPLOAD_BYTES = 64 * 1024 * 1024
 REMOVED_DIR = "_removed"
+PORTS = 20
+
+
+class LabServer(ThreadingHTTPServer):
+    """One lab per port. `HTTPServer` sets SO_REUSEADDR, which on Windows lets a second process bind
+    a port that is already listening: two labs then share it and each request reaches either one,
+    old code included. Exclusive binding makes a second bind fail instead."""
+
+    allow_reuse_address = False
+    daemon_threads = True
+
+    def server_bind(self):
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+
+def stop_lab_at(port: int) -> bool:
+    """If the program holding `port` is a lab, ask it to stop (so the newest code always serves).
+    Only called for a port that is taken: on Windows a connection to a free port takes seconds."""
+    base = f"http://127.0.0.1:{port}"
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    try:
+        with opener.open(base + "/api/state", timeout=2) as response:
+            if "version" not in json.loads(response.read() or b"{}"):
+                return False
+        request = urllib.request.Request(base + "/api/shutdown", data=b"{}", method="POST", headers={"X-Lab": "1"})
+        with opener.open(request, timeout=2):
+            return True
+    except (OSError, ValueError, urllib.error.URLError):
+        return False
+
+
+def bind_lab(first_port: int, handler_for) -> LabServer | None:
+    """The first of our ports that is free, or held by an older lab, which is asked to hand it over."""
+    for port in range(first_port, first_port + PORTS):
+        try:
+            return LabServer(("127.0.0.1", port), handler_for(port))
+        except OSError:
+            pass
+        if stop_lab_at(port):
+            print(f"Closed the lab that was already running on port {port}.")
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:  # it releases the port a moment after answering
+                try:
+                    return LabServer(("127.0.0.1", port), handler_for(port))
+                except OSError:
+                    time.sleep(0.2)
+    return None
 
 
 class Lab:
@@ -168,6 +221,10 @@ def make_handler(state: Lab, port: int):
                 return self._json(413, {"error": f"file is larger than {MAX_UPLOAD_BYTES // (1024 * 1024)} MB"})
             body = self.rfile.read(length)
             try:
+                if url.path == "/api/shutdown":
+                    print("A newer lab was started; this one stops.")
+                    threading.Thread(target=self.server.shutdown, daemon=True).start()
+                    return self._json(200, {"ok": True})
                 if url.path == "/api/upload":
                     name = parse_qs(url.query).get("name", ["course.gpx"])[0]
                     saved = state.upload(name, body)
@@ -199,15 +256,9 @@ def main(argv: list[str] | None = None) -> int:
 
     lab.DEFAULT_COURSES_DIR.mkdir(exist_ok=True)
     state = Lab(lab.DEFAULT_COURSES_DIR, [d.resolve() for d in args.dirs], args.jobs)
-    server = None
-    for port in range(args.port, args.port + 20):
-        try:
-            server = ThreadingHTTPServer(("127.0.0.1", port), make_handler(state, port))
-            break
-        except OSError:
-            continue
+    server = bind_lab(args.port, lambda port: make_handler(state, port))
     if server is None:
-        print(f"No free port from {args.port} to {args.port + 19}.")
+        print(f"No free port from {args.port} to {args.port + PORTS - 1}.")
         return 1
     port = server.server_address[1]
     url = f"http://127.0.0.1:{port}/"

@@ -623,7 +623,10 @@ let busy = false;
 async function refresh() {
   const scroll = scrollY;
   const response = await fetch('/api/report', { cache: 'no-store' });
-  DATA = await response.json(); courses = DATA.courses;
+  const next = await response.json();
+  // A newer lab with other models took over: this page's code is out of date, load it afresh.
+  if (next.models.map(m => m.key).join() !== MODELS.map(m => m.key).join()) { location.reload(); return; }
+  DATA = next; courses = DATA.courses;
   renderMeta(); renderAll();
   scrollTo(0, scroll);
 }
@@ -636,14 +639,18 @@ async function change(message, action) {
 async function addFiles(files) {
   const gpx = [...files].filter(f => /\.gpx$/i.test(f.name));
   if (!gpx.length) { setStatus('Only .gpx files can be added', true); return; }
-  const failed = [];
+  const failed = [], added = [];
   await change(`Adding ${gpx.length} file(s)`, async () => {
     for (const file of gpx) {
-      try { await api('/api/upload?name=' + encodeURIComponent(file.name), await file.arrayBuffer(), true); }
+      try { added.push((await api('/api/upload?name=' + encodeURIComponent(file.name), await file.arrayBuffer(), true)).saved); }
       catch (error) { failed.push(`${file.name}: ${error.message}`); }
     }
   });
-  if (failed.length) setStatus(failed.join(' · '), true);
+  if (failed.length) { setStatus(failed.join(' · '), true); return; }
+  setStatus(`Added ${added.join(', ')}`);
+  const first = courses.find(c => c.file === `${DATA.server.courses_dir}/${added[0]}`);
+  if (first) document.getElementById('c-' + first.id)?.scrollIntoView({ behavior: 'smooth' });
+  setTimeout(() => setStatus(''), 6000);
 }
 if (SERVED) {
   const picker = h('input', { type: 'file', accept: '.gpx', multiple: true, style: 'display:none', onchange: e => { addFiles(e.target.files); e.target.value = ''; } });
