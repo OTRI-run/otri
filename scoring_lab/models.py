@@ -13,7 +13,7 @@ from dataclasses import dataclass, fields, replace
 
 from course.measurement import boundaries, interpolate
 from scoring.course_demand import MAX_GRADE, gradient_ratio
-from scoring.course_standard import MODEL_CURVE, SCALE_MAX, SCALE_MIN, EnduranceReference, ScoreCurve, score_for_time, target_time_seconds
+from scoring.course_standard import MODEL_0_1_0_CURVE, MODEL_CURVE, SCALE_MAX, SCALE_MIN, EnduranceReference, ScoreCurve, score_for_time, target_time_seconds
 from scoring.registry import DEFAULT_SCORING_VERSION, get_scoring_model_info
 from .smooth_reference import SmoothReference
 
@@ -205,8 +205,8 @@ _TERRAIN = MODEL_CURVE.terrain_adjustment
 # in a chamber), but the people near the top of a mountain race are acclimatised, and for them the
 # loss is about half: Pühringer et al. 2022 tested 128 acclimatised mountain guides at 600 m and
 # 2,000 m and found VO2max 5 % lower at 2,000 m in the fit ones, and unchanged in the less fit.
-# That is 3.6 % per 1,000 m above 600 m, and it is what every lab model uses; `prod` keeps
-# production's rule so the two can be compared.
+# That is 3.6 % per 1,000 m above 600 m, and it is what every lab model uses; `prod` and `0.1.0`
+# keep production's rule so the two can be compared.
 ALTITUDE_FLOOR_M = 600.0
 ALTITUDE_PER_1000_M = 0.036
 LAB_TERRAIN = replace(_TERRAIN, altitude_threshold_m=ALTITUDE_FLOOR_M, altitude_coefficient=ALTITUDE_PER_1000_M)
@@ -218,19 +218,19 @@ LAB_MODELS: tuple[LabModel, ...] = (
     LabModel(
         key="prod",
         name=get_scoring_model_info(DEFAULT_SCORING_VERSION).name,
-        description="The production model, exactly as the site scores (" + DEFAULT_SCORING_VERSION + ").",
+        description="The production model, exactly as the site scores (" + DEFAULT_SCORING_VERSION + "; OTRI model 0.1.1, curve exponent 0.692).",
         curve=MODEL_CURVE,
         production=True,
     ),
     LabModel(
-        key="0.1.1",
-        name="Model 0.1.1 (lab): development curve",
+        key="0.1.0",
+        name="OTRI model 0.1.0",
         description=(
-            "Production with the curve exponent back at 0.692, the concave shape of the development builds "
-            "before 0.1.0 chose 0.85 (OTRI-MODEL-0.1.0.md section 6.1). The top holds; the middle and back of "
-            "the field score higher again: 53% of the ceiling scores 644 instead of 583. Lab only."
+            "The model before 0.1.1, exactly as the site scored until 25 September 2026: the same course demand, "
+            "terrain factor and ceiling, with the curve exponent 0.85 instead of 0.692 (53% of the ceiling scores "
+            "583 instead of 644). Races published under it keep it. Its version is the published one, not a lab one."
         ),
-        curve=_variant("0.1.1", power_exponent=0.692),
+        curve=MODEL_0_1_0_CURVE,
     ),
     LabModel(
         key="0.1.2",

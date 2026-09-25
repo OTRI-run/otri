@@ -1,5 +1,5 @@
 """OTRI model 0.1.0's score curve and human-ceiling reference (scoring/course_standard.py):
-score = 1000 x (fraction of the ceiling rate for a course of this size) ** 0.85."""
+score = 1000 x (fraction of the ceiling rate for a course of this size) ** 0.692 (0.85 under model 0.1.0)."""
 
 from datetime import date
 
@@ -9,6 +9,7 @@ from ingestion.records import RaceRecord, ResultRecord
 from scoring.course_standard import (
     ENDURANCE_REFERENCE,
     MODEL_CURVE,
+    MODEL_0_1_0_CURVE,
     POWER_EXPONENT,
     REFERENCE_DEMAND_KM,
     SCALE_MAX,
@@ -46,8 +47,10 @@ def _finisher(bib, seconds, rank=1):
 
 
 def test_the_model_is_one_power_law_anchored_on_the_ceiling():
-    assert MODEL_CURVE.version == "0.10.0-course-standard-vertical"
-    assert MODEL_CURVE.power_exponent == POWER_EXPONENT == 0.85
+    assert MODEL_CURVE.version == "0.11.0-course-standard-model-0.1.1"
+    assert MODEL_CURVE.power_exponent == POWER_EXPONENT == 0.692
+    assert MODEL_0_1_0_CURVE.version == "0.10.0-course-standard-vertical" and MODEL_0_1_0_CURVE.power_exponent == 0.85
+    assert MODEL_0_1_0_CURVE.raw_score(MODEL_CURVE.q_1000) == MODEL_CURVE.raw_score(MODEL_CURVE.q_1000) == 1000.0
     assert MODEL_CURVE.q_1000 == ENDURANCE_REFERENCE.rate(REFERENCE_DEMAND_KM)
 
 
@@ -78,7 +81,7 @@ def test_1000_is_the_ceiling_not_a_cap():
     assert beyond["otri_score"] == round(beyond["otri_raw"]) > 1000
     at_ceiling = score_for_time(42.195, 2 * 3600 + 35)  # one of the three records the ceiling is built from
     assert at_ceiling["otri_score"] == 1000
-    assert score_for_time(10.0, 10_000_000)["otri_score"] <= 1
+    assert score_for_time(10.0, 1_000_000_000)["otri_score"] == 0  # 10 km in thirty years
 
 
 @pytest.mark.parametrize("fraction", [0.3, 0.55, 0.8, 0.95])

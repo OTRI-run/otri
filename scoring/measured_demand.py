@@ -10,7 +10,8 @@ from .course_demand import CourseDemand, gradient_ratio
 from .terrain import ALTITUDE_THRESHOLD_M, STEEP_GRADE_THRESHOLD
 
 
-def compute_measured_demand(points=None, *, measurement=None):
+def compute_measured_demand(points=None, *, measurement=None, altitude_threshold_m=ALTITUDE_THRESHOLD_M):
+    """`altitude_threshold_m` is the model's (scoring/terrain.py); a lab model with another threshold passes its own."""
     m = measurement if measurement is not None else measure_course(points, configured_provider())
     demand, grades = 0.0, []
     flags = list(m.quality_flags)
@@ -32,7 +33,7 @@ def compute_measured_demand(points=None, *, measurement=None):
             total_m += width
             if abs(grade) >= STEEP_GRADE_THRESHOLD:
                 steep_m += width
-            altitude_excess_m_m += width * max(0.0, (elevation_a+elevation_b)/2 - ALTITUDE_THRESHOLD_M)
+            altitude_excess_m_m += width * max(0.0, (elevation_a+elevation_b)/2 - altitude_threshold_m)
     steep_fraction = steep_m/total_m if total_m else 0.0
     altitude_excess = altitude_excess_m_m/total_m if total_m else 0.0
     return CourseDemand(round(m.distance_m/1000, 3), round(demand, 3), round(m.gain_m, 1),

@@ -36,7 +36,7 @@ const METHODOLOGY_URL = '/how-otri-scores/'
 
 // Where the slider starts for a freshly chosen course: the finish time that scores this.
 const DEFAULT_TARGET_SCORE = 500
-const POWER_EXPONENT = 0.85 // V0.8: score = 1000 × (rate / ceiling rate)^0.85
+const POWER_EXPONENT = 0.692 // OTRI model 0.1.1: score = 1000 × (rate / ceiling rate)^0.692 (0.85 under 0.1.0)
 
 // Absolute sanity bounds for a finish time (multi-day events exist; nothing runs 200 hours).
 const ABS_MIN_SECONDS = 60
@@ -79,7 +79,7 @@ function sliderRange(ceilingSeconds, targetSeconds) {
 }
 
 // The finish time that would score `score` on the course an estimate was made for, from the
-// ceiling time the API reports (score = 1000 x (ceiling time / time) ^ 0.85).
+// ceiling time the API reports (score = 1000 x (ceiling time / time) ^ 0.692).
 function timeForScore(estimate, score) {
   const best = estimate?.breakdown?.world_best_time_seconds
   if (!best) return null
@@ -577,7 +577,7 @@ function ScoreExplanation({ estimate, features, targetSeconds }) {
                     {isPower ? (
                       <>
                         {' '}
-                        Score = 1000 × {pct}%<sup>0.85</sup> = <strong>{estimate.predicted_score}</strong>.
+                        Score = 1000 × {pct}%<sup>0.692</sup> = <strong>{estimate.predicted_score}</strong>.
                       </>
                     ) : (
                       <>
@@ -627,7 +627,7 @@ Q_lookup = Q × factor                          = ${maths(b.lookup_rate)} demand
   : ''}
 {estimate.scoring_version?.includes('-power')
   ? `
-score    = 1000 × (Q_lookup / Q_1000)^0.85     = ${estimate.otri_raw}  →  ${estimate.predicted_score}`
+score    = 1000 × (Q_lookup / Q_1000)^0.692    = ${estimate.otri_raw}  →  ${estimate.predicted_score}`
   : `
 score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${estimate.predicted_score}`}
               </pre>
@@ -647,7 +647,7 @@ score    = anchor_table(Q_lookup)              = ${estimate.otri_raw}  →  ${es
             </dl>
 
             <p className="mt-5 text-[11px] text-slate-500">
-              One published curve, no anchor table: score = 1000 × (fraction of the human-ceiling rate)^0.85, with Q_1000
+              One published curve, no anchor table: score = 1000 × (fraction of the human-ceiling rate)^0.692, with Q_1000
               = {maths(ANCHOR_1000.q)} demand-{du}/h at the reference course size. "demand-{du}" is {du === 'mi' ? 'a mile' : 'a kilometre'} of flat
               road at Minetti's metabolic cost — the unit called "flat {du}" above.{du === 'mi' ? ' The model works in kilometres; these are the same figures converted.' : ''}
             </p>

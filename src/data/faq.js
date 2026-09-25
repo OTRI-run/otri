@@ -51,18 +51,18 @@ export const FAQ = [
       },
       {
         q: 'What do the levels mean: Beginner, Advanced, Elite, World class?',
-        a: 'They are names for ranges of the score, shown in the calculator so you can see where a number stands: Beginner below 300, Recreational from 300, Intermediate from 400, Trained from 500, Advanced from 600, Expert from 700, Elite from 800, World class from 900, and there is nothing above that but more of it: a score over 1000 is beyond record-run level, which is exceptional and rare. The names are a reading aid and not part of the model; what they stand for is exact. A score is a share of the fastest pace a human has held on a course that demanding, so every score is also a time on a flat road marathon at that same share of the marathon record (2:00:35): 700 is 3:03, 600 is 3:40, 500 is 4:33, 400 is 5:54. It is one scale for everyone, men and women, every age. OTRI does not say how many runners are in each level, because it does not have the data to say so honestly. On technical trails expect to score a little under your road times: footing is not measured yet.',
+        a: 'They are names for ranges of the score, shown in the calculator so you can see where a number stands: Beginner below 300, Recreational from 300, Intermediate from 400, Trained from 500, Advanced from 600, Expert from 700, Elite from 800, World class from 900, and there is nothing above that but more of it: a score over 1000 is beyond record-run level, which is exceptional and rare. The names are a reading aid and not part of the model; what they stand for is exact. A score is a share of the fastest pace a human has held on a course that demanding, so every score is also a time on a flat road marathon at that same share of the marathon record (2:00:35): 700 is 3:22, 600 is 4:12, 500 is 5:28, 400 is 7:33. It is one scale for everyone, men and women, every age. OTRI does not say how many runners are in each level, because it does not have the data to say so honestly. On technical trails expect to score a little under your road times: footing is not measured yet.',
         tags: 'levels scale range beginner recreational intermediate trained advanced expert elite world class superhuman good score what is a good score where am I',
       },
       {
-        q: 'Why does a 100-mile mountain winner score 984 rather than above 1000?',
+        q: 'Why does a 100-mile mountain winner score 987 rather than above 1000?',
         a: 'Because the reference line is built from road and track records, and a mountain course costs more than its gradient profile says: rock, roots, mud and exposure are invisible to a GPX file. The model prices sustained steep ground and altitude; it cannot price footing. That limitation is written down, not hidden.',
         tags: 'ultra mountain technical footing limit',
       },
       {
         q: 'My score changed since last time. Why?',
-        a: 'The model changed. Every change that can move a score gets a new public version, is announced in the changelog, and the old version stays available so any published score can be reproduced. The model in production is OTRI model 0.1.0; the next one will be 0.2.0. Scores are only comparable under the same version.',
-        tags: 'version changed different update history 0.1.0 0.2.0',
+        a: 'The model changed. Every change that can move a score gets a new public version, is announced in the changelog, and the old version stays available so any published score can be reproduced. The model in production is OTRI model 0.1.1, which on 25 September 2026 replaced 0.1.0 with one change: the curve below the top is gentler (the exponent 0.692 instead of 0.85), so a world-best run still scores 1000 and every score under it went up, most in the middle of the field (a score of 583 became 644). A race published under 0.1.0 keeps its scores and says so. Scores are only comparable under the same version.',
+        tags: 'version changed different update history 0.1.0 0.1.1 0.2.0',
       },
       {
         q: 'What do High and Low confidence mean?',

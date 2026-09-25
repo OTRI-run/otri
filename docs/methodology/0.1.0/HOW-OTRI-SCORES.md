@@ -1,6 +1,6 @@
 # How an OTRI score is calculated — and how to question it
 
-**Status:** Explainer for **OTRI model 0.1.0**, the model running in production — specified in [`OTRI-MODEL-0.1.0.md`](OTRI-MODEL-0.1.0.md) (internal build id `0.10.0-course-standard-vertical`, measurement `course-measurement-v3`)
+**Status:** Explainer for **OTRI model 0.1.0**, in production until 2026-09-25 and superseded by [model 0.1.1](../0.1.1/HOW-OTRI-SCORES.md), which changed the curve exponent only (0.692 for 0.85) — specified in [`OTRI-MODEL-0.1.0.md`](OTRI-MODEL-0.1.0.md) (internal build id `0.10.0-course-standard-vertical`, measurement `course-measurement-v3`)
 **Audience:** Runners, race organizers, and anyone who wants to check whether the number deserves trust
 **Source of truth:** [`OTRI-MODEL-0.1.0.md`](OTRI-MODEL-0.1.0.md) and the code in `scoring/` and `course/`; the development builds it consolidates are listed in its §14. If this page and the code disagree, the code wins — and that is a bug in this page.
 

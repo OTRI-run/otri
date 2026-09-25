@@ -40,12 +40,14 @@ In the report, **Try a time** under each course scores any time you type, for ev
 
 ## Models
 
-`--models` picks which to run (default `all`; production is always included):
+`--models` picks which to run (default `all`; production is always included). Scores quoted further down this
+page were computed while production was model 0.1.0 (exponent 0.85); production is 0.1.1 since 25 September
+2026, and the `0.1.0` lab model reproduces those numbers:
 
 | key | what it changes |
 | --- | --- |
-| `prod` | nothing: the production model, as the site scores |
-| `0.1.1` | exponent 0.692, the development builds' curve: the middle of the field scores higher (583 -> 644 at 53% of the ceiling) |
+| `prod` | nothing: the production model, as the site scores (OTRI model 0.1.1 since 25 September 2026: curve exponent 0.692) |
+| `0.1.0` | the model before 0.1.1, as the site scored until 25 September 2026: exponent 0.85 (644 -> 583 at 53% of the ceiling), production's altitude rule |
 | `0.1.2` | production up to 990, then bends towards 1100 and never reaches it: a world best scores ~994, 1000 needs 2% faster than the world best, 1050 about 25% faster |
 | `0.1.3` | compared with the best humans over the runner's own finish time, and a plain percentage: see *Why 0.1.3* below |
 | `0.1.4` | tuned by feel on three results: exponent 0.70 lifts the middle, and above 900 the score bends towards 1000 and never reaches it (road world bests ~971) |
@@ -69,7 +71,7 @@ lab model instead uses the measured loss in *acclimatised* athletes: Pühringer 
 fit ones, and unchanged in the less fit. That is 3.6 % per 1,000 m above 600 m. The acute figure is
 about twice that (Wehrlin & Hallén 2006, 6.3 % per 1,000 m from 300 m, sea-level athletes in a
 chamber), but the runners near the top of a mountain race live and train at altitude, and it is
-their scores an altitude rule decides. `prod` keeps production's rule so the two can be compared;
+their scores an altitude rule decides. `prod` and `0.1.0` keep production's rule so the two can be compared;
 `no-terrain` and `no-altitude` price no altitude at all.
 
 ## Why 0.1.3

@@ -43,17 +43,19 @@ def test_select_models_always_includes_production_first():
 
 
 def test_variants_never_carry_the_production_version():
-    versions = [m.curve.version for m in LAB_MODELS if not m.production and not m.from_totals]
+    versions = [m.curve.version for m in LAB_MODELS if not m.production and not m.from_totals and m.key != "0.1.0"]
     assert versions and all(v.startswith("lab-") for v in versions)
+    assert MODELS_BY_KEY["0.1.0"].curve.version == "0.10.0-course-standard-vertical"  # a published model, named as such
 
 
-def test_lab_0_1_1_lifts_the_middle_and_keeps_the_top():
-    curve = MODELS_BY_KEY["0.1.1"].curve
-    assert curve.power_exponent == 0.692
+def test_lab_0_1_0_is_the_model_before_and_lowers_the_middle():
+    curve, prod = MODELS_BY_KEY["0.1.0"].curve, MODELS_BY_KEY["prod"].curve
+    assert (curve.power_exponent, prod.power_exponent) == (0.85, 0.692)
+    assert curve.version == "0.10.0-course-standard-vertical"  # the published one, not a lab one
     top = curve.q_1000
-    assert curve.raw_score(top) == pytest.approx(1000)
-    assert round(curve.raw_score(0.53 * top)) == 644
-    assert round(MODELS_BY_KEY["prod"].curve.raw_score(0.53 * top)) == 583
+    assert curve.raw_score(top) == pytest.approx(1000) == prod.raw_score(top)
+    assert round(curve.raw_score(0.53 * top)) == 583
+    assert round(prod.raw_score(0.53 * top)) == 644
 
 
 @pytest.mark.parametrize("text, seconds", [("4:05:30", 14730), ("45:10", 2710), ("600", 600)])
@@ -245,7 +247,7 @@ def test_every_lab_model_prices_altitude_for_acclimatised_athletes():
         terrain = model.curve.terrain_adjustment
         if model.from_totals:
             continue  # official figures only: no profile, so no terrain factor at all
-        if model.production:
+        if model.production or model.key == "0.1.0":
             assert (terrain.altitude_threshold_m, terrain.altitude_coefficient) == (1500.0, 0.07)
         elif model.key not in ("no-terrain", "no-altitude"):
             assert (terrain.altitude_threshold_m, terrain.altitude_coefficient) == (600.0, 0.036), model.key
@@ -253,8 +255,28 @@ def test_every_lab_model_prices_altitude_for_acclimatised_athletes():
             assert terrain.altitude_coefficient == 0.0
 
 
+def test_lab_altitude_rule_measures_its_excess_above_its_own_floor(report):
+    """A lab model with a 600 m floor must not be handed production's excess above 1,500 m."""
+    from course.elevation import configured_provider
+    from course.measurement import measure_course
+    from scoring.course_standard import MODEL_CURVE
+    from scoring.measured_demand import compute_measured_demand
+    from scoring_lab.models import LAB_TERRAIN
+    data, courses = report
+    alps = next(c for c in data["courses"] if c["name"] == "alps-terrain-check")
+    measurement = measure_course(read_track_points(courses / "alps-terrain-check.gpx"), configured_provider())
+    above_1500 = compute_measured_demand(measurement=measurement)
+    above_600 = compute_measured_demand(measurement=measurement, altitude_threshold_m=600.0)
+    assert above_600.altitude_excess_m > above_1500.altitude_excess_m + 500  # a 1,200-2,400 m course
+    prod = MODEL_CURVE.terrain_adjustment.factor(above_1500.steep_distance_fraction, above_1500.altitude_excess_m)
+    lab = LAB_TERRAIN.factor(above_600.steep_distance_fraction, above_600.altitude_excess_m)
+    assert alps["models"]["prod"]["terrain_factor"] == pytest.approx(prod, abs=1e-4)
+    assert alps["models"]["linear"]["terrain_factor"] == pytest.approx(lab, abs=1e-4)
+    assert alps["models"]["0.1.0"]["terrain_factor"] == pytest.approx(prod, abs=1e-4)
+
+
 def test_standard_models_score_through_the_production_functions():
-    for key in ("prod", "0.1.1", "0.1.2", "linear"):
+    for key in ("prod", "0.1.0", "0.1.2", "linear"):
         model = MODELS_BY_KEY[key]
         assert model.raw_score(42.195, 14400) == score_for_time(42.195, 14400, curve=model.curve)["otri_raw"]
         assert model.target_seconds(42.195, 600) == target_time_seconds(42.195, 600, curve=model.curve)
@@ -272,9 +294,10 @@ def test_lab_0_1_3_compares_with_the_ceiling_over_the_same_time():
         seconds = hours * 3600
         assert model.raw_score(ceiling_distance(reference, seconds) / 2, seconds) == pytest.approx(500)
     # The longer a runner is out, the more the same-time ceiling has slowed: a slow finish on a long
-    # course scores more than under production (the spec's calibration course in 46 h: 437).
+    # course scores more than under model 0.1.0's curve (the spec's calibration course in 46 h: 437).
     assert round(model.raw_score(245.626, 46 * 3600)) == 452
-    assert round(MODELS_BY_KEY["prod"].raw_score(245.626, 46 * 3600)) == 437
+    assert round(MODELS_BY_KEY["0.1.0"].raw_score(245.626, 46 * 3600)) == 437
+    assert round(MODELS_BY_KEY["prod"].raw_score(245.626, 46 * 3600)) == 510  # 0.1.1's gentler curve
     for score in (300, 700, 1000, 1050):
         assert model.raw_score(42.195, model.target_seconds(42.195, score)) == pytest.approx(score)
 
@@ -284,9 +307,11 @@ def test_lab_0_1_2_makes_the_top_nearly_unreachable():
     top = prod.q_1000
     for share in (0.3, 0.6, 0.9, 0.98):  # below 990 nothing changes
         assert hard.raw_score(share * top) == prod.raw_score(share * top)
-    assert round(hard.raw_score(top)) == 994  # a world best
-    assert hard.raw_score(1.02 * top) == pytest.approx(1000, abs=0.5)
-    assert hard.raw_score(1.25 * top) == pytest.approx(1050, abs=1)  # 25% faster than a world best
+    # Above the knee the production power curve bends towards 1100: knee + 110 x (1 - exp(-(power - knee) / 280)).
+    bent = lambda share: 990 + 110 * (1 - math.exp(-(prod.raw_score(share * top) - 990) / 280))
+    for share in (1.0, 1.02, 1.25, 2.0):
+        assert hard.raw_score(share * top) == pytest.approx(bent(share))
+    assert 990 < hard.raw_score(top) < 1000  # a world best falls just short of 1000
     assert hard.raw_score(10 * top) < 1100  # ten times world-best speed
     scores = [hard.raw_score(share * top) for share in (0.99, 1.0, 1.1, 1.5, 3.0)]
     assert scores == sorted(scores)

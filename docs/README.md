@@ -11,6 +11,7 @@ Everything under `docs/` is about the product as it runs today. Documents that o
 ## The model
 
 - [`methodology/README.md`](methodology/README.md) — the index of the methodology folder.
+- [`methodology/0.1.1/OTRI-MODEL-0.1.1.md`](methodology/0.1.1/OTRI-MODEL-0.1.1.md) — OTRI model 0.1.1, the model in production: the curve exponent 0.692 for 0.85, everything else as 0.1.0
 - [`methodology/0.1.0/OTRI-MODEL-0.1.0.md`](methodology/0.1.0/OTRI-MODEL-0.1.0.md) — the specification of OTRI model 0.1.0: every formula and constant, the worked example, the tests that pin it, its versioning.
 - [`methodology/course-measurement/REAL-WORLD-COURSE-MEASUREMENT-SPEC.md`](methodology/course-measurement/REAL-WORLD-COURSE-MEASUREMENT-SPEC.md) — how a GPX becomes a measured course, and the research behind it.
 - [`methodology/runner-index/RUNNER-INDEX-v1.md`](methodology/runner-index/RUNNER-INDEX-v1.md) — the one-number-per-runner rule.

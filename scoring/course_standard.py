@@ -1,20 +1,23 @@
-"""OTRI model 0.1.0: course + finish time only, no competitors.
+"""OTRI model 0.1.1: course + finish time only, no competitors.
 
 A score is the runner's fraction of the human-ceiling rate for a course of this size, on one power
-law: ``score = 1000 * (Q / ceiling(D)) ** 0.85``, where ``D`` is the measured course demand
+law: ``score = 1000 * (Q / ceiling(D)) ** 0.692``, where ``D`` is the measured course demand
 (gradient-cost integral, adjusted for sustained steep ground and altitude) and ``Q`` is demand-km
 per hour. The model also says how far each number can be trusted, and refuses the one kind of
-course it would get wrong. The full definition, every constant's provenance and the history of the
-development builds that led here are in ``docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md``.
+course it would get wrong. Model 0.1.1 differs from 0.1.0 in the exponent alone (0.692 for 0.85,
+OEP-004); everything else is as ``docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md`` specifies, and
+``docs/methodology/0.1.1/OTRI-MODEL-0.1.1.md`` says what the change does.
 
-There is one model in the code. A change to how scores are computed is a new ``version`` and a new
-specification, never an edit in place.
+Two curves are in the code: ``MODEL_CURVE`` (0.1.1, every new race and estimate) and
+``MODEL_0_1_0_CURVE``, kept so that a race published under 0.1.0 replays to the last digit. A
+change to how scores are computed is a new ``version`` and a new specification, never an edit in
+place.
 """
 
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from course.discipline import is_vertical
 from course.gpx import TrackPoint
@@ -167,10 +170,13 @@ class ScoreCurve:
         return SCALE_MAX * (q / self.q_1000) ** self.power_exponent
 
 
-# 0.85 is a judgement between "score is your percentage of world best" (1.0) and a concave curve
-# that flatters the middle of the field, not a fitted or externally referenced value
-# (specification section 6).
-POWER_EXPONENT = 0.85
+# The exponent is a judgement, not a fitted or externally referenced value. Model 0.1.0 chose 0.85,
+# between "score is your percentage of world best" (1.0) and the concave 0.692 of the development
+# builds; 0.1.1 returns to 0.692 (OEP-004): the top of the scale holds (a world best is 1000 on
+# either), and every score below it rises, most in the middle of the field (53 % of the ceiling
+# scores 644 rather than 583).
+POWER_EXPONENT = 0.692
+POWER_EXPONENT_0_1_0 = 0.85
 
 # Where the model itself runs out of evidence (specification section 7.4, OEP-002):
 # - the gradient-cost polynomial was measured to +/-45%; when more than a fifth of a course's
@@ -185,13 +191,18 @@ MAX_CLAMPED_DEMAND_FRACTION = 0.20
 MIN_VALIDATED_DEMAND_KM = 1.5
 
 MODEL_CURVE = ScoreCurve(
-    version='0.10.0-course-standard-vertical',  # build id of OTRI model 0.1.0
+    version='0.11.0-course-standard-model-0.1.1',  # build id of OTRI model 0.1.1
     q_1000=ENDURANCE_REFERENCE.rate(REFERENCE_DEMAND_KM),
     power_exponent=POWER_EXPONENT,
     demand_scaling=ENDURANCE_REFERENCE,
     terrain_adjustment=TERRAIN_MODEL,
 )
 SCORING_VERSION = MODEL_CURVE.version
+
+# OTRI model 0.1.0: the same course demand, terrain factor and ceiling, exponent 0.85. Not the
+# default for anything new; it stays so that a race published under it keeps the scores it was
+# published with (a published race is frozen, api/db.py), and so that its scores can be reproduced.
+MODEL_0_1_0_CURVE = replace(MODEL_CURVE, version='0.10.0-course-standard-vertical', power_exponent=POWER_EXPONENT_0_1_0)
 
 
 def measured_demand_for(gpx_points, measurement):

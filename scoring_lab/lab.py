@@ -33,6 +33,7 @@ from scoring.course_standard import (
     confidence_for,
 )
 from scoring.measured_demand import compute_measured_demand
+from scoring.terrain import ALTITUDE_THRESHOLD_M
 
 from .models import LAB_MODELS, LabModel, curve_spec, select_models
 
@@ -252,6 +253,10 @@ def measure_all(paths: list[Path], *, jobs: int, use_cache: bool, log=print) -> 
 def score_course(model: LabModel, measured: dict, times: list[dict]) -> dict:
     curve = model.curve
     measurement, demand = measured["measurement"], measured["demand"]
+    threshold = curve.terrain_adjustment.altitude_threshold_m
+    if not model.from_totals and model.demand is None and threshold != ALTITUDE_THRESHOLD_M:
+        # The measured demand carries altitude above production's threshold; this model's is another.
+        demand = compute_measured_demand(measurement=measurement, altitude_threshold_m=threshold)
     if model.from_totals:
         adjusted_km, flags = demand_from_totals(demand.physical_distance_km, demand.elevation_gain_m)
         terrain_factor = 1.0
