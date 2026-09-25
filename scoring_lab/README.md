@@ -47,6 +47,7 @@ In the report, **Try a time** under each course scores any time you type, for ev
 | `prod` | nothing: the production model, as the site scores |
 | `0.1.1` | exponent 0.692, the development builds' curve: the middle of the field scores higher (583 -> 644 at 53% of the ceiling) |
 | `0.1.2` | production up to 990, then bends towards 1100 and never reaches it: a world best scores ~994, 1000 needs 2% faster than the world best, 1050 about 25% faster |
+| `0.1.3` | compared with the best humans over the runner's own finish time, and a plain percentage: see *Why 0.1.3* below |
 | `no-terrain` | no steep-ground or altitude factor: the gradient-cost integral alone |
 | `no-altitude` | altitude coefficient 0 |
 | `no-vertical-rule` | uphill-only courses get the ordinary steep coefficient |
@@ -57,6 +58,51 @@ In the report, the **Model** menu picks the one the table, tiles and ladders sho
 overlays up to two more on the charts. To try an idea, add a `LabModel` to `scoring_lab/models.py`
 (built with `dataclasses.replace` from the production curve); the report picks it up with no other
 change. Variants carry a `lab-` version, so a lab number can never pass for a published one.
+
+## Why 0.1.3
+
+Model 0.1.3 is the curve I would defend as the most correct and the fairest, from what OTRI already
+knows. It changes two things, and adds no new constant.
+
+**1. The same time, not the same course.** Production compares a runner with the best humans over
+the same course: a 4-hour marathoner against a 2-hour effort. But what limits a body is how long it
+works at what intensity. The sustainable share of aerobic power falls with the duration of the
+effort (the power-duration relationship: Hill 1925, Monod and Scherrer 1965, Péronnet and Thibault
+1989). Daniels and Gilbert (1979), the performance-equivalence tables runners of every level use,
+model that fatigue as a function of time. The slower runner is out longer and is judged against a
+ceiling they never had to hold for that long. 0.1.3 asks: *in the time you took, how far do the
+best humans go?* It uses the same ceiling curve through the same three world bests, read by time.
+
+**2. A plain percentage.** OTRI's course demand already rests on Minetti's energy cost per metre,
+which does not depend on speed. So metabolic power is proportional to speed, and the share of the
+ceiling's speed *is* the share of its power. That makes `score = 1000 x share` a ratio scale with a
+physical meaning: 500 is half the power. The 0.85 exponent was a judgement (spec section 6.1), and
+it gives the back of the field a boost the physics doesn't. The duration matching does part of that
+job for a reason instead.
+
+```text
+X     = the flat-equivalent km the human ceiling covers in your finish time
+score = 1000 x (your course's scored km) / X
+```
+
+**What it does:** world bests still score 1000 at every distance. Longer and slower efforts score a
+little more than in production (the spec's 245 km calibration course in 46 h: 437 -> 452; a 4:00
+marathon: 557 -> 570), and short fast road races a little less (a 50:00 10 km: 578 -> 544).
+Fairness is not the same as higher.
+
+**The test it was chosen on:** one runner should score about the same at every distance.
+Non-elite runners slow down over distance more than the elites the ceiling is built on (Riegel's
+1.06 is a population figure). For a runner whose own exponent is 1.10 to 1.15, 0.1.3 keeps their
+5 km to marathon scores within 33 to 83 points of each other, against 36 to 112 in production. For
+a runner who slows exactly like the world bests (1.06), production is perfectly consistent by
+construction and 0.1.3 is not.
+
+**Known limit:** the ceiling is two straight pieces in log-log, with a kink at the marathon world
+best (2:00:35). Read by time, that kink shows: a finish just past 2 hours gains up to about 40
+points over one just under it. A smooth curve through the same three records would remove it, but
+it reproduces the records it was not built from worse (10 km and half marathon at 96-97 % instead
+of 100 %), so the evidenced ceiling stays and the kink is documented. Real field data, not
+more theory, is what would settle both the fatigue and the scale.
 
 ## Faster loops
 

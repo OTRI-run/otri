@@ -11,7 +11,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, fields, replace
 
-from scoring.course_standard import MODEL_CURVE, SCALE_MAX, SCALE_MIN, ScoreCurve
+from scoring.course_standard import MODEL_CURVE, SCALE_MAX, SCALE_MIN, EnduranceReference, ScoreCurve, score_for_time, target_time_seconds
 from scoring.registry import DEFAULT_SCORING_VERSION, get_scoring_model_info
 
 
@@ -46,11 +46,37 @@ class SaturatingScoreCurve(ScoreCurve):
         return {"knee": self.knee, "cap": self.cap, "softness": self.softness}
 
 
-def curve_spec(curve: ScoreCurve) -> dict:
+def ceiling_seconds(reference: EnduranceReference, demand_km: float) -> float:
+    """How long the human ceiling takes over `demand_km` flat-equivalent km."""
+    return demand_km / reference.rate(demand_km) * 3600.0
+
+
+def ceiling_distance(reference: EnduranceReference, seconds: float) -> float:
+    """How far the human ceiling goes in `seconds`: the inverse of `ceiling_seconds`, in closed form.
+
+    On each segment rate(D) = q_i (D / d_i)^e_i, so time = 3600 D^(1-e_i) d_i^e_i / q_i; solve every
+    segment and keep the one whose range the answer falls in. Time rises strictly with distance on
+    every segment (the fatigue exponent 1 - e_i is positive), so exactly one does.
+    """
+    if not math.isfinite(seconds) or seconds <= 0:
+        raise ValueError("seconds must be positive and finite")
+    d, q = reference.anchor_demand_km, reference.anchor_rates
+    for i in range(len(d) - 1):
+        e = math.log(q[i + 1] / q[i]) / math.log(d[i + 1] / d[i])
+        distance = (seconds / 3600.0 * q[i] / d[i] ** e) ** (1.0 / (1.0 - e))
+        if reference._segment(distance) == i:
+            return distance
+    raise ValueError("no segment of the ceiling covers this time")  # unreachable for a valid reference
+
+
+def curve_spec(curve: ScoreCurve, *, duration_matched: bool = False) -> dict:
     """What the report needs to redraw a curve in the browser (scoring_lab/report_template.html)."""
     spec = {"exponent": curve.power_exponent}
     if isinstance(curve, SaturatingScoreCurve):
         spec.update(curve.to_spec())
+    if duration_matched:
+        ref = curve.demand_scaling
+        spec.update(duration_matched=True, anchors=[[d, q] for d, q in zip(ref.anchor_demand_km, ref.anchor_rates)])
     return spec
 
 
@@ -64,6 +90,22 @@ class LabModel:
     # is scored before its GPX is attached. Terrain inputs are unknown there, so no terrain factor.
     from_totals: bool = False
     production: bool = False
+    # Compare with the human ceiling over the runner's own finish time, not over the course
+    # (model 0.1.3): score = 1000 x (D / ceiling_distance(T)) ^ exponent.
+    duration_matched: bool = False
+
+    def raw_score(self, demand_km: float, seconds: float) -> float:
+        if self.duration_matched:
+            share = demand_km / ceiling_distance(self.curve.demand_scaling, seconds)
+            return SCALE_MAX * share ** self.curve.power_exponent
+        return score_for_time(demand_km, seconds, curve=self.curve)["otri_raw"]
+
+    def target_seconds(self, demand_km: float, score: float) -> float:
+        if self.duration_matched:
+            if not math.isfinite(score) or score <= 0:
+                raise ValueError("score must be positive")
+            return ceiling_seconds(self.curve.demand_scaling, demand_km * (SCALE_MAX / score) ** (1.0 / self.curve.power_exponent))
+        return target_time_seconds(demand_km, score, curve=self.curve)
 
 
 def _variant(key: str, **changes) -> ScoreCurve:
@@ -101,6 +143,18 @@ LAB_MODELS: tuple[LabModel, ...] = (
             **{f.name: getattr(MODEL_CURVE, f.name) for f in fields(ScoreCurve)},
             "version": "lab-0.1.2", "knee": 990.0, "cap": 1100.0, "softness": 280.0,
         }),
+    ),
+    LabModel(
+        key="0.1.3",
+        name="Model 0.1.3 (lab): same-time ceiling, linear",
+        description=(
+            "Each runner is compared with the best humans over the same time they were out, not over the same "
+            "course, and the score is that share, times 1000, with no chosen exponent: in the time you took, "
+            "the best humans cover X flat-km; you covered D; score = 1000 x D / X. A world best still scores "
+            "1000. Lab only; the reasoning is in scoring_lab/README.md."
+        ),
+        curve=_variant("0.1.3", power_exponent=1.0),
+        duration_matched=True,
     ),
     LabModel(
         key="no-terrain",

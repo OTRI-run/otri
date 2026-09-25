@@ -1,7 +1,7 @@
 """Scoring lab: measure every GPX in a folder once, score it with the chosen models, write a report.
 
 Scoring goes through the production functions (`adjusted_demand`, `confidence_for`,
-`score_for_time`, `target_time_seconds`), so a lab number for the production model is the number
+`score_for_time`, `target_time_seconds`, through `LabModel`), so a lab number for the production model is the number
 the site would give for the same course measurement. Nothing here writes to the database or
 reaches the network.
 """
@@ -31,8 +31,6 @@ from scoring.course_demand import demand_from_totals, gradient_ratio
 from scoring.course_standard import (
     adjusted_demand,
     confidence_for,
-    score_for_time,
-    target_time_seconds,
 )
 from scoring.measured_demand import compute_measured_demand
 
@@ -254,20 +252,20 @@ def score_course(model: LabModel, measured: dict, times: list[dict]) -> dict:
 
     scored_times = []
     for entry in times:
-        computed = score_for_time(adjusted_km, entry["seconds"], curve=curve)
-        scored_times.append({**entry, "score": computed["otri_score"], "raw": round(computed["otri_raw"], 2)})
+        raw = model.raw_score(adjusted_km, entry["seconds"])
+        scored_times.append({**entry, "score": round(max(0.0, raw)), "raw": round(raw, 2)})
 
     return {
         "adjusted_demand_km": round(adjusted_km, 3),
         "terrain_factor": round(terrain_factor, 4),
         "difficulty": round(adjusted_km / demand.physical_distance_km, 4) if demand.physical_distance_km else None,
         "exponent": curve.power_exponent,
-        "curve": curve_spec(curve),
+        "curve": curve_spec(curve, duration_matched=model.duration_matched),
         # The time at the human ceiling (fraction 1): the report's curve is drawn from it.
         "ceiling_seconds": round(adjusted_km / curve.demand_scaling.rate(adjusted_km) * 3600, 3),
-        "world_best_seconds": round(target_time_seconds(adjusted_km, 1000.0, curve=curve), 2),
+        "world_best_seconds": round(model.target_seconds(adjusted_km, 1000.0), 2),
         "ladder": [
-            {"score": score, "seconds": round(target_time_seconds(adjusted_km, score, curve=curve))}
+            {"score": score, "seconds": round(model.target_seconds(adjusted_km, score))}
             for score in LADDER_SCORES
         ],
         "confidence": confidence,

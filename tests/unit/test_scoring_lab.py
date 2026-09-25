@@ -13,7 +13,8 @@ from course.gpx import read_track_points
 from scoring import estimate_score
 from scoring.course_standard import score_for_time, target_time_seconds
 from scoring_lab import lab
-from scoring_lab.models import LAB_MODELS, MODELS_BY_KEY, select_models
+from scoring.course_standard import ENDURANCE_REFERENCE_OBSERVATIONS
+from scoring_lab.models import LAB_MODELS, MODELS_BY_KEY, ceiling_distance, ceiling_seconds, select_models
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "gpx"
 
@@ -71,9 +72,28 @@ def test_production_matches_the_estimator(report):
     assert prod["confidence"] == estimate.confidence
 
 
+def _page_ceiling_distance(anchors, t):
+    """ceilingDistance in report_template.html, line for line."""
+    for i in range(len(anchors) - 1):
+        (d1, q1), (d2, q2) = anchors[i], anchors[i + 1]
+        e = math.log(q2 / q1) / math.log(d2 / d1)
+        d = (t / 3600 * q1 / d1 ** e) ** (1 / (1 - e))
+        if max([j for j in range(len(anchors) - 1) if d >= anchors[j][0]], default=0) == i:
+            return d
+    return math.nan
+
+
+def _page_rate(anchors, d):
+    i = max([j for j in range(len(anchors) - 1) if d >= anchors[j][0]], default=0)
+    (d1, q1), (d2, q2) = anchors[i], anchors[i + 1]
+    return q1 * (d / d1) ** (math.log(q2 / q1) / math.log(d2 / d1))
+
+
 def _page_score(m, t):
     """scoreAt in report_template.html, line for line."""
     c = m["curve"]
+    if c.get("duration_matched"):
+        return 1000 * (m["adjusted_demand_km"] / _page_ceiling_distance(c["anchors"], t)) ** c["exponent"]
     power = 1000 * (m["ceiling_seconds"] / t) ** c["exponent"]
     if "knee" not in c or power <= c["knee"]:
         return power
@@ -83,22 +103,50 @@ def _page_score(m, t):
 def _page_time(m, score):
     """timeFor in report_template.html, line for line."""
     c = m["curve"]
+    if c.get("duration_matched"):
+        d = m["adjusted_demand_km"] * (1000 / score) ** (1 / c["exponent"])
+        return d / _page_rate(c["anchors"], d) * 3600
     power = score if "knee" not in c or score <= c["knee"] else c["knee"] - c["softness"] * math.log(1 - (score - c["knee"]) / (c["cap"] - c["knee"]))
     return m["ceiling_seconds"] * (1000 / power) ** (1 / c["exponent"])
 
 
 def test_report_curve_is_the_model_curve(report):
-    """The HTML redraws each model's curve from `curve` and `ceiling_seconds`; it must be score_for_time."""
+    """The HTML redraws each model's curve from `curve` and `ceiling_seconds`; it must be the model's own."""
     data, _ = report
     for course in (c for c in data["courses"] if "models" in c):
         for key, m in course["models"].items():
-            curve = MODELS_BY_KEY[key].curve
-            for share in (0.6, 0.97, 1.0, 1.05, 1.4):
+            model = MODELS_BY_KEY[key]
+            for share in (0.2, 0.6, 0.97, 1.0, 1.05, 1.4):
                 seconds = m["ceiling_seconds"] / share
-                expected = score_for_time(m["adjusted_demand_km"], seconds, curve=curve)["otri_raw"]
-                assert _page_score(m, seconds) == pytest.approx(expected, rel=1e-4), (key, share)
-            for score in (500, 990, 1000):
-                assert _page_time(m, score) == pytest.approx(target_time_seconds(m["adjusted_demand_km"], score, curve=curve), rel=1e-4)
+                assert _page_score(m, seconds) == pytest.approx(model.raw_score(m["adjusted_demand_km"], seconds), rel=1e-4), (key, share)
+            for score in (300, 500, 990, 1000):
+                assert _page_time(m, score) == pytest.approx(model.target_seconds(m["adjusted_demand_km"], score), rel=1e-4), (key, score)
+
+
+def test_standard_models_score_through_the_production_functions():
+    for key in ("prod", "0.1.1", "0.1.2", "linear"):
+        model = MODELS_BY_KEY[key]
+        assert model.raw_score(42.195, 14400) == score_for_time(42.195, 14400, curve=model.curve)["otri_raw"]
+        assert model.target_seconds(42.195, 600) == target_time_seconds(42.195, 600, curve=model.curve)
+
+
+def test_lab_0_1_3_compares_with_the_ceiling_over_the_same_time():
+    model = MODELS_BY_KEY["0.1.3"]
+    reference = model.curve.demand_scaling
+    for distance in (1.5, 5.0, 42.195, 100.0, 319.614, 700.0):
+        assert ceiling_distance(reference, ceiling_seconds(reference, distance)) == pytest.approx(distance, rel=1e-12)
+    for _label, distance, seconds in ENDURANCE_REFERENCE_OBSERVATIONS:  # the world bests it is built on
+        assert model.raw_score(distance, seconds) == pytest.approx(1000, abs=1e-6)
+    # Linear share of what the best humans cover in the same time: half of it is 500, at any duration.
+    for hours in (0.5, 4, 30):
+        seconds = hours * 3600
+        assert model.raw_score(ceiling_distance(reference, seconds) / 2, seconds) == pytest.approx(500)
+    # The longer a runner is out, the more the same-time ceiling has slowed: a slow finish on a long
+    # course scores more than under production (the spec's calibration course in 46 h: 437).
+    assert round(model.raw_score(245.626, 46 * 3600)) == 452
+    assert round(MODELS_BY_KEY["prod"].raw_score(245.626, 46 * 3600)) == 437
+    for score in (300, 700, 1000, 1050):
+        assert model.raw_score(42.195, model.target_seconds(42.195, score)) == pytest.approx(score)
 
 
 def test_lab_0_1_2_makes_the_top_nearly_unreachable():

@@ -226,12 +226,30 @@ function parseDuration(str) {
 // The model's own curve restated per course: f = ceiling time / time, score = 1000 x f ^ exponent,
 // bent towards `cap` above `knee` on a curve that has one (scoring_lab/models.py,
 // SaturatingScoreCurve). tests/unit/test_scoring_lab.py checks this against score_for_time.
+// Model 0.1.3: the ceiling over the same time (scoring_lab/models.py, ceiling_distance).
+function rateAt(anchors, d) {
+  let i = 0; for (let j = 0; j < anchors.length - 1; j++) if (d >= anchors[j][0]) i = j;
+  const [d1, q1] = anchors[i], [d2, q2] = anchors[i + 1];
+  return q1 * Math.pow(d / d1, Math.log(q2 / q1) / Math.log(d2 / d1));
+}
+function ceilingDistance(anchors, t) {
+  for (let i = 0; i < anchors.length - 1; i++) {
+    const [d1, q1] = anchors[i], [d2, q2] = anchors[i + 1], e = Math.log(q2 / q1) / Math.log(d2 / d1);
+    const d = Math.pow(t / 3600 * q1 / Math.pow(d1, e), 1 / (1 - e));
+    let seg = 0; for (let j = 0; j < anchors.length - 1; j++) if (d >= anchors[j][0]) seg = j;
+    if (seg === i) return d;
+  }
+  return NaN;
+}
 function scoreAt(m, t) {
-  const c = m.curve, power = 1000 * Math.pow(m.ceiling_seconds / t, c.exponent);
+  const c = m.curve;
+  if (c.duration_matched) return 1000 * Math.pow(m.adjusted_demand_km / ceilingDistance(c.anchors, t), c.exponent);
+  const power = 1000 * Math.pow(m.ceiling_seconds / t, c.exponent);
   return c.knee == null || power <= c.knee ? power : c.knee + (c.cap - c.knee) * (1 - Math.exp(-(power - c.knee) / c.softness));
 }
 function timeFor(m, score) {
   const c = m.curve;
+  if (c.duration_matched) { const d = m.adjusted_demand_km * Math.pow(1000 / score, 1 / c.exponent); return d / rateAt(c.anchors, d) * 3600; }
   if (c.cap != null && score >= c.cap) return Infinity;
   const power = c.knee == null || score <= c.knee ? score : c.knee - c.softness * Math.log(1 - (score - c.knee) / (c.cap - c.knee));
   return m.ceiling_seconds * Math.pow(1000 / power, 1 / c.exponent);
