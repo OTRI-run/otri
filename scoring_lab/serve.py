@@ -251,7 +251,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--no-open", action="store_true", help="do not open the browser")
     parser.add_argument("-j", "--jobs", type=int, default=4, help="processes for measuring new courses")
+    parser.add_argument("--no-dem", action="store_true", help="measure from the GPX files' own elevations instead of terrain tiles (the default fetches the Copernicus tiles a course needs into scoring_lab/.dem/, as production does)")
     args = parser.parse_args(argv)
+    lab.use_terrain(not args.no_dem)
     sys.stdout.reconfigure(line_buffering=True)  # the console window shows each line as it happens
 
     lab.DEFAULT_COURSES_DIR.mkdir(exist_ok=True)
