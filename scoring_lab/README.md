@@ -49,6 +49,7 @@ In the report, **Try a time** under each course scores any time you type, for ev
 | `0.1.2` | production up to 990, then bends towards 1100 and never reaches it: a world best scores ~994, 1000 needs 2% faster than the world best, 1050 about 25% faster |
 | `0.1.3` | compared with the best humans over the runner's own finish time, and a plain percentage: see *Why 0.1.3* below |
 | `0.1.4` | tuned by feel on three results: exponent 0.70 lifts the middle, and above 900 the score bends towards 1000 and never reaches it (Sierre-Zinal record 1030 -> 979, Phuket 15k 1:33:40 598 -> 655, 75k 13:24:40 557 -> 618, road world bests ~971) |
+| `0.1.5` | 0.1.4 with room above 1000: the top bends towards 1100 instead (softness 250). Same Sierre-Zinal (979) and Phuket (655, 618) scores; road world bests ~966; 1000 takes 11% faster than the road world bests |
 | `no-terrain` | no steep-ground or altitude factor: the gradient-cost integral alone |
 | `no-altitude` | altitude coefficient 0 |
 | `no-vertical-rule` | uphill-only courses get the ordinary steep coefficient |

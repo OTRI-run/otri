@@ -172,6 +172,20 @@ LAB_MODELS: tuple[LabModel, ...] = (
         }),
     ),
     LabModel(
+        key="0.1.5",
+        name="Model 0.1.5 (lab): tuned by feel, open top",
+        description=(
+            "0.1.4 with room above 1000: exponent 0.70 lifts the middle, and above 900 the score bends gently "
+            "towards 1100 and never reaches it. Sierre-Zinal's record 979, Phuket 15k in 1:33:40 655, 75k in "
+            "13:24:40 618 (as in 0.1.4); road world bests about 966; 1000 takes 11% faster than the road world "
+            "bests, 1022 20% faster. Lab only."
+        ),
+        curve=SaturatingScoreCurve(**{
+            **{f.name: getattr(MODEL_CURVE, f.name) for f in fields(ScoreCurve)},
+            "version": "lab-0.1.5", "power_exponent": 0.70, "knee": 900.0, "cap": 1100.0, "softness": 250.0,
+        }),
+    ),
+    LabModel(
         key="no-terrain",
         name="No terrain adjustment",
         description="Gradient-cost integral only: no steep-ground and no altitude factor. Shows what terrain adds.",

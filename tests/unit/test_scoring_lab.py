@@ -139,6 +139,18 @@ def test_lab_0_1_4_moves_the_three_judged_results_and_never_reaches_1000():
         model.target_seconds(42.195, 1000)
 
 
+def test_lab_0_1_5_keeps_0_1_4s_judged_results_and_lets_the_best_pass_1000():
+    model, tuned = MODELS_BY_KEY["0.1.5"], MODELS_BY_KEY["0.1.4"]
+    top = model.curve.q_1000
+    score = lambda m, share: m.curve.raw_score(share * top)
+    for share in (1.036, 0.546, 0.503):  # Sierre-Zinal's record, Phuket 15k and 75k
+        assert round(score(model, share)) == round(score(tuned, share))
+    assert round(score(model, 1.0)) == 966  # the road world bests
+    assert score(model, 1.2) > 1020  # 20 % faster than the road world bests passes 1000
+    assert score(model, 5.0) < 1100  # five times world-best speed
+    assert model.raw_score(42.195, model.target_seconds(42.195, 1000)) == pytest.approx(1000)
+
+
 def test_standard_models_score_through_the_production_functions():
     for key in ("prod", "0.1.1", "0.1.2", "linear"):
         model = MODELS_BY_KEY[key]
