@@ -1,8 +1,10 @@
-"""OTRI scoring engine: OTRI model 0.1.0 (`scoring.course_standard`), the single-time estimator
-built on it, and the runner index. Every score names its `scoring_version`."""
+"""OTRI scoring engine: OTRI model 0.1.1 (`scoring.course_standard`; 0.1.0 kept so that its
+scores can be reproduced), the single-time estimator built on it, and the runner index. Every score
+names its `scoring_version`."""
 
 from .course_standard import (
     ENDURANCE_REFERENCE,
+    MODEL_0_1_0_CURVE,
     MODEL_CURVE,
     EnduranceReference,
     ScoreCurve,
@@ -28,6 +30,7 @@ __all__ = [
     "SCORING_VERSION",
     "DEFAULT_SCORING_VERSION",
     "MODEL_CURVE",
+    "MODEL_0_1_0_CURVE",
     "ENDURANCE_REFERENCE",
     "TERRAIN_MODEL",
     "RunnerScore",

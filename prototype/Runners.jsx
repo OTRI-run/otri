@@ -12,7 +12,7 @@ import SearchSuggest from '../src/components/SearchSuggest'
 import { RUNNER_NAMES } from '../src/lib/runnerNames'
 import { knownButNotHere } from '../src/lib/suggest'
 import ReportForm from './ReportForm'
-import { modelShort } from '../src/lib/model'
+import { modelShort, CURRENT_MODEL } from '../src/lib/model'
 import NotFound from '../src/components/NotFound'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import Flag from '../src/components/Flag'
@@ -251,7 +251,7 @@ function ResultRow({ result, units }) {
         </a>
         <span className="block font-mono text-[10px] text-slate-500">
           {result.course_name} · {formatDistance(result.distance_km, units)} · {formatElevation(result.elevation_gain_m, units, { sign: '+' })}
-          {result.is_demo ? ' · demo' : ''}{modelShort(result.scoring_version) !== '0.1.0' ? ` · ${modelShort(result.scoring_version)}` : ''}
+          {result.is_demo ? ' · demo' : ''}{modelShort(result.scoring_version) !== CURRENT_MODEL.short ? ` · ${modelShort(result.scoring_version)}` : ''}
         </span>
         <span className="mt-1 block font-mono text-[10px] text-slate-500 md:hidden">
           {result.event_date} ·{' '}

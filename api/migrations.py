@@ -217,6 +217,18 @@ MIGRATIONS: tuple[Migration, ...] = (
         "whose digests are still on file are backfilled, and older days stay at nobody because that number is not recoverable.",
     ),
     Migration(
+        "0012_model_0_1_1",
+        """
+        UPDATE races SET scoring_version = '0.11.0-course-standard-model-0.1.1', updated_at = now()
+        WHERE scoring_version = '0.10.0-course-standard-vertical';
+        ALTER TABLE races ALTER COLUMN scoring_version SET DEFAULT '0.11.0-course-standard-model-0.1.1';
+        """,
+        "OTRI model 0.1.1 (OEP-004): the curve exponent 0.692 for 0.85, every other rule unchanged. "
+        "Every race moves to it, published ones included, on the maintainer's decision: the change is a "
+        "monotone restatement of one scale, no finisher changes place, and a 0.1.0 score restates exactly. "
+        "The 0.1.0 build stays in the registry so that a score published under it can be reproduced.",
+    ),
+    Migration(
         "0011_race_review",
         """
         ALTER TABLE races ADD COLUMN IF NOT EXISTS review_status TEXT NOT NULL DEFAULT 'none';

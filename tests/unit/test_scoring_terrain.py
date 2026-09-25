@@ -119,8 +119,8 @@ def test_real_course_pins():
     """One real performance per course, from uploaded elevations (production measures from the DEM
     and differs by a few percent). STEEP_COEFFICIENT was calibrated on the mountain 100-miler; if
     these move, the model moved, which is a new version and not an edit."""
-    assert estimate_score(REFERENCE_WIN_SECONDS, gpx_points=_points(REFERENCE_100MI)).predicted_score == 958
-    assert estimate_score(8430, gpx_points=_points(CM6)).predicted_score == 653
+    assert estimate_score(REFERENCE_WIN_SECONDS, gpx_points=_points(REFERENCE_100MI)).predicted_score == 966  # 958 under 0.1.0
+    assert estimate_score(8430, gpx_points=_points(CM6)).predicted_score == 707  # 653 under 0.1.0
 
 
 @needs_real_courses

@@ -3,22 +3,22 @@
 // these bands give that a name a runner already uses.
 //
 // The edges are round scores, and what they mean is exact, not estimated: a score is
-// 1000 x share^0.85 (docs/methodology/0.1.0/HOW-OTRI-SCORES.md), so every score is a share of
+// 1000 x share^0.692 (docs/methodology/0.1.1/HOW-OTRI-SCORES.md), so every score is a share of
 // world-best speed, and because the ceiling curve runs through the marathon world best, that share
-// is also a time on a flat road marathon: 700 is 3:03, 600 is 3:40, 500 is 4:33, 400 is 5:54. No claim is made
+// is also a time on a flat road marathon: 700 is 3:22, 600 is 4:12, 500 is 5:28, 400 is 7:33. No claim is made
 // about how many runners are in a band: OTRI has no such data yet, and would not guess.
 //
 // Trail scores run a little lower than the road times suggest, because rough ground slows everyone
 // and the model does not yet measure it; the FAQ says so.
 
 export const MARATHON_WORLD_BEST_SECONDS = 2 * 3600 + 35 // 2:00:35, one of the three anchors of the ceiling curve
-export const MODEL_EXPONENT = 0.85
+export const MODEL_EXPONENT = 0.692
 
 export const LEVELS = [
   { id: 'beyond', from: 1000, name: 'Beyond the record', short: 'Record+', blurb: 'Faster than a record run on a course like this. For a target, a dream; for a result, check the course and the time.' },
-  { id: 'world', from: 900, name: 'World class', short: 'World', blurb: 'The pace of the best in the world. A winning 100-mile mountain run scored 984.' },
+  { id: 'world', from: 900, name: 'World class', short: 'World', blurb: 'The pace of the best in the world. A winning 100-mile mountain run scored 987.' },
   { id: 'elite', from: 800, name: 'Elite', short: 'Elite', blurb: 'Professional and national-level pace.' },
-  { id: 'expert', from: 700, name: 'Expert', short: 'Expert', blurb: 'Years of structured training: the pace of a three-hour road marathoner and faster.' },
+  { id: 'expert', from: 700, name: 'Expert', short: 'Expert', blurb: 'Years of structured training: the pace of a 3:22 road marathoner and faster.' },
   { id: 'advanced', from: 600, name: 'Advanced', short: 'Advanced', blurb: 'A trained, experienced runner.' },
   { id: 'trained', from: 500, name: 'Trained', short: 'Trained', blurb: 'Runs regularly and races with a plan.' },
   { id: 'intermediate', from: 400, name: 'Intermediate', short: 'Intermed.', blurb: 'Finishes comfortably, running most of the way.' },

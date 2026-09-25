@@ -1,13 +1,16 @@
 /**
- * The public name of the scoring model. The API names the build on every score
- * (scoring_version, '0.10.0-course-standard-vertical'); publicly it is "OTRI model 0.1.0". A
- * future model gets its own label here.
+ * The public names of the scoring models. The API names the build on every score
+ * (scoring_version); publicly the current one is "OTRI model 0.1.1". Scores under 0.1.0 can still
+ * be reproduced, so its name is kept here too.
  */
-export const CURRENT_MODEL = { version: '0.10.0-course-standard-vertical', label: 'OTRI model 0.1.0', short: '0.1.0' }
+export const CURRENT_MODEL = { version: '0.11.0-course-standard-model-0.1.1', label: 'OTRI model 0.1.1', short: '0.1.1' }
+export const EARLIER_MODELS = {
+  '0.10.0-course-standard-vertical': { label: 'OTRI model 0.1.0', short: '0.1.0' },
+}
 
 export function modelLabel(version) {
   if (!version || version === CURRENT_MODEL.version) return CURRENT_MODEL.label
-  return `OTRI model build ${version}`
+  return EARLIER_MODELS[version]?.label ?? `OTRI model build ${version}`
 }
 
 /**
@@ -22,5 +25,6 @@ export function notScoredReason(rows) {
 }
 
 export function modelShort(version) {
-  return !version || version === CURRENT_MODEL.version ? CURRENT_MODEL.short : version
+  if (!version || version === CURRENT_MODEL.version) return CURRENT_MODEL.short
+  return EARLIER_MODELS[version]?.short ?? version
 }

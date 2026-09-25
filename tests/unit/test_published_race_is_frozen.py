@@ -39,6 +39,24 @@ def _published_race(email="freeze@example.com"):
     return headers, race_id
 
 
+# --- The one-time restatement of OEP-004 -----------------------------------------------------------
+
+
+def test_the_model_migration_moves_a_published_race_too():
+    """Migration 0012 (OTRI model 0.1.1) is the maintainer's one-time restatement of every race,
+    published ones included: a monotone change of one scale that moves no finisher's place. The
+    freeze below still holds for an organizer's own writes."""
+    from api import migrations
+    from scoring import DEFAULT_SCORING_VERSION, MODEL_0_1_0_CURVE
+
+    headers, race_id = _published_race()
+    with db.get_connection() as connection:
+        connection.execute("UPDATE races SET scoring_version = %s WHERE race_id = %s", (MODEL_0_1_0_CURVE.version, race_id))
+        connection.execute(next(m.sql for m in migrations.MIGRATIONS if m.name == "0012_model_0_1_1"))
+        assert connection.execute("SELECT published_at FROM races WHERE race_id = %s", (race_id,)).fetchone()["published_at"] is not None
+    assert client.get(f"/races/{race_id}", headers=headers).json()["scoring_version"] == DEFAULT_SCORING_VERSION
+
+
 # --- Through the handler -------------------------------------------------------------------------
 
 

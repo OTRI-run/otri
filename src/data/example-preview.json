@@ -1,8 +1,8 @@
 {
- "label": "Synthetic example race: 100 invented finishers on a made-up course. Scored by the live OTRI API on 2026-09-23, OTRI model 0.1.0.",
+ "label": "Synthetic example race: 100 invented finishers on a made-up course. Scored by the live OTRI API on 2026-09-23, OTRI model 0.1.0, restated for OTRI model 0.1.1 (the exponent is the only difference).",
  "fetched_at": "2026-09-23",
- "scoring_version": "0.10.0-course-standard-vertical",
- "model_label": "OTRI model 0.1.0",
+ "scoring_version": "0.11.0-course-standard-model-0.1.1",
+ "model_label": "OTRI model 0.1.1",
  "course": {
   "name": "Example race",
   "distance_km": 24.012,
@@ -16,8 +16,8 @@
  "summary": {
   "finishers": 100,
   "non_finishers": 4,
-  "best_score": 792,
-  "median_score": 490
+  "best_score": 827,
+  "median_score": 807
  },
  "rows": [
   {
@@ -26,7 +26,7 @@
    "family_name": "Hong",
    "nationality": "KOR",
    "time": "1:56:16",
-   "score": 792
+   "score": 827
   },
   {
    "rank": 2,
@@ -34,7 +34,7 @@
    "family_name": "Mustermann",
    "nationality": "DEU",
    "time": "1:56:43",
-   "score": 789
+   "score": 825
   },
   {
    "rank": 3,
@@ -42,7 +42,7 @@
    "family_name": "Blow",
    "nationality": "NZL",
    "time": "2:00:34",
-   "score": 768
+   "score": 807
   },
   {
    "rank": 4,
@@ -50,7 +50,7 @@
    "family_name": "Meikalainen",
    "nationality": "FIN",
    "time": "2:01:07",
-   "score": 765
+   "score": 804
   },
   {
    "rank": 5,
@@ -58,7 +58,7 @@
    "family_name": "Jaidee",
    "nationality": "THA",
    "time": "2:08:00",
-   "score": 730
+   "score": 774
   }
  ],
  "profile": [
@@ -446,7 +446,7 @@
    "family_name": "Hong",
    "nationality": "KOR",
    "time": "1:56:16",
-   "score": 792
+   "score": 827
   },
   "finish_time_seconds": 6976,
   "performance_rate": 16.238,
@@ -455,20 +455,20 @@
   "adjusted_demand_km": 31.465,
   "reference_rate": 21.364,
   "steep_distance_fraction": 0.143679,
-  "exponent": 0.85
+  "exponent": 0.692
  },
  "targets": [
   {
    "finish_time_seconds": 12600,
    "time": "3:30:00",
-   "score": 479,
+   "score": 549,
    "performance_rate": 8.99,
    "fraction_of_ceiling": 0.4208
   },
   {
    "finish_time_seconds": 16200,
    "time": "4:30:00",
-   "score": 387,
+   "score": 462,
    "performance_rate": 6.992,
    "fraction_of_ceiling": 0.327289
   }

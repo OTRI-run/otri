@@ -75,20 +75,20 @@ def test_root_reports_app_status():
 def test_there_is_one_scoring_model_to_choose():
     response = client.get("/scoring/models")
     assert response.status_code == 200
-    assert [model["version"] for model in response.json()] == ["0.10.0-course-standard-vertical"]
+    assert [model["version"] for model in response.json()] == ["0.11.0-course-standard-model-0.1.1", "0.10.0-course-standard-vertical"]
 
 
 def test_new_race_defaults_to_course_standard_scoring():
     headers = _organizer_auth_headers()
     _, race_id = _create_event_and_race(headers)
     response = client.get(f"/races/{race_id}", headers=headers)
-    assert response.json()["scoring_version"] == "0.10.0-course-standard-vertical"
+    assert response.json()["scoring_version"] == "0.11.0-course-standard-model-0.1.1"
 
 
 def test_a_race_can_name_the_model_explicitly():
     headers = _organizer_auth_headers()
-    _, race_id = _create_event_and_race(headers, scoring_version="0.10.0-course-standard-vertical")
-    assert client.get(f"/races/{race_id}", headers=headers).json()["scoring_version"] == "0.10.0-course-standard-vertical"
+    _, race_id = _create_event_and_race(headers, scoring_version="0.11.0-course-standard-model-0.1.1")
+    assert client.get(f"/races/{race_id}", headers=headers).json()["scoring_version"] == "0.11.0-course-standard-model-0.1.1"
 
 
 def test_race_creation_rejects_unknown_scoring_version():
@@ -114,19 +114,19 @@ def test_a_retired_scoring_version_is_refused_on_create_and_on_edit():
 
 
 def test_a_race_stored_under_a_retired_build_is_moved_to_the_model():
-    """What migration 0004 does to races created before the development builds were removed."""
+    """What migrations 0004, 0005 and 0012 do to a race created before the development builds were removed."""
     from api import migrations
 
     headers = _organizer_auth_headers()
     _, race_id = _create_event_and_race(headers)
     with db.get_connection() as connection:
         connection.execute("UPDATE races SET scoring_version = '0.6.0-course-standard-smoothed-upper' WHERE race_id = %s", (race_id,))
-        for name in ("0004_single_scoring_model", "0005_vertical_build"):
+        for name in ("0004_single_scoring_model", "0005_vertical_build", "0012_model_0_1_1"):
             connection.execute(next(m.sql for m in migrations.MIGRATIONS if m.name == name))
-    assert client.get(f"/races/{race_id}", headers=headers).json()["scoring_version"] == "0.10.0-course-standard-vertical"
+    assert client.get(f"/races/{race_id}", headers=headers).json()["scoring_version"] == "0.11.0-course-standard-model-0.1.1"
     with DEMO_RESULT_001.open("rb") as handle:
         scored = client.post(f"/races/{race_id}/results", files={"file": ("r.csv", handle, "text/csv")}, headers=headers)
-    assert scored.status_code == 200 and scored.json()["scores"][0]["scoring_version"] == "0.10.0-course-standard-vertical"
+    assert scored.status_code == 200 and scored.json()["scores"][0]["scoring_version"] == "0.11.0-course-standard-model-0.1.1"
 
 
 def test_list_races_returns_demo_races():
@@ -552,7 +552,7 @@ def test_analyze_gpx_with_finish_time_returns_predicted_score():
     assert estimate is not None
     assert "predicted_score" in estimate
     assert estimate["predicted_score"] < 1000
-    assert estimate["scoring_version"] == "0.10.0-course-standard-vertical"
+    assert estimate["scoring_version"] == "0.11.0-course-standard-model-0.1.1"
     # The explanation the prototype renders comes from the API, not from client-side maths.
     # No DEM manifest in the test environment, so V0.7 must say Low and say why.
     assert estimate["confidence"] == "Low"

@@ -18,10 +18,10 @@ def test_the_scale_uses_the_models_exponent_and_marathon_anchor():
 
 
 def test_the_marathon_times_said_in_words_are_what_the_model_gives():
-    """The FAQ and the code comment name times for round scores: 700 is 3:03, 600 is 3:40, ..."""
+    """The FAQ and the code comment name times for round scores: 700 is 3:22, 600 is 4:12, ..."""
     marathon = next(seconds_ for label, km, seconds_ in course_standard.ENDURANCE_REFERENCE_OBSERVATIONS if km == 42.195)
-    said = {700: "3:03", 600: "3:40", 500: "4:33", 400: "5:54"}
-    faq = (Path(__file__).resolve().parents[2] / "prototype" / "Faq.jsx").read_text(encoding="utf-8")
+    said = {700: "3:22", 600: "4:12", 500: "5:28", 400: "7:33"}
+    faq = (Path(__file__).resolve().parents[2] / "src" / "data" / "faq.js").read_text(encoding="utf-8")
     for score, words in said.items():
         share = (score / 1000) ** (1 / course_standard.POWER_EXPONENT)
         minutes = round(marathon / share / 60)

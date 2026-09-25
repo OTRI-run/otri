@@ -8,17 +8,19 @@ import { Timer, Trophy } from 'lucide-react'
 // a screen reader; the page says everything it needs to say in words below.
 //
 // The scores are illustrative, and the strip says so: OTRI has not scored these races, and a
-// number shown beside a real athlete's name must not read as a claim about them.
+// number shown beside a real athlete's name must not read as a claim about them. They were worked
+// out under model 0.1.0 and restated for 0.1.1 from those values (score = 1000 x (old / 1000) ^
+// (0.692 / 0.85)); the exponent is the only difference between the two, so the restatement is exact.
 
 const SHOWCASE = [
-  { name: 'Louison Coiffet', country: 'FRA', race: 'Marathon du Mont-Blanc 90 km', year: 2026, time: '9:37:22', score: 946 },
-  { name: 'Jim Walmsley', country: 'USA', race: 'Chianti Ultra Trail 120K', year: 2025, time: '9:59:48', score: 935 },
-  { name: 'Ben Dhiman', country: 'USA', race: 'UTMB', year: 2026, time: '18:16:29', score: 985 },
-  { name: 'Tom Evans', country: 'GBR', race: 'UTMB', year: 2025, time: '19:18:58', score: 972 },
-  { name: 'Ruth Croft', country: 'NZL', race: 'UTMB', year: 2025, time: '22:56:23', score: 840 },
-  { name: 'Jennifer Lichter', country: 'USA', race: 'Western States 100', year: 2026, time: '15:28:05', score: 840 },
-  { name: 'Blandine L’Hirondel', country: 'FRA', race: 'UTMB', year: 2026, time: '21:54:49', score: 843 },
-  { name: 'Vincent Bouillard', country: 'FRA', race: 'Western States 100', year: 2026, time: '13:46:15', score: 927 },
+  { name: 'Louison Coiffet', country: 'FRA', race: 'Marathon du Mont-Blanc 90 km', year: 2026, time: '9:37:22', score: 956 },
+  { name: 'Jim Walmsley', country: 'USA', race: 'Chianti Ultra Trail 120K', year: 2025, time: '9:59:48', score: 947 },
+  { name: 'Ben Dhiman', country: 'USA', race: 'UTMB', year: 2026, time: '18:16:29', score: 988 },
+  { name: 'Tom Evans', country: 'GBR', race: 'UTMB', year: 2025, time: '19:18:58', score: 977 },
+  { name: 'Ruth Croft', country: 'NZL', race: 'UTMB', year: 2025, time: '22:56:23', score: 868 },
+  { name: 'Jennifer Lichter', country: 'USA', race: 'Western States 100', year: 2026, time: '15:28:05', score: 868 },
+  { name: 'Blandine L’Hirondel', country: 'FRA', race: 'UTMB', year: 2026, time: '21:54:49', score: 870 },
+  { name: 'Vincent Bouillard', country: 'FRA', race: 'Western States 100', year: 2026, time: '13:46:15', score: 940 },
 ]
 
 // Three lines keep the event and time-to-points comparison within the existing narrow card.

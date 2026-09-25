@@ -1,0 +1,7 @@
+# Your course files and times stay local (DATA_POLICY.md: third-party GPX is not published).
+courses/*
+!courses/README.md
+!courses/times.example.csv
+# Generated on every run.
+reports/
+.cache/

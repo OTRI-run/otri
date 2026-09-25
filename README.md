@@ -49,7 +49,7 @@ curl -X POST https://api.otri.run/score -F "results=@results.csv" -F "gpx=@cours
 ├── public/                          # static files served as they are: icons, brand kit, badge, redirects, robots, sitemap
 ├── api/                             # the FastAPI backend: accounts, events, races, results, scoring calls, admin
 ├── course/                          # GPX parsing and course measurement (distance, climb, gradients, terrain data)
-├── scoring/                         # OTRI model 0.1.0: course demand, terrain factor, the score curve, the runner index
+├── scoring/                         # OTRI model 0.1.1 (0.1.0 kept so that its scores can be reproduced): course demand, terrain factor, the score curve, the runner index
 ├── ingestion/                       # reading and validating organizer result files (CSV, TSV, XLSX)
 ├── data/                            # schemas, the synthetic demo dataset, calibration records; caches (git-ignored)
 ├── docs/                            # methodology, governance, operations, product direction, user guides
@@ -98,7 +98,7 @@ We're always looking for contributors and testers: developers, methodology/data 
 
 ## Status
 
-**Working product, model 0.1.0, pre-launch.**
+**Working product, model 0.1.1, pre-launch.**
 
 The scoring tool, the organizer workflow, the public race pages and the API are built and tested. The scoring model is deliberately not treated as final: it is published, versioned and explained, and it will be refined against real race data. A change to how scores are computed is always a new scoring version; a score once given replays byte-for-byte.
 
