@@ -48,6 +48,7 @@ In the report, **Try a time** under each course scores any time you type, for ev
 | `0.1.1` | exponent 0.692, the development builds' curve: the middle of the field scores higher (583 -> 644 at 53% of the ceiling) |
 | `0.1.2` | production up to 990, then bends towards 1100 and never reaches it: a world best scores ~994, 1000 needs 2% faster than the world best, 1050 about 25% faster |
 | `0.1.3` | compared with the best humans over the runner's own finish time, and a plain percentage: see *Why 0.1.3* below |
+| `0.1.4` | tuned by feel on three results: exponent 0.70 lifts the middle, and above 900 the score bends towards 1000 and never reaches it (Sierre-Zinal record 1030 -> 979, Phuket 15k 1:33:40 598 -> 655, 75k 13:24:40 557 -> 618, road world bests ~971) |
 | `no-terrain` | no steep-ground or altitude factor: the gradient-cost integral alone |
 | `no-altitude` | altitude coefficient 0 |
 | `no-vertical-rule` | uphill-only courses get the ordinary steep coefficient |

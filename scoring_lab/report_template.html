@@ -395,7 +395,7 @@ const COLUMNS = [
   { key: 'steep', label: 'Steep %', get: c => c.steep_fraction * 100, fmt: v => num(v, 1) },
   { key: 'alt', label: 'Alt. m', get: c => c.altitude_excess_m, fmt: v => num(v, 0) },
   { key: 'conf', label: 'Confidence', get: (c, m) => m.confidence, cell: v => h('span', { class: 'badge ' + v.toLowerCase() }, v) },
-  { key: 'wb', label: '1000 =', get: (c, m) => m.world_best_seconds, fmt: dur },
+  { key: 'wb', label: '1000 =', get: (c, m) => timeFor(m, 1000), fmt: dur },
   { key: 't800', label: '800 =', get: (c, m) => timeFor(m, 800), fmt: dur },
   { key: 't600', label: '600 =', get: (c, m) => timeFor(m, 600), fmt: dur },
   { key: 't400', label: '400 =', get: (c, m) => timeFor(m, 400), fmt: dur },

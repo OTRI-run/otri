@@ -120,7 +120,23 @@ def test_report_curve_is_the_model_curve(report):
                 seconds = m["ceiling_seconds"] / share
                 assert _page_score(m, seconds) == pytest.approx(model.raw_score(m["adjusted_demand_km"], seconds), rel=1e-4), (key, share)
             for score in (300, 500, 990, 1000):
+                if "cap" in m["curve"] and score >= m["curve"]["cap"]:
+                    continue
                 assert _page_time(m, score) == pytest.approx(model.target_seconds(m["adjusted_demand_km"], score), rel=1e-4), (key, score)
+
+
+def test_lab_0_1_4_moves_the_three_judged_results_and_never_reaches_1000():
+    model = MODELS_BY_KEY["0.1.4"]
+    top = model.curve.q_1000
+    score = lambda share: model.curve.raw_score(share * top)
+    assert round(score(1.036)) == 979  # Sierre-Zinal's record: 1030 in production
+    assert round(score(0.546)) == 655  # Phuket 15k in 1:33:40: 598
+    assert round(score(0.503)) == 618  # Phuket 75k in 13:24:40: 557
+    assert round(score(1.0)) == 971  # the road world bests
+    assert score(5.0) < 1000
+    assert score(0.3) == 1000 * 0.3 ** 0.70  # below the knee it is the plain power curve
+    with pytest.raises(ValueError):
+        model.target_seconds(42.195, 1000)
 
 
 def test_standard_models_score_through_the_production_functions():

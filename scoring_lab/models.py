@@ -157,6 +157,21 @@ LAB_MODELS: tuple[LabModel, ...] = (
         duration_matched=True,
     ),
     LabModel(
+        key="0.1.4",
+        name="Model 0.1.4 (lab): tuned by feel",
+        description=(
+            "Tuned to three results judged by eye: Sierre-Zinal's 2:27 record scored too high (1030), Phuket "
+            "15k in 1:33:40 (598) and 75k in 13:24:40 (557) too low. Exponent 0.70 lifts the middle; above "
+            "900 the score bends towards 1000 and never reaches it, so no result passes 1000 and road world "
+            "bests score about 971. A curve cannot put Sierre-Zinal below the road records: it measures "
+            "faster than them. Lab only."
+        ),
+        curve=SaturatingScoreCurve(**{
+            **{f.name: getattr(MODEL_CURVE, f.name) for f in fields(ScoreCurve)},
+            "version": "lab-0.1.4", "power_exponent": 0.70, "knee": 900.0, "cap": 1000.0, "softness": 80.0,
+        }),
+    ),
+    LabModel(
         key="no-terrain",
         name="No terrain adjustment",
         description="Gradient-cost integral only: no steep-ground and no altitude factor. Shows what terrain adds.",

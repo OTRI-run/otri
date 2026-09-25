@@ -263,15 +263,20 @@ def score_course(model: LabModel, measured: dict, times: list[dict]) -> dict:
         "curve": curve_spec(curve, duration_matched=model.duration_matched),
         # The time at the human ceiling (fraction 1): the report's curve is drawn from it.
         "ceiling_seconds": round(adjusted_km / curve.demand_scaling.rate(adjusted_km) * 3600, 3),
-        "world_best_seconds": round(model.target_seconds(adjusted_km, 1000.0), 2),
-        "ladder": [
-            {"score": score, "seconds": round(model.target_seconds(adjusted_km, score))}
-            for score in LADDER_SCORES
-        ],
+        # None where the curve never reaches the score (a top that bends towards 1000).
+        "world_best_seconds": _reachable(model, adjusted_km, 1000.0, 2),
+        "ladder": [{"score": score, "seconds": _reachable(model, adjusted_km, score, 0)} for score in LADDER_SCORES],
         "confidence": confidence,
         "flags": list(dict.fromkeys(flags)),
         "times": scored_times,
     }
+
+
+def _reachable(model: LabModel, demand_km: float, score: float, digits: int) -> float | None:
+    try:
+        return round(model.target_seconds(demand_km, score), digits or None)
+    except ValueError:
+        return None
 
 
 def build(directories: list[Path], models: list[LabModel], *, jobs: int = 1, use_cache: bool = True, log=print) -> dict:
@@ -362,7 +367,9 @@ def read_levels() -> list[dict]:
     ]
 
 
-def format_duration(seconds: float) -> str:
+def format_duration(seconds: float | None) -> str:
+    if seconds is None:
+        return "never"
     seconds = round(seconds)
     return f"{seconds // 3600}:{seconds % 3600 // 60:02d}:{seconds % 60:02d}"
 
