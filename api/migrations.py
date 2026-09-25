@@ -220,12 +220,13 @@ MIGRATIONS: tuple[Migration, ...] = (
         "0012_model_0_1_1",
         """
         UPDATE races SET scoring_version = '0.11.0-course-standard-model-0.1.1', updated_at = now()
-        WHERE scoring_version = '0.10.0-course-standard-vertical' AND published_at IS NULL;
+        WHERE scoring_version = '0.10.0-course-standard-vertical';
         ALTER TABLE races ALTER COLUMN scoring_version SET DEFAULT '0.11.0-course-standard-model-0.1.1';
         """,
         "OTRI model 0.1.1 (OEP-004): the curve exponent 0.692 for 0.85, every other rule unchanged. "
-        "Unpublished races move to it and are scored under it from now on; a published race keeps 0.1.0 "
-        "and the scores it was published with, until its organizer takes it down and republishes.",
+        "Every race moves to it, published ones included, on the maintainer's decision: the change is a "
+        "monotone restatement of one scale, no finisher changes place, and a 0.1.0 score restates exactly. "
+        "The 0.1.0 build stays in the registry so that a score published under it can be reproduced.",
     ),
     Migration(
         "0011_race_review",

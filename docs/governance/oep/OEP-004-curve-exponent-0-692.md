@@ -3,7 +3,7 @@
 - **Status:** Accepted (2026-09-25, by the maintainer)
 - **Author(s):** the maintainer
 - **Date:** 2026-09-25
-- **Affects:** `scoring_version` — new build id `0.11.0-course-standard-model-0.1.1`, public name **OTRI model 0.1.1**, the default for every new race and estimate. `0.10.0-course-standard-vertical` (model 0.1.0) stays in the registry for the races published under it.
+- **Affects:** `scoring_version` — new build id `0.11.0-course-standard-model-0.1.1`, public name **OTRI model 0.1.1**, the default for every new race and estimate. `0.10.0-course-standard-vertical` (model 0.1.0) stays in the registry so that scores published under it can be reproduced.
 
 ## 1. Problem
 
@@ -59,9 +59,9 @@ The illustrative scores on the site were restated from their 0.1.0 values by the
 ## 8. Known limitations
 
 - The exponent is still a judgement. The scale's shape below the top rests on no field data, in 0.1.1 as in 0.1.0, and will be fitted only when licensed results exist.
-- Scores are comparable only within a model. A runner with results published under both carries both, each named; the runner index averages what each result carries.
+- Scores are comparable only within a model. Every race, published ones included, was moved to 0.1.1 on 2026-09-25 so that the site shows one scale; a score published under 0.1.0 before that day restates exactly by the formula in §3.
 - Nothing the curve cannot do is done: footing, heat and the other limits of 0.1.0 §12 stand.
 
 ## 9. Rollout
 
-Migration `0012_model_0_1_1` moves unpublished races to 0.1.1 and sets it as the default; published races keep 0.1.0 (a published race is frozen; take it down and republish to move it). The site's bands, FAQ, showcase and example race carry the restated numbers; `docs/methodology/0.1.1/` holds the specification and the explainer; the changelog announces it.
+Migration `0012_model_0_1_1` moves every race to 0.1.1, published ones included, and sets it as the default. A published race is otherwise frozen; moving them all at once is the maintainer's one-time decision under this OEP, made because the change is a monotone restatement of one scale that moves no finisher's place and restates every 0.1.0 score exactly. The site's bands, FAQ, showcase and example race carry the restated numbers; `docs/methodology/0.1.1/` holds the specification and the explainer; the changelog announces it.

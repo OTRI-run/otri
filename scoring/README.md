@@ -2,7 +2,7 @@
 
 OTRI model 0.1.1: a runner's score depends only on the course and their own finish time. The complete definition, every constant's provenance and the evidence are in [`docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md`](../docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md), and [`docs/methodology/0.1.1/OTRI-MODEL-0.1.1.md`](../docs/methodology/0.1.1/OTRI-MODEL-0.1.1.md) says the one thing 0.1.1 changed: the curve exponent, 0.692 for 0.85 ([OEP-004](../docs/governance/oep/OEP-004-curve-exponent-0-692.md)). The plain-language version is [`HOW-OTRI-SCORES.md`](../docs/methodology/0.1.1/HOW-OTRI-SCORES.md).
 
-There are **two models in the code**: 0.1.1 (build id `0.11.0-course-standard-model-0.1.1`), the default for every new race and estimate, and 0.1.0 (`0.10.0-course-standard-vertical`), kept so that a race published under it keeps its scores. The development builds before 0.1.0 were removed in September 2026 (they are in git history, and the 0.1.0 specification's section 14 says what each contributed). Every score names its `scoring_version`.
+There are **two models in the code**: 0.1.1 (build id `0.11.0-course-standard-model-0.1.1`), the default for every new race and estimate, and 0.1.0 (`0.10.0-course-standard-vertical`), kept so that a score published under it can be reproduced. The development builds before 0.1.0 were removed in September 2026 (they are in git history, and the 0.1.0 specification's section 14 says what each contributed). Every score names its `scoring_version`.
 
 | Module | What it holds |
 | --- | --- |
@@ -11,7 +11,7 @@ There are **two models in the code**: 0.1.1 (build id `0.11.0-course-standard-mo
 | `measured_demand.py` | Course demand integrated over 50 m segments of the shared course measurement (`course/measurement.py`), with the two terrain inputs measured off the same segments. |
 | `terrain.py` | What the gradient integral does not price: sustained steep ground and altitude. |
 | `estimator.py` | One finish time on one course, with every intermediate of the score (`POST /gpx/analyze`). The same functions as race scoring, so a target time predicts exactly the score that time will earn. |
-| `registry.py` | `score_race(...)` and the list of models (0.1.1, and 0.1.0 for the races published under it). An unknown or retired `scoring_version` is refused, never silently rescored. |
+| `registry.py` | `score_race(...)` and the list of models (0.1.1, and 0.1.0 so that its scores can be reproduced). An unknown or retired `scoring_version` is refused, never silently rescored. |
 | `runner_index.py` | The provisional runner index over published scores ([`RUNNER-INDEX-v1.md`](../docs/methodology/runner-index/RUNNER-INDEX-v1.md)). |
 | `model.py` | `ScoreBreakdown` and `RunnerScore`: a score is a breakdown, not a bare number. |
 

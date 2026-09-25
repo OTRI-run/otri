@@ -9,7 +9,7 @@ OEP-004); everything else is as ``docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md`` s
 ``docs/methodology/0.1.1/OTRI-MODEL-0.1.1.md`` says what the change does.
 
 Two curves are in the code: ``MODEL_CURVE`` (0.1.1, every new race and estimate) and
-``MODEL_0_1_0_CURVE``, kept so that a race published under 0.1.0 replays to the last digit. A
+``MODEL_0_1_0_CURVE``, kept so that a score published under 0.1.0 can be reproduced. A
 change to how scores are computed is a new ``version`` and a new specification, never an edit in
 place.
 """
@@ -200,8 +200,8 @@ MODEL_CURVE = ScoreCurve(
 SCORING_VERSION = MODEL_CURVE.version
 
 # OTRI model 0.1.0: the same course demand, terrain factor and ceiling, exponent 0.85. Not the
-# default for anything new; it stays so that a race published under it keeps the scores it was
-# published with (a published race is frozen, api/db.py), and so that its scores can be reproduced.
+# default for anything, and no race carries it since migration 0012 moved every race to 0.1.1; it
+# stays so that a score published under it can be reproduced (OEP-004).
 MODEL_0_1_0_CURVE = replace(MODEL_CURVE, version='0.10.0-course-standard-vertical', power_exponent=POWER_EXPONENT_0_1_0)
 
 

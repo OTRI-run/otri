@@ -228,7 +228,7 @@ LAB_MODELS: tuple[LabModel, ...] = (
         description=(
             "The model before 0.1.1, exactly as the site scored until 25 September 2026: the same course demand, "
             "terrain factor and ceiling, with the curve exponent 0.85 instead of 0.692 (53% of the ceiling scores "
-            "583 instead of 644). Races published under it keep it. Its version is the published one, not a lab one."
+            "583 instead of 644). Its version is the published one, not a lab one."
         ),
         curve=MODEL_0_1_0_CURVE,
     ),

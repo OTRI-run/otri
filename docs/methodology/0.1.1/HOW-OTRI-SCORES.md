@@ -36,7 +36,7 @@ The exponent is a judgement in both models: 0.1.0 §6.1 says so of 0.85, and [OE
 
 ## Your old scores
 
-- **A race published under 0.1.0 keeps its scores** and says which model it was scored with. A published race is frozen; the organizer can take it down and republish it under 0.1.1.
+- **Every race moved to 0.1.1 on 25 September 2026, published ones included**, so the whole site is on one scale. The 0.1.0 build stays in the code, so a score published under it can still be reproduced.
 - **A 0.1.0 score restates exactly** without the course or the time: `score_0.1.1 = 1000 × (score_0.1.0 / 1000)^(0.692 / 0.85)`. 500 becomes 569, 700 becomes 748, 900 becomes 918.
 - **Scores are only comparable under the same version**, as before.
 

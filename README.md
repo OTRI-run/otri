@@ -49,7 +49,7 @@ curl -X POST https://api.otri.run/score -F "results=@results.csv" -F "gpx=@cours
 ├── public/                          # static files served as they are: icons, brand kit, badge, redirects, robots, sitemap
 ├── api/                             # the FastAPI backend: accounts, events, races, results, scoring calls, admin
 ├── course/                          # GPX parsing and course measurement (distance, climb, gradients, terrain data)
-├── scoring/                         # OTRI model 0.1.1 (and 0.1.0 for the races published under it): course demand, terrain factor, the score curve, the runner index
+├── scoring/                         # OTRI model 0.1.1 (0.1.0 kept so that its scores can be reproduced): course demand, terrain factor, the score curve, the runner index
 ├── ingestion/                       # reading and validating organizer result files (CSV, TSV, XLSX)
 ├── data/                            # schemas, the synthetic demo dataset, calibration records; caches (git-ignored)
 ├── docs/                            # methodology, governance, operations, product direction, user guides

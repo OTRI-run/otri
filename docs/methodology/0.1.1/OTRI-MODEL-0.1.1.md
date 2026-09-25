@@ -1,6 +1,6 @@
 # OTRI scoring model 0.1.1
 
-**Status:** The model in production since 2026-09-25. Every new race, runner profile and calculator estimate is scored under it. A race published under model 0.1.0 before that date keeps 0.1.0 and the scores it was published with.
+**Status:** The model in production since 2026-09-25. Every new race, runner profile and calculator estimate is scored under it. Every race, published ones included, was moved to it that day.
 **Public name:** `OTRI model 0.1.1` · **Measurement:** `course-measurement-v3` · **Elevation:** Copernicus GLO-30 where installed
 **Internal build id:** `0.11.0-course-standard-model-0.1.1` — the identifier the API returns as `scoring_version` and stores with every score, so old results replay byte-for-byte.
 **Decision record:** [OEP-004](../../governance/oep/OEP-004-curve-exponent-0-692.md).
@@ -64,9 +64,9 @@ The illustrative scores on the site (the landing page's showcase, the example ra
 | build id | public name | used for |
 |---|---|---|
 | `0.11.0-course-standard-model-0.1.1` | OTRI model 0.1.1 | every new race, every estimate (`POST /gpx/analyze`), every score file, the calculator |
-| `0.10.0-course-standard-vertical` | OTRI model 0.1.0 | races published under it before 2026-09-25; kept so their scores are unchanged and reproducible |
+| `0.10.0-course-standard-vertical` | OTRI model 0.1.0 | no race any more; kept so that a score published under it before 2026-09-25 can be reproduced |
 
-A published race is frozen (`api/db.py`): its results, course and model cannot be restated in place. So the migration `0012_model_0_1_1` moved every *unpublished* race to 0.1.1 and set 0.1.1 as the default for new races, and left published races on 0.1.0; an organizer who wants a published race under 0.1.1 takes it down and republishes it. The runner index (`runner-index-v1`) reads the score each published result carries, so a runner with results under both models has an index over both, and each result names its model.
+Migration `0012_model_0_1_1` moved every race to 0.1.1 on 2026-09-25, published ones included, and set 0.1.1 as the default for new races. A published race is otherwise frozen (`api/db.py`): its organizer cannot restate its results, course or model in place. Moving every published race at once was the maintainer's decision under OEP-004, made because the change is a monotone restatement of one scale (no finisher changes place, and every 0.1.0 score restates exactly by §3) and because one scale across the site reads better than two. The 0.1.0 build stays in the code so that any score published under it can be reproduced. The runner index (`runner-index-v1`) reads the score each published result carries, so every index moved with its results.
 
 An unknown or retired `scoring_version` is still refused, never silently rescored.
 

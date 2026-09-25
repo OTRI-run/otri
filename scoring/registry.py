@@ -1,10 +1,10 @@
 """The scoring model a race is scored with.
 
 Two models are in the code (`scoring/course_standard.py`): OTRI model 0.1.1, the default for every
-new race and estimate, and 0.1.0, which differs in the curve exponent alone and stays so that a race
-published under it keeps the scores it was published with. Every score names its `scoring_version`.
-A race stored under a retired development build was moved to the model by `api/migrations.py`;
-unpublished races moved from 0.1.0 to 0.1.1 the same way (OEP-004).
+race and estimate, and 0.1.0, which differs in the curve exponent alone and stays so that a score
+published under it can be reproduced. Every score names its `scoring_version`. A race stored under
+a retired development build was moved to the model by `api/migrations.py`; every race moved from
+0.1.0 to 0.1.1 the same way, published ones included (OEP-004).
 """
 
 from __future__ import annotations
@@ -47,8 +47,8 @@ _MODEL_INFO: dict[str, ScoringModelInfo] = {
         name='OTRI model 0.1.0',
         description=(
             'The model before 0.1.1: the same course demand, terrain factor and ceiling, with the curve '
-            'exponent 0.85 (score = 1000 x fraction ** 0.85). Not used for new races; kept so that a race '
-            'published under it keeps its scores and they can be reproduced '
+            'exponent 0.85 (score = 1000 x fraction ** 0.85). No race carries it any more; kept so that a score '
+            'published under it can be reproduced '
             '(docs/methodology/0.1.0/OTRI-MODEL-0.1.0.md).'
         ),
         uses_competitors=False,

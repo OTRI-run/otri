@@ -1,6 +1,6 @@
 # OTRI scoring model 0.1.0
 
-**Status:** Superseded on 2026-09-25 by [model 0.1.1](../0.1.1/OTRI-MODEL-0.1.1.md), which changes the curve exponent (0.692 for 0.85) and nothing else; this page remains the complete definition of everything else. A race published under 0.1.0 keeps it and its scores.
+**Status:** Superseded on 2026-09-25 by [model 0.1.1](../0.1.1/OTRI-MODEL-0.1.1.md), which changes the curve exponent (0.692 for 0.85) and nothing else; this page remains the complete definition of everything else. Every race, published ones included, was moved to 0.1.1 that day; this build stays in the code so that its scores can be reproduced.
 **Public name:** `OTRI model 0.1.0` · **Measurement:** `course-measurement-v3` · **Elevation:** Copernicus GLO-30 where installed
 **Internal build id:** `0.10.0-course-standard-vertical` — the identifier the API returns as `scoring_version` and stores with every score, so old results replay byte-for-byte. It is a build label, not a second model; the website shows it, and `0.8.0-course-standard-power` before it (same scores, §7.4), as "OTRI model 0.1.0".
 **Code:** `scoring/course_demand.py` (course demand), `scoring/terrain.py` (terrain factor), `scoring/course_standard.py` (ceiling and curve), `course/` (measurement). If this page and the code disagree, the code wins and this page has a bug.

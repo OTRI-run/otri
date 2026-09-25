@@ -1,7 +1,7 @@
 /**
  * The public names of the scoring models. The API names the build on every score
- * (scoring_version); publicly the current one is "OTRI model 0.1.1". A race published under 0.1.0
- * keeps that model and its scores, so its name is kept here too.
+ * (scoring_version); publicly the current one is "OTRI model 0.1.1". Scores under 0.1.0 can still
+ * be reproduced, so its name is kept here too.
  */
 export const CURRENT_MODEL = { version: '0.11.0-course-standard-model-0.1.1', label: 'OTRI model 0.1.1', short: '0.1.1' }
 export const EARLIER_MODELS = {

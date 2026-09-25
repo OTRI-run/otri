@@ -61,7 +61,7 @@ export const FAQ = [
       },
       {
         q: 'My score changed since last time. Why?',
-        a: 'The model changed. Every change that can move a score gets a new public version, is announced in the changelog, and the old version stays available so any published score can be reproduced. The model in production is OTRI model 0.1.1, which on 25 September 2026 replaced 0.1.0 with one change: the curve below the top is gentler (the exponent 0.692 instead of 0.85), so a world-best run still scores 1000 and every score under it went up, most in the middle of the field (a score of 583 became 644). A race published under 0.1.0 keeps its scores and says so. Scores are only comparable under the same version.',
+        a: 'The model changed. Every change that can move a score gets a new public version, is announced in the changelog, and the old version stays available so any published score can be reproduced. The model in production is OTRI model 0.1.1, which on 25 September 2026 replaced 0.1.0 with one change: the curve below the top is gentler (the exponent 0.692 instead of 0.85), so a world-best run still scores 1000 and every score under it went up, most in the middle of the field (a score of 583 became 644). Every race was moved to 0.1.1 that day, published ones included, so the whole site is on one scale; a 0.1.0 score restates exactly as 1000 × (score ÷ 1000)^(0.692 ÷ 0.85), and the old version stays in the code so it can be reproduced. Scores are only comparable under the same version.',
         tags: 'version changed different update history 0.1.0 0.1.1 0.2.0',
       },
       {

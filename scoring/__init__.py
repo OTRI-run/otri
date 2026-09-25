@@ -1,6 +1,6 @@
-"""OTRI scoring engine: OTRI model 0.1.1 (`scoring.course_standard`; 0.1.0 kept for the races
-published under it), the single-time estimator built on it, and the runner index. Every score names
-its `scoring_version`."""
+"""OTRI scoring engine: OTRI model 0.1.1 (`scoring.course_standard`; 0.1.0 kept so that its
+scores can be reproduced), the single-time estimator built on it, and the runner index. Every score
+names its `scoring_version`."""
 
 from .course_standard import (
     ENDURANCE_REFERENCE,
