@@ -500,10 +500,12 @@ function scoreChart(host, c) {
   // From 15% faster than the human ceiling, so the top of every curve (and where they part) is in view.
   const t0 = Math.min(...ms.map(m => m.ceiling_seconds / 1.15), ...times.map(t => t.seconds * 0.95));
   const t1 = Math.max(...ms.map(m => timeFor(m, 280)), ...times.map(t => t.seconds * 1.05));
-  const sLo = Math.min(250, ...times.map(t => t.score - 40));
+  // Keep a true zero baseline so comparisons show the full score scale.
+  const sLo = 0;
   const sHi = Math.max(1050, ...ms.map(m => scoreAt(m, t0) + 10), ...times.map(t => t.score + 40));
   const x = t => L + (t - t0) / (t1 - t0) * (W - L - R), y = v => T + (1 - (v - sLo) / (sHi - sLo)) * (H - T - B);
   const svg = s('svg', { width: W, height: H, role: 'img', 'aria-label': `Score against finish time on ${c.name}` });
+  if (!LEVELS.some(l => l.from === 0)) text(svg, L - 6, y(0) + 4, '0', { 'text-anchor': 'end' });
   for (const lv of LEVELS.filter(l => l.from >= sLo && l.from <= sHi)) {
     s('line', { x1: L, x2: W - R, y1: y(lv.from), y2: y(lv.from), stroke: 'var(--grid)' }, svg);
     text(svg, L - 6, y(lv.from) + 4, lv.from, { 'text-anchor': 'end' });
