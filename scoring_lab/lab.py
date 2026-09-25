@@ -83,6 +83,11 @@ def parse_duration(text: str) -> int:
     return round(seconds)
 
 
+def _shown(path: Path, directory: Path) -> bool:
+    """Folders starting with `_` or `.` are set aside (the lab UI moves removed courses to `_removed/`)."""
+    return not any(part.startswith(("_", ".")) for part in path.relative_to(directory).parts[:-1])
+
+
 def read_times(directories: list[Path]) -> tuple[dict[str, list[dict]], list[str]]:
     """Every `times.csv` under the course folders, keyed by lower-case GPX file name and stem.
 
@@ -91,7 +96,7 @@ def read_times(directories: list[Path]) -> tuple[dict[str, list[dict]], list[str
     times: dict[str, list[dict]] = {}
     problems: list[str] = []
     for directory in directories:
-        for path in sorted(directory.rglob("times.csv")):
+        for path in sorted(p for p in directory.rglob("times.csv") if _shown(p, directory)):
             with path.open(newline="", encoding="utf-8-sig") as handle:
                 for line, row in enumerate(csv.DictReader(handle), start=2):
                     gpx = (row.get("gpx") or "").strip()
@@ -104,7 +109,7 @@ def read_times(directories: list[Path]) -> tuple[dict[str, list[dict]], list[str
                         continue
                     key = gpx.lower().removesuffix(".gpx")
                     label = (row.get("label") or "").strip() or f"time {len(times.get(key, [])) + 1}"
-                    times.setdefault(key, []).append({"label": label, "seconds": seconds, "source": "times.csv"})
+                    times.setdefault(key, []).append({"label": label, "seconds": seconds, "source": _display_path(path)})
     return times, problems
 
 
@@ -183,7 +188,7 @@ def discover(directories: list[Path]) -> list[Path]:
     found: dict[Path, None] = {}
     for directory in directories:
         for path in sorted(directory.rglob("*")):
-            if path.is_file() and path.suffix.lower() == ".gpx":
+            if path.is_file() and path.suffix.lower() == ".gpx" and _shown(path, directory):
                 found[path.resolve()] = None
     return list(found)
 
@@ -399,11 +404,14 @@ def write_outputs(report: dict, out_dir: Path) -> Path:
                 for entry in m["times"] or [{"label": "", "seconds": None, "score": ""}]:
                     writer.writerow(base + [entry["label"], format_duration(entry["seconds"]) if entry["seconds"] else "", entry["score"]])
 
-    payload = json.dumps(report, ensure_ascii=False).replace("</", "<\\/")
-    html = TEMPLATE.read_text(encoding="utf-8").replace("/*__LAB_DATA__*/null", payload)
     target = out_dir / "report.html"
-    target.write_text(html, encoding="utf-8")
+    target.write_text(render_html(report), encoding="utf-8")
     return target
+
+
+def render_html(report: dict) -> str:
+    payload = json.dumps(report, ensure_ascii=False).replace("</", "<\\/")
+    return TEMPLATE.read_text(encoding="utf-8").replace("/*__LAB_DATA__*/null", payload)
 
 
 def print_summary(report: dict, log=print) -> None:
@@ -427,11 +435,15 @@ def print_summary(report: dict, log=print) -> None:
 def _snapshot(directories: list[Path]) -> tuple:
     return tuple(sorted(
         (str(p), p.stat().st_mtime_ns) for d in directories for p in d.rglob("*")
-        if p.is_file() and (p.suffix.lower() == ".gpx" or p.name == "times.csv")
+        if p.is_file() and (p.suffix.lower() == ".gpx" or p.name == "times.csv") and _shown(p, d)
     ))
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["serve"]:
+        from .serve import main as serve
+        return serve(argv[1:])
     parser = argparse.ArgumentParser(
         prog="python -m scoring_lab",
         description="Score every GPX in a folder with one or more models and write an HTML report.",

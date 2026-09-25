@@ -11,8 +11,8 @@
     "preview": "vite preview",
     "indexnow": "node scripts/site/indexnow.mjs",
     "indexnow:all": "node scripts/site/indexnow.mjs --all-endpoints --archive",
-    "lab": "python -m scoring_lab --open",
-    "lab:watch": "python -m scoring_lab --open --watch"
+    "lab": "python -m scoring_lab serve",
+    "lab:report": "python -m scoring_lab --open"
   },
   "dependencies": {
     "@sentry/browser": "^10.75.0",

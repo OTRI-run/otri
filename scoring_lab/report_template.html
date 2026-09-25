@@ -120,6 +120,20 @@ details li { margin: 3px 0; word-break: break-word; }
 #tip .r b { font-variant-numeric: tabular-nums; }
 #tip .r span.n { color: var(--ink-2); }
 .theme { margin-left: auto; }
+#labTools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+#labTools .status { color: var(--ink-2); font-size: 12.5px; }
+#labTools .live::before { content: "● "; color: var(--good); }
+#labTools .error { color: var(--bad); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover { filter: brightness(1.08); background: var(--accent); }
+button.small { padding: 2px 8px; font-size: 12px; }
+.saved { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; font-size: 12.5px; }
+.saved .chip { cursor: default; }
+.saved .chip button { border: 0; background: none; padding: 0 0 0 2px; color: var(--muted); cursor: pointer; }
+.saved .chip button:hover { color: var(--bad); }
+#drop { position: fixed; inset: 0; z-index: 30; display: none; align-items: center; justify-content: center;
+  background: rgba(42, 120, 214, .14); border: 3px dashed var(--accent); font-size: 20px; font-weight: 600; color: var(--ink); }
+#drop.on { display: flex; }
 </style>
 </head>
 <body>
@@ -134,6 +148,7 @@ details li { margin: 3px 0; word-break: break-word; }
     <label>Compare <span class="chips" id="compare"></span></label>
     <label><input type="search" id="query" placeholder="Filter courses" aria-label="Filter courses"></label>
     <label><input type="checkbox" id="onlyTimes"> with finish times only</label>
+    <span id="labTools"></span>
     <button class="theme" id="theme" type="button" title="Switch light / dark">◐</button>
   </div>
 
@@ -154,10 +169,11 @@ details li { margin: 3px 0; word-break: break-word; }
 
   <div id="courses"></div>
   <div id="tip" role="tooltip"></div>
+  <div id="drop">Drop GPX files to add them to the lab</div>
 </main>
 
 <script>
-const DATA = /*__LAB_DATA__*/null;
+let DATA = /*__LAB_DATA__*/null;
 
 // ---------- state ---------------------------------------------------------------------------
 const MODELS = DATA.models;
@@ -176,8 +192,9 @@ const state = {
 };
 const visible = () => [state.primary, ...state.compare.filter(k => k !== state.primary)].slice(0, 1 + MAX_COMPARE);
 const color = key => `var(--s${MODEL[key].slot})`;
-const courses = DATA.courses;
-const scored = courses.filter(c => !c.error);
+let courses = DATA.courses;
+// Served by `python -m scoring_lab serve` (Scoring Lab.bat): files can be added and times saved.
+const SERVED = !!DATA.server;
 
 // ---------- helpers -------------------------------------------------------------------------
 const NS = 'http://www.w3.org/2000/svg';
@@ -489,12 +506,12 @@ function bandsChart(host, c) {
 function courseCard(c) {
   const card = h('article', { class: 'card course', id: 'c-' + c.id });
   if (c.error) {
-    card.append(h('div', { class: 'course-head' }, h('h2', {}, c.name), h('span', { class: 'meta' }, c.file)), h('div', { class: 'error' }, 'Could not score: ' + c.error));
+    card.append(h('div', { class: 'course-head' }, h('h2', {}, c.name), h('span', { class: 'meta' }, c.file, ' ', removeButton(c))), h('div', { class: 'error' }, 'Could not score: ' + c.error));
     return card;
   }
   const keys = visible(), m = c.models[state.primary], base = DATA.baseline?.courses[c.sha256]?.[state.primary];
   card.append(
-    h('div', { class: 'course-head' }, h('h2', {}, c.name), h('span', { class: 'meta', title: c.sha256 }, c.file + (c.cached ? ' · cached' : ''))),
+    h('div', { class: 'course-head' }, h('h2', {}, c.name), h('span', { class: 'meta', title: c.sha256 }, c.file + (c.cached ? ' · cached' : ''), ' ', removeButton(c))),
     h('div', { class: 'facts' },
       ...[['Distance', num(c.distance_km, 2) + ' km'], ['Climb', `+${num(c.gain_m, 0)} / −${num(c.loss_m, 0)} m`],
         ['Elevation', `${num(c.min_elevation_m, 0)}–${num(c.max_elevation_m, 0)} m (${c.elevation_source})`],
@@ -504,7 +521,7 @@ function courseCard(c) {
         ['Points', `${c.points.toLocaleString()} · median ${c.median_edge_m ?? '–'} m apart`]]
         .map(([k, v]) => h('span', {}, k + ' ', h('b', {}, v))),
       h('span', { class: 'badge ' + m.confidence.toLowerCase() }, m.confidence + ' confidence')));
-  const prof = h('div', { class: 'chart' }), score = h('div', { class: 'chart' }), bands = h('div', { class: 'chart' });
+  const prof = h('div', { class: 'chart', style: 'min-height:200px' }), score = h('div', { class: 'chart', style: 'min-height:240px' }), bands = h('div', { class: 'chart', style: `min-height:${c.bands.length * 22 + 8}px` });
   const out = h('div', { class: 'out' });
   const input = h('input', { type: 'text', placeholder: 'h:mm:ss', 'aria-label': 'Finish time to try', value: store.get('try:' + c.id, '') });
   const tryIt = () => {
@@ -514,11 +531,26 @@ function courseCard(c) {
       : input.value ? [h('span', { class: 'error' }, 'Use h:mm:ss, mm:ss or seconds')] : []));
   };
   input.addEventListener('input', tryIt);
+  const label = h('input', { type: 'text', placeholder: 'label (optional)', 'aria-label': 'Label for this time', style: 'width:130px' });
+  const saveTime = async () => {
+    if (!parseDuration(input.value)) { input.focus(); return; }
+    await change(`Saving ${input.value} for ${c.name}`, () => api('/api/times', { file: c.file, times: [...editableTimes(c), { label: label.value, time: input.value }] }));
+  };
+  input.addEventListener('keydown', e => { if (e.key === 'Enter' && SERVED) saveTime(); });
+  const saved = SERVED ? h('div', { class: 'saved' }, m.times.map(t => {
+    const editable = t.source === DATA.server.times_file;
+    return h('span', { class: 'chip', title: t.source === 'gpx' ? 'elapsed time recorded in the GPX' : 'from ' + t.source },
+      `${t.label} ${dur(t.seconds)} → `, h('b', {}, t.score),
+      editable ? h('button', { type: 'button', title: 'Remove this time', 'aria-label': `Remove ${t.label}`,
+        onclick: () => change(`Removing ${t.label}`, () => api('/api/times', { file: c.file, times: editableTimes(c).filter(e => !(e.label === t.label && parseDuration(e.time) === t.seconds)) })) }, '×') : null);
+  })) : null;
   card.append(h('div', { class: 'grid2' },
     h('div', {}, h('h3', {}, 'Elevation profile'), h('div', { class: 'legend' }, h('span', {}, h('span', { class: 'key', style: 'background:var(--s1)' }), c.elevation_source === 'DEM' ? 'DEM terrain' : 'from the GPX'), h('span', {}, h('span', { class: 'dot', style: 'background:var(--steep);border-radius:2px' }), '≥20% grade')), prof),
     h('div', {}, h('h3', {}, 'Score against finish time'),
       h('div', { class: 'legend' }, keys.map(k => h('span', {}, h('span', { class: 'key', style: `background:${color(k)}` }), MODEL[k].name))), score,
-      h('div', { class: 'try' }, h('label', {}, 'Try a time ', input), out))));
+      h('div', { class: 'try' }, h('label', {}, 'Try a time ', input),
+        SERVED ? [label, h('button', { type: 'button', class: 'small', onclick: saveTime, title: 'Save as a finish time for this course' }, 'Save time')] : null, out),
+      saved)));
   const ladder = h('table', { class: 'ladder' },
     h('thead', {}, h('tr', {}, h('th', {}, 'Score'), keys.map(k => h('th', { title: MODEL[k].description }, MODEL[k].name)))),
     h('tbody', {}, ms_ladder(c, keys)));
@@ -545,7 +577,7 @@ function renderCourses(list) {
   drawn.clear(); observer.disconnect();
   const host = document.getElementById('courses');
   const cards = list.map(courseCard);
-  host.replaceChildren(...(cards.length ? cards : [h('div', { class: 'card empty' }, courses.length ? 'No courses match the filter.' : 'No GPX files found. Drop some into scoring_lab/courses/ and run python -m scoring_lab again.')]));
+  host.replaceChildren(...(cards.length ? cards : [h('div', { class: 'card empty' }, courses.length ? 'No courses match the filter.' : SERVED ? 'No courses yet. Drop GPX files anywhere on this page, or use Add GPX.' : 'No GPX files found. Drop some into scoring_lab/courses/ and run python -m scoring_lab again.')]));
   cards.forEach(card => card._draw && observer.observe(card));
 }
 
@@ -555,6 +587,73 @@ function renderAll() {
 }
 let resizeTimer;
 addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { renderDifficulty(filtered()); drawn.forEach(card => card._draw()); }, 150); });
+// ---------- served mode: add files, save times, follow the folder ---------------------------
+function editableTimes(c) {
+  return c.models.prod.times.filter(t => t.source === DATA.server.times_file).map(t => ({ label: t.label, time: dur(t.seconds) }));
+}
+function removeButton(c) {
+  if (!SERVED || !c.file.startsWith(DATA.server.courses_dir + '/')) return null;
+  return h('button', { type: 'button', class: 'small', title: `Move to ${DATA.server.courses_dir}/_removed/`,
+    onclick: () => { if (confirm(`Remove ${c.name} from the lab? The file is moved to _removed/, not deleted.`)) change(`Removing ${c.name}`, () => api('/api/remove', { file: c.file })); } }, 'Remove');
+}
+async function api(path, body, raw = false) {
+  const response = await fetch(path, { method: 'POST', headers: { 'X-Lab': '1', 'Content-Type': raw ? 'application/octet-stream' : 'application/json' }, body: raw ? body : JSON.stringify(body) });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || response.statusText);
+  return payload;
+}
+function setStatus(message, error = false) {
+  const node = document.getElementById('labStatus');
+  if (!node) return;
+  node.className = 'status' + (error ? ' error' : message ? '' : ' live');
+  node.textContent = message || 'live';
+}
+let busy = false;
+async function refresh() {
+  const scroll = scrollY;
+  const response = await fetch('/api/report', { cache: 'no-store' });
+  DATA = await response.json(); courses = DATA.courses;
+  renderMeta(); renderAll();
+  scrollTo(0, scroll);
+}
+async function change(message, action) {
+  busy = true; setStatus(message + ' …');
+  try { await action(); setStatus('Scoring …'); await refresh(); setStatus(''); }
+  catch (error) { setStatus(error.message, true); }
+  finally { busy = false; }
+}
+async function addFiles(files) {
+  const gpx = [...files].filter(f => /\.gpx$/i.test(f.name));
+  if (!gpx.length) { setStatus('Only .gpx files can be added', true); return; }
+  const failed = [];
+  await change(`Adding ${gpx.length} file(s)`, async () => {
+    for (const file of gpx) {
+      try { await api('/api/upload?name=' + encodeURIComponent(file.name), await file.arrayBuffer(), true); }
+      catch (error) { failed.push(`${file.name}: ${error.message}`); }
+    }
+  });
+  if (failed.length) setStatus(failed.join(' · '), true);
+}
+if (SERVED) {
+  const picker = h('input', { type: 'file', accept: '.gpx', multiple: true, style: 'display:none', onchange: e => { addFiles(e.target.files); e.target.value = ''; } });
+  document.getElementById('labTools').replaceChildren(
+    h('button', { type: 'button', class: 'primary', onclick: () => picker.click(), title: `Or drop files anywhere on the page. They are saved to ${DATA.server.courses_dir}/` }, '+ Add GPX'), picker,
+    h('span', { id: 'labStatus', class: 'status live', title: 'The page follows the courses folder: files copied into it appear here by themselves' }, 'live'));
+  const drop = document.getElementById('drop');
+  let depth = 0;
+  const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
+  addEventListener('dragenter', e => { if (hasFiles(e)) { depth++; drop.classList.add('on'); } });
+  addEventListener('dragleave', e => { if (hasFiles(e) && --depth <= 0) { depth = 0; drop.classList.remove('on'); } });
+  addEventListener('dragover', e => { if (hasFiles(e)) e.preventDefault(); });
+  addEventListener('drop', e => { if (!hasFiles(e)) return; e.preventDefault(); depth = 0; drop.classList.remove('on'); addFiles(e.dataTransfer.files); });
+  setInterval(async () => {
+    if (busy || document.hidden) return;
+    try {
+      const { version } = await (await fetch('/api/state', { cache: 'no-store' })).json();
+      if (version !== DATA.server.version) { busy = true; setStatus('Folder changed, scoring …'); await refresh(); setStatus(''); busy = false; }
+    } catch { busy = false; setStatus('Lab stopped: start Scoring Lab.bat again', true); }
+  }, 2500);
+}
 renderMeta();
 renderAll();
 </script>

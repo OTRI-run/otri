@@ -1,17 +1,29 @@
 # Scoring lab
 
-A quick bench for seeing how courses score: drop GPX files in a folder, run one command and open an
+A quick bench for seeing how courses score: open it, drop GPX files in and read the scores in an
 HTML report with charts. Nothing here writes to the database, calls the network or changes the
 model. It is local tooling beside `scoring/`, not part of the API or the site.
 
-```powershell
-# 1. put course files in scoring_lab/courses/ (subfolders are fine)
-# 2. from the repository root:
-python -m scoring_lab --open          # or: npm run lab
-```
+## Start it
 
-The report goes to `scoring_lab/reports/report.html`, with `latest.json` (everything, for scripts)
-and `results.csv` beside it. Both `courses/` and `reports/` are git-ignored.
+**Double-click `scoring_lab/Scoring Lab.bat`.** The lab opens in your browser (a small server on your
+own computer, `127.0.0.1` only; close its window to stop it). Then:
+
+- **+ Add GPX**, or drop GPX files anywhere on the page: they are saved to `scoring_lab/courses/` and
+  scored straight away;
+- type a time in **Try a time** under a course, and **Save time** keeps it as a finish time for that
+  course (`×` removes it again);
+- **Remove** moves a course to `scoring_lab/courses/_removed/` (nothing is deleted);
+- files copied into the folder in Explorer appear by themselves within a few seconds.
+
+Tip: right-click `Scoring Lab.bat` > *Send to* > *Desktop (create shortcut)* to start it from the desktop.
+`npm run lab` does the same from a terminal.
+
+### Without the app
+
+`python -m scoring_lab --open` (`npm run lab:report`) writes the same report as a file,
+`scoring_lab/reports/report.html`, with `latest.json` (everything, for scripts) and `results.csv`
+beside it. Both `courses/` and `reports/` are git-ignored.
 
 ## Finish times
 
@@ -50,7 +62,7 @@ change. Variants carry a `lab-` version, so a lab number can never pass for a pu
 - Measurements are cached by file content, measurement version and elevation source
   (`scoring_lab/.cache/`), so a re-run with a new model only rescores. New files are measured in
   parallel (`--jobs`). `--no-cache` re-measures, `--clear-cache` empties the cache.
-- `--watch` rebuilds whenever a GPX or `times.csv` changes. Reload the page to see the result.
+- `--watch` rebuilds the report file whenever a GPX or `times.csv` changes (the app does this by itself).
 - `--save-baseline` keeps this run as the baseline. Later reports show changes against it in the
   table (scored km, scores), which is how to see what a model change does to every course at once.
 

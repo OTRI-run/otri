@@ -62,8 +62,9 @@ def test_production_matches_the_estimator(report):
     course = next(c for c in data["courses"] if c["name"] == "alps-terrain-check")
     estimate = estimate_score(4200, gpx_points=read_track_points(courses / "alps-terrain-check.gpx"))
     prod = course["models"]["prod"]
-    assert prod["times"] == [{"label": "winner", "seconds": 4200, "source": "times.csv",
-                              "score": estimate.predicted_score, "raw": estimate.otri_raw}]
+    [time] = prod["times"]
+    assert time["source"].endswith("times.csv")
+    assert (time["label"], time["seconds"], time["score"], time["raw"]) == ("winner", 4200, estimate.predicted_score, estimate.otri_raw)
     assert prod["adjusted_demand_km"] == estimate.breakdown.adjusted_demand_km
     assert prod["world_best_seconds"] == pytest.approx(estimate.breakdown.world_best_time_seconds, abs=0.1)
     assert prod["confidence"] == estimate.confidence
