@@ -41,6 +41,16 @@ LAB_MODELS: tuple[LabModel, ...] = (
         production=True,
     ),
     LabModel(
+        key="0.1.1",
+        name="Model 0.1.1 (lab): development curve",
+        description=(
+            "Production with the curve exponent back at 0.692, the concave shape of the development builds "
+            "before 0.1.0 chose 0.85 (OTRI-MODEL-0.1.0.md section 6.1). The top holds; the middle and back of "
+            "the field score higher again: 53% of the ceiling scores 644 instead of 583. Lab only."
+        ),
+        curve=_variant("0.1.1", power_exponent=0.692),
+    ),
+    LabModel(
         key="no-terrain",
         name="No terrain adjustment",
         description="Gradient-cost integral only: no steep-ground and no altitude factor. Shows what terrain adds.",

@@ -43,6 +43,15 @@ def test_variants_never_carry_the_production_version():
     assert versions and all(v.startswith("lab-") for v in versions)
 
 
+def test_lab_0_1_1_lifts_the_middle_and_keeps_the_top():
+    curve = MODELS_BY_KEY["0.1.1"].curve
+    assert curve.power_exponent == 0.692
+    top = curve.q_1000
+    assert curve.raw_score(top) == pytest.approx(1000)
+    assert round(curve.raw_score(0.53 * top)) == 644
+    assert round(MODELS_BY_KEY["prod"].curve.raw_score(0.53 * top)) == 583
+
+
 @pytest.mark.parametrize("text, seconds", [("4:05:30", 14730), ("45:10", 2710), ("600", 600)])
 def test_parse_duration(text, seconds):
     assert lab.parse_duration(text) == seconds

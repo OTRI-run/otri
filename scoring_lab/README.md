@@ -33,6 +33,7 @@ In the report, **Try a time** under each course scores any time you type, for ev
 | key | what it changes |
 | --- | --- |
 | `prod` | nothing: the production model, as the site scores |
+| `0.1.1` | exponent 0.692, the development builds' curve: the middle of the field scores higher (583 -> 644 at 53% of the ceiling) |
 | `no-terrain` | no steep-ground or altitude factor: the gradient-cost integral alone |
 | `no-altitude` | altitude coefficient 0 |
 | `no-vertical-rule` | uphill-only courses get the ordinary steep coefficient |
