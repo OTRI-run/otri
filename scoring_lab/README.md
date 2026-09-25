@@ -46,6 +46,7 @@ In the report, **Try a time** under each course scores any time you type, for ev
 | --- | --- |
 | `prod` | nothing: the production model, as the site scores |
 | `0.1.1` | exponent 0.692, the development builds' curve: the middle of the field scores higher (583 -> 644 at 53% of the ceiling) |
+| `0.1.2` | production up to 990, then bends towards 1100 and never reaches it: a world best scores ~994, 1000 needs 2% faster than the world best, 1050 about 25% faster |
 | `no-terrain` | no steep-ground or altitude factor: the gradient-cost integral alone |
 | `no-altitude` | altitude coefficient 0 |
 | `no-vertical-rule` | uphill-only courses get the ordinary steep coefficient |

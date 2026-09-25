@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import shutil
 from pathlib import Path
 
@@ -10,7 +11,7 @@ import pytest
 
 from course.gpx import read_track_points
 from scoring import estimate_score
-from scoring.course_standard import score_for_time
+from scoring.course_standard import score_for_time, target_time_seconds
 from scoring_lab import lab
 from scoring_lab.models import LAB_MODELS, MODELS_BY_KEY, select_models
 
@@ -70,14 +71,51 @@ def test_production_matches_the_estimator(report):
     assert prod["confidence"] == estimate.confidence
 
 
+def _page_score(m, t):
+    """scoreAt in report_template.html, line for line."""
+    c = m["curve"]
+    power = 1000 * (m["ceiling_seconds"] / t) ** c["exponent"]
+    if "knee" not in c or power <= c["knee"]:
+        return power
+    return c["knee"] + (c["cap"] - c["knee"]) * (1 - math.exp(-(power - c["knee"]) / c["softness"]))
+
+
+def _page_time(m, score):
+    """timeFor in report_template.html, line for line."""
+    c = m["curve"]
+    power = score if "knee" not in c or score <= c["knee"] else c["knee"] - c["softness"] * math.log(1 - (score - c["knee"]) / (c["cap"] - c["knee"]))
+    return m["ceiling_seconds"] * (1000 / power) ** (1 / c["exponent"])
+
+
 def test_report_curve_is_the_model_curve(report):
-    """The HTML draws score = 1000 x (world best / t) ^ exponent; that must be score_for_time."""
+    """The HTML redraws each model's curve from `curve` and `ceiling_seconds`; it must be score_for_time."""
     data, _ = report
     for course in (c for c in data["courses"] if "models" in c):
         for key, m in course["models"].items():
-            for seconds in (m["world_best_seconds"] * 1.3, m["world_best_seconds"] * 2.7):
-                expected = score_for_time(m["adjusted_demand_km"], seconds, curve=MODELS_BY_KEY[key].curve)["otri_raw"]
-                assert 1000 * (m["world_best_seconds"] / seconds) ** m["exponent"] == pytest.approx(expected, rel=1e-4)
+            curve = MODELS_BY_KEY[key].curve
+            for share in (0.6, 0.97, 1.0, 1.05, 1.4):
+                seconds = m["ceiling_seconds"] / share
+                expected = score_for_time(m["adjusted_demand_km"], seconds, curve=curve)["otri_raw"]
+                assert _page_score(m, seconds) == pytest.approx(expected, rel=1e-4), (key, share)
+            for score in (500, 990, 1000):
+                assert _page_time(m, score) == pytest.approx(target_time_seconds(m["adjusted_demand_km"], score, curve=curve), rel=1e-4)
+
+
+def test_lab_0_1_2_makes_the_top_nearly_unreachable():
+    hard, prod = MODELS_BY_KEY["0.1.2"].curve, MODELS_BY_KEY["prod"].curve
+    top = prod.q_1000
+    for share in (0.3, 0.6, 0.9, 0.98):  # below 990 nothing changes
+        assert hard.raw_score(share * top) == prod.raw_score(share * top)
+    assert round(hard.raw_score(top)) == 994  # a world best
+    assert hard.raw_score(1.02 * top) == pytest.approx(1000, abs=0.5)
+    assert hard.raw_score(1.25 * top) == pytest.approx(1050, abs=1)  # 25% faster than a world best
+    assert hard.raw_score(10 * top) < 1100  # ten times world-best speed
+    scores = [hard.raw_score(share * top) for share in (0.99, 1.0, 1.1, 1.5, 3.0)]
+    assert scores == sorted(scores)
+    for score in (995, 1000, 1080):
+        assert hard.raw_score(hard.required_q(score)) == pytest.approx(score)
+    with pytest.raises(ValueError):
+        hard.required_q(1100)
 
 
 def test_bad_files_and_times_are_reported_not_fatal(report, tmp_path):

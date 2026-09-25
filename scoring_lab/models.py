@@ -8,10 +8,50 @@ one. To try an idea, add an entry to `LAB_MODELS`: the report picks it up with n
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+import math
+from dataclasses import dataclass, fields, replace
 
-from scoring.course_standard import MODEL_CURVE, ScoreCurve
+from scoring.course_standard import MODEL_CURVE, SCALE_MAX, SCALE_MIN, ScoreCurve
 from scoring.registry import DEFAULT_SCORING_VERSION, get_scoring_model_info
+
+
+@dataclass(frozen=True)
+class SaturatingScoreCurve(ScoreCurve):
+    """The production power curve up to `knee`; above it the score bends towards `cap` and never
+    reaches it: ``knee + (cap - knee) * (1 - exp(-(power_score - knee) / softness))``.
+
+    `softness` sets how hard the top is: the larger it is, the more speed each point above the
+    knee costs. Below the knee the score is exactly the production score.
+    """
+
+    knee: float = 990.0
+    cap: float = 1100.0
+    softness: float = 280.0
+
+    def raw_score(self, q: float) -> float:
+        power = super().raw_score(q)
+        if power <= self.knee:
+            return power
+        return self.knee + (self.cap - self.knee) * (1.0 - math.exp(-(power - self.knee) / self.softness))
+
+    def required_q(self, score: float) -> float:
+        if not math.isfinite(score) or score < SCALE_MIN:
+            raise ValueError(f"score must be {SCALE_MIN} or more")
+        if score >= self.cap:
+            raise ValueError(f"a score of {self.cap:g} or more cannot be reached on this curve")
+        power = score if score <= self.knee else self.knee - self.softness * math.log(1.0 - (score - self.knee) / (self.cap - self.knee))
+        return self.q_1000 * (power / SCALE_MAX) ** (1.0 / self.power_exponent)
+
+    def to_spec(self) -> dict:
+        return {"knee": self.knee, "cap": self.cap, "softness": self.softness}
+
+
+def curve_spec(curve: ScoreCurve) -> dict:
+    """What the report needs to redraw a curve in the browser (scoring_lab/report_template.html)."""
+    spec = {"exponent": curve.power_exponent}
+    if isinstance(curve, SaturatingScoreCurve):
+        spec.update(curve.to_spec())
+    return spec
 
 
 @dataclass(frozen=True)
@@ -49,6 +89,18 @@ LAB_MODELS: tuple[LabModel, ...] = (
             "the field score higher again: 53% of the ceiling scores 644 instead of 583. Lab only."
         ),
         curve=_variant("0.1.1", power_exponent=0.692),
+    ),
+    LabModel(
+        key="0.1.2",
+        name="Model 0.1.2 (lab): hard top",
+        description=(
+            "Production up to 990; above it the score bends towards 1100 and never reaches it. A world best "
+            "scores about 994, 1000 takes 2% faster than the world best, 1050 about 25% faster. Lab only."
+        ),
+        curve=SaturatingScoreCurve(**{
+            **{f.name: getattr(MODEL_CURVE, f.name) for f in fields(ScoreCurve)},
+            "version": "lab-0.1.2", "knee": 990.0, "cap": 1100.0, "softness": 280.0,
+        }),
     ),
     LabModel(
         key="no-terrain",

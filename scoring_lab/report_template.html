@@ -223,10 +223,19 @@ function parseDuration(str) {
   const secs = parts.reduce((a, p) => a * 60 + Number(p), 0);
   return secs > 0 ? secs : null;
 }
-// score = 1000 x (world-best time / time) ^ exponent: the model's own curve restated per course
-// (Python checks this identity against score_for_time in tests/unit/test_scoring_lab.py).
-const scoreAt = (m, t) => 1000 * Math.pow(m.world_best_seconds / t, m.exponent);
-const timeFor = (m, score) => m.world_best_seconds * Math.pow(1000 / score, 1 / m.exponent);
+// The model's own curve restated per course: f = ceiling time / time, score = 1000 x f ^ exponent,
+// bent towards `cap` above `knee` on a curve that has one (scoring_lab/models.py,
+// SaturatingScoreCurve). tests/unit/test_scoring_lab.py checks this against score_for_time.
+function scoreAt(m, t) {
+  const c = m.curve, power = 1000 * Math.pow(m.ceiling_seconds / t, c.exponent);
+  return c.knee == null || power <= c.knee ? power : c.knee + (c.cap - c.knee) * (1 - Math.exp(-(power - c.knee) / c.softness));
+}
+function timeFor(m, score) {
+  const c = m.curve;
+  if (c.cap != null && score >= c.cap) return Infinity;
+  const power = c.knee == null || score <= c.knee ? score : c.knee - c.softness * Math.log(1 - (score - c.knee) / (c.cap - c.knee));
+  return m.ceiling_seconds * Math.pow(1000 / power, 1 / c.exponent);
+}
 const LEVELS = [...DATA.levels].sort((a, b) => b.from - a.from);
 const levelFor = score => LEVELS.find(l => score >= l.from)?.name ?? '';
 function niceTicks(lo, hi, count = 5) {
@@ -446,9 +455,11 @@ function profileChart(host, c) {
 function scoreChart(host, c) {
   const keys = visible(), W = widthOf(host), H = 240, L = 44, R = 12, T = 10, B = 24;
   const ms = keys.map(k => c.models[k]), times = ms[0].times;
-  const t0 = Math.min(...ms.map(m => timeFor(m, 1080)), ...times.map(t => t.seconds * 0.95));
+  // From 15% faster than the human ceiling, so the top of every curve (and where they part) is in view.
+  const t0 = Math.min(...ms.map(m => m.ceiling_seconds / 1.15), ...times.map(t => t.seconds * 0.95));
   const t1 = Math.max(...ms.map(m => timeFor(m, 280)), ...times.map(t => t.seconds * 1.05));
-  const sLo = Math.min(250, ...times.map(t => t.score - 40)), sHi = Math.max(1080, ...times.map(t => t.score + 40));
+  const sLo = Math.min(250, ...times.map(t => t.score - 40));
+  const sHi = Math.max(1050, ...ms.map(m => scoreAt(m, t0) + 10), ...times.map(t => t.score + 40));
   const x = t => L + (t - t0) / (t1 - t0) * (W - L - R), y = v => T + (1 - (v - sLo) / (sHi - sLo)) * (H - T - B);
   const svg = s('svg', { width: W, height: H, role: 'img', 'aria-label': `Score against finish time on ${c.name}` });
   for (const lv of LEVELS.filter(l => l.from >= sLo && l.from <= sHi)) {

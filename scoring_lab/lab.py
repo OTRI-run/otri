@@ -36,7 +36,7 @@ from scoring.course_standard import (
 )
 from scoring.measured_demand import compute_measured_demand
 
-from .models import LAB_MODELS, LabModel, select_models
+from .models import LAB_MODELS, LabModel, curve_spec, select_models
 
 LAB_DIR = Path(__file__).resolve().parent
 REPO_DIR = LAB_DIR.parent
@@ -262,6 +262,9 @@ def score_course(model: LabModel, measured: dict, times: list[dict]) -> dict:
         "terrain_factor": round(terrain_factor, 4),
         "difficulty": round(adjusted_km / demand.physical_distance_km, 4) if demand.physical_distance_km else None,
         "exponent": curve.power_exponent,
+        "curve": curve_spec(curve),
+        # The time at the human ceiling (fraction 1): the report's curve is drawn from it.
+        "ceiling_seconds": round(adjusted_km / curve.demand_scaling.rate(adjusted_km) * 3600, 3),
         "world_best_seconds": round(target_time_seconds(adjusted_km, 1000.0, curve=curve), 2),
         "ladder": [
             {"score": score, "seconds": round(target_time_seconds(adjusted_km, score, curve=curve))}
