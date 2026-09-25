@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -351,6 +352,29 @@ def test_export_timestamps_are_not_a_finish_time(tmp_path, monkeypatch):
     [course] = data["courses"]
     assert course["models"]["prod"]["times"] == []
     assert any("generated on export" in note for note in course["notes"])
+
+
+def test_terrain_switch_names_the_labs_own_tiles(tmp_path, monkeypatch):
+    """`use_terrain` points the fetcher at scoring_lab/.dem/ and turns autofetch on; the cache key
+    then names the tiles in the manifest, so a tile fetched later re-measures, a re-run does not."""
+    monkeypatch.delenv("OTRI_DEM_MANIFEST", raising=False)
+    monkeypatch.delenv("OTRI_DEM_AUTOFETCH", raising=False)
+    monkeypatch.setattr(lab, "DEM_DIR", tmp_path / "dem")
+    lab.use_terrain(False)
+    assert "OTRI_DEM_MANIFEST" not in os.environ and lab._terrain_identity() == "uploaded"
+    lab.use_terrain(True)
+    manifest = Path(os.environ["OTRI_DEM_MANIFEST"])
+    assert manifest == tmp_path / "dem" / "manifest.json" and os.environ["OTRI_DEM_AUTOFETCH"] == "1"
+    assert lab._terrain_identity() == "uploaded"  # nothing fetched yet
+    manifest.write_text(json.dumps({"tiles": [{"path": "N46E007.tif"}]}), encoding="utf-8")
+    first = lab._terrain_identity()
+    manifest.write_text(json.dumps({"tiles": [{"path": "N46E007.tif"}]}), encoding="utf-8")  # rewritten, same tiles
+    assert lab._terrain_identity() == first and first.endswith("N46E007.tif")
+    manifest.write_text(json.dumps({"tiles": [{"path": "N46E007.tif"}, {"path": "N07E098.tif"}]}), encoding="utf-8")
+    assert lab._terrain_identity() != first
+    monkeypatch.setenv("OTRI_DEM_MANIFEST", str(tmp_path / "elsewhere.json"))
+    lab.use_terrain(True)  # a manifest already named is kept
+    assert os.environ["OTRI_DEM_MANIFEST"] == str(tmp_path / "elsewhere.json")
 
 
 def test_second_run_comes_from_the_cache(report):

@@ -42,6 +42,7 @@ REPO_DIR = LAB_DIR.parent
 DEFAULT_COURSES_DIR = LAB_DIR / "courses"
 DEFAULT_OUT_DIR = LAB_DIR / "reports"
 CACHE_DIR = LAB_DIR / ".cache"
+DEM_DIR = LAB_DIR / ".dem"
 TEMPLATE = LAB_DIR / "report_template.html"
 LEVELS_SOURCE = REPO_DIR / "src" / "lib" / "scoreLevels.js"
 
@@ -116,13 +117,52 @@ def read_times(directories: list[Path]) -> tuple[dict[str, list[dict]], list[str
 
 # --- Measurement (cached, parallel) ---------------------------------------------------------------
 
+def use_terrain(enabled: bool = True) -> None:
+    """Measure from Copernicus terrain tiles, as production does. The tiles a course needs are fetched
+    on demand into `scoring_lab/.dem/` from the same public bucket production uses
+    (course/dem_fetch.py) and pinned there, so a lab number is the number the site gives. A manifest
+    already named in OTRI_DEM_MANIFEST (or `--dem-manifest`) is used instead of the lab's own."""
+    if not enabled:
+        os.environ.pop("OTRI_DEM_MANIFEST", None)
+        os.environ.pop("OTRI_DEM_AUTOFETCH", None)
+        return
+    DEM_DIR.mkdir(exist_ok=True)
+    os.environ.setdefault("OTRI_DEM_MANIFEST", str(DEM_DIR / "manifest.json"))
+    os.environ["OTRI_DEM_AUTOFETCH"] = "1"
+
+
 def _terrain_identity() -> str:
-    """What the elevations will come from, so a cached measurement is never reused across sources."""
+    """What the elevations will come from, so a cached measurement is never reused across sources:
+    the manifest and the tiles it holds (a tile fetched later changes it, a re-run does not)."""
     manifest = os.environ.get("OTRI_DEM_MANIFEST")
     if not manifest or not os.path.exists(manifest):
         return "uploaded"
-    stat = os.stat(manifest)
-    return f"dem:{os.path.abspath(manifest)}:{stat.st_mtime_ns}:{stat.st_size}"
+    try:
+        tiles = sorted(tile["path"] for tile in json.loads(Path(manifest).read_text(encoding="utf-8")).get("tiles", []))
+    except (OSError, ValueError, KeyError, TypeError):
+        stat = os.stat(manifest)
+        tiles = [f"{stat.st_mtime_ns}:{stat.st_size}"]
+    return f"dem:{os.path.abspath(manifest)}:{','.join(tiles)}"
+
+
+def fetch_terrain(paths: list[Path], log=print) -> None:
+    """Fetch the terrain tiles these courses need before they are measured, so the cache key of each
+    measurement names the tiles it was measured on. Never raises: a tile that cannot be fetched
+    leaves the course measured from its own elevations, at Low confidence, as on the site."""
+    from course import dem_fetch
+
+    if not dem_fetch.enabled():
+        return
+    for path in paths:
+        try:
+            outcome = dem_fetch.ensure_tiles(read_track_points(path))
+        except Exception as error:  # a file the parser refuses is reported when it is measured
+            log(f"Terrain for {path.name}: {error}")
+            continue
+        for tile in outcome.get("fetched", []):
+            log(f"Fetched terrain tile {tile} for {path.name}")
+        if outcome.get("skipped") and outcome["skipped"] != "disabled":
+            log(f"Terrain for {path.name}: {outcome['skipped']}")
 
 
 def _cache_key(data: bytes) -> str:
@@ -208,6 +248,7 @@ def measure_all(paths: list[Path], *, jobs: int, use_cache: bool, log=print) -> 
     results: dict[Path, dict] = {}
     pending: list[tuple[Path, str]] = []
     CACHE_DIR.mkdir(exist_ok=True)
+    fetch_terrain(paths, log)
     for path in paths:
         data = path.read_bytes()
         key = _cache_key(data)
@@ -493,7 +534,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-cache", action="store_true", help="re-measure every course")
     parser.add_argument("--clear-cache", action="store_true", help="delete cached measurements and exit")
     parser.add_argument("--save-baseline", action="store_true", help="after this run, keep its results as the baseline later reports compare against")
-    parser.add_argument("--dem-manifest", type=Path, help="measure elevations from this DEM manifest (sets OTRI_DEM_MANIFEST)")
+    parser.add_argument("--dem-manifest", type=Path, help="measure elevations from this DEM manifest instead of the lab's own (sets OTRI_DEM_MANIFEST)")
+    parser.add_argument("--no-dem", action="store_true", help="measure from the GPX files' own elevations instead of terrain tiles (the default fetches the Copernicus tiles a course needs into scoring_lab/.dem/, as production does)")
     parser.add_argument("--open", action="store_true", help="open the report in the browser")
     parser.add_argument("--watch", action="store_true", help="rebuild whenever a GPX or times.csv changes")
     args = parser.parse_args(argv)
@@ -508,6 +550,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.dem_manifest:
         os.environ["OTRI_DEM_MANIFEST"] = str(args.dem_manifest.resolve())
+    use_terrain(not args.no_dem)
 
     try:
         models = select_models(args.models)

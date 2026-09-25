@@ -5,3 +5,5 @@ courses/*
 # Generated on every run.
 reports/
 .cache/
+# Terrain tiles fetched on demand (Copernicus GLO-30, ~40 MB each), pinned in their manifest.
+.dem/

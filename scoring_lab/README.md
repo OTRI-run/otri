@@ -238,9 +238,14 @@ or build only its comparison with `python -m scoring_lab --models 0.1.7`.
 
 ## Elevation
 
-By default the lab uses the elevations in the GPX files (every course is then `Low` confidence, as on
-the site without terrain data). With terrain tiles set up, pass `--dem-manifest path/to/manifest.json`
-(or set `OTRI_DEM_MANIFEST`) to measure as production does.
+The lab measures from the Copernicus terrain tiles, as production does: the tiles a course needs
+are fetched on first use into `scoring_lab/.dem/` (about 40 MB per 1° tile, from the same public
+bucket the site uses) and pinned there, so a lab number is the number the calculator gives for the
+same course and time. Without a network, or for a course no tile covers, the course is measured from
+its own elevations at `Low` confidence, and its card says which. `--no-dem` measures every course
+from the file's own elevations (the site does the same where it has no tile; the two differ by a few
+percent on mountain courses), and `--dem-manifest path/to/manifest.json` uses tiles installed
+elsewhere.
 
 `python -m scoring_lab --help` lists every option. The tests are in `tests/unit/test_scoring_lab.py`.
 They hold the lab to the estimator's numbers and the report's curve to `score_for_time`.
