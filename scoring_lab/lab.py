@@ -61,6 +61,8 @@ GRADE_BANDS = (
 # A GPX's own timestamps are used as a finish time only when they describe a plausible run on it:
 # a course file exported by a route planner often carries made-up times seconds apart.
 RECORDED_SCORE_RANGE = (50, 1100)
+# What `measure_file` returns changed: bump to leave stale cache entries behind.
+LAB_MEASURE_VERSION = "lab-measure-2"
 
 
 # --- Finish times -------------------------------------------------------------------------------
@@ -123,7 +125,7 @@ def _terrain_identity() -> str:
 
 
 def _cache_key(data: bytes) -> str:
-    identity = f"{MEASUREMENT_VERSION}|{_terrain_identity()}".encode()
+    identity = f"{MEASUREMENT_VERSION}|{LAB_MEASURE_VERSION}|{_terrain_identity()}".encode()
     return hashlib.sha256(identity + b"|" + data).hexdigest()
 
 
@@ -173,11 +175,21 @@ def measure_file(path: str) -> dict:
     demand = compute_measured_demand(measurement=measurement)
     stamps = [p.time for p in points if p.time is not None]
     recorded = (stamps[-1] - stamps[0]).total_seconds() if len(stamps) >= 2 else None
+    timestamps_note = None
+    if recorded and recorded > 0:
+        # A route planner's export carries times too, one fixed step per point (Trace de Trail: 3 s).
+        # A watch never records that evenly for hours. Such times are not a finish time.
+        gaps = {round((b - a).total_seconds(), 1) for a, b in zip(stamps, stamps[1:])}
+        if len(gaps) == 1 and gaps.pop() >= 2:
+            timestamps_note = (f"GPX timestamps are one fixed step apart for every point and span {format_duration(recorded)}: "
+                               "generated on export, not a recording; not used as a finish time")
+            recorded = None
     return {
         "measurement": measurement,
         "demand": demand,
         "point_count": len(points),
         "recorded_seconds": recorded if recorded and recorded > 0 else None,
+        "timestamps_note": timestamps_note,
         "detail": _grade_detail(measurement),
     }
 
@@ -317,7 +329,7 @@ def build(directories: list[Path], models: list[LabModel], *, jobs: int = 1, use
             continue
         m, demand = info["measurement"], info["demand"]
         times = list(times_by_name.get(path.name.lower().removesuffix(".gpx"), []))
-        notes = []
+        notes = [info["timestamps_note"]] if info.get("timestamps_note") else []
         recorded = info.get("recorded_seconds")
         if recorded:
             prod_check = score_course(models[0], info, [{"label": "check", "seconds": recorded}])["times"][0]["score"]

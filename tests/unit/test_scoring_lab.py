@@ -227,14 +227,30 @@ def test_lab_0_1_6_prices_a_flat_low_course_as_its_distance(report):
     shutil.copy(FIXTURES / "flat-loop.gpx", courses / "flat-loop.gpx")
     measurement = measure_course(read_track_points(courses / "flat-loop.gpx"), configured_provider())
     km, flags, factor = evidence_demand(measurement)
-    assert factor == 1.0  # 100 m above sea level: below the 300 m floor
+    assert factor == 1.0  # 100 m above sea level: below the 600 m floor
     assert km == pytest.approx(measurement.distance_m / 1000, rel=1e-6)
     assert any(f.startswith("steep_ground_not_priced") for f in flags)
     alps = next(c for c in data["courses"] if c["name"] == "alps-terrain-check")
     m = alps["models"]["0.1.6"]
-    assert m["terrain_factor"] > 1.05  # 1,200-2,400 m: altitude priced from 300 m
+    assert m["terrain_factor"] == pytest.approx(1.0 + 0.036 * (alps["altitude_excess_m"] + 1500 - 600) / 1000, abs=0.002)
     assert any(f.startswith("altitude_adjustment_applied") for f in m["flags"])
     assert not any(f.startswith("vertical_calibration") for f in m["flags"])
+
+
+def test_every_lab_model_prices_altitude_for_acclimatised_athletes():
+    from scoring_lab.models import ALTITUDE_FLOOR_M, ALTITUDE_PER_1000_M, LAB_TERRAIN
+    assert (ALTITUDE_FLOOR_M, ALTITUDE_PER_1000_M) == (600.0, 0.036)
+    assert LAB_TERRAIN.factor(0.0, 1400.0) == pytest.approx(1.05, abs=1e-3)  # 2,000 m: 5 % (Pühringer et al. 2022)
+    for model in LAB_MODELS:
+        terrain = model.curve.terrain_adjustment
+        if model.from_totals:
+            continue  # official figures only: no profile, so no terrain factor at all
+        if model.production:
+            assert (terrain.altitude_threshold_m, terrain.altitude_coefficient) == (1500.0, 0.07)
+        elif model.key not in ("no-terrain", "no-altitude"):
+            assert (terrain.altitude_threshold_m, terrain.altitude_coefficient) == (600.0, 0.036), model.key
+        else:
+            assert terrain.altitude_coefficient == 0.0
 
 
 def test_standard_models_score_through_the_production_functions():
@@ -288,6 +304,28 @@ def test_bad_files_and_times_are_reported_not_fatal(report, tmp_path):
     html = target.read_text(encoding="utf-8")
     assert "/*__LAB_DATA__*/null" not in html and "alps-terrain-check" in html
     assert json.loads((tmp_path / "out" / "latest.json").read_text(encoding="utf-8"))["courses"]
+
+
+def test_export_timestamps_are_not_a_finish_time(tmp_path, monkeypatch):
+    """A route planner writes one fixed time step per point; a watch never does. Such times are
+    noted, not scored (Sierre-Zinal's Trace de Trail export spans 2:27:18 at 3 s per point)."""
+    import re
+    monkeypatch.delenv("OTRI_DEM_MANIFEST", raising=False)
+    monkeypatch.setattr(lab, "CACHE_DIR", tmp_path / "cache")
+    courses = tmp_path / "courses"
+    courses.mkdir()
+    text = (FIXTURES / "out-and-back.gpx").read_text(encoding="utf-8")
+    counter = iter(range(10_000))
+    def stamp(match):
+        seconds = 3 * next(counter)
+        return f'{match.group(0)}<time>2026-09-19T{6 + seconds // 3600:02d}:{seconds % 3600 // 60:02d}:{seconds % 60:02d}Z</time>'
+    synthetic = re.sub(r'<ele>[^<]*</ele>', stamp, text)
+    assert synthetic.count("<time>") >= 2
+    (courses / "planned.gpx").write_text(synthetic, encoding="utf-8")
+    data = lab.build([courses], select_models(None), jobs=1, log=lambda *_: None)
+    [course] = data["courses"]
+    assert course["models"]["prod"]["times"] == []
+    assert any("generated on export" in note for note in course["notes"])
 
 
 def test_second_run_comes_from_the_cache(report):

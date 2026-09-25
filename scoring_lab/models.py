@@ -100,11 +100,6 @@ DESCENT_BEST_GRADE = -0.09
 DESCENT_BEST_RATIO = 0.88
 DESCENT_NO_CREDIT_GRADE = -0.18
 
-# Altitude. Wehrlin & Hallén 2006: VO2max of endurance athletes falls linearly by 6.3 % per
-# 1,000 m between 300 m and 2,800 m. Sustainable pace follows VO2max, so the decrement applies
-# from 300 m, not from production's 1,500 m threshold.
-ALTITUDE_FLOOR_M = 300.0
-ALTITUDE_PER_1000_M = 0.063
 
 
 def descent_ratio(g: float) -> float:
@@ -152,7 +147,8 @@ def evidence_demand(measurement) -> tuple[float, tuple[str, ...], float]:
     ]
     if factor > 1.0:
         flags.append(f"altitude_adjustment_applied: course demand scaled by {factor:.3f} "
-                     f"({altitude_excess:.0f} m mean altitude above {ALTITUDE_FLOOR_M:.0f} m, 6.3 % per 1,000 m; Wehrlin & Hallén 2006)")
+                     f"({altitude_excess:.0f} m mean altitude above {ALTITUDE_FLOOR_M:.0f} m, 3.6 % per 1,000 m for "
+                     "acclimatised athletes; Pühringer et al. 2022)")
     if clamped_m:
         flags.append(f"gradient_out_of_supported_domain: {clamped_m:.0f} m of climb steeper than 45 %, scored as 45 %")
     return demand * factor, tuple(flags), factor
@@ -193,10 +189,27 @@ class LabModel:
 
 
 def _variant(key: str, **changes) -> ScoreCurve:
-    return replace(MODEL_CURVE, version=f"lab-{key}", **changes)
+    """Production's curve with `changes`, on the lab's altitude rule unless `changes` says otherwise."""
+    return replace(MODEL_CURVE, version=f"lab-{key}", **{"terrain_adjustment": LAB_TERRAIN, **changes})
+
+
+def _saturating(key: str, **changes) -> "SaturatingScoreCurve":
+    base = {f.name: getattr(MODEL_CURVE, f.name) for f in fields(ScoreCurve)}
+    return SaturatingScoreCurve(**{**base, "version": f"lab-{key}", "terrain_adjustment": LAB_TERRAIN, **changes})
 
 
 _TERRAIN = MODEL_CURVE.terrain_adjustment
+
+# Altitude, for every lab model. Production prices 7 % per 1,000 m above 1,500 m. The published
+# acute figure is steeper (Wehrlin & Hallén 2006: 6.3 % per 1,000 m from 300 m, sea-level athletes
+# in a chamber), but the people near the top of a mountain race are acclimatised, and for them the
+# loss is about half: Pühringer et al. 2022 tested 128 acclimatised mountain guides at 600 m and
+# 2,000 m and found VO2max 5 % lower at 2,000 m in the fit ones, and unchanged in the less fit.
+# That is 3.6 % per 1,000 m above 600 m, and it is what every lab model uses; `prod` keeps
+# production's rule so the two can be compared.
+ALTITUDE_FLOOR_M = 600.0
+ALTITUDE_PER_1000_M = 0.036
+LAB_TERRAIN = replace(_TERRAIN, altitude_threshold_m=ALTITUDE_FLOOR_M, altitude_coefficient=ALTITUDE_PER_1000_M)
 _SMOOTH_REFERENCE = SmoothReference(**{
     f.name: getattr(MODEL_CURVE.demand_scaling, f.name) for f in fields(EnduranceReference)
 })
@@ -226,10 +239,7 @@ LAB_MODELS: tuple[LabModel, ...] = (
             "Production up to 990; above it the score bends towards 1100 and never reaches it. A world best "
             "scores about 994, 1000 takes 2% faster than the world best, 1050 about 25% faster. Lab only."
         ),
-        curve=SaturatingScoreCurve(**{
-            **{f.name: getattr(MODEL_CURVE, f.name) for f in fields(ScoreCurve)},
-            "version": "lab-0.1.2", "knee": 990.0, "cap": 1100.0, "softness": 280.0,
-        }),
+        curve=_saturating("0.1.2", knee=990.0, cap=1100.0, softness=280.0),
     ),
     LabModel(
         key="0.1.3",
@@ -247,30 +257,22 @@ LAB_MODELS: tuple[LabModel, ...] = (
         key="0.1.4",
         name="Model 0.1.4 (lab): tuned by feel",
         description=(
-            "Tuned to three results judged by eye: Sierre-Zinal's 2:27 record scored too high (1030), Phuket "
-            "15k in 1:33:40 (598) and 75k in 13:24:40 (557) too low. Exponent 0.70 lifts the middle; above "
-            "900 the score bends towards 1000 and never reaches it, so no result passes 1000 and road world "
-            "bests score about 971. A curve cannot put Sierre-Zinal below the road records: it measures "
-            "faster than them. Lab only."
+            "Tuned to three results judged by eye: Sierre-Zinal's record scored too high, Phuket 15k in "
+            "1:33:40 and 75k in 13:24:40 too low. Exponent 0.70 lifts the middle; above 900 the score bends "
+            "towards 1000 and never reaches it, so no result passes 1000 and road world bests score about 971. "
+            "A curve cannot put Sierre-Zinal below the road records: it measures faster than them. Lab only."
         ),
-        curve=SaturatingScoreCurve(**{
-            **{f.name: getattr(MODEL_CURVE, f.name) for f in fields(ScoreCurve)},
-            "version": "lab-0.1.4", "power_exponent": 0.70, "knee": 900.0, "cap": 1000.0, "softness": 80.0,
-        }),
+        curve=_saturating("0.1.4", power_exponent=0.70, knee=900.0, cap=1000.0, softness=80.0),
     ),
     LabModel(
         key="0.1.5",
         name="Model 0.1.5 (lab): tuned by feel, open top",
         description=(
             "0.1.4 with room above 1000: exponent 0.70 lifts the middle, and above 900 the score bends gently "
-            "towards 1100 and never reaches it. Sierre-Zinal's record 979, Phuket 15k in 1:33:40 655, 75k in "
-            "13:24:40 618 (as in 0.1.4); road world bests about 966; 1000 takes 11% faster than the road world "
-            "bests, 1022 20% faster. Lab only."
+            "towards 1100 and never reaches it. The same scores as 0.1.4 below 900; road world bests about 966; "
+            "1000 takes 11% faster than the road world bests, 1022 20% faster. Lab only."
         ),
-        curve=SaturatingScoreCurve(**{
-            **{f.name: getattr(MODEL_CURVE, f.name) for f in fields(ScoreCurve)},
-            "version": "lab-0.1.5", "power_exponent": 0.70, "knee": 900.0, "cap": 1100.0, "softness": 250.0,
-        }),
+        curve=_saturating("0.1.5", power_exponent=0.70, knee=900.0, cap=1100.0, softness=250.0),
     ),
     LabModel(
         key="0.1.7",
@@ -292,9 +294,9 @@ LAB_MODELS: tuple[LabModel, ...] = (
         description=(
             "Production's curve on a course demand that uses only published evidence: descents are priced "
             "by measured pace (at most 0.88 flat km per km, none below -18 %; Strava GAP, Townshend 2010) "
-            "instead of Minetti's metabolic credit of up to 0.50; altitude costs 6.3 % per 1,000 m from 300 m "
-            "(Wehrlin & Hallén 2006) instead of 7 % from 1,500 m; and the steep-ground coefficient, calibrated "
-            "on one performance, is dropped. The demand-by-grade chart still shows production's bands. Lab only; "
+            "instead of Minetti's metabolic credit of up to 0.50; altitude costs 3.6 % per 1,000 m from 600 m, the "
+            "measured loss in acclimatised athletes (Pühringer et al. 2022), as in every lab model; and the "
+            "steep-ground coefficient, calibrated on one performance, is dropped. The demand-by-grade chart still shows production's bands. Lab only; "
             "the reasoning is in scoring_lab/README.md."
         ),
         curve=_variant("0.1.6"),
@@ -306,20 +308,20 @@ LAB_MODELS: tuple[LabModel, ...] = (
         description="Gradient-cost integral only: no steep-ground and no altitude factor. Shows what terrain adds.",
         curve=_variant(
             "no-terrain",
-            terrain_adjustment=replace(_TERRAIN, steep_coefficient=0.0, altitude_coefficient=0.0, vertical_steep_coefficient=0.0),
+            terrain_adjustment=replace(LAB_TERRAIN, steep_coefficient=0.0, altitude_coefficient=0.0, vertical_steep_coefficient=0.0),
         ),
     ),
     LabModel(
         key="no-altitude",
         name="No altitude factor",
-        description="Production with the altitude coefficient set to 0; steep-ground factor kept.",
-        curve=_variant("no-altitude", terrain_adjustment=replace(_TERRAIN, altitude_coefficient=0.0)),
+        description="No altitude factor at all; steep-ground factor kept.",
+        curve=_variant("no-altitude", terrain_adjustment=replace(LAB_TERRAIN, altitude_coefficient=0.0)),
     ),
     LabModel(
         key="no-vertical-rule",
         name="No vertical rule",
         description="Uphill-only courses get the ordinary steep coefficient instead of the vertical one.",
-        curve=_variant("no-vertical-rule", terrain_adjustment=replace(_TERRAIN, vertical_steep_fraction=1.0, vertical_steep_coefficient=0.0)),
+        curve=_variant("no-vertical-rule", terrain_adjustment=replace(LAB_TERRAIN, vertical_steep_fraction=1.0, vertical_steep_coefficient=0.0)),
     ),
     LabModel(
         key="linear",
