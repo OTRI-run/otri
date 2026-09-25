@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -14,7 +15,8 @@ from scoring import estimate_score
 from scoring.course_standard import score_for_time, target_time_seconds
 from scoring_lab import lab
 from scoring.course_standard import ENDURANCE_REFERENCE_OBSERVATIONS
-from scoring_lab.models import LAB_MODELS, MODELS_BY_KEY, ceiling_distance, ceiling_seconds, select_models
+from scoring.course_demand import gradient_ratio
+from scoring_lab.models import LAB_MODELS, MODELS_BY_KEY, ceiling_distance, ceiling_seconds, descent_ratio, evidence_demand, evidence_ratio, select_models
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "gpx"
 
@@ -92,6 +94,8 @@ def _page_rate(anchors, d):
 def _page_score(m, t):
     """scoreAt in report_template.html, line for line."""
     c = m["curve"]
+    if c.get("smooth_knots"):
+        return _browser_value("scoreAt", m, t)
     if c.get("duration_matched"):
         return 1000 * (m["adjusted_demand_km"] / _page_ceiling_distance(c["anchors"], t)) ** c["exponent"]
     power = 1000 * (m["ceiling_seconds"] / t) ** c["exponent"]
@@ -103,11 +107,63 @@ def _page_score(m, t):
 def _page_time(m, score):
     """timeFor in report_template.html, line for line."""
     c = m["curve"]
+    if c.get("smooth_knots"):
+        return _browser_value("timeFor", m, score)
     if c.get("duration_matched"):
         d = m["adjusted_demand_km"] * (1000 / score) ** (1 / c["exponent"])
         return d / _page_rate(c["anchors"], d) * 3600
     power = score if "knee" not in c or score <= c["knee"] else c["knee"] - c["softness"] * math.log(1 - (score - c["knee"]) / (c["cap"] - c["knee"]))
     return m["ceiling_seconds"] * (1000 / power) ** (1 / c["exponent"])
+
+
+def _browser_value(function, model, value):
+    """Execute the real report functions, rather than a second copy of the algorithm."""
+    template = (Path(lab.__file__).parent / "report_template.html").read_text(encoding="utf-8")
+    source = template.split("function rateAt(", 1)[1].split("const LEVELS", 1)[0]
+    script = "function rateAt(" + source + f"\nconsole.log(JSON.stringify({function}({json.dumps(model)}, {value})));"
+    return json.loads(subprocess.run(["node", "--input-type=module", "-e", script], check=True, capture_output=True, text=True).stdout)
+
+
+def test_lab_0_1_7_reference_and_fairness_invariants():
+    model = MODELS_BY_KEY["0.1.7"]
+    reference = model.curve.demand_scaling
+    for _, distance, seconds in ENDURANCE_REFERENCE_OBSERVATIONS:
+        assert model.raw_score(distance, seconds) == pytest.approx(1000)
+        # Continuous score and derivative at each anchor, including extrapolation joins.
+        eps = 1e-5
+        left = (reference.log_seconds(math.log(distance)) - reference.log_seconds(math.log(distance) - eps)) / eps
+        right = (reference.log_seconds(math.log(distance) + eps) - reference.log_seconds(math.log(distance))) / eps
+        assert left == pytest.approx(right, abs=1e-5)
+    previous = 0
+    for i in range(150):
+        seconds = 60 * (200000 / 60) ** (i / 149)
+        distance = ceiling_distance(reference, seconds)
+        assert distance > previous
+        previous = distance
+        assert ceiling_seconds(reference, distance) == pytest.approx(seconds)
+        assert model.raw_score(distance / 2, seconds) == pytest.approx(500)
+        assert model.raw_score(distance * 1.1, seconds) == pytest.approx(1100)
+    for distance in (1, 5, 21.0975, 42.195, 100, 500):
+        scores = [model.raw_score(distance, t) for t in (600, 3600, 7200, 86400)]
+        assert all(a > b for a, b in zip(scores, scores[1:]))
+        for score in (100, 500, 1000, 1200):
+            assert model.raw_score(distance, model.target_seconds(distance, score)) == pytest.approx(score)
+    for bad in (0, -1, math.nan, math.inf):
+        with pytest.raises(ValueError):
+            model.raw_score(bad, 3600)
+        with pytest.raises(ValueError):
+            model.raw_score(10, bad)
+        with pytest.raises(ValueError):
+            model.target_seconds(10, bad)
+
+
+def test_lab_0_1_7_report_marks_experimental_confidence(report):
+    data, _ = report
+    for course in data["courses"]:
+        if "models" in course:
+            m = course["models"]["0.1.7"]
+            assert m["confidence"] == "Low"
+            assert any("experimental_reference" in flag for flag in m["flags"])
 
 
 def test_report_curve_is_the_model_curve(report):
@@ -149,6 +205,36 @@ def test_lab_0_1_5_keeps_0_1_4s_judged_results_and_lets_the_best_pass_1000():
     assert score(model, 1.2) > 1020  # 20 % faster than the road world bests passes 1000
     assert score(model, 5.0) < 1100  # five times world-best speed
     assert model.raw_score(42.195, model.target_seconds(42.195, 1000)) == pytest.approx(1000)
+
+
+def test_lab_0_1_6_descent_rule_follows_measured_pace():
+    assert descent_ratio(-1e-9) == pytest.approx(1.0)
+    assert descent_ratio(-0.09) == pytest.approx(0.88)  # the most a descent is worth
+    assert descent_ratio(-0.045) == pytest.approx(0.94)
+    assert descent_ratio(-0.135) == pytest.approx(0.94)
+    assert descent_ratio(-0.18) == pytest.approx(1.0)
+    assert descent_ratio(-0.30) == 1.0 == descent_ratio(-0.60)
+    assert evidence_ratio(0.10) == gradient_ratio(0.10)  # uphill is Minetti, as in production
+    assert evidence_ratio(0.60) == gradient_ratio(0.45)
+    for g in (-0.25, -0.15, -0.05):
+        assert descent_ratio(g) > gradient_ratio(g)  # never as generous as the metabolic credit
+
+
+def test_lab_0_1_6_prices_a_flat_low_course_as_its_distance(report):
+    data, courses = report
+    from course.elevation import configured_provider
+    from course.measurement import measure_course
+    shutil.copy(FIXTURES / "flat-loop.gpx", courses / "flat-loop.gpx")
+    measurement = measure_course(read_track_points(courses / "flat-loop.gpx"), configured_provider())
+    km, flags, factor = evidence_demand(measurement)
+    assert factor == 1.0  # 100 m above sea level: below the 300 m floor
+    assert km == pytest.approx(measurement.distance_m / 1000, rel=1e-6)
+    assert any(f.startswith("steep_ground_not_priced") for f in flags)
+    alps = next(c for c in data["courses"] if c["name"] == "alps-terrain-check")
+    m = alps["models"]["0.1.6"]
+    assert m["terrain_factor"] > 1.05  # 1,200-2,400 m: altitude priced from 300 m
+    assert any(f.startswith("altitude_adjustment_applied") for f in m["flags"])
+    assert not any(f.startswith("vertical_calibration") for f in m["flags"])
 
 
 def test_standard_models_score_through_the_production_functions():

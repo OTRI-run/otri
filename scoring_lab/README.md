@@ -50,6 +50,7 @@ In the report, **Try a time** under each course scores any time you type, for ev
 | `0.1.3` | compared with the best humans over the runner's own finish time, and a plain percentage: see *Why 0.1.3* below |
 | `0.1.4` | tuned by feel on three results: exponent 0.70 lifts the middle, and above 900 the score bends towards 1000 and never reaches it (Sierre-Zinal record 1030 -> 979, Phuket 15k 1:33:40 598 -> 655, 75k 13:24:40 557 -> 618, road world bests ~971) |
 | `0.1.5` | 0.1.4 with room above 1000: the top bends towards 1100 instead (softness 250). Same Sierre-Zinal (979) and Phuket (655, 618) scores; road world bests ~966; 1000 takes 11% faster than the road world bests |
+| `0.1.6` | production's curve on a course demand built from published evidence only: descents priced by measured pace, altitude 6.3 % per 1,000 m from 300 m, no steep-ground coefficient. See *Why 0.1.6* |
 | `no-terrain` | no steep-ground or altitude factor: the gradient-cost integral alone |
 | `no-altitude` | altitude coefficient 0 |
 | `no-vertical-rule` | uphill-only courses get the ordinary steep coefficient |
@@ -105,6 +106,57 @@ points over one just under it. A smooth curve through the same three records wou
 it reproduces the records it was not built from worse (10 km and half marathon at 96-97 % instead
 of 100 %), so the evidenced ceiling stays and the kink is documented. Real field data, not
 more theory, is what would settle both the fatigue and the scale.
+
+## Why 0.1.6
+
+0.1.3 was my answer for the curve. 0.1.6 is my answer for the other half of the model, the course
+demand, and it keeps production's curve so the two questions stay separate. The rule is the one
+good modelling practice gives: keep what is published, drop what was fitted to one data point,
+and say what is left unpriced. Three changes:
+
+**1. Descents are priced by pace, not by metabolic cost.** Minetti's polynomial is the right model
+for climbing, where the metabolic cost sets the pace. Going downhill is not metabolically limited:
+braking, impact and footing set the speed, and the polynomial credits a -20 % descent at 0.50 flat
+km per km, a pace no one runs. Measured pace says what a descent is really worth. Strava's
+grade-adjusted pace, refitted to heart-rate effort on millions of runs (Robb 2017), gives at most
+0.88 flat km per km, at -9 %, and a full flat km again from -18 % down. Townshend et al. (2010)
+measured the same asymmetry on a hilly time trial: 23 % slower on the climbs, only 13.8 % faster on
+the descents. 0.1.6 uses that shape; uphill stays Minetti, as in production.
+
+**2. Altitude from 300 m, at the published rate.** Wehrlin and Hallén (2006): VO2max of endurance
+athletes falls linearly by 6.3 % per 1,000 m between 300 m and 2,800 m. Production applies 7 % per
+1,000 m only above 1,500 m, so a course at 1,200 m is priced as sea level. 0.1.6 applies 6.3 % from
+300 m.
+
+**3. No steep-ground coefficient.** Production's 0.5951 (and the vertical 0.1169) is set so that one
+performance scores 970. That is one data point per constant and no published counterpart, and it is
+applied to every steep course whatever its footing, from a runnable alpine race to a technical
+100-miler. 0.1.6 leaves it out and says so in every course's flags (`steep_ground_not_priced`).
+
+**What it does to the courses in this folder:** less than you might expect, and in one case the
+opposite of what feels right. On Sierre-Zinal the dropped steep coefficient (-10 %) is paid back by
+the descents (+4 %) and the altitude (+10.5 % instead of +3.7 %): the record goes from 1030 to 1066.
+On Phuket the two unevidenced pieces were cancelling each other, and the scores move by less than
+ten points. The point of the model is not that it moves these scores; it is that every number in it
+can be traced to a paper.
+
+**What it cannot fix, and why those two courses feel wrong:**
+
+- *Sierre-Zinal reads above the road world records* because its course file measures that fast: the
+  Trace de Trail elevations are flagged implausible and put 2.15 km at 30 % or steeper. Terrain-model
+  elevation (`--dem-manifest`) is the fix, not a curve. Acclimatisation is the other unknown: the
+  6.3 % is for acute exposure, and a mountain runner who lives at altitude loses less.
+- *Phuket reads low* because of heat, which is well quantified and not in a GPX. Ely et al. (2007):
+  marathon performance slows about 10 % for 3-hour finishers, and more for slower ones, as WBGT rises
+  from 10 to 25 °C, and Phuket in September is hotter than that. A cool-weather 1:33:40 on that course
+  would be worth roughly 650-700, which is about where 0.1.4 put it by feel. Pricing that needs the
+  race date and a climate source, which is a design change outside the course model.
+
+Sources: [Wehrlin & Hallén 2006](https://link.springer.com/article/10.1007/s00421-005-0081-9),
+[Robb 2017, an improved GAP model](https://medium.com/strava-engineering/an-improved-gap-model-8b07ae8886c3),
+[Townshend, Worringham & Stewart 2010](https://pubmed.ncbi.nlm.nih.gov/20010117/),
+[Ely et al. 2007](https://pubmed.ncbi.nlm.nih.gov/17473775/),
+[Minetti et al. 2002](https://journals.physiology.org/doi/full/10.1152/japplphysiol.01177.2001).
 
 ## Faster loops
 

@@ -241,14 +241,38 @@ function ceilingDistance(anchors, t) {
   }
   return NaN;
 }
+function smoothLogSeconds(knots, x) {
+  if (x <= knots[0][0] || x >= knots.at(-1)[0]) {
+    const [a, b, slope] = x <= knots[0][0] ? knots[0] : knots.at(-1);
+    return b + slope * (x - a);
+  }
+  const i = knots.findIndex((k, j) => j < knots.length - 1 && x <= knots[j + 1][0]);
+  const [a, b, m] = knots[i], [c, d, n] = knots[i + 1], width = c - a, u = (x - a) / width;
+  return (2*u**3 - 3*u**2 + 1)*b + (u**3 - 2*u**2 + u)*width*m + (-2*u**3 + 3*u**2)*d + (u**3 - u**2)*width*n;
+}
+function smoothDistance(knots, t) {
+  const y = Math.log(t);
+  if (y <= knots[0][1] || y >= knots.at(-1)[1]) {
+    const [x, b, slope] = y <= knots[0][1] ? knots[0] : knots.at(-1);
+    return Math.exp(x + (y - b) / slope);
+  }
+  let lo = knots[0][0], hi = knots.at(-1)[0];
+  for (let i = 0; i < 60; i++) {
+    const mid = (lo + hi) / 2;
+    if (smoothLogSeconds(knots, mid) < y) lo = mid; else hi = mid;
+  }
+  return Math.exp((lo + hi) / 2);
+}
 function scoreAt(m, t) {
   const c = m.curve;
+  if (c.smooth_knots) return 1000 * m.adjusted_demand_km / smoothDistance(c.smooth_knots, t);
   if (c.duration_matched) return 1000 * Math.pow(m.adjusted_demand_km / ceilingDistance(c.anchors, t), c.exponent);
   const power = 1000 * Math.pow(m.ceiling_seconds / t, c.exponent);
   return c.knee == null || power <= c.knee ? power : c.knee + (c.cap - c.knee) * (1 - Math.exp(-(power - c.knee) / c.softness));
 }
 function timeFor(m, score) {
   const c = m.curve;
+  if (c.smooth_knots) return Math.exp(smoothLogSeconds(c.smooth_knots, Math.log(m.adjusted_demand_km * 1000 / score)));
   if (c.duration_matched) { const d = m.adjusted_demand_km * Math.pow(1000 / score, 1 / c.exponent); return d / rateAt(c.anchors, d) * 3600; }
   if (c.cap != null && score >= c.cap) return Infinity;
   const power = c.knee == null || score <= c.knee ? score : c.knee - c.softness * Math.log(1 - (score - c.knee) / (c.cap - c.knee));

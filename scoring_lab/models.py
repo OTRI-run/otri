@@ -11,8 +11,11 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, fields, replace
 
+from course.measurement import boundaries, interpolate
+from scoring.course_demand import MAX_GRADE, gradient_ratio
 from scoring.course_standard import MODEL_CURVE, SCALE_MAX, SCALE_MIN, EnduranceReference, ScoreCurve, score_for_time, target_time_seconds
 from scoring.registry import DEFAULT_SCORING_VERSION, get_scoring_model_info
+from .smooth_reference import SmoothReference
 
 
 @dataclass(frozen=True)
@@ -58,6 +61,8 @@ def ceiling_distance(reference: EnduranceReference, seconds: float) -> float:
     segment and keep the one whose range the answer falls in. Time rises strictly with distance on
     every segment (the fatigue exponent 1 - e_i is positive), so exactly one does.
     """
+    if isinstance(reference, SmoothReference):
+        return reference.distance(seconds)
     if not math.isfinite(seconds) or seconds <= 0:
         raise ValueError("seconds must be positive and finite")
     d, q = reference.anchor_demand_km, reference.anchor_rates
@@ -77,7 +82,80 @@ def curve_spec(curve: ScoreCurve, *, duration_matched: bool = False) -> dict:
     if duration_matched:
         ref = curve.demand_scaling
         spec.update(duration_matched=True, anchors=[[d, q] for d, q in zip(ref.anchor_demand_km, ref.anchor_rates)])
+        if isinstance(ref, SmoothReference):
+            spec["smooth_knots"] = ref.knots
     return spec
+
+
+# --- Model 0.1.6: course demand from published evidence only ----------------------------------
+#
+# Descents. Minetti's polynomial is a metabolic cost, and going downhill is not metabolically
+# limited: braking, impact and footing set the speed. Measured pace says how much a descent is
+# really worth. Strava's grade-adjusted pace, fitted to heart-rate effort on millions of runs
+# (Robb 2017): a km at -9 % costs 0.88 flat km, the most any descent is worth, and by -18 % a
+# descent costs a full flat km again, with no further change on steeper ground. Townshend et al.
+# 2010 measured the same asymmetry on a hilly time trial: 23 % slower on the climbs, only 13.8 %
+# faster on the descents. Minetti would credit -20 % at 0.50 flat km.
+DESCENT_BEST_GRADE = -0.09
+DESCENT_BEST_RATIO = 0.88
+DESCENT_NO_CREDIT_GRADE = -0.18
+
+# Altitude. Wehrlin & Hallén 2006: VO2max of endurance athletes falls linearly by 6.3 % per
+# 1,000 m between 300 m and 2,800 m. Sustainable pace follows VO2max, so the decrement applies
+# from 300 m, not from production's 1,500 m threshold.
+ALTITUDE_FLOOR_M = 300.0
+ALTITUDE_PER_1000_M = 0.063
+
+
+def descent_ratio(g: float) -> float:
+    """Flat km per km of descent at grade `g` (< 0), from measured pace rather than metabolic cost."""
+    if not math.isfinite(g) or g >= 0:
+        raise ValueError("descent_ratio takes a negative grade")
+    if g >= DESCENT_BEST_GRADE:
+        return 1.0 + (DESCENT_BEST_RATIO - 1.0) * g / DESCENT_BEST_GRADE
+    if g >= DESCENT_NO_CREDIT_GRADE:
+        return DESCENT_BEST_RATIO + (1.0 - DESCENT_BEST_RATIO) * (g - DESCENT_BEST_GRADE) / (DESCENT_NO_CREDIT_GRADE - DESCENT_BEST_GRADE)
+    return 1.0
+
+
+def evidence_ratio(g: float) -> float:
+    """Flat km per km at grade `g`: Minetti's running cost uphill (clamped at +45 % as in production),
+    the pace-based descent rule downhill."""
+    return gradient_ratio(min(g, MAX_GRADE)) if g >= 0 else descent_ratio(g)
+
+
+def evidence_demand(measurement) -> tuple[float, tuple[str, ...], float]:
+    """Scored demand for model 0.1.6 from the same 50 m windows production integrates:
+    (adjusted_km, flags, altitude_factor). No steep-ground coefficient: the production value is
+    calibrated on one performance and has no published counterpart, so it is left out rather than
+    guessed, and the course says so in its flags."""
+    demand = total_m = altitude_m_m = clamped_m = 0.0
+    for segment in measurement.segments:
+        xs, zs = zip(*segment)
+        edges = boundaries(xs[-1], 50.0)
+        for a, b in zip(edges, edges[1:]):
+            za, zb = interpolate(xs, zs, a), interpolate(xs, zs, b)
+            grade = (zb - za) / (b - a)
+            width = b - a
+            demand += width / 1000.0 * evidence_ratio(grade)
+            total_m += width
+            altitude_m_m += width * max(0.0, (za + zb) / 2.0 - ALTITUDE_FLOOR_M)
+            if grade > MAX_GRADE:
+                clamped_m += width
+    altitude_excess = altitude_m_m / total_m if total_m else 0.0
+    factor = 1.0 + ALTITUDE_PER_1000_M * altitude_excess / 1000.0
+    flags = [
+        "descents_priced_by_pace: a descent is worth at most 0.88 flat km per km (at -9 %) and a full km "
+        "from -18 % down, from measured pace rather than metabolic cost (Strava GAP 2017, Townshend 2010)",
+        "steep_ground_not_priced: no steep-terrain coefficient; production's is calibrated on one "
+        "performance and has no published counterpart, so this course's footing is unpriced",
+    ]
+    if factor > 1.0:
+        flags.append(f"altitude_adjustment_applied: course demand scaled by {factor:.3f} "
+                     f"({altitude_excess:.0f} m mean altitude above {ALTITUDE_FLOOR_M:.0f} m, 6.3 % per 1,000 m; Wehrlin & Hallén 2006)")
+    if clamped_m:
+        flags.append(f"gradient_out_of_supported_domain: {clamped_m:.0f} m of climb steeper than 45 %, scored as 45 %")
+    return demand * factor, tuple(flags), factor
 
 
 @dataclass(frozen=True)
@@ -93,14 +171,20 @@ class LabModel:
     # Compare with the human ceiling over the runner's own finish time, not over the course
     # (model 0.1.3): score = 1000 x (D / ceiling_distance(T)) ^ exponent.
     duration_matched: bool = False
+    # Course demand by another rule than production's (model 0.1.6): measurement -> (km, flags, factor).
+    demand: object = None
 
     def raw_score(self, demand_km: float, seconds: float) -> float:
+        if not math.isfinite(demand_km) or demand_km <= 0:
+            raise ValueError("demand must be positive and finite")
         if self.duration_matched:
             share = demand_km / ceiling_distance(self.curve.demand_scaling, seconds)
             return SCALE_MAX * share ** self.curve.power_exponent
         return score_for_time(demand_km, seconds, curve=self.curve)["otri_raw"]
 
     def target_seconds(self, demand_km: float, score: float) -> float:
+        if not math.isfinite(demand_km) or demand_km <= 0:
+            raise ValueError("demand must be positive and finite")
         if self.duration_matched:
             if not math.isfinite(score) or score <= 0:
                 raise ValueError("score must be positive")
@@ -113,6 +197,9 @@ def _variant(key: str, **changes) -> ScoreCurve:
 
 
 _TERRAIN = MODEL_CURVE.terrain_adjustment
+_SMOOTH_REFERENCE = SmoothReference(**{
+    f.name: getattr(MODEL_CURVE.demand_scaling, f.name) for f in fields(EnduranceReference)
+})
 
 LAB_MODELS: tuple[LabModel, ...] = (
     LabModel(
@@ -184,6 +271,34 @@ LAB_MODELS: tuple[LabModel, ...] = (
             **{f.name: getattr(MODEL_CURVE, f.name) for f in fields(ScoreCurve)},
             "version": "lab-0.1.5", "power_exponent": 0.70, "knee": 900.0, "cap": 1100.0, "softness": 250.0,
         }),
+    ),
+    LabModel(
+        key="0.1.7",
+        name="Model 0.1.7 (lab): smooth duration reference",
+        description=(
+            "Evidence-informed candidate: score = 1000 x course demand / reference distance over your "
+            "finish time. Smooth between the three frozen benchmarks; each still scores 1000. "
+            "No subjective score exponent or cap. Absolute performance, not age/sex grading or a "
+            "measurement of effort. Smoothing is a modelling choice, not proven fairer; trail and "
+            "runner-group validation remains necessary. Outside 12:35 to 24 hours the reference is extrapolated."
+        ),
+        curve=_variant("0.1.7", power_exponent=1.0, demand_scaling=_SMOOTH_REFERENCE,
+                       q_1000=_SMOOTH_REFERENCE.rate(_SMOOTH_REFERENCE.reference_demand_km)),
+        duration_matched=True,
+    ),
+    LabModel(
+        key="0.1.6",
+        name="Model 0.1.6 (lab): evidence-only course demand",
+        description=(
+            "Production's curve on a course demand that uses only published evidence: descents are priced "
+            "by measured pace (at most 0.88 flat km per km, none below -18 %; Strava GAP, Townshend 2010) "
+            "instead of Minetti's metabolic credit of up to 0.50; altitude costs 6.3 % per 1,000 m from 300 m "
+            "(Wehrlin & Hallén 2006) instead of 7 % from 1,500 m; and the steep-ground coefficient, calibrated "
+            "on one performance, is dropped. The demand-by-grade chart still shows production's bands. Lab only; "
+            "the reasoning is in scoring_lab/README.md."
+        ),
+        curve=_variant("0.1.6"),
+        demand=evidence_demand,
     ),
     LabModel(
         key="no-terrain",

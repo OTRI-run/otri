@@ -244,15 +244,27 @@ def score_course(model: LabModel, measured: dict, times: list[dict]) -> dict:
         adjusted_km, flags = demand_from_totals(demand.physical_distance_km, demand.elevation_gain_m)
         terrain_factor = 1.0
         confidence, confidence_flags = confidence_for(None, None, adjusted_km)
+    elif model.demand is not None:
+        adjusted_km, flags, terrain_factor = model.demand(measurement)
+        # Production's confidence reasons still apply (elevation source, route, domain, length), except
+        # the one about its own vertical coefficient, which this demand rule does not have.
+        _, confidence_flags = confidence_for(measurement, demand, adjusted_km)
+        confidence_flags = tuple(f for f in confidence_flags if not f.startswith("vertical_calibration"))
+        confidence = "High" if not confidence_flags else "Low"
     else:
         adjusted_km, flags = adjusted_demand(demand, curve)
         terrain_factor = curve.terrain_adjustment.factor(demand.steep_distance_fraction, demand.altitude_excess_m)
         confidence, confidence_flags = confidence_for(measurement, demand, adjusted_km)
     flags = tuple(flags) + tuple(confidence_flags) + tuple(curve.demand_scaling.range_flags(adjusted_km))
+    if model.key == "0.1.7":
+        confidence = "Low"
+        flags += ("experimental_reference: smooth duration model has not been validated on independent trail results; scores are absolute, not age/sex graded",)
 
     scored_times = []
     for entry in times:
         raw = model.raw_score(adjusted_km, entry["seconds"])
+        if model.key == "0.1.7" and not 755.36 <= entry["seconds"] <= 86400:
+            flags += ("duration_outside_reference_range: a finish time is outside the frozen 12:35.36 to 24-hour observations; reference extrapolated",)
         scored_times.append({**entry, "score": round(max(0.0, raw)), "raw": round(raw, 2)})
 
     return {
