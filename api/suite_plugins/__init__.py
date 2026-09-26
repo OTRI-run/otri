@@ -98,11 +98,21 @@ class SuiteEvent:
 
 @dataclass
 class PluginContext:
-    """Handed to every hook: the race, the plugin's stored config and a way to write a log line."""
+    """Handed to every hook: the race, the plugin's stored config, a way to write a log line, and
+    read access to the record."""
 
     race_id: str
     config: dict
     log: Callable[[str, str, str | None], None]  # (hook, status, detail)
+    # The race as the events describe it (race_id, event_name, course_name, event_date, status,
+    # started_at, distance_km, laps).
+    race: dict = field(default_factory=dict)
+    # The live board, computed when asked for (api.suite.compute_board): counts, checkpoints with
+    # distances and cut-offs, every runner's status, splits, last passing and next checkpoint.
+    board: Callable[[], dict] = lambda: {}
+    # The stored row of one runner, contacts included. Server side only: what a plugin sends out
+    # is the plugin's responsibility, and its data_note must say so.
+    participant: Callable[[str], dict | None] = lambda participant_id: None
 
 
 class ConfigError(ValueError):

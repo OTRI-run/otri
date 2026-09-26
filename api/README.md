@@ -103,6 +103,8 @@ Run a small race's day: plan, bibs, stations, board, plugins ([`docs/product/rac
 | GET | `/suite/races/{race_id}/readiness` | suite | The checks before the gun: `checks` (key, ok, level blocker/warning/info, label, detail, tab), `blockers`, `warnings`, `ready`. |
 | GET | `/suite/races/{race_id}/audit` | suite | Every change made by hand, newest first: at, actor, action, detail. |
 | GET | `/suite/races/{race_id}/passings.csv` | suite | Every passing as recorded, for the record. |
+| POST · DELETE | `/suite/races/{race_id}/rehearsal` | suite | Start a rehearsal (`synthetic_runners`, `started_minutes_ago`, `dnf_share`, `seed`): the gun, made-up passings marked `rehearsal` as the clock moves; end it, removing every trace. |
+| POST | `/suite/races/{race_id}/rehearsal/advance` | suite | Move the rehearsal clock (`minutes`, or `to_end`) and record what is now due. |
 | GET | `/suite/plugins` | suite | Every plugin on this server with its settings form. |
 | GET | `/suite/races/{race_id}/plugins` | suite | The race's plugin settings (secrets masked). |
 | PUT | `/suite/races/{race_id}/plugins/{plugin_key}` | suite | `enabled`, `config`; validated by the plugin, 422 with its sentence. |

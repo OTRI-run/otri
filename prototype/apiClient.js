@@ -766,3 +766,14 @@ export async function fetchSuitePassingsCsv(raceId) {
   if (!response.ok) throw await errorFrom(response)
   return response.text()
 }
+
+// Rehearsal: run the race before the race, with the entry list or a synthetic field.
+export function startRehearsal(raceId, payload = {}) {
+  return suitePost(`/suite/races/${enc(raceId)}/rehearsal`, payload)
+}
+export function advanceRehearsal(raceId, payload) {
+  return suitePost(`/suite/races/${enc(raceId)}/rehearsal/advance`, payload)
+}
+export function endRehearsal(raceId) {
+  return request(`/suite/races/${enc(raceId)}/rehearsal`, { method: 'DELETE', ...suiteAuth() })
+}

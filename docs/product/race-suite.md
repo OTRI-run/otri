@@ -55,6 +55,7 @@ class Sms(Plugin):
 
 - `fields` draws the settings form in the suite's UI; `validate(config)` (the default checks required fields, numbers, selects and URLs) returns what is stored per race in `suite_plugins`. A `secret` field is shown as a password field and never echoed back; sending the mask back keeps the stored value.
 - `on_event` receives a `SuiteEvent`: the name, the race (`race_id`, `event_name`, `course_name`, `event_date`, `status`, `started_at`), and where they apply the participant (`participant_id`, `bib`, `family_name`, `first_name`, `gender`, `club`, `status`), the checkpoint (`checkpoint_id`, `name`, `kind`, `position`, `distance_km`, `cutoff_minutes`) and the passing (`passing_id`, `recorded_at`, `elapsed_seconds`, `source`). `event.as_dict()` is the webhook's JSON.
+- `ctx.board()` is the live board (counts, checkpoints with distances and cut-offs, every runner's splits, last passing and next checkpoint), computed when asked; `ctx.race` the race as the events describe it; `ctx.participant(id)` the stored row of a runner, contacts included, for a plugin that writes to the runner and says so in its `data_note`.
 - `ctx.log(hook, status, detail)` writes to `suite_plugin_log`, shown under "Show log" on the plugin's card; the newest 500 lines per race and plugin are kept.
 - Keep secrets out of code: a URL, a token, a number belong in `fields` and live in the database per race.
 - Tests: set `api.suite_plugins.SYNC = True` so handlers run inline (see `tests/unit/test_suite.py`).
@@ -86,6 +87,24 @@ Built on 2026-09-26 as well, all behind the same admin gate:
 - **The plan keeps its rules.** One start, at km 0, without a cut-off; one finish, at the end of the course when no distance is given; nothing beyond the course; a new checkpoint slots in by distance. The readiness check flags distances or cut-offs out of order and a finish away from the course's end.
 - **Readiness before the gun** (`GET /suite/races/{id}/readiness`, the checklist on the overview, a dot on every step). Blockers stop the start: no runners, a runner without a bib, not exactly one start and one finish. Warnings stop it until "Start anyway": runners without an emergency contact, fees pending, station links never opened on a phone (each station page reports itself when it loads), no organizer phone on the bibs, registration still open, distances or cut-offs out of order, a finish without a cut-off. Starting over a warning is written to the log with the organizer's name.
 - **An integrity log** (`GET /suite/races/{id}/audit`, on the results tab): every change made by hand, with who made it. A passing typed or removed, a status or a fee set, the gun, a finish, a reopen, a reset with how many passings it deleted, an import, results sent to scoring. Scans by the stations are the record itself and are exported whole (`GET /suite/races/{id}/passings.csv`: bib, runner, checkpoint, recorded and received time, source, device, client id).
+
+## The plugins that come with it
+
+| Plugin | What it does | What leaves the server |
+| --- | --- | --- |
+| **Webhook** | Every event as signed JSON to a URL: Zapier, Make, n8n, a Google Apps Script, your own server; or as a `{"text": …}` chat message for Slack and Discord. | Bib, name, gender, club, checkpoint, time, to the URL you give. |
+| **Telegram** | The gun, every finish and DNF (and every passing if asked) posted to a group or channel by a bot you made with @BotFather. Free, and no phone numbers handed out. Passings post silently. | Bib, name, club, checkpoint, time, to Telegram under your bot. |
+| **Finish email** | Each runner gets their time, their splits, their own page and a line from you as they cross the line. Runners without an address are skipped and logged. | The runner's own result, to the runner's own address. |
+| **Announcer** | A live list of sentences for the microphone: who finished in what time, and every passing if asked. | Nothing. |
+| **Pace watch** | Runners late against their own pace, before any cut-off says so (expected arrival from the pace they have run, or the field's median before their first split), and the next arrivals to expect at each station. | Nothing. |
+| **Split check** | What does not add up: a checkpoint skipped but a later one passed (a short-cut, or a missed scan), a leg faster than anyone runs (a wrong bib or scan, or a lift), a passing stamped before the gun (a phone's clock). Listed with the numbers; the organizer decides. | Nothing. |
+| **Age categories** | Podiums by gender and age group in the race's year, for the prize giving, updating as runners finish; groups are yours to define (40-49, 60+). | Nothing. |
+
+## Rehearsal: run the race before the race
+
+Any race can be run through in five minutes, with the real entry list, a synthetic field, or both (`POST /suite/races/{id}/rehearsal`, the "Rehearse this race" card on the race-day tab). The gun goes; a clock the organizer moves forward (`…/rehearsal/advance`, +15 min, +1 h, or to the end) makes every runner pass every station at a believable pace (a spread around 6 min/km for a 10 km, 9 for a 50 km, two minutes at each aid station, a fixed share dropping out along the way; a seed gives the same race twice), and the passings are recorded as passings, `source = rehearsal`, so the board, the station pages, the live page, every plugin, the finish and the results file behave exactly as on the day. Only "send to scoring" refuses: made-up times never leave. Ending the rehearsal (`DELETE …/rehearsal`, or the ordinary reset) removes every rehearsal passing and every synthetic runner and puts the race back in planning; both ends are in the integrity log. Synthetic runners are marked `registered_via = synthetic` and never mix with the entry list beyond the rehearsal.
+
+Also on paper: **station sheets** (`#/suite/{id}/sheets`, "Print the station sheets" on the plan), one A4 page per checkpoint with the plan, what is served, the supplies, the cut-off as a clock time, the station link's QR, and the roster with blank time columns, so a station keeps working with a dead phone and the times are typed in afterwards.
 
 ## Not built yet
 

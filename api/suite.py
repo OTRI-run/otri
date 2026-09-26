@@ -17,11 +17,15 @@ from there at call time to avoid an import cycle.
 from __future__ import annotations
 
 import csv
+import hashlib
 import importlib
 import io
+import math
 import os
+import random
 import re
 import tempfile
+import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -129,6 +133,9 @@ class SuiteSettings(BaseModel):
     ask_nationality: bool = False
     ask_email: bool = True
     require_emergency: bool = True
+    # A rehearsal in progress (paces, drop-outs, seed); None on the day. Set by the rehearsal
+    # endpoints, never by the settings form: PATCH /settings keeps what is stored.
+    rehearsal: dict | None = None
 
 
 class SuiteRaceOut(BaseModel):
@@ -365,6 +372,8 @@ def _race_dict(race: db.Race, state: dict | None) -> dict:
         "event_date": race.event_date.isoformat() if race.event_date else None,
         "status": (state or {}).get("status") or "planning",
         "started_at": (state or {}).get("started_at").isoformat() if (state or {}).get("started_at") else None,
+        "distance_km": race.distance_km,
+        "laps": _settings(state).laps,
     }
 
 
@@ -397,7 +406,13 @@ def _context(race_id: str, key: str, config: dict) -> plugins.PluginContext:
     def log(hook: str, status: str, detail: str | None) -> None:
         suite_db.write_plugin_log(race_id, key, hook, status, detail)
 
-    return plugins.PluginContext(race_id=race_id, config=config, log=log)
+    race = db.find_race(race_id)
+    state = suite_db.get_state(race_id)
+
+    def board() -> dict:
+        return compute_board(race, state, suite_db.list_checkpoints(race_id), suite_db.list_participants(race_id), suite_db.list_passings(race_id)) if race else {}
+
+    return plugins.PluginContext(race_id=race_id, config=config, log=log, race=_race_dict(race, state) if race else {}, board=board, participant=suite_db.find_participant)
 
 
 def _emit(name: str, race: db.Race, state: dict | None, *, participant: dict | None = None, checkpoint: dict | None = None, passing: dict | None = None, **extra) -> None:
@@ -618,7 +633,10 @@ def get_suite_race(race_id: str, organizer: Organizer = Depends(require_suite)) 
 @router.patch("/races/{race_id}/settings", response_model=SuiteRaceOut)
 def update_suite_settings(race_id: str, payload: SuiteSettings, organizer: Organizer = Depends(require_suite)) -> SuiteRaceOut:
     race = _race_for(race_id, organizer)
-    state = suite_db.update_state(race_id, settings=payload.model_dump())
+    current = (suite_db.ensure_state(race_id).get("settings") or {})
+    values = payload.model_dump()
+    values["rehearsal"] = current.get("rehearsal")  # the form never touches a running rehearsal
+    state = suite_db.update_state(race_id, settings=values)
     return _race_out(race, state, suite_db.race_overview([race_id]).get(race_id))
 
 
@@ -692,12 +710,15 @@ def reset_suite_race(race_id: str, organizer: Organizer = Depends(require_suite)
     """Back to planning: every passing is deleted and every participant is registered again. For
     the rehearsal the day before, not for race day; the plan and the field stay."""
     race = _race_for(race_id, organizer)
-    suite_db.ensure_state(race_id)
+    state = suite_db.ensure_state(race_id)
     removed = suite_db.delete_all_passings(race_id)
-    suite_db.audit(race_id, organizer.email, "race.reset", f"{removed} passings deleted")
+    settings = dict(state.get("settings") or {})
     with db.get_connection() as connection:
+        synthetic = connection.execute("DELETE FROM suite_participants WHERE race_id = %s AND registered_via = 'synthetic'", (race_id,)).rowcount
         connection.execute("UPDATE suite_participants SET status = 'registered', updated_at = now() WHERE race_id = %s AND status <> 'dns'", (race_id,))
-    state = suite_db.update_state(race_id, status="planning", clear_times=True)
+    settings.pop("rehearsal", None)
+    suite_db.audit(race_id, organizer.email, "race.reset", f"{removed} passings deleted" + (f", {synthetic} synthetic runners removed" if synthetic else ""))
+    state = suite_db.update_state(race_id, status="planning", clear_times=True, settings=settings)
     return _race_out(race, state, suite_db.race_overview([race_id]).get(race_id))
 
 
@@ -1264,6 +1285,8 @@ def submit_results_to_scoring(race_id: str, organizer: Organizer = Depends(requi
     race = _race_for(race_id, organizer)
     if race.published_at is not None:
         raise HTTPException(status_code=409, detail="the race is published: take it down before replacing its results")
+    if (suite_db.ensure_state(race_id).get("settings") or {}).get("rehearsal"):
+        raise HTTPException(status_code=409, detail="this is a rehearsal: its times are made up and never go to scoring. End the rehearsal first.")
     board = _board_now(race)
     if not any(r["status"] == "finished" and r["finish_seconds"] is not None for r in board["participants"]):
         raise HTTPException(status_code=409, detail="no finisher has a time yet")
@@ -1679,6 +1702,8 @@ def readiness(race: db.Race, state: dict | None) -> list[dict]:
         checks.append(_check("date", False, "info", "The race is dated " + race.event_date.isoformat(), "Today is " + date.today().isoformat() + "; a rehearsal is fine, reset it afterwards", "overview"))
     if not race.has_gpx:
         checks.append(_check("gpx", False, "info", "No course file yet", "Attach the GPX for the profile on the bibs and for scoring", None))
+    if settings.rehearsal:
+        checks.append(_check("rehearsal", False, "info", "A rehearsal is running", "Its passings are made up and marked so; end it before the day", "day"))
     return checks
 
 
@@ -1717,3 +1742,208 @@ def download_passings(race_id: str, organizer: Organizer = Depends(require_suite
         writer.writerow([row["passing_id"], p.get("bib") or "", p.get("family_name", ""), p.get("first_name", ""), c.get("name", ""), c.get("position", ""), row["recorded_at"].isoformat(), row["received_at"].isoformat(), row["source"], row["device"] or "", row["client_id"] or ""])
     name = re.sub(r"[^A-Za-z0-9._-]+", "-", f"{race.event_name or 'race'}-{race.course_name}-passings").strip("-")
     return Response(content=out.getvalue(), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{name}.csv"'})
+
+
+# --- Rehearsal: run the race before the race ---------------------------------------------------------
+#
+# Any race can be run through in minutes, with the real entry list or a made-up field: the gun is
+# fired, the clock is moved forward, and the passings that would have happened are recorded as
+# passings, marked ``rehearsal``. Stations, the board, the live page, plugins, the finish and the
+# results file all behave as on the day; only "send to scoring" refuses. Ending the rehearsal
+# removes every synthetic passing and runner and puts the race back in planning.
+
+_SYNTHETIC_FIRST = ("Anna", "Ben", "Chai", "Dara", "Elif", "Femi", "Gao", "Hana", "Ivo", "Jun", "Kai", "Lena", "Mika", "Noor", "Omar", "Pia", "Quinn", "Rosa", "Sami", "Tao", "Uma", "Vera", "Wim", "Xia", "Yara", "Zed")
+_SYNTHETIC_LAST = ("Adler", "Bautista", "Chen", "Dubois", "Eriksen", "Fischer", "García", "Hoang", "Ito", "Jensen", "Kowalski", "Lim", "Moreau", "Nakamura", "Okafor", "Pereira", "Quiroga", "Rossi", "Sato", "Tan", "Uribe", "Vogel", "Weber", "Xu", "Yilmaz", "Zhang")
+_SYNTHETIC_CLUBS = (None, None, "Trail Club", "Hill Runners", "Sunday Long Run", None, "Vertical Kilo", None)
+
+
+class RehearseIn(BaseModel):
+    # Made-up runners added for the rehearsal only; removed when it ends. 0 uses the entry list alone.
+    synthetic_runners: int = Field(default=0, ge=0, le=500)
+    # Fast-forward at once: the gun is placed this many minutes in the past.
+    started_minutes_ago: int = Field(default=0, ge=0, le=60 * 72)
+    # The share of the field that drops out at a station along the way.
+    dnf_share: float = Field(default=0.1, ge=0, le=0.9)
+    # A fixed seed gives the same field and the same times twice.
+    seed: int | None = None
+
+
+class AdvanceIn(BaseModel):
+    minutes: int = Field(default=15, ge=1, le=60 * 72)
+    to_end: bool = False
+
+
+def _rehearsal_rng(seed: int) -> random.Random:
+    return random.Random(seed)
+
+
+def _stable_hash(*parts) -> int:
+    """The same number for the same parts in every process (Python's hash() is salted per run)."""
+    return int(hashlib.md5("|".join(str(p) for p in parts).encode()).hexdigest()[:8], 16)
+
+
+def _synthetic_field(race_id: str, count: int, rng: random.Random) -> list[dict]:
+    rows = []
+    used: set[tuple[str, str]] = set()
+    for _ in range(count):
+        for _attempt in range(50):
+            first, last = rng.choice(_SYNTHETIC_FIRST), rng.choice(_SYNTHETIC_LAST)
+            if (first, last) not in used:
+                break
+        used.add((first, last))
+        gender = rng.choice("FFMMMX"[: 5 if rng.random() < 0.9 else 6])
+        rows.append(
+            suite_db.create_participant(
+                race_id,
+                {"family_name": last, "first_name": first, "gender": gender, "birth_year": rng.randint(_THIS_YEAR - 68, _THIS_YEAR - 19), "club": rng.choice(_SYNTHETIC_CLUBS), "registered_via": "synthetic", "notes": "synthetic runner for the rehearsal"},
+            )
+        )
+    return rows
+
+
+def _rehearsal_paces(race: db.Race, participants: list[dict], checkpoints: list[dict], rng: random.Random, dnf_share: float) -> dict:
+    """Seconds per kilometre for each runner, and where the drop-outs drop out. A field spread
+    around a pace that slows with the distance: 6 min/km for a 10 km, 9 for a 50 km, 11 for 100."""
+    base = 360 + 60 * math.log2(max(1.0, race.distance_km / 10)) * 1.4
+    aids = [c for c in checkpoints if c["kind"] not in ("start", "finish")]
+    paces, dnf_at = {}, {}
+    for participant in sorted(participants, key=lambda p: p["participant_id"]):  # a stable order, so a seed means the same race twice
+        pace = base * rng.lognormvariate(0, 0.22)
+        paces[participant["participant_id"]] = round(pace, 1)
+        if aids and rng.random() < dnf_share:
+            dnf_at[participant["participant_id"]] = rng.choice(aids)["checkpoint_id"]
+    return {"paces": paces, "dnf_at": dnf_at}
+
+
+def _rehearsal_due(race: db.Race, state: dict, plan: dict, now: datetime) -> list[tuple[dict, dict, int, datetime]]:
+    """Every (participant, checkpoint, lap, time) that should have been recorded by ``now``."""
+    settings = _settings(state)
+    started_at = state.get("started_at")
+    if started_at is None:
+        return []
+    ordered = sorted(suite_db.list_checkpoints(race.race_id), key=lambda c: c["position"])
+    people = {p["participant_id"]: p for p in suite_db.list_participants(race.race_id)}
+    due = []
+    for pid, pace in plan["paces"].items():
+        participant = people.get(pid)
+        if participant is None or participant["status"] in ("dns", "dsq"):
+            continue
+        stop_at = plan["dnf_at"].get(pid)
+        aids_passed = 0
+        for lap, checkpoint in _course_sequence(ordered, settings.laps):
+            km = checkpoint["distance_km"] if checkpoint["distance_km"] is not None else 0.0
+            km += (lap - 1) * race.distance_km if settings.laps > 1 else 0
+            # A steady pace, two minutes at each aid station, and a little noise that is the same every time.
+            noise = 1 + (_stable_hash(pid, checkpoint["checkpoint_id"], lap) % 1000 - 500) / 10000
+            seconds = pace * km * noise + aids_passed * 120
+            at = started_at + timedelta(seconds=seconds if checkpoint["kind"] != "start" else 5 + _stable_hash(pid) % 40)
+            if at <= now:
+                due.append((participant, checkpoint, lap, at))
+            if checkpoint["kind"] not in ("start", "finish"):
+                aids_passed += 1
+            if stop_at == checkpoint["checkpoint_id"]:
+                break
+    return due
+
+
+def _rehearsal_run(race: db.Race, actor: str) -> dict:
+    """Record what the rehearsal clock has reached. Idempotent: a client id per passing."""
+    state = suite_db.ensure_state(race.race_id)
+    plan = (state.get("settings") or {}).get("rehearsal")
+    if not plan:
+        return {"recorded": 0}
+    now = _now()
+    recorded = 0
+    for participant, checkpoint, lap, at in _rehearsal_due(race, state, plan, now):
+        fresh = suite_db.find_participant(participant["participant_id"]) or participant
+        row, outcome = _record(race, state, checkpoint, fresh, recorded_at=at, source="rehearsal", device="rehearsal", client_id=f"rehearsal-{participant['participant_id']}-{checkpoint['checkpoint_id']}-{lap}")
+        if outcome == "accepted":
+            recorded += 1
+    # Drop-outs: past their last station by a good margin, they are DNF.
+    started_at = state.get("started_at")
+    for pid, checkpoint_id in plan["dnf_at"].items():
+        participant = suite_db.find_participant(pid)
+        checkpoint = suite_db.find_checkpoint(checkpoint_id)
+        if not participant or not checkpoint or participant["status"] != "started":
+            continue
+        km = checkpoint["distance_km"] or 0
+        if started_at + timedelta(seconds=plan["paces"][pid] * km + 1800) <= now:
+            suite_db.set_participant_status(pid, "dnf")
+    return {"recorded": recorded}
+
+
+@router.post("/races/{race_id}/rehearsal", response_model=SuiteRaceOut)
+def start_rehearsal(race_id: str, payload: RehearseIn | None = None, organizer: Organizer = Depends(require_suite)) -> SuiteRaceOut:
+    """Fire the gun on a rehearsal: real or synthetic runners, passings generated as the clock
+    moves. Needs a plan with a finish. Ends with DELETE, which removes every trace."""
+    payload = payload or RehearseIn()
+    race = _race_for(race_id, organizer)
+    state = suite_db.ensure_state(race_id)
+    if state["status"] != "planning":
+        raise HTTPException(status_code=409, detail="a rehearsal starts from planning: finish or reset the race first")
+    checkpoints = suite_db.list_checkpoints(race_id)
+    if not any(c["kind"] == "finish" for c in checkpoints):
+        raise HTTPException(status_code=409, detail="the plan needs a finish before a rehearsal: add it, or let the course suggest a plan")
+    seed = payload.seed if payload.seed is not None else int(time.time()) % 100000
+    rng = _rehearsal_rng(seed)
+    if payload.synthetic_runners:
+        _room_for(race_id, payload.synthetic_runners)
+        _synthetic_field(race_id, payload.synthetic_runners, rng)
+    people = suite_db.list_participants(race_id)
+    if not people:
+        raise HTTPException(status_code=409, detail="nobody to rehearse with: paste the entry list, or ask for synthetic runners")
+    suite_db.assign_bibs(race_id, start=1, only_missing=True)
+    plan = {**_rehearsal_paces(race, people, checkpoints, rng, payload.dnf_share), "seed": seed, "synthetic": payload.synthetic_runners, "began_at": _now().isoformat()}
+    settings = {**(state.get("settings") or {}), "rehearsal": plan}
+    started_at = _now() - timedelta(minutes=payload.started_minutes_ago)
+    with db.get_connection() as connection:
+        connection.execute("UPDATE suite_participants SET status = 'started', updated_at = now() WHERE race_id = %s AND status = 'registered'", (race_id,))
+    state = suite_db.update_state(race_id, status="live", started_at=started_at, settings=settings)
+    suite_db.audit(race_id, organizer.email, "rehearsal.started", f"seed {seed}, {payload.synthetic_runners} synthetic runners, gun {payload.started_minutes_ago} min ago")
+    _emit("race.started", race, state, rehearsal=True)
+    _rehearsal_run(race, organizer.email)
+    return _race_out(race, suite_db.get_state(race_id), suite_db.race_overview([race_id]).get(race_id))
+
+
+@router.post("/races/{race_id}/rehearsal/advance")
+def advance_rehearsal(race_id: str, payload: AdvanceIn | None = None, organizer: Organizer = Depends(require_suite)) -> dict:
+    """Move the rehearsal clock forward: the gun is placed earlier by ``minutes`` (or far enough
+    for the slowest runner to finish) and the passings now due are recorded."""
+    payload = payload or AdvanceIn()
+    race = _race_for(race_id, organizer)
+    state = suite_db.ensure_state(race_id)
+    plan = (state.get("settings") or {}).get("rehearsal")
+    if not plan or state["status"] != "live":
+        raise HTTPException(status_code=409, detail="no rehearsal is running")
+    minutes = payload.minutes
+    if payload.to_end:
+        settings = _settings(state)
+        total_km = race.distance_km * settings.laps
+        slowest = max(plan["paces"].values()) if plan["paces"] else 600
+        aids = sum(1 for c in suite_db.list_checkpoints(race_id) if c["kind"] not in ("start", "finish")) * settings.laps
+        needed = slowest * total_km * 1.06 + aids * 120 + 60
+        elapsed = (_now() - state["started_at"]).total_seconds()
+        minutes = max(1, int(-(-(needed - elapsed) // 60)))
+    started_at = state["started_at"] - timedelta(minutes=minutes)
+    state = suite_db.update_state(race_id, started_at=started_at)
+    result = _rehearsal_run(race, organizer.email)
+    board = compute_board(race, suite_db.get_state(race_id), suite_db.list_checkpoints(race_id), suite_db.list_participants(race_id), suite_db.list_passings(race_id))
+    return {"advanced_minutes": minutes, "recorded": result["recorded"], "started_at": started_at, "counts": board["counts"]}
+
+
+@router.delete("/races/{race_id}/rehearsal", response_model=SuiteRaceOut)
+def end_rehearsal(race_id: str, organizer: Organizer = Depends(require_suite)) -> SuiteRaceOut:
+    """Every rehearsal passing and every synthetic runner is removed; the race is back in planning."""
+    race = _race_for(race_id, organizer)
+    state = suite_db.ensure_state(race_id)
+    settings = dict(state.get("settings") or {})
+    if "rehearsal" not in settings and state["status"] == "planning":
+        raise HTTPException(status_code=409, detail="no rehearsal to end")
+    removed = suite_db.delete_all_passings(race_id)
+    with db.get_connection() as connection:
+        synthetic = connection.execute("DELETE FROM suite_participants WHERE race_id = %s AND registered_via = 'synthetic'", (race_id,)).rowcount
+        connection.execute("UPDATE suite_participants SET status = 'registered', updated_at = now() WHERE race_id = %s AND status <> 'dns'", (race_id,))
+    settings.pop("rehearsal", None)
+    state = suite_db.update_state(race_id, status="planning", clear_times=True, settings=settings)
+    suite_db.audit(race_id, organizer.email, "rehearsal.ended", f"{removed} passings and {synthetic} synthetic runners removed")
+    return _race_out(race, state, suite_db.race_overview([race_id]).get(race_id))

@@ -9,9 +9,12 @@ import {
   ArrowRight,
   ArrowUp,
   Check,
+  ClipboardList,
   Copy,
   Download,
+  FastForward,
   Flag,
+  FlaskConical,
   Globe,
   KeyRound,
   MapPin,
@@ -30,9 +33,11 @@ import {
   addSuiteCheckpoint,
   addSuiteParticipant,
   addSuitePassing,
+  advanceRehearsal,
   assignSuiteBibs,
   deleteSuiteCheckpoint,
   deleteSuiteParticipant,
+  endRehearsal,
   fetchSuitePassingsCsv,
   fetchSuiteResultsCsv,
   finishSuiteRace,
@@ -53,6 +58,7 @@ import {
   resetSuiteRace,
   rotateStationKey,
   setRacePlugin,
+  startRehearsal,
   startSuiteRace,
   submitSuiteResults,
   suggestSuiteCheckpoints,
@@ -953,6 +959,12 @@ function PlanTab({ race, reloadRace }) {
           </ol>
         )}
       </div>
+      {checkpoints?.length > 0 && (
+        <p className="text-sm text-slate-600">
+          <Link to={`/suite/${encodeURIComponent(raceId)}/sheets`} className="inline-flex items-center gap-1.5 font-semibold text-blue-600"><ClipboardList size={14} /> Print the station sheets</Link>
+          <span className="ml-2 text-xs text-slate-500">One page per station: the plan, the supplies, the link's QR, and the roster with blank time columns as the paper backup.</span>
+        </p>
+      )}
       <SuggestCard race={race} hasPlan={Boolean(checkpoints?.length)} onApplied={refresh} />
       <Card>
         <Eyebrow as="h2">ADD A CHECKPOINT</Eyebrow>
@@ -986,6 +998,22 @@ function DayTab({ race, reloadRace }) {
   const [people] = useAsync(() => listSuiteParticipants(raceId), [raceId])
   const [gate, setGate] = useState(null) // the readiness answer, shown before the gun
   const live = board?.status === 'live'
+  const rehearsal = race.settings.rehearsal
+  const [synthetic, setSynthetic] = useState(20)
+  const [rehearsalNote, setRehearsalNote] = useState(null)
+
+  async function rehearse(withSynthetic) {
+    await run(async () => {
+      await startRehearsal(raceId, { synthetic_runners: withSynthetic ? Number(synthetic) || 0 : 0, dnf_share: 0.1 })
+      setRehearsalNote('The gun has gone. Move the clock forward and watch the board, the stations and the live page fill.')
+    })
+  }
+  async function forward(payload) {
+    await run(async () => {
+      const step = await advanceRehearsal(raceId, payload)
+      setRehearsalNote(`Clock moved ${step.advanced_minutes} min: ${step.recorded} passing${step.recorded === 1 ? '' : 's'} recorded. ${step.counts.finished} finished, ${step.counts.on_course} on course, ${step.counts.dnf} DNF.`)
+    })
+  }
 
   async function askToStart() {
     setBusy(true)
@@ -1077,6 +1105,47 @@ function DayTab({ race, reloadRace }) {
         )}
       </div>
 
+      {board?.status === 'planning' && !rehearsal && (
+        <Card className="border-dashed border-blue-200 bg-blue-50/30">
+          <Eyebrow as="h2" className="flex items-center gap-1.5"><FlaskConical size={11} /> REHEARSE THIS RACE</Eyebrow>
+          <p className="mt-1 max-w-[70ch] text-sm leading-6 text-slate-600">
+            Run the whole day in five minutes, before the day. The gun goes, a clock you move forward makes the runners pass the stations at believable paces, a few drop out, and everything behaves as on the day: the board, the station pages, the live page, the plugins, the finish and the results file. Passings are marked as rehearsal, never go to scoring, and ending the rehearsal removes every trace.
+          </p>
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <Button variant="secondary" busy={busy} onClick={() => rehearse(false)} disabled={!people?.length}>
+              <FlaskConical size={15} /> With my {people?.length ?? 0} runner{people?.length === 1 ? '' : 's'}
+            </Button>
+            <Field label="Synthetic runners" htmlFor="rh-n"><input id="rh-n" inputMode="numeric" value={synthetic} onChange={(e) => setSynthetic(e.target.value)} className={`${inputClass} w-24`} /></Field>
+            <Button variant="secondary" busy={busy} onClick={() => rehearse(true)}>
+              <FlaskConical size={15} /> With {people?.length ? 'mine plus ' : ''}{Number(synthetic) || 0} made-up runners
+            </Button>
+          </div>
+          {!board?.checkpoints.some((c) => c.kind === 'finish') && <p className="mt-2 text-xs text-amber-700">The plan needs a finish first.</p>}
+        </Card>
+      )}
+      {rehearsal && (
+        <div role="status" className="rounded-2xl border border-violet-200 bg-violet-50/70 p-5 text-violet-950">
+          <p className="flex flex-wrap items-center gap-2 text-base font-bold tracking-[-.02em]">
+            <FlaskConical size={16} /> Rehearsal in progress
+            <Chip className="bg-violet-600 text-white">made-up passings</Chip>
+            {rehearsal.synthetic > 0 && <Chip className="bg-violet-100 text-violet-800">{rehearsal.synthetic} synthetic runners</Chip>}
+          </p>
+          <p className="mt-1 text-sm">Move the clock forward and watch. Open a station page or the live page in another tab to see them fill. Nothing here goes to scoring.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {board?.status === 'live' && (
+              <>
+                <Button busy={busy} onClick={() => forward({ minutes: 15 })}><FastForward size={15} /> +15 min</Button>
+                <Button busy={busy} onClick={() => forward({ minutes: 60 })}><FastForward size={15} /> +1 h</Button>
+                <Button busy={busy} onClick={() => forward({ to_end: true })}><FastForward size={15} /> To the end</Button>
+              </>
+            )}
+            <Button variant="danger" busy={busy} onClick={() => run(() => endRehearsal(raceId).then(() => setRehearsalNote(null)), 'End the rehearsal? Every made-up passing and synthetic runner is removed and the race goes back to planning.')}>
+              End the rehearsal
+            </Button>
+          </div>
+          {rehearsalNote && <p className="mt-2 text-xs text-violet-800">{rehearsalNote}</p>}
+        </div>
+      )}
       {gate && board?.status === 'planning' && (
         <div role="dialog" aria-label="Before the gun" className={`rounded-2xl border p-5 ${gate.ready ? 'border-amber-200 bg-amber-50/60' : 'border-red-200 bg-red-50/60'}`}>
           <p className="text-base font-bold tracking-[-.02em] text-[#0b1220]">{gate.ready ? 'Before the gun, a look at these' : 'Not ready to start'}</p>
@@ -1563,6 +1632,85 @@ export function BibSheet({ raceId }) {
       <div className="px-2 pb-8">
         {race && checkpoints && numbered.map((p) => <Bib key={p.participant_id} race={race} participant={p} profile={profile} checkpoints={checkpoints} />)}
       </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------------- station sheets
+
+/** One A4 page per checkpoint: what the volunteer needs on paper, including the roster with blank
+ *  columns so the station keeps working with a dead phone. Times written here are entered later
+ *  under "Record a passing by hand". */
+export function StationSheets({ raceId }) {
+  const [race] = useAsync(() => getSuiteRace(raceId), [raceId])
+  const [checkpoints, error] = useAsync(() => listSuiteCheckpoints(raceId), [raceId])
+  const [people] = useAsync(() => listSuiteParticipants(raceId), [raceId])
+  const roster = (people ?? []).filter((p) => p.status !== 'dns')
+  return (
+    <div className="sheets">
+      <style>{`
+        @media print {
+          body > #root > div > header, body > #root > div > footer, .sheet-controls, .skip-link, [data-build-banner] { display: none !important; }
+          .sheet { page-break-after: always; break-after: page; box-shadow: none !important; margin: 0 !important; border: 0 !important; }
+          @page { size: A4 portrait; margin: 12mm; }
+        }
+        .sheet { width: 186mm; min-height: 260mm; margin: 0 auto 8mm; padding: 8mm 10mm; box-sizing: border-box; background: #fff; color: #0b1220; border: 0.3mm solid #cbd5e1; border-radius: 3mm; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; font-size: 3.4mm; line-height: 1.4; box-shadow: 0 10px 28px rgba(15,23,42,.06); }
+        .sheet table { width: 100%; border-collapse: collapse; }
+        .sheet th, .sheet td { border: 0.25mm solid #94a3b8; padding: 1.2mm 2mm; text-align: left; vertical-align: middle; }
+        .sheet th { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 2.6mm; letter-spacing: .06em; text-transform: uppercase; color: #475569; background: #f1f5f9; }
+        .sheet td.blank { height: 7mm; }
+        .sheet .mono { font-family: ui-monospace, Menlo, Consolas, monospace; }
+      `}</style>
+      <div className="sheet-controls mx-auto w-[min(1120px,calc(100%-28px))] py-8">
+        <Link to={`/suite/${encodeURIComponent(raceId)}?tab=plan`} className="text-xs font-semibold text-blue-600">← Back to the plan</Link>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold tracking-[-.03em]">Station sheets · {race?.course_name ?? '…'}</h1>
+            <p className="mt-1 max-w-[70ch] text-sm leading-6 text-slate-500">One page per station for the volunteer in charge: the plan, what is served, the cut-off, the link and its QR, and the roster with blank columns. If the phone dies, times go on paper and are typed in afterwards under "Record a passing by hand".</p>
+          </div>
+          <Button onClick={() => window.print()} disabled={!checkpoints?.length}><Printer size={15} /> Print</Button>
+        </div>
+        {error && <div className="mt-3"><Notice kind="error">{error}</Notice></div>}
+      </div>
+      {race && checkpoints?.map((c) => {
+        const link = appUrl(`/station/${c.station_key}`)
+        return (
+          <section key={c.checkpoint_id} className="sheet">
+            <div className="flex items-start justify-between gap-6">
+              <div className="min-w-0">
+                <p className="mono text-[2.8mm] tracking-[.08em] text-slate-500">{race.event_name.toUpperCase()} · {race.course_name.toUpperCase()} · {formatDate(race.event_date).toUpperCase()}</p>
+                <h2 className="mt-1 text-[9mm] font-bold leading-none tracking-[-.03em]">{c.position}. {c.name}</h2>
+                <p className="mono mt-2 text-[3.2mm] text-slate-600">
+                  {KIND_LABEL[c.kind]}{c.distance_km != null ? ` · km ${c.distance_km}` : ''}{c.cutoff_minutes != null ? ` · cut-off ${minutesLabel(c.cutoff_minutes)} after the gun${cutoffClock(race.settings.planned_start, c.cutoff_minutes) ? ` (${cutoffClock(race.settings.planned_start, c.cutoff_minutes)})` : ''}` : ' · no cut-off'}{race.settings.planned_start ? ` · start ${race.settings.planned_start}` : ''}
+                </p>
+                <p className="mt-2"><strong>Served:</strong> {[c.water && 'water', c.food && 'food', c.medical && 'medical', c.drop_bag && 'drop bags', c.crew_access && 'crew access'].filter(Boolean).join(', ') || 'nothing marked'}</p>
+                {c.supplies && <p><strong>Supplies:</strong> {c.supplies}</p>}
+                {c.notes && <p><strong>Notes:</strong> {c.notes}</p>}
+                {race.settings.organizer_phone && <p><strong>Race control:</strong> {race.settings.organizer_phone}</p>}
+              </div>
+              <div className="shrink-0 text-center">
+                <QrImage text={link} size={200} className="h-[34mm] w-[34mm]" />
+                <p className="mono text-[2.4mm] text-slate-500">scan to open this station's page</p>
+              </div>
+            </div>
+            <p className="mt-4 rounded-[2mm] border border-slate-300 bg-slate-50 p-3 text-[3mm] leading-5">
+              <strong>On the phone:</strong> open the station page from the QR above, keep it open, scan each bib or type the number; it keeps working without signal. <strong>On paper:</strong> if the phone fails, write the time of day beside each bib below, and give this sheet to race control. Every runner passes here once{race.settings.laps > 1 ? ` per lap (${race.settings.laps} laps)` : ''}.
+            </p>
+            <table className="mt-4">
+              <thead><tr><th style={{ width: '14mm' }}>Bib</th><th>Runner</th><th style={{ width: '26mm' }}>Time</th>{race.settings.laps > 1 && <th style={{ width: '26mm' }}>Lap 2</th>}{race.settings.laps > 2 && <th style={{ width: '26mm' }}>Lap 3+</th>}<th style={{ width: '30mm' }}>Note</th></tr></thead>
+              <tbody>
+                {roster.map((p) => (
+                  <tr key={p.participant_id}><td className="mono font-bold">{p.bib ?? ''}</td><td>{p.first_name} {p.family_name}</td><td className="blank" />{race.settings.laps > 1 && <td className="blank" />}{race.settings.laps > 2 && <td className="blank" />}<td className="blank" /></tr>
+                ))}
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <tr key={`extra-${i}`}><td className="blank" /><td className="blank" /><td className="blank" />{race.settings.laps > 1 && <td className="blank" />}{race.settings.laps > 2 && <td className="blank" />}<td className="blank" /></tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mono mt-3 text-[2.5mm] text-slate-500">{roster.length} runners on the list · station link {link}</p>
+          </section>
+        )
+      })}
     </div>
   )
 }
