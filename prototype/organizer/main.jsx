@@ -20,6 +20,7 @@ import SharedNotFound from '../../src/components/NotFound'
 import { AccountPage } from './pages/Account'
 import { BibSheet, SuiteHome, SuiteRace } from './pages/Suite'
 import { BibPage, StationPage } from './pages/Station'
+import { LivePage, RegisterPage } from './pages/Public'
 import { AdminEvents } from './pages/Admin'
 import PublishScoredRace from './pages/Publish'
 import { forgetExpiredHandoff, hasHandoff } from '../publishHandoff'
@@ -248,6 +249,8 @@ function organizerTitle(path) {
   if (path.startsWith('/suite')) return 'Race suite · OTRI organizers'
   if (path.startsWith('/station/')) return 'Checkpoint station · OTRI'
   if (path.startsWith('/bib/')) return 'Your race · OTRI'
+  if (path.startsWith('/live/')) return 'Live · OTRI'
+  if (path.startsWith('/register/')) return 'Register · OTRI'
   if (path.startsWith('/events/new')) return 'New event · OTRI organizers'
   if (path.startsWith('/events/')) return 'Event · OTRI organizers'
   if (path.startsWith('/events')) return 'Your events · OTRI organizers'
@@ -358,6 +361,8 @@ function App() {
   let params
   if ((params = match('/station/:key', route.path))) return <StationPage stationKey={params.key} />
   if ((params = match('/bib/:token', route.path))) return <BibPage token={params.token} />
+  if ((params = match('/live/:id', route.path))) return <LivePage raceId={params.id} />
+  if ((params = match('/register/:id', route.path))) return <RegisterPage raceId={params.id} />
   if (route.path === '/') page = session ? null : <Welcome onSignedIn={signIn} />
   else if (route.path === '/publish') page = <PublishScoredRace session={session} />
   else if (route.path === '/register') page = <Register onSignedIn={signIn} query={route.query} />

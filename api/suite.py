@@ -25,6 +25,7 @@ import tempfile
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -105,6 +106,29 @@ class SuiteSettings(BaseModel):
     bib_note: str | None = Field(default=None, max_length=120)
     # Bibs printed with the runner's name on them, or the number alone.
     bib_show_name: bool = True
+    # The colour band on the bib; the race's own colour if it has one.
+    bib_accent: str = Field(default="#0b1220", pattern="^#[0-9a-fA-F]{6}$")
+    # Laps: 1 is point to point or one loop. More, and the finish line is the lap line: each
+    # passing there completes a lap, the last one the race; cut-offs apply to the final lap.
+    laps: int = Field(default=1, ge=1, le=50)
+    # "06:00": prints the cut-offs as clock times on the bib and the spectator page.
+    planned_start: str | None = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    # The spectator page (#/live/{race_id}) is public only when the organizer says so.
+    live_public: bool = False
+    # Public registration (#/register/{race_id}): a form runners fill in themselves.
+    registration_open: bool = False
+    registration_limit: int | None = Field(default=None, ge=1, le=MAX_PARTICIPANTS_PER_RACE)
+    registration_note: str | None = Field(default=None, max_length=1000)
+    # Pay by link: the organizer's own Stripe payment link, PayPal.me, PromptPay page or bank
+    # instructions. OTRI moves no money; it records who has paid.
+    fee_text: str | None = Field(default=None, max_length=60)
+    payment_url: str | None = Field(default=None, max_length=500)
+    payment_instructions: str | None = Field(default=None, max_length=1000)
+    ask_club: bool = True
+    ask_birth_year: bool = True
+    ask_nationality: bool = False
+    ask_email: bool = True
+    require_emergency: bool = True
 
 
 class SuiteRaceOut(BaseModel):
@@ -194,6 +218,8 @@ class ParticipantIn(BaseModel):
     emergency_contact: str | None = Field(default=None, max_length=200)
     status: str = Field(default="registered", pattern="^(registered|dns|started|finished|dnf|dsq)$")
     notes: str | None = Field(default=None, max_length=500)
+    email: str | None = Field(default=None, max_length=200)
+    payment_status: str = Field(default="not_required", pattern="^(not_required|pending|paid|waived|refunded)$")
 
 
 class ParticipantUpdate(BaseModel):
@@ -207,6 +233,8 @@ class ParticipantUpdate(BaseModel):
     emergency_contact: str | None = Field(default=None, max_length=200)
     status: str | None = Field(default=None, pattern="^(registered|dns|started|finished|dnf|dsq)$")
     notes: str | None = Field(default=None, max_length=500)
+    email: str | None = Field(default=None, max_length=200)
+    payment_status: str | None = Field(default=None, pattern="^(not_required|pending|paid|waived|refunded)$")
     clear_bib: bool = False
     clear_birth_year: bool = False
 
@@ -225,6 +253,10 @@ class ParticipantOut(BaseModel):
     status: str
     notes: str | None
     qr_token: str
+    email: str | None = None
+    payment_status: str = "not_required"
+    payment_reference: str | None = None
+    registered_via: str = "organizer"
 
 
 class ImportIn(BaseModel):
@@ -337,6 +369,10 @@ def _checkpoint_dict(row: dict) -> dict:
     return {k: row.get(k) for k in ("checkpoint_id", "name", "kind", "position", "distance_km", "cutoff_minutes")}
 
 
+def _checkpoint_public(row: dict) -> dict:
+    return {k: row.get(k) for k in ("checkpoint_id", "name", "kind", "position", "distance_km", "cutoff_minutes", "water", "food", "medical", "drop_bag", "crew_access")}
+
+
 # --- Plugins: dispatch ----------------------------------------------------------------------------
 
 
@@ -385,6 +421,14 @@ def _first_passings(passings: list[dict]) -> dict[tuple[str, str], dict]:
     return first
 
 
+def _passings_in_order(passings: list[dict]) -> dict[tuple[str, str], list[dict]]:
+    """Every passing per (participant, checkpoint), oldest first: on a lap course the k-th is lap k."""
+    out: dict[tuple[str, str], list[dict]] = {}
+    for row in sorted(passings, key=lambda r: (r["recorded_at"], r["passing_id"])):
+        out.setdefault((row["participant_id"], row["checkpoint_id"]), []).append(row)
+    return out
+
+
 def _start_time_for(participant_id: str, state: dict | None, settings: SuiteSettings, start_checkpoint: dict | None, first: dict[tuple[str, str], dict]) -> datetime | None:
     gun = (state or {}).get("started_at")
     if settings.timing == "net" and start_checkpoint is not None:
@@ -400,14 +444,32 @@ def _elapsed(start: datetime | None, at: datetime) -> float | None:
     return max(0.0, (at - start).total_seconds())
 
 
+def _course_sequence(ordered: list[dict], laps: int) -> list[tuple[int, dict]]:
+    """The checkpoints a runner meets, in order, lap by lap. The start line is met once."""
+    sequence: list[tuple[int, dict]] = []
+    for lap in range(1, laps + 1):
+        for checkpoint in ordered:
+            if lap > 1 and checkpoint["kind"] == "start":
+                continue
+            sequence.append((lap, checkpoint))
+    return sequence
+
+
 def compute_board(race: db.Race, state: dict | None, checkpoints: list[dict], participants: list[dict], passings: list[dict], now: datetime | None = None) -> dict:
-    """Everything the race-day page shows, from the stored facts alone. Pure, and tested as such."""
+    """Everything the race-day page shows, from the stored facts alone. Pure, and tested as such.
+
+    With ``laps`` above one, the finish checkpoint is the lap line: a runner's k-th passing there
+    ends lap k, the ``laps``-th ends the race, and each intermediate checkpoint's k-th passing
+    belongs to lap k. Cut-offs apply to the final lap."""
     now = now or _now()
     settings = _settings(state)
+    laps = max(1, settings.laps)
     ordered = sorted(checkpoints, key=lambda c: c["position"])
     start_cp = next((c for c in ordered if c["kind"] == "start"), None)
     finish_cp = next((c for c in reversed(ordered) if c["kind"] == "finish"), None)
     first = _first_passings(passings)
+    by_lap = _passings_in_order(passings)
+    sequence = _course_sequence(ordered, laps)
     live = (state or {}).get("status") == "live"
 
     rows = []
@@ -416,35 +478,52 @@ def compute_board(race: db.Race, state: dict | None, checkpoints: list[dict], pa
         pid = participant["participant_id"]
         start = _start_time_for(pid, state, settings, start_cp, first)
         splits = []
-        for checkpoint in ordered:
-            passing = first.get((pid, checkpoint["checkpoint_id"]))
-            if passing is None:
+        seen: set[str] = set()
+        for lap, checkpoint in sequence:
+            at_checkpoint = by_lap.get((pid, checkpoint["checkpoint_id"]), [])
+            index = 0 if checkpoint["kind"] == "start" else lap - 1
+            if index >= len(at_checkpoint):
                 continue
-            through[checkpoint["checkpoint_id"]] += 1
+            passing = at_checkpoint[index]
+            if checkpoint["checkpoint_id"] not in seen:
+                through[checkpoint["checkpoint_id"]] += 1
+                seen.add(checkpoint["checkpoint_id"])
             splits.append(
                 {
                     "checkpoint_id": checkpoint["checkpoint_id"],
-                    "name": checkpoint["name"],
+                    "name": checkpoint["name"] if laps == 1 else f"{checkpoint['name']} · lap {lap}",
                     "kind": checkpoint["kind"],
                     "position": checkpoint["position"],
+                    "lap": lap,
                     "recorded_at": passing["recorded_at"],
                     "elapsed_seconds": _elapsed(start, passing["recorded_at"]),
                     "source": passing["source"],
                 }
             )
+        splits.sort(key=lambda s: s["recorded_at"])
         last = splits[-1] if splits else None
-        finish = next((s for s in splits if finish_cp and s["checkpoint_id"] == finish_cp["checkpoint_id"]), None)
+        finish = None
+        completed_laps = 0
+        if finish_cp is not None:
+            at_finish = by_lap.get((pid, finish_cp["checkpoint_id"]), [])
+            completed_laps = min(laps, len(at_finish))
+            if len(at_finish) >= laps:
+                finish = next(s for s in splits if s["checkpoint_id"] == finish_cp["checkpoint_id"] and s["lap"] == laps)
         status = participant["status"]
-        if finish is not None and status not in ("dsq",):
+        if finish is not None and status != "dsq":
             status = "finished"
         on_course = live and status == "started"
         # Where they are heading, and whether the cut-off there has passed without them.
         next_cp = None
+        next_lap = None
         if on_course:
-            after = last["position"] if last else 0
-            next_cp = next((c for c in ordered if c["position"] > after), None)
+            position = -1
+            if last is not None:
+                position = next((i for i, (lap, c) in enumerate(sequence) if lap == last["lap"] and c["checkpoint_id"] == last["checkpoint_id"]), -1)
+            if position + 1 < len(sequence):
+                next_lap, next_cp = sequence[position + 1]
         overdue = False
-        if on_course and next_cp is not None and next_cp.get("cutoff_minutes") is not None and start is not None:
+        if on_course and next_cp is not None and next_cp.get("cutoff_minutes") is not None and start is not None and (laps == 1 or next_lap == laps):
             overdue = now > start + timedelta(minutes=next_cp["cutoff_minutes"])
         rows.append(
             {
@@ -452,9 +531,11 @@ def compute_board(race: db.Race, state: dict | None, checkpoints: list[dict], pa
                 "status": status,
                 "birth_year": participant.get("birth_year"),
                 "nationality": participant.get("nationality"),
+                "payment_status": participant.get("payment_status"),
                 "start_at": start,
                 "last": last,
-                "next_checkpoint": _checkpoint_dict(next_cp) if next_cp else None,
+                "lap": completed_laps,
+                "next_checkpoint": {**_checkpoint_dict(next_cp), "lap": next_lap} if next_cp else None,
                 "overdue": overdue,
                 "finish_seconds": finish["elapsed_seconds"] if finish else None,
                 "splits": splits,
@@ -476,7 +557,8 @@ def compute_board(race: db.Race, state: dict | None, checkpoints: list[dict], pa
             return (0, row["finish_seconds"] or 0, 0)
         if row["status"] == "started":
             last = row["last"]
-            return (1, -(last["position"] if last else 0), last["recorded_at"].timestamp() if last else 0)
+            progress = (last["lap"] * 1000 + last["position"]) if last else 0
+            return (1, -progress, last["recorded_at"].timestamp() if last else 0)
         return (2, {"registered": 0, "dns": 1, "dnf": 2, "dsq": 3}.get(row["status"], 4), 0)
 
     rows.sort(key=order_key)
@@ -494,6 +576,7 @@ def compute_board(race: db.Race, state: dict | None, checkpoints: list[dict], pa
         "started_at": (state or {}).get("started_at"),
         "finished_at": (state or {}).get("finished_at"),
         "timing": settings.timing,
+        "laps": laps,
         "now": now,
         "counts": counts,
         "checkpoints": [{**_checkpoint_dict(c), "through": through[c["checkpoint_id"]], "station_key": c["station_key"]} for c in ordered],
@@ -825,17 +908,21 @@ def _record(race: db.Race, state: dict, checkpoint: dict, participant: dict, *, 
         return row, outcome
     # A start-line scan puts a registered runner on course; a finish-line scan finishes them.
     new_status = None
+    settings = _settings(state)
+    own_passings = suite_db.list_passings_for_participant(participant["participant_id"])
     if checkpoint["kind"] == "start" and participant["status"] in ("registered", "dns"):
         new_status = "started"
     elif checkpoint["kind"] == "finish" and participant["status"] in ("registered", "started", "dnf"):
-        new_status = "finished"
+        laps_done = sum(1 for p in own_passings if p["checkpoint_id"] == checkpoint["checkpoint_id"])
+        if laps_done >= settings.laps:
+            new_status = "finished"
     if new_status:
         suite_db.set_participant_status(participant["participant_id"], new_status)
         participant = {**participant, "status": new_status}
-    settings = _settings(state)
     start_cp = next((c for c in suite_db.list_checkpoints(race.race_id) if c["kind"] == "start"), None) if settings.timing == "net" else None
-    start = _start_time_for(participant["participant_id"], state, settings, start_cp, _first_passings(suite_db.list_passings_for_participant(participant["participant_id"])))
-    passing = {"passing_id": row["passing_id"], "recorded_at": row["recorded_at"].isoformat(), "elapsed_seconds": _elapsed(start, row["recorded_at"]), "source": source}
+    start = _start_time_for(participant["participant_id"], state, settings, start_cp, _first_passings(own_passings))
+    lap = sum(1 for p in own_passings if p["checkpoint_id"] == checkpoint["checkpoint_id"]) if settings.laps > 1 else None
+    passing = {"passing_id": row["passing_id"], "recorded_at": row["recorded_at"].isoformat(), "elapsed_seconds": _elapsed(start, row["recorded_at"]), "source": source, "lap": lap}
     _emit("passing.recorded", race, state, participant=participant, checkpoint=checkpoint, passing=passing)
     if new_status == "finished":
         _emit("participant.finished", race, state, participant=participant, checkpoint=checkpoint, passing=passing)
@@ -1111,3 +1198,330 @@ def submit_results_to_scoring(race_id: str, organizer: Organizer = Depends(requi
     finally:
         _app._discard_temp(path)
     return {"finishers": sum(1 for r in results if r.is_finisher), "rows": len(results), "scored": len(scores), "warnings": [issue.to_dict() for issue in report.warnings[:20]]}
+
+
+# --- The course profile, for the bibs and the spectator page ---------------------------------------
+
+PROFILE_POINTS = 240
+
+
+def course_profile(race_id: str, points: int = PROFILE_POINTS) -> dict | None:
+    """The stored measurement's profile thinned to a chart's worth of points, with the totals."""
+    measurement = db.get_measurement(race_id)
+    profile = (measurement or {}).get("profile") or []
+    if len(profile) < 2:
+        return None
+    stride = max(1, -(-len(profile) // points))
+    thinned = [profile[i] for i in range(0, len(profile), stride)]
+    if thinned[-1] is not profile[-1]:
+        thinned.append(profile[-1])
+    elevations = [p["elevation"] for p in profile]
+    gain = sum(max(0.0, b - a) for a, b in zip(elevations, elevations[1:]))
+    return {
+        "points": [{"km": round(p["distanceKm"], 3), "m": round(p["elevation"], 1)} for p in thinned],
+        "distance_km": round(profile[-1]["distanceKm"], 2),
+        "min_m": round(min(elevations), 1),
+        "max_m": round(max(elevations), 1),
+        "gain_m": round(gain),
+    }
+
+
+@router.get("/races/{race_id}/profile")
+def get_profile(race_id: str, organizer: Organizer = Depends(require_suite)) -> dict:
+    _race_for(race_id, organizer)
+    profile = course_profile(race_id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="the race has no measured course yet: attach its GPX first")
+    return profile
+
+
+# --- Checkpoints suggested from the course ---------------------------------------------------------
+
+
+class SuggestIn(BaseModel):
+    # Aid every this many kilometres; the default depends on the distance.
+    spacing_km: float | None = Field(default=None, ge=2, le=50)
+    # Slow-runner pace the cut-offs are drawn from: minutes per flat kilometre, and per 100 m of climb.
+    min_per_km: float = Field(default=12, ge=4, le=40)
+    min_per_100m_climb: float = Field(default=10, ge=0, le=40)
+    apply: bool = False
+    replace: bool = False
+
+
+def _smooth(values: list[float], window: int) -> list[float]:
+    if window <= 1 or len(values) < window:
+        return list(values)
+    half = window // 2
+    out = []
+    for i in range(len(values)):
+        lo, hi = max(0, i - half), min(len(values), i + half + 1)
+        out.append(sum(values[lo:hi]) / (hi - lo))
+    return out
+
+
+def suggest_checkpoints(profile: dict, *, spacing_km: float | None = None, min_per_km: float = 12, min_per_100m_climb: float = 10, laps: int = 1) -> list[dict]:
+    """Where a race of this shape usually puts its aid stations, and when a slow runner reaches them.
+
+    The rule of thumb behind it: aid every 6 km on a short course, 9 km on a long one, 12 km on
+    an ultra, placed where the ground makes access likely, which is a valley or a pass rather
+    than the middle of a climb. Each target kilometre is moved to the nearest low point of the
+    profile within a third of the spacing, failing that to the nearest high point, failing that
+    it stays. Cut-offs come from a slow pace on the flat plus a climbing allowance, rounded up to
+    the quarter hour. A suggestion, for the organizer to move, rename and correct."""
+    points = profile["points"]
+    distance = profile["distance_km"]
+    if spacing_km is None:
+        spacing_km = 6 if distance <= 25 else 9 if distance <= 60 else 12
+    aid_count = max(0, round(distance / spacing_km) - 1)
+    targets = [distance * k / (aid_count + 1) for k in range(1, aid_count + 1)]
+
+    kms = [p["km"] for p in points]
+    ms = _smooth([p["m"] for p in points], 5)
+    # Local extrema of the smoothed profile: the lowest or highest point within a kilometre either
+    # way, with at least 25 m of relief to what surrounds it.
+    lows, highs = [], []
+    for i in range(1, len(ms) - 1):
+        lo = i
+        while lo > 0 and kms[i] - kms[lo - 1] <= 1.0:
+            lo -= 1
+        hi = i
+        while hi < len(ms) - 1 and kms[hi + 1] - kms[i] <= 1.0:
+            hi += 1
+        window = ms[lo : hi + 1]
+        if ms[i] <= min(window) and max(window) - ms[i] >= 25:
+            lows.append(i)
+        elif ms[i] >= max(window) and ms[i] - min(window) >= 25:
+            highs.append(i)
+
+    def nearest(candidates: list[int], km: float, tolerance: float) -> int | None:
+        best = None
+        for i in candidates:
+            if abs(kms[i] - km) <= tolerance and (best is None or abs(kms[i] - km) < abs(kms[best] - km)):
+                best = i
+        return best
+
+    def index_at(km: float) -> int:
+        return min(range(len(kms)), key=lambda i: abs(kms[i] - km))
+
+    def gain_to(index: int) -> float:
+        raw = [p["m"] for p in points[: index + 1]]
+        return sum(max(0.0, b - a) for a, b in zip(raw, raw[1:]))
+
+    def cutoff(km: float, index: int) -> int:
+        minutes = km * min_per_km + gain_to(index) / 100 * min_per_100m_climb
+        return int(-(-minutes // 15) * 15)
+
+    picks = []
+    for target in targets:
+        tolerance = spacing_km / 3
+        i = nearest(lows, target, tolerance)
+        reason = "a low point on the profile: a valley or a road crossing is likely" if i is not None else None
+        if i is None:
+            i = nearest(highs, target, tolerance)
+            reason = "a high point on the profile: a pass" if i is not None else None
+        if i is None:
+            i = index_at(target)
+            reason = f"every {spacing_km:g} km along the course"
+        picks.append((i, reason))
+    picks.sort(key=lambda pair: pair[0])
+    # Two picks that landed on the same spot are one station.
+    unique = []
+    for i, reason in picks:
+        if not unique or kms[i] - kms[unique[-1][0]] >= spacing_km / 3:
+            unique.append((i, reason))
+
+    suggestions = [{"name": "Start", "kind": "start", "distance_km": 0.0, "cutoff_minutes": None, "water": True, "food": False, "medical": False, "drop_bag": False, "crew_access": True, "supplies": "water, bib pick-up, drop-bag collection", "notes": None, "elevation_m": round(ms[0]), "reason": "where the course begins"}]
+    previous_km = 0.0
+    for number, (i, reason) in enumerate(unique, start=1):
+        km = kms[i]
+        food = km - previous_km >= 8 or number % 2 == 0
+        suggestions.append(
+            {
+                "name": f"Aid {number}",
+                "kind": "aid",
+                "distance_km": round(km, 1),
+                "cutoff_minutes": cutoff(km, i),
+                "water": True,
+                "food": food,
+                "medical": food,
+                "drop_bag": False,
+                "crew_access": "low point" in (reason or ""),
+                "supplies": "water, electrolytes, bananas, salty snacks" + (", hot food" if food else ""),
+                "notes": None,
+                "elevation_m": round(ms[i]),
+                "reason": reason,
+            }
+        )
+        previous_km = km
+    last = len(points) - 1
+    finish_km = distance * laps if laps > 1 else distance
+    suggestions.append({"name": "Finish", "kind": "finish", "distance_km": round(distance, 1), "cutoff_minutes": cutoff(finish_km, last) if laps == 1 else int(-(-(cutoff(distance, last) * laps) // 15) * 15), "water": True, "food": True, "medical": True, "drop_bag": True, "crew_access": True, "supplies": "water, food, medical post, blankets, results desk", "notes": "the lap line" if laps > 1 else None, "elevation_m": round(ms[last]), "reason": "where the course ends"})
+    return suggestions
+
+
+@router.post("/races/{race_id}/checkpoints/suggest")
+def suggest_race_checkpoints(race_id: str, payload: SuggestIn | None = None, organizer: Organizer = Depends(require_suite)) -> dict:
+    """A plan drawn from the race's measured course: start, aid stations at the natural places,
+    finish, with cut-offs from a slow pace. Preview by default; ``apply`` creates them (``replace``
+    when the race already has a plan)."""
+    payload = payload or SuggestIn()
+    _race_for(race_id, organizer)
+    profile = course_profile(race_id)
+    if profile is None:
+        raise HTTPException(status_code=404, detail="the race has no measured course yet: attach its GPX first, then suggest a plan from it")
+    settings = _settings(suite_db.ensure_state(race_id))
+    suggestions = suggest_checkpoints(profile, spacing_km=payload.spacing_km, min_per_km=payload.min_per_km, min_per_100m_climb=payload.min_per_100m_climb, laps=settings.laps)
+    applied = []
+    if payload.apply:
+        existing = suite_db.list_checkpoints(race_id)
+        if existing and not payload.replace:
+            raise HTTPException(status_code=409, detail="the race already has a plan: choose to replace it")
+        for checkpoint in existing:
+            suite_db.delete_checkpoint(checkpoint["checkpoint_id"])
+        for item in suggestions:
+            values = {k: v for k, v in item.items() if k in suite_db.CHECKPOINT_FIELDS}
+            applied.append(_checkpoint_out(suite_db.create_checkpoint(race_id, values), with_key=True).model_dump())
+    return {"suggestions": suggestions, "applied": applied, "distance_km": profile["distance_km"], "gain_m": profile["gain_m"]}
+
+
+# --- Public pages: spectators and registration ------------------------------------------------------
+
+
+def _public_race(race_id: str) -> tuple[db.Race, dict, SuiteSettings]:
+    race = db.find_race(race_id)
+    state = suite_db.get_state(race_id) if race is not None else None
+    if race is None or race.calculator_only or state is None:
+        raise HTTPException(status_code=404, detail="no such race")
+    settings = _settings(state)
+    if not settings.live_public and not settings.registration_open:
+        raise HTTPException(status_code=404, detail="this race has no public page")
+    return race, state, settings
+
+
+def _public_board_row(row: dict) -> dict:
+    keep = ("participant_id", "bib", "family_name", "first_name", "club", "status", "last", "lap", "next_checkpoint", "overdue", "finish_seconds", "rank", "splits")
+    return {k: row.get(k) for k in keep}
+
+
+@router.get("/public/{race_id}")
+def public_race(race_id: str, request: Request) -> dict:
+    """What a spectator or a would-be runner sees: the race, the plan, the profile, whether the
+    live page is on and whether registration is open (and how many places are left)."""
+    enforce_rate_limit(request, max_requests=60, scope="suite-public")
+    race, state, settings = _public_race(race_id)
+    count = suite_db.count_participants(race_id)
+    spots_left = None if settings.registration_limit is None else max(0, settings.registration_limit - count)
+    return {
+        "race": {**_race_dict(race, state), "distance_km": race.distance_km, "elevation_gain_m": race.elevation_gain_m, "event_location": race.event_location, "event_country": race.event_country},
+        "laps": settings.laps,
+        "planned_start": settings.planned_start,
+        "live_public": settings.live_public,
+        "checkpoints": [_checkpoint_public(c) for c in suite_db.list_checkpoints(race_id)],
+        "profile": course_profile(race_id, 160),
+        "registration": {
+            "open": settings.registration_open and (spots_left is None or spots_left > 0),
+            "full": settings.registration_open and spots_left == 0,
+            "spots_left": spots_left,
+            "note": settings.registration_note,
+            "fee_text": settings.fee_text,
+            "fields": {"club": settings.ask_club, "birth_year": settings.ask_birth_year, "nationality": settings.ask_nationality, "email": settings.ask_email, "emergency_required": settings.require_emergency},
+        },
+        "participants": count,
+    }
+
+
+@router.get("/public/{race_id}/live")
+def public_live(race_id: str, request: Request) -> dict:
+    """The board for spectators: names, bibs, clubs, where each runner was last seen and the
+    finishers' times. No birth years, no nationalities, no contacts, no station keys."""
+    enforce_rate_limit(request, max_requests=120, scope="suite-public-live")
+    race, state, settings = _public_race(race_id)
+    if not settings.live_public:
+        raise HTTPException(status_code=404, detail="this race has no public live page")
+    board = compute_board(race, state, suite_db.list_checkpoints(race_id), suite_db.list_participants(race_id), suite_db.list_passings(race_id))
+    return {
+        "race": _race_dict(race, state),
+        "status": board["status"],
+        "started_at": board["started_at"],
+        "laps": board["laps"],
+        "now": board["now"],
+        "counts": board["counts"],
+        "checkpoints": [{k: v for k, v in c.items() if k != "station_key"} for c in board["checkpoints"]],
+        "participants": [_public_board_row(r) for r in board["participants"]],
+    }
+
+
+class RegistrationIn(BaseModel):
+    family_name: str = Field(min_length=1, max_length=120)
+    first_name: str = Field(min_length=1, max_length=120)
+    gender: str = Field(pattern="^(M|F|X)$")
+    birth_year: int | None = Field(default=None, ge=1900, le=_THIS_YEAR)
+    nationality: str | None = Field(default=None, max_length=3)
+    club: str | None = Field(default=None, max_length=120)
+    email: str | None = Field(default=None, max_length=200)
+    emergency_contact: str | None = Field(default=None, max_length=200)
+    # "I agree to the race's terms and to my name and times being shown."
+    consent: bool
+
+
+def _payment_link(settings: SuiteSettings, reference: str) -> str | None:
+    url = settings.payment_url
+    if not url:
+        return None
+    # Stripe payment links take the reference back in the payment's client_reference_id, so the
+    # organizer's Stripe dashboard says which registration a payment settles.
+    if "stripe.com" in url or "buy.stripe" in url:
+        return f"{url}{'&' if '?' in url else '?'}client_reference_id={quote(reference)}"
+    return url
+
+
+@router.post("/public/{race_id}/register", status_code=201)
+def public_register(race_id: str, payload: RegistrationIn, request: Request) -> dict:
+    """A runner enters the race from the public form. Answers their private link (the same page
+    the QR on their bib opens) and how to pay, with a reference the organizer can match."""
+    enforce_rate_limit(request, max_requests=10, scope="suite-register")
+    enforce_rate_limit(request, max_requests=40, scope="suite-register-hour", window_seconds=3600)
+    race, state, settings = _public_race(race_id)
+    if not settings.registration_open:
+        raise HTTPException(status_code=403, detail="registration is closed")
+    if not payload.consent:
+        raise HTTPException(status_code=422, detail="please agree to the race's terms to register")
+    if settings.require_emergency and not (payload.emergency_contact or "").strip():
+        raise HTTPException(status_code=422, detail="an emergency contact is required for this race")
+    if settings.ask_email and payload.email and "@" not in payload.email:
+        raise HTTPException(status_code=422, detail="that email address does not look right")
+    if suite_db.find_participant_by_name(race_id, payload.family_name, payload.first_name, payload.birth_year):
+        raise HTTPException(status_code=409, detail="somebody with this name is already registered; if that is you, ask the organizer for your link")
+    count = suite_db.count_participants(race_id)
+    if settings.registration_limit is not None and count >= settings.registration_limit:
+        raise HTTPException(status_code=409, detail="the race is full")
+    _room_for(race_id, 1)
+    fee = bool(settings.fee_text or settings.payment_url)
+    values = {
+        "family_name": payload.family_name,
+        "first_name": payload.first_name,
+        "gender": payload.gender,
+        "birth_year": payload.birth_year if settings.ask_birth_year else None,
+        "nationality": payload.nationality if settings.ask_nationality else None,
+        "club": payload.club if settings.ask_club else None,
+        "email": payload.email if settings.ask_email else None,
+        "emergency_contact": payload.emergency_contact,
+        "registered_via": "public",
+        "payment_status": "pending" if fee else "not_required",
+    }
+    row = suite_db.create_participant(race_id, values)
+    reference = f"{race.course_name[:3].upper()}-{row['participant_id'].split('-')[-1][-6:].upper()}"
+    row = suite_db.update_participant(row["participant_id"], {"payment_reference": reference})
+    return {
+        "participant_id": row["participant_id"],
+        "qr_token": row["qr_token"],
+        "first_name": row["first_name"],
+        "race": _race_dict(race, state),
+        "payment": {
+            "status": row["payment_status"],
+            "fee_text": settings.fee_text,
+            "url": _payment_link(settings, reference),
+            "instructions": settings.payment_instructions,
+            "reference": reference,
+        },
+    }
