@@ -251,7 +251,7 @@ _OWN_HOSTS = {
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_ALLOWED_ORIGIN_LIST,
-    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],  # PUT: the race suite's plugin settings
     allow_headers=["*"],
     allow_credentials=True,  # the organizer app authenticates with an HttpOnly cookie
 )
