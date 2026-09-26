@@ -18,6 +18,8 @@ import { countPages } from '../../src/lib/analytics'
 import { useDocumentTitle } from '../../src/lib/title'
 import SharedNotFound from '../../src/components/NotFound'
 import { AccountPage } from './pages/Account'
+import { BibSheet, SuiteHome, SuiteRace } from './pages/Suite'
+import { BibPage, StationPage } from './pages/Station'
 import { AdminEvents } from './pages/Admin'
 import PublishScoredRace from './pages/Publish'
 import { forgetExpiredHandoff, hasHandoff } from '../publishHandoff'
@@ -93,6 +95,11 @@ function AccountMenu({ session, onSignOut }) {
               Admin dashboard
             </Link>
           )}
+          {session.isAdmin && (
+            <Link to="/suite" className={item} onClick={() => setOpen(false)}>
+              Race suite <span className="ml-1 rounded-full bg-blue-50 px-1.5 py-0.5 font-mono text-[8px] tracking-[.06em] text-blue-700">PREVIEW</span>
+            </Link>
+          )}
           <a href="../#home" className={item}>
             Public site ↗
           </a>
@@ -136,6 +143,14 @@ function Header({ session, onSignOut, onLogin = false }) {
                 ADMIN
               </Link>
             )}
+            {session?.isAdmin && (
+              <Link
+                to="/suite"
+                className="hidden items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 font-mono text-[9px] tracking-[.08em] text-blue-700 no-underline md:inline-flex"
+              >
+                SUITE
+              </Link>
+            )}
             <a href="../#home" className="hidden items-center gap-1 text-[13px] font-medium text-slate-500 no-underline hover:text-slate-950 lg:inline-flex">
               Public site <ArrowUpRight size={13} />
             </a>
@@ -171,6 +186,11 @@ function Header({ session, onSignOut, onLogin = false }) {
           {session?.isAdmin && (
             <Link to="/admin" className="py-3 font-mono text-[9px] tracking-[.08em] text-amber-700 no-underline">
               ADMIN
+            </Link>
+          )}
+          {session?.isAdmin && (
+            <Link to="/suite" className="py-3 font-mono text-[9px] tracking-[.08em] text-blue-700 no-underline">
+              SUITE
             </Link>
           )}
           <a href="../#home" className="py-3 text-[13px] font-medium text-slate-500 no-underline">
@@ -225,6 +245,9 @@ function organizerTitle(path) {
   if (path.startsWith('/verify') || path.startsWith('/check-email')) return 'Verify email · OTRI organizers'
   if (path.startsWith('/account')) return 'Account settings · OTRI organizers'
   if (path.startsWith('/admin')) return 'Admin · OTRI organizers'
+  if (path.startsWith('/suite')) return 'Race suite · OTRI organizers'
+  if (path.startsWith('/station/')) return 'Checkpoint station · OTRI'
+  if (path.startsWith('/bib/')) return 'Your race · OTRI'
   if (path.startsWith('/events/new')) return 'New event · OTRI organizers'
   if (path.startsWith('/events/')) return 'Event · OTRI organizers'
   if (path.startsWith('/events')) return 'Your events · OTRI organizers'
@@ -302,16 +325,16 @@ function App() {
       clearSession()
       setSession(null)
       setSessionEnded(true)
-      if (/^#\/(events|races|admin|account)/.test(window.location.hash)) navigate('/login', { replace: true })
+      if (/^#\/(events|races|admin|account|suite)/.test(window.location.hash)) navigate('/login', { replace: true })
     })
     return () => whenSessionEnds(null)
   }, [])
 
-  const needsAuth = /^\/(events|races|admin|account)/.test(route.path)
+  const needsAuth = /^\/(events|races|admin|account|suite)/.test(route.path)
   useEffect(() => {
     // Read the live hash, not the rendered route: signing out navigates to '/' and clears the
     // session in the same tick, and the render in between still carries the old route.
-    const liveNeedsAuth = /^#\/(events|races|admin|account)/.test(window.location.hash)
+    const liveNeedsAuth = /^#\/(events|races|admin|account|suite)/.test(window.location.hash)
     if (liveNeedsAuth && !session) navigate('/login', { replace: true })
     // A race scored on the public site may be waiting to become a race page (publishHandoff.js).
     if (route.path === '/' && session) navigate(hasHandoff() ? '/publish' : '/events', { replace: true })
@@ -333,6 +356,8 @@ function App() {
 
   let page = null
   let params
+  if ((params = match('/station/:key', route.path))) return <StationPage stationKey={params.key} />
+  if ((params = match('/bib/:token', route.path))) return <BibPage token={params.token} />
   if (route.path === '/') page = session ? null : <Welcome onSignedIn={signIn} />
   else if (route.path === '/publish') page = <PublishScoredRace session={session} />
   else if (route.path === '/register') page = <Register onSignedIn={signIn} query={route.query} />
@@ -342,6 +367,9 @@ function App() {
   else if (route.path === '/verify') page = <Verify token={route.query.token} />
   else if (route.path === '/reset') page = <Reset token={route.query.token} onSignedIn={signIn} />
   else if (session && route.path === '/admin') page = session.isAdmin ? <AdminEvents session={session} /> : <NotFound />
+  else if (session && route.path === '/suite') page = session.isAdmin ? <SuiteHome session={session} /> : <NotFound />
+  else if (session && (params = match('/suite/:id/bibs', route.path))) page = session.isAdmin ? <BibSheet raceId={params.id} /> : <NotFound />
+  else if (session && (params = match('/suite/:id', route.path))) page = session.isAdmin ? <SuiteRace session={session} raceId={params.id} /> : <NotFound />
   else if (session && route.path === '/account') page = <AccountPage session={session} onToken={signIn} onSignOut={signOut} />
   else if (session && route.path === '/events') page = <Dashboard session={session} />
   else if (session && route.path === '/events/new') page = <NewEvent session={session} />

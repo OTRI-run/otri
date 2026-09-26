@@ -71,6 +71,37 @@ Generated from `api/app.py` (`grep '@app\.' api/app.py`); the interactive refere
 | POST | `/reports` | anyone | A correction or removal request from a public page (rate-limited; admins are emailed). |
 | POST | `/calculator-courses/proposals` | anyone | Propose the course you uploaded for the calculator's "Pick a race": the file plus `event_name`, `course_name`, and optional `year`, `location`, `country`, `source_url`, `email`. Measured and kept for an admin; added on its own after `OTRI_COURSE_AUTO_APPROVE_HOURS`. A track already in the calculator, or already proposed, answers 409 with a pointer to it. Rate-limited. |
 
+### The race suite (admin preview)
+
+Run a small race's day: plan, bibs, stations, board, plugins ([`docs/product/race-suite.md`](../docs/product/race-suite.md)). **Suite** means an admin while the suite is in preview, any organizer on their own races once `OTRI_SUITE_OPEN=1`. Station and bib calls take no session: the key or token in the path is the credential.
+
+| Method | Path | Who | What |
+| --- | --- | --- | --- |
+| GET | `/suite/races` | suite | The caller's races (every race for an admin) with the suite's status and counts. |
+| GET | `/suite/races/{race_id}` | suite | One race's suite state, settings and counts. |
+| PATCH | `/suite/races/{race_id}/settings` | suite | `timing` (`gun` or `net`), `organizer_phone`, `bib_note`, `bib_show_name`. |
+| POST | `/suite/races/{race_id}/start` · `/finish` · `/reopen` · `/reset` | suite | The gun (registered runners go on course); close the race (runners still out are DNF); back to live; back to planning with every passing deleted. |
+| GET · POST | `/suite/races/{race_id}/checkpoints` | suite | The plan in course order; add one (`name`, `kind`: start, checkpoint, aid, finish; `distance_km`, `cutoff_minutes`, services, `supplies`, `notes`, optional `position`). Each carries its `station_key`. |
+| POST | `/suite/races/{race_id}/checkpoints/reorder` | suite | `checkpoint_ids` in the new order. |
+| PATCH · DELETE | `/suite/checkpoints/{checkpoint_id}` | suite | Edit (`clear_distance`, `clear_cutoff` to empty a number); delete with its passings. |
+| POST | `/suite/checkpoints/{checkpoint_id}/rotate-key` | suite | A new station link; the old one stops working. |
+| GET · POST | `/suite/races/{race_id}/participants` | suite | The entry list; add one runner. Each carries its `qr_token`. |
+| POST | `/suite/races/{race_id}/participants/import` | suite | `text`: pasted CSV/TSV with a header row (columns matched by name in several languages); `replace` empties the list first. Answers what was read, skipped and ignored. |
+| POST | `/suite/races/{race_id}/participants/assign-bibs` | suite | Number the runners (`start`, `prefix`, `only_missing`). |
+| PATCH · DELETE | `/suite/participants/{participant_id}` | suite | Edit a runner or set their `status` (registered, dns, started, finished, dnf, dsq); remove them. |
+| GET | `/suite/races/{race_id}/board` | suite | The live picture: counts, each checkpoint's throughput, each runner's status, last passing, next checkpoint, overdue flag, splits and finish rank; plugin panels. |
+| POST | `/suite/races/{race_id}/passings` | suite | Record a passing by hand (`checkpoint_id`, `participant_id`, optional `recorded_at`). 409 for a double within two minutes. |
+| DELETE | `/suite/passings/{passing_id}` | suite | Remove a passing. |
+| GET | `/suite/stations/{station_key}` | anyone with the key | What a checkpoint's phone needs: the checkpoint, the race, the server clock, the roster (bib, name, QR token) and who is already through. |
+| POST | `/suite/stations/{station_key}/passings` | anyone with the key | A batch (`passings`: `client_id`, one of `qr_token` / `bib` / `participant_id`, `recorded_at`, `source`, `device`); each answers `accepted`, `replayed`, `duplicate` or `unknown`. Idempotent on `client_id`. |
+| GET | `/suite/bibs/{qr_token}` | anyone with the token | A runner's own page: first name, bib, status, splits. |
+| GET | `/suite/plugins` | suite | Every plugin on this server with its settings form. |
+| GET | `/suite/races/{race_id}/plugins` | suite | The race's plugin settings (secrets masked). |
+| PUT | `/suite/races/{race_id}/plugins/{plugin_key}` | suite | `enabled`, `config`; validated by the plugin, 422 with its sentence. |
+| GET | `/suite/races/{race_id}/plugins/{plugin_key}/log` | suite | The plugin's newest 50 log lines. |
+| GET | `/suite/races/{race_id}/results.csv` | suite | The finish list as an OTRI results file. |
+| POST | `/suite/races/{race_id}/results/submit` | suite | The finish list becomes the race's results, validated and scored like an upload. 409 while live or published. |
+
 ### Accounts
 
 | Method | Path | Who | What |

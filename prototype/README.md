@@ -33,6 +33,8 @@ Also here: `SharePanel.jsx` and `shareImage.js` (the podium image and share text
 | `Publish.jsx` | A race scored on the public site, handed over to be published. |
 | `Account.jsx` | Profile, password, two-factor, data export, deletion. |
 | `Admin.jsx` | Admins: overview, publish reviews, reports, accounts, all events, calculator courses, shared courses, traffic, the server, and the site's maintenance switch. |
+| `Suite.jsx` | Admins (preview): the race suite. A race's course plan with station links, the entry list and bib numbers, the printable bib sheet, the race-day board with the gun and manual passings, plugin settings, and the finish list handed to scoring. |
+| `Station.jsx` | No account: a checkpoint's phone (`#/station/{key}`: camera or typed bib, offline queue) and a runner's own splits (`#/bib/{token}`). |
 | `CalculatorCourses.jsx` | Admins: the courses offered in the calculator's "Pick a race". |
 
 ## The embedded calculator (`embed/`)
