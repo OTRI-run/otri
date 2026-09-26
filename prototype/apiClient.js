@@ -623,3 +623,116 @@ export async function fetchRaceGpxFile(raceId, token) {
   const text = await response.text()
   return new File([text], `${raceId}.gpx`, { type: 'application/gpx+xml' })
 }
+
+// ------------------------------------------------------------------ The race suite (api/suite.py)
+// Admin preview for now. Station and bib pages take no session: the key or token in the URL is
+// the credential, so a volunteer's phone needs no account.
+
+const suiteAuth = () => ({ headers: authHeaders(sessionToken()) })
+const suitePost = (path, body) => (body === undefined ? request(path, { method: 'POST', ...suiteAuth() }) : request(path, { method: 'POST', ...json(sessionToken(), body) }))
+const enc = encodeURIComponent
+
+export function listSuiteRaces() {
+  return request('/suite/races', suiteAuth())
+}
+export function getSuiteRace(raceId) {
+  return request(`/suite/races/${enc(raceId)}`, suiteAuth())
+}
+export function updateSuiteSettings(raceId, settings) {
+  return request(`/suite/races/${enc(raceId)}/settings`, { method: 'PATCH', ...json(sessionToken(), settings) })
+}
+export function startSuiteRace(raceId, startedAt = null) {
+  return suitePost(`/suite/races/${enc(raceId)}/start`, startedAt ? { started_at: startedAt } : {})
+}
+export function finishSuiteRace(raceId) {
+  return suitePost(`/suite/races/${enc(raceId)}/finish`)
+}
+export function reopenSuiteRace(raceId) {
+  return suitePost(`/suite/races/${enc(raceId)}/reopen`)
+}
+export function resetSuiteRace(raceId) {
+  return suitePost(`/suite/races/${enc(raceId)}/reset`)
+}
+
+export function listSuiteCheckpoints(raceId) {
+  return request(`/suite/races/${enc(raceId)}/checkpoints`, suiteAuth())
+}
+export function addSuiteCheckpoint(raceId, payload) {
+  return suitePost(`/suite/races/${enc(raceId)}/checkpoints`, payload)
+}
+export function updateSuiteCheckpoint(checkpointId, payload) {
+  return request(`/suite/checkpoints/${enc(checkpointId)}`, { method: 'PATCH', ...json(sessionToken(), payload) })
+}
+export function deleteSuiteCheckpoint(checkpointId) {
+  return request(`/suite/checkpoints/${enc(checkpointId)}`, { method: 'DELETE', ...suiteAuth() })
+}
+export function reorderSuiteCheckpoints(raceId, checkpointIds) {
+  return suitePost(`/suite/races/${enc(raceId)}/checkpoints/reorder`, { checkpoint_ids: checkpointIds })
+}
+export function rotateStationKey(checkpointId) {
+  return suitePost(`/suite/checkpoints/${enc(checkpointId)}/rotate-key`)
+}
+
+export function listSuiteParticipants(raceId) {
+  return request(`/suite/races/${enc(raceId)}/participants`, suiteAuth())
+}
+export function addSuiteParticipant(raceId, payload) {
+  return suitePost(`/suite/races/${enc(raceId)}/participants`, payload)
+}
+export function updateSuiteParticipant(participantId, payload) {
+  return request(`/suite/participants/${enc(participantId)}`, { method: 'PATCH', ...json(sessionToken(), payload) })
+}
+export function deleteSuiteParticipant(participantId) {
+  return request(`/suite/participants/${enc(participantId)}`, { method: 'DELETE', ...suiteAuth() })
+}
+export function importSuiteParticipants(raceId, text, replace = false) {
+  return suitePost(`/suite/races/${enc(raceId)}/participants/import`, { text, replace })
+}
+export function assignSuiteBibs(raceId, payload) {
+  return suitePost(`/suite/races/${enc(raceId)}/participants/assign-bibs`, payload)
+}
+
+export function getSuiteBoard(raceId) {
+  return request(`/suite/races/${enc(raceId)}/board`, suiteAuth())
+}
+export function addSuitePassing(raceId, payload) {
+  return suitePost(`/suite/races/${enc(raceId)}/passings`, payload)
+}
+export function deleteSuitePassing(passingId) {
+  return request(`/suite/passings/${enc(passingId)}`, { method: 'DELETE', ...suiteAuth() })
+}
+
+export function listSuitePlugins() {
+  return request('/suite/plugins', suiteAuth())
+}
+export function listRacePlugins(raceId) {
+  return request(`/suite/races/${enc(raceId)}/plugins`, suiteAuth())
+}
+export function setRacePlugin(raceId, pluginKey, payload) {
+  return request(`/suite/races/${enc(raceId)}/plugins/${enc(pluginKey)}`, { method: 'PUT', ...json(sessionToken(), payload) })
+}
+export function getRacePluginLog(raceId, pluginKey) {
+  return request(`/suite/races/${enc(raceId)}/plugins/${enc(pluginKey)}/log`, suiteAuth())
+}
+
+/** The finish list as a results file (text/csv), for a download or a look. */
+export async function fetchSuiteResultsCsv(raceId) {
+  const response = await fetch(`${API_BASE_URL}/suite/races/${enc(raceId)}/results.csv`, withCredentials(suiteAuth()))
+  if (!response.ok) throw await errorFrom(response)
+  return response.text()
+}
+export function submitSuiteResults(raceId) {
+  return suitePost(`/suite/races/${enc(raceId)}/results/submit`)
+}
+
+// A checkpoint's phone (no account). `passings`: [{client_id, qr_token|bib|participant_id, recorded_at, source, device}]
+export function getStation(stationKey) {
+  return request(`/suite/stations/${enc(stationKey)}`)
+}
+export function postStationPassings(stationKey, passings) {
+  return request(`/suite/stations/${enc(stationKey)}/passings`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ passings }) })
+}
+// A runner's own bib page (no account).
+export function getBib(qrToken) {
+  return request(`/suite/bibs/${enc(qrToken)}`)
+}

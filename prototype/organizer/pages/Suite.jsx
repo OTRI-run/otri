@@ -1,0 +1,1130 @@
+// The race suite for organizers: plan the course, take the field, print bibs, run the day, hand the
+// times to scoring. Admin preview: main.jsx shows these pages to admins only for now.
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import QRCode from 'qrcode'
+import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowRight,
+  ArrowUp,
+  Check,
+  Copy,
+  Download,
+  Flag,
+  KeyRound,
+  MapPin,
+  Play,
+  Plug,
+  Printer,
+  QrCode,
+  RotateCcw,
+  Square,
+  Trash2,
+  Users,
+} from 'lucide-react'
+import {
+  addSuiteCheckpoint,
+  addSuiteParticipant,
+  addSuitePassing,
+  assignSuiteBibs,
+  deleteSuiteCheckpoint,
+  deleteSuiteParticipant,
+  fetchSuiteResultsCsv,
+  finishSuiteRace,
+  getRacePluginLog,
+  getSuiteBoard,
+  getSuiteRace,
+  importSuiteParticipants,
+  listRacePlugins,
+  listSuiteCheckpoints,
+  listSuiteParticipants,
+  listSuitePlugins,
+  listSuiteRaces,
+  reopenSuiteRace,
+  reorderSuiteCheckpoints,
+  resetSuiteRace,
+  rotateStationKey,
+  setRacePlugin,
+  startSuiteRace,
+  submitSuiteResults,
+  updateSuiteCheckpoint,
+  updateSuiteParticipant,
+  updateSuiteSettings,
+} from '../../apiClient'
+import { Link, navigate, useRoute } from '../router'
+import { Button, Card, ChecklistRow, EmptyState, Eyebrow, Field, Gradient, Notice, Page, formatDate, inputClass } from '../ui'
+import { clock, hms } from './Station'
+
+const TABS = [
+  ['overview', 'Overview'],
+  ['field', 'Runners & bibs'],
+  ['plan', 'Course plan'],
+  ['day', 'Race day'],
+  ['plugins', 'Plugins'],
+  ['results', 'Results'],
+]
+
+const KIND_LABEL = { start: 'Start', checkpoint: 'Checkpoint', aid: 'Aid station', finish: 'Finish' }
+const STATUS_LABEL = { planning: 'Planning', live: 'Live', finished: 'Finished' }
+const P_STATUS = { registered: 'Registered', dns: 'DNS', started: 'On course', finished: 'Finished', dnf: 'DNF', dsq: 'DSQ' }
+const P_STATUS_CLASS = {
+  registered: 'bg-slate-100 text-slate-600',
+  dns: 'bg-slate-100 text-slate-500',
+  started: 'bg-blue-50 text-blue-700',
+  finished: 'bg-emerald-50 text-emerald-700',
+  dnf: 'bg-amber-50 text-amber-700',
+  dsq: 'bg-red-50 text-red-700',
+}
+
+/** A link into this app, absolute: what goes in a QR code or is copied for a volunteer. */
+function appUrl(hashPath) {
+  return `${window.location.origin}${window.location.pathname}#${hashPath}`
+}
+
+function minutesLabel(minutes) {
+  if (minutes == null) return '—'
+  return `${Math.floor(minutes / 60)}h${String(minutes % 60).padStart(2, '0')}`
+}
+
+function Chip({ children, className = '' }) {
+  return <span className={`inline-block rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-[.06em] ${className}`}>{children}</span>
+}
+
+function RaceStatusChip({ status }) {
+  const cls = status === 'live' ? 'bg-emerald-600 text-white' : status === 'finished' ? 'bg-[#0b1220] text-white' : 'bg-slate-100 text-slate-600'
+  return <Chip className={cls}>{STATUS_LABEL[status] ?? status}</Chip>
+}
+
+function useAsync(loader, deps) {
+  const [data, setData] = useState(null)
+  const [error, setError] = useState(null)
+  const reload = useCallback(() => loader().then(setData).catch((err) => setError(err.message)), deps) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    reload()
+  }, [reload])
+  return [data, error, reload, setData]
+}
+
+function CopyButton({ text, label = 'Copy link' }) {
+  const [done, setDone] = useState(false)
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        navigator.clipboard?.writeText(text).then(() => {
+          setDone(true)
+          setTimeout(() => setDone(false), 1500)
+        })
+      }}
+      className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:underline"
+    >
+      {done ? <Check size={12} /> : <Copy size={12} />} {done ? 'Copied' : label}
+    </button>
+  )
+}
+
+function QrImage({ text, size = 160, className = '' }) {
+  const [src, setSrc] = useState(null)
+  useEffect(() => {
+    QRCode.toDataURL(text, { margin: 1, width: size, errorCorrectionLevel: 'M' }).then(setSrc).catch(() => setSrc(null))
+  }, [text, size])
+  return src ? <img src={src} width={size} height={size} alt="" className={className} /> : <span style={{ width: size, height: size }} className="inline-block bg-slate-100" />
+}
+
+// ------------------------------------------------------------------------------------------ home
+
+export function SuiteHome() {
+  const [races, error] = useAsync(listSuiteRaces, [])
+  return (
+    <Page
+      eyebrow="RACE SUITE · ADMIN PREVIEW"
+      headline={
+        <>
+          Run the whole
+          <br />
+          <Gradient>race day.</Gradient>
+        </>
+      }
+      intro="Plan the checkpoints and aid stations, take the entry list, print bibs with a QR code, scan runners through every station on any phone, and hand the finish times to scoring. Free, and every part optional."
+    >
+      {error && (
+        <div className="mt-6">
+          <Notice kind="error">{error}</Notice>
+        </div>
+      )}
+      <div className="mt-8 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <Eyebrow>YOUR RACES</Eyebrow>
+          <p className="mt-1 text-sm text-slate-500">
+            The suite works on a race you already have. <Link to="/events" className="font-semibold text-blue-600">Create the event and its race</Link> first if it is not here.
+          </p>
+        </div>
+      </div>
+      {races?.length === 0 && (
+        <div className="mt-5">
+          <EmptyState title="No races yet" action={<Button onClick={() => navigate('/events/new')}>Create an event <ArrowRight size={15} /></Button>}>
+            Add an event with a race distance under Your events; it appears here.
+          </EmptyState>
+        </div>
+      )}
+      {races?.length > 0 && (
+        <div className="mt-5 grid gap-3">
+          {races.map((race) => (
+            <Link key={race.race_id} to={`/suite/${encodeURIComponent(race.race_id)}`} className="group flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 no-underline shadow-[0_10px_28px_rgba(15,23,42,.04)] transition hover:border-blue-300">
+              <div className="min-w-0">
+                <p className="font-mono text-[10px] tracking-[.08em] text-slate-500">
+                  {race.event_name.toUpperCase()} · {formatDate(race.event_date).toUpperCase()}
+                </p>
+                <p className="mt-1 text-lg font-bold tracking-[-.02em] text-[#0b1220]">{race.course_name}</p>
+              </div>
+              <div className="flex items-center gap-4 text-xs text-slate-500">
+                <span className="inline-flex items-center gap-1"><Users size={12} /> {race.participants}</span>
+                <span className="inline-flex items-center gap-1"><MapPin size={12} /> {race.checkpoints}</span>
+                <RaceStatusChip status={race.status} />
+                <span className="inline-flex items-center gap-1 font-semibold text-blue-600 transition group-hover:gap-2">Open <ArrowRight size={13} /></span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </Page>
+  )
+}
+
+// ------------------------------------------------------------------------------------------ race
+
+export function SuiteRace({ raceId }) {
+  const route = useRoute()
+  const tab = TABS.some(([key]) => key === route.query.tab) ? route.query.tab : 'overview'
+  const [race, error, reloadRace] = useAsync(() => getSuiteRace(raceId), [raceId])
+  const base = `/suite/${encodeURIComponent(raceId)}`
+
+  if (error && !race) {
+    return (
+      <Page back={{ to: '/suite', label: 'Race suite' }} title="Race">
+        <div className="mt-4"><Notice kind="error">{error}</Notice></div>
+      </Page>
+    )
+  }
+  if (!race) return <Page back={{ to: '/suite', label: 'Race suite' }} title="Loading…" />
+
+  return (
+    <Page back={{ to: '/suite', label: 'Race suite' }} eyebrow={`RACE SUITE · ${race.event_name.toUpperCase()} · ${formatDate(race.event_date).toUpperCase()}`} title={race.course_name}>
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-500">
+        <RaceStatusChip status={race.status} />
+        {race.started_at && <span>Gun {clock(race.started_at)}</span>}
+        <span>{race.participants} runner{race.participants === 1 ? '' : 's'}</span>
+        <span>{race.checkpoints} checkpoint{race.checkpoints === 1 ? '' : 's'}</span>
+        <Link to={`/races/${encodeURIComponent(raceId)}/course`} className="font-semibold text-blue-600">Race page setup →</Link>
+      </div>
+      <nav className="mt-8 flex flex-wrap gap-1 border-b border-slate-200" aria-label="Suite sections">
+        {TABS.map(([key, label]) => (
+          <Link key={key} to={`${base}?tab=${key}`} className={`-mb-px border-b-2 px-3 py-2 text-[13px] no-underline ${tab === key ? 'border-blue-600 font-bold text-[#0b1220]' : 'border-transparent font-medium text-slate-500 hover:text-[#0b1220]'}`} aria-current={tab === key ? 'page' : undefined}>
+            {label}
+          </Link>
+        ))}
+      </nav>
+      <div className="mt-8">
+        {tab === 'overview' && <Overview race={race} reload={reloadRace} />}
+        {tab === 'field' && <FieldTab race={race} reloadRace={reloadRace} />}
+        {tab === 'plan' && <PlanTab race={race} reloadRace={reloadRace} />}
+        {tab === 'day' && <DayTab race={race} reloadRace={reloadRace} />}
+        {tab === 'plugins' && <PluginsTab race={race} />}
+        {tab === 'results' && <ResultsTab race={race} />}
+      </div>
+    </Page>
+  )
+}
+
+// -------------------------------------------------------------------------------------- overview
+
+function Overview({ race, reload }) {
+  const raceId = race.race_id
+  const [checkpoints] = useAsync(() => listSuiteCheckpoints(raceId), [raceId])
+  const [people] = useAsync(() => listSuiteParticipants(raceId), [raceId])
+  const [form, setForm] = useState(race.settings)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState(null)
+  const base = `/suite/${encodeURIComponent(raceId)}`
+
+  const hasStart = checkpoints?.some((c) => c.kind === 'start')
+  const hasFinish = checkpoints?.some((c) => c.kind === 'finish')
+  const unnumbered = people?.filter((p) => !p.bib).length ?? 0
+
+  async function save(event) {
+    event.preventDefault()
+    setError(null)
+    try {
+      await updateSuiteSettings(raceId, { ...form, organizer_phone: form.organizer_phone || null, bib_note: form.bib_note || null })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 1500)
+      reload()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  return (
+    <div className="grid gap-8 lg:grid-cols-[1.1fr_.9fr]">
+      <div>
+        <Eyebrow as="h2">READY FOR RACE DAY?</Eyebrow>
+        <ul className="mt-3 divide-y divide-slate-200 border-y border-slate-200">
+          <ChecklistRow ok={Boolean(people?.length)} label="Runners on the list" detail={people ? `${people.length} registered` : 'Loading…'} fixTo={`${base}?tab=field`} fixLabel="Add runners" />
+          <ChecklistRow ok={people?.length > 0 && unnumbered === 0} label="Every runner has a bib" detail={unnumbered ? `${unnumbered} without a number` : 'Numbers assigned'} fixTo={`${base}?tab=field`} fixLabel="Assign bibs" />
+          <ChecklistRow ok={Boolean(hasStart && hasFinish)} label="A start and a finish on the plan" detail={checkpoints ? `${checkpoints.length} checkpoint${checkpoints.length === 1 ? '' : 's'}${hasStart ? '' : ', no start'}${hasFinish ? '' : ', no finish'}` : 'Loading…'} fixTo={`${base}?tab=plan`} fixLabel="Plan the course" />
+          <ChecklistRow ok={race.status !== 'planning'} label="The gun" detail={race.status === 'planning' ? 'Press Start on the race-day page when the field goes' : `Started ${clock(race.started_at)}`} fixTo={`${base}?tab=day`} fixLabel="Race day" />
+        </ul>
+        <div className="mt-8 rounded-2xl border border-dashed border-blue-200 bg-blue-50/40 p-5 text-sm leading-6 text-slate-700">
+          <p className="font-bold text-[#0b1220]">How a race runs in the suite</p>
+          <ol className="mt-2 list-decimal space-y-1 pl-5">
+            <li>Plan the checkpoints: where they are, what they serve, the cut-off at each.</li>
+            <li>Paste the entry list, assign bib numbers, print the bibs. Each bib carries a QR code.</li>
+            <li>Give each checkpoint its station link (or QR). Any phone opens it, no account needed; it keeps working without signal.</li>
+            <li>Press Start when the field goes. Stations scan bibs or type numbers; the board shows who is where and who is overdue.</li>
+            <li>Finish the race, check the list, send it to OTRI scoring. Publish the race page when you are ready.</li>
+          </ol>
+        </div>
+      </div>
+      <Card>
+        <Eyebrow as="h2">SETTINGS</Eyebrow>
+        <form onSubmit={save} className="mt-4 grid gap-4">
+          <Field label="Timing" hint="Gun: every time counts from the start signal. Net: from the runner's own start-line scan when there is one.">
+            <select value={form.timing} onChange={(e) => setForm((f) => ({ ...f, timing: e.target.value }))} className={inputClass}>
+              <option value="gun">Gun time</option>
+              <option value="net">Net time (start-line scan)</option>
+            </select>
+          </Field>
+          <Field label="Organizer phone" hint="Printed on every bib: whom to call if a runner is found alone." htmlFor="st-phone">
+            <input id="st-phone" value={form.organizer_phone ?? ''} onChange={(e) => setForm((f) => ({ ...f, organizer_phone: e.target.value }))} className={inputClass} placeholder="+66 81 234 5678" />
+          </Field>
+          <Field label="Line on the bib" hint="Optional, e.g. the emergency number or a sponsor line." htmlFor="st-note">
+            <input id="st-note" value={form.bib_note ?? ''} onChange={(e) => setForm((f) => ({ ...f, bib_note: e.target.value }))} className={inputClass} maxLength={120} />
+          </Field>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.bib_show_name} onChange={(e) => setForm((f) => ({ ...f, bib_show_name: e.target.checked }))} /> Print the runner's first name on the bib
+          </label>
+          {error && <Notice kind="error">{error}</Notice>}
+          <Button type="submit">{saved ? <><Check size={15} /> Saved</> : 'Save settings'}</Button>
+        </form>
+      </Card>
+    </div>
+  )
+}
+
+// ----------------------------------------------------------------------------------------- field
+
+const EMPTY_PERSON = { bib: '', family_name: '', first_name: '', gender: 'X', birth_year: '', nationality: '', club: '', emergency_contact: '' }
+
+function FieldTab({ race, reloadRace }) {
+  const raceId = race.race_id
+  const [people, error, reload] = useAsync(() => listSuiteParticipants(raceId), [raceId])
+  const [form, setForm] = useState(EMPTY_PERSON)
+  const [editing, setEditing] = useState(null)
+  const [formError, setFormError] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [importText, setImportText] = useState('')
+  const [replace, setReplace] = useState(false)
+  const [imported, setImported] = useState(null)
+  const [bibs, setBibs] = useState({ start: 1, prefix: '', only_missing: true })
+  const [filter, setFilter] = useState('')
+
+  function refresh() {
+    reload()
+    reloadRace()
+  }
+
+  async function submit(event) {
+    event.preventDefault()
+    setFormError(null)
+    setBusy(true)
+    const payload = {
+      ...form,
+      bib: form.bib.trim() || null,
+      birth_year: form.birth_year ? Number(form.birth_year) : null,
+      nationality: form.nationality.trim() || null,
+      club: form.club.trim() || null,
+      emergency_contact: form.emergency_contact.trim() || null,
+    }
+    try {
+      if (editing) await updateSuiteParticipant(editing, { ...payload, clear_bib: !payload.bib, clear_birth_year: !payload.birth_year })
+      else await addSuiteParticipant(raceId, payload)
+      setForm(EMPTY_PERSON)
+      setEditing(null)
+      refresh()
+    } catch (err) {
+      setFormError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function doImport(event) {
+    event.preventDefault()
+    setBusy(true)
+    setImported(null)
+    try {
+      if (replace && !window.confirm('Replace the whole entry list? Passings recorded for the current runners are deleted with them.')) return
+      const result = await importSuiteParticipants(raceId, importText, replace)
+      setImported(result)
+      if (result.added) setImportText('')
+      refresh()
+    } catch (err) {
+      setImported({ error: err.message })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function doAssign(event) {
+    event.preventDefault()
+    setBusy(true)
+    try {
+      if (!bibs.only_missing && !window.confirm('Renumber everyone? Bibs already printed will no longer match.')) return
+      await assignSuiteBibs(raceId, { start: Number(bibs.start) || 1, prefix: bibs.prefix, only_missing: bibs.only_missing })
+      refresh()
+    } catch (err) {
+      setFormError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function setStatus(person, status) {
+    try {
+      await updateSuiteParticipant(person.participant_id, { status })
+      refresh()
+    } catch (err) {
+      setFormError(err.message)
+    }
+  }
+
+  async function remove(person) {
+    if (!window.confirm(`Remove ${person.first_name} ${person.family_name} from the list? Their passings go too.`)) return
+    await deleteSuiteParticipant(person.participant_id)
+    refresh()
+  }
+
+  function edit(person) {
+    setEditing(person.participant_id)
+    setForm({ bib: person.bib ?? '', family_name: person.family_name, first_name: person.first_name, gender: person.gender, birth_year: person.birth_year ?? '', nationality: person.nationality ?? '', club: person.club ?? '', emergency_contact: person.emergency_contact ?? '' })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const shown = useMemo(() => {
+    const q = filter.trim().toLowerCase()
+    if (!q || !people) return people ?? []
+    return people.filter((p) => `${p.bib ?? ''} ${p.first_name} ${p.family_name} ${p.club ?? ''}`.toLowerCase().includes(q))
+  }, [people, filter])
+
+  return (
+    <div className="grid gap-8">
+      {error && <Notice kind="error">{error}</Notice>}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <Eyebrow as="h2">PASTE THE ENTRY LIST</Eyebrow>
+          <form onSubmit={doImport} className="mt-3 grid gap-3">
+            <textarea
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+              rows={6}
+              className={`${inputClass} font-mono text-xs`}
+              placeholder={'Bib,Last name,First name,Gender,Year of birth,Club\n12,Doe,Jane,F,1990,Trail Club\n7,Smith,John,M,1985,'}
+              aria-label="Entry list as CSV"
+            />
+            <p className="text-xs leading-5 text-slate-500">Copy the cells from your spreadsheet (registration export, Google Form answers). The first row names the columns; Last name or Name is the only one needed. Columns OTRI does not know are left alone and listed.</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="submit" busy={busy} disabled={!importText.trim()}>Add these runners</Button>
+              <label className="flex items-center gap-2 text-xs text-slate-600"><input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} /> Replace the current list</label>
+            </div>
+            {imported?.error && <Notice kind="error">{imported.error}</Notice>}
+            {imported && !imported.error && (
+              <Notice kind={imported.added ? 'success' : 'warning'} title={`${imported.added} runner${imported.added === 1 ? '' : 's'} added`}>
+                {Object.keys(imported.columns).length > 0 && <span className="block">Read: {Object.entries(imported.columns).map(([f, h]) => `${h} → ${f.replace('_', ' ')}`).join(', ')}.</span>}
+                {imported.ignored_columns.length > 0 && <span className="block">Left alone: {imported.ignored_columns.join(', ')}.</span>}
+                {imported.skipped.length > 0 && <span className="block">Skipped: {imported.skipped.slice(0, 5).join('; ')}{imported.skipped.length > 5 ? ` and ${imported.skipped.length - 5} more` : ''}.</span>}
+              </Notice>
+            )}
+          </form>
+        </Card>
+        <div className="grid gap-6">
+          <Card>
+            <Eyebrow as="h2">{editing ? 'EDIT RUNNER' : 'ADD ONE RUNNER'}</Eyebrow>
+            <form onSubmit={submit} className="mt-3 grid gap-3 sm:grid-cols-2" noValidate>
+              <Field label="Bib" htmlFor="p-bib"><input id="p-bib" value={form.bib} onChange={(e) => setForm((f) => ({ ...f, bib: e.target.value }))} className={inputClass} /></Field>
+              <Field label="Gender" htmlFor="p-gender">
+                <select id="p-gender" value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value }))} className={inputClass}>
+                  <option value="F">F</option><option value="M">M</option><option value="X">X / not given</option>
+                </select>
+              </Field>
+              <Field label="First name" htmlFor="p-first"><input id="p-first" value={form.first_name} onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))} className={inputClass} /></Field>
+              <Field label="Last name" htmlFor="p-last"><input id="p-last" required value={form.family_name} onChange={(e) => setForm((f) => ({ ...f, family_name: e.target.value }))} className={inputClass} /></Field>
+              <Field label="Year of birth" htmlFor="p-yob"><input id="p-yob" inputMode="numeric" value={form.birth_year} onChange={(e) => setForm((f) => ({ ...f, birth_year: e.target.value }))} className={inputClass} placeholder="1990" /></Field>
+              <Field label="Nationality" htmlFor="p-nat"><input id="p-nat" value={form.nationality} onChange={(e) => setForm((f) => ({ ...f, nationality: e.target.value }))} className={inputClass} placeholder="THA" maxLength={3} /></Field>
+              <Field label="Club" htmlFor="p-club"><input id="p-club" value={form.club} onChange={(e) => setForm((f) => ({ ...f, club: e.target.value }))} className={inputClass} /></Field>
+              <Field label="Emergency contact" hint="Stays private; never exported." htmlFor="p-ice"><input id="p-ice" value={form.emergency_contact} onChange={(e) => setForm((f) => ({ ...f, emergency_contact: e.target.value }))} className={inputClass} /></Field>
+              {formError && <div className="sm:col-span-2"><Notice kind="error">{formError}</Notice></div>}
+              <div className="flex gap-2 sm:col-span-2">
+                <Button type="submit" busy={busy} disabled={!form.family_name.trim()}>{editing ? 'Save runner' : 'Add runner'}</Button>
+                {editing && <Button type="button" variant="secondary" onClick={() => { setEditing(null); setForm(EMPTY_PERSON) }}>Cancel</Button>}
+              </div>
+            </form>
+          </Card>
+          <Card>
+            <Eyebrow as="h2">BIB NUMBERS</Eyebrow>
+            <form onSubmit={doAssign} className="mt-3 flex flex-wrap items-end gap-3">
+              <Field label="From" htmlFor="b-start"><input id="b-start" inputMode="numeric" value={bibs.start} onChange={(e) => setBibs((b) => ({ ...b, start: e.target.value }))} className={`${inputClass} w-24`} /></Field>
+              <Field label="Prefix" htmlFor="b-prefix"><input id="b-prefix" value={bibs.prefix} onChange={(e) => setBibs((b) => ({ ...b, prefix: e.target.value }))} className={`${inputClass} w-20`} maxLength={4} placeholder="—" /></Field>
+              <label className="flex items-center gap-2 pb-3 text-xs text-slate-600"><input type="checkbox" checked={bibs.only_missing} onChange={(e) => setBibs((b) => ({ ...b, only_missing: e.target.checked }))} /> Only runners without one</label>
+              <Button type="submit" variant="secondary" busy={busy} disabled={!people?.length}>Assign numbers</Button>
+              <Link to={`/suite/${encodeURIComponent(raceId)}/bibs`} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-gradient-to-r from-blue-700 to-blue-500 px-4 text-[13px] font-semibold text-white no-underline shadow-[0_10px_28px_rgba(37,99,235,.2)]"><Printer size={15} /> Print bibs</Link>
+            </form>
+            <p className="mt-2 text-xs leading-5 text-slate-500">In last-name order, skipping numbers already given. Two bibs on an A4 sheet, each with the runner's QR code; print on paper or Tyvek, or take the PDF to a copy shop.</p>
+          </Card>
+        </div>
+      </div>
+
+      <div>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <Eyebrow as="h2">THE LIST</Eyebrow>
+            <p className="mt-1 text-sm text-slate-500">{people ? `${people.length} runner${people.length === 1 ? '' : 's'}` : 'Loading…'}</p>
+          </div>
+          <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Find a bib, name or club" aria-label="Find a runner" className={`${inputClass} w-64`} />
+        </div>
+        {people?.length === 0 && <div className="mt-4"><EmptyState title="No runners yet">Paste your entry list above, or add runners one by one.</EmptyState></div>}
+        {shown.length > 0 && (
+          <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+            <table className="w-full text-sm">
+              <thead className="text-left font-mono text-[10px] tracking-[.06em] text-slate-500">
+                <tr><th className="px-4 py-3">BIB</th><th className="px-3 py-3">NAME</th><th className="px-3 py-3">G</th><th className="px-3 py-3">BORN</th><th className="px-3 py-3">CLUB</th><th className="px-3 py-3">STATUS</th><th className="px-3 py-3" /></tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {shown.map((p) => (
+                  <tr key={p.participant_id}>
+                    <td className="px-4 py-2 font-mono font-bold">{p.bib ?? <span className="font-normal text-amber-600">—</span>}</td>
+                    <td className="px-3 py-2">{p.first_name} <strong>{p.family_name}</strong>{p.emergency_contact && <span className="ml-1 text-slate-400" title={`Emergency: ${p.emergency_contact}`}>☎</span>}</td>
+                    <td className="px-3 py-2 font-mono text-xs">{p.gender}</td>
+                    <td className="px-3 py-2 font-mono text-xs">{p.birth_year ?? ''}</td>
+                    <td className="px-3 py-2 text-xs text-slate-600">{p.club ?? ''}</td>
+                    <td className="px-3 py-2">
+                      <select value={p.status} onChange={(e) => setStatus(p, e.target.value)} aria-label={`Status of ${p.first_name} ${p.family_name}`} className={`rounded-full border-0 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[.06em] ${P_STATUS_CLASS[p.status]}`}>
+                        {Object.entries(P_STATUS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                      </select>
+                    </td>
+                    <td className="px-3 py-2 text-right whitespace-nowrap">
+                      <button type="button" onClick={() => edit(p)} className="text-xs font-semibold text-blue-600 hover:underline">Edit</button>
+                      <button type="button" onClick={() => remove(p)} className="ml-3 text-xs font-semibold text-red-600 hover:underline">Remove</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ------------------------------------------------------------------------------------------ plan
+
+const EMPTY_CP = { name: '', kind: 'aid', distance_km: '', cutoff_minutes: '', water: true, food: false, medical: false, drop_bag: false, crew_access: false, supplies: '', notes: '' }
+
+function CheckpointForm({ initial, onSubmit, onCancel, busy, submitLabel }) {
+  const [form, setForm] = useState(initial)
+  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        onSubmit({
+          ...form,
+          distance_km: form.distance_km === '' ? null : Number(form.distance_km),
+          cutoff_minutes: form.cutoff_minutes === '' ? null : Number(form.cutoff_minutes),
+          supplies: form.supplies.trim() || null,
+          notes: form.notes.trim() || null,
+        })
+      }}
+      className="grid gap-3 sm:grid-cols-2"
+      noValidate
+    >
+      <Field label="Name" htmlFor="cp-name"><input id="cp-name" required value={form.name} onChange={set('name')} className={inputClass} placeholder="Aid 1 · Col de la Croix" /></Field>
+      <Field label="Kind" htmlFor="cp-kind">
+        <select id="cp-kind" value={form.kind} onChange={set('kind')} className={inputClass}>
+          {Object.entries(KIND_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+      </Field>
+      <Field label="Distance from the start (km)" htmlFor="cp-km"><input id="cp-km" inputMode="decimal" value={form.distance_km} onChange={set('distance_km')} className={inputClass} placeholder="18.5" /></Field>
+      <Field label="Cut-off (minutes after the gun)" hint={form.cutoff_minutes ? `= ${minutesLabel(Number(form.cutoff_minutes))} after the start` : 'Leave empty for none'} htmlFor="cp-cut"><input id="cp-cut" inputMode="numeric" value={form.cutoff_minutes} onChange={set('cutoff_minutes')} className={inputClass} placeholder="240" /></Field>
+      <fieldset className="sm:col-span-2">
+        <legend className="text-sm font-semibold text-[#0b1220]">Served here</legend>
+        <div className="mt-1.5 flex flex-wrap gap-4 text-sm">
+          {[['water', 'Water'], ['food', 'Food'], ['medical', 'Medical'], ['drop_bag', 'Drop bags'], ['crew_access', 'Crew access']].map(([k, v]) => (
+            <label key={k} className="flex items-center gap-1.5"><input type="checkbox" checked={form[k]} onChange={set(k)} /> {v}</label>
+          ))}
+        </div>
+      </fieldset>
+      <Field label="Supplies" hint="For the volunteers' shopping list." htmlFor="cp-sup"><input id="cp-sup" value={form.supplies} onChange={set('supplies')} className={inputClass} placeholder="60 l water, cola, bananas, salt, blankets" /></Field>
+      <Field label="Notes" hint="Access, parking, radio channel, who is in charge." htmlFor="cp-notes"><input id="cp-notes" value={form.notes} onChange={set('notes')} className={inputClass} /></Field>
+      <div className="flex gap-2 sm:col-span-2">
+        <Button type="submit" busy={busy} disabled={!form.name.trim()}>{submitLabel}</Button>
+        {onCancel && <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>}
+      </div>
+    </form>
+  )
+}
+
+function PlanTab({ race, reloadRace }) {
+  const raceId = race.race_id
+  const [checkpoints, error, reload] = useAsync(() => listSuiteCheckpoints(raceId), [raceId])
+  const [editing, setEditing] = useState(null)
+  const [showQr, setShowQr] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [actionError, setActionError] = useState(null)
+
+  function refresh() {
+    reload()
+    reloadRace()
+  }
+
+  async function run(action) {
+    setBusy(true)
+    setActionError(null)
+    try {
+      await action()
+      refresh()
+    } catch (err) {
+      setActionError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function move(index, delta) {
+    const ids = checkpoints.map((c) => c.checkpoint_id)
+    const target = index + delta
+    if (target < 0 || target >= ids.length) return
+    ;[ids[index], ids[target]] = [ids[target], ids[index]]
+    run(() => reorderSuiteCheckpoints(raceId, ids))
+  }
+
+  return (
+    <div className="grid gap-8">
+      {(error || actionError) && <Notice kind="error">{error || actionError}</Notice>}
+      <div>
+        <Eyebrow as="h2">THE COURSE, STATION BY STATION</Eyebrow>
+        <p className="mt-1 max-w-[64ch] text-sm leading-6 text-slate-500">
+          Start, checkpoints, aid stations, finish, in course order. Each gets a station link: open it on the volunteer's phone and that phone records passings there, with or without signal. Cut-offs make the board flag who is overdue.
+        </p>
+        {checkpoints?.length === 0 && <div className="mt-4"><EmptyState title="No checkpoints yet">Add the start, the aid stations and the finish below. Distances are from the start; cut-offs are minutes after the gun.</EmptyState></div>}
+        {checkpoints?.length > 0 && (
+          <ol className="mt-4 grid gap-3">
+            {checkpoints.map((c, index) => {
+              const stationLink = appUrl(`/station/${c.station_key}`)
+              return (
+                <li key={c.checkpoint_id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_28px_rgba(15,23,42,.04)]">
+                  {editing === c.checkpoint_id ? (
+                    <CheckpointForm
+                      initial={{ ...c, distance_km: c.distance_km ?? '', cutoff_minutes: c.cutoff_minutes ?? '', supplies: c.supplies ?? '', notes: c.notes ?? '' }}
+                      busy={busy}
+                      submitLabel="Save checkpoint"
+                      onCancel={() => setEditing(null)}
+                      onSubmit={(values) => run(async () => { await updateSuiteCheckpoint(c.checkpoint_id, { ...values, clear_distance: values.distance_km == null, clear_cutoff: values.cutoff_minutes == null }); setEditing(null) })}
+                    />
+                  ) : (
+                    <div className="flex flex-wrap items-start gap-4">
+                      <div className="flex flex-col gap-1">
+                        <button type="button" onClick={() => move(index, -1)} disabled={index === 0 || busy} aria-label="Move up" className="rounded border border-slate-200 p-1 text-slate-500 disabled:opacity-30"><ArrowUp size={12} /></button>
+                        <button type="button" onClick={() => move(index, 1)} disabled={index === checkpoints.length - 1 || busy} aria-label="Move down" className="rounded border border-slate-200 p-1 text-slate-500 disabled:opacity-30"><ArrowDown size={12} /></button>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="flex flex-wrap items-center gap-2">
+                          <span className="font-mono text-[10px] text-slate-400">{c.position}</span>
+                          <Chip className={c.kind === 'start' ? 'bg-emerald-50 text-emerald-700' : c.kind === 'finish' ? 'bg-[#0b1220] text-white' : c.kind === 'aid' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'}>{KIND_LABEL[c.kind]}</Chip>
+                          <span className="text-base font-bold tracking-[-.02em] text-[#0b1220]">{c.name}</span>
+                        </p>
+                        <p className="mt-1 font-mono text-[11px] text-slate-500">
+                          {c.distance_km != null ? `km ${c.distance_km}` : 'distance —'} · cut-off {c.cutoff_minutes != null ? minutesLabel(c.cutoff_minutes) : '—'}
+                          {[c.water && 'water', c.food && 'food', c.medical && 'medical', c.drop_bag && 'drop bags', c.crew_access && 'crew'].filter(Boolean).length > 0 && ` · ${[c.water && 'water', c.food && 'food', c.medical && 'medical', c.drop_bag && 'drop bags', c.crew_access && 'crew'].filter(Boolean).join(', ')}`}
+                        </p>
+                        {c.supplies && <p className="mt-1 text-xs text-slate-600"><span className="font-semibold">Supplies:</span> {c.supplies}</p>}
+                        {c.notes && <p className="mt-0.5 text-xs text-slate-600">{c.notes}</p>}
+                        <div className="mt-3 flex flex-wrap items-center gap-4 text-xs">
+                          <span className="inline-flex items-center gap-1 font-mono text-[10px] tracking-[.06em] text-slate-500"><KeyRound size={11} /> STATION LINK</span>
+                          <CopyButton text={stationLink} />
+                          <button type="button" onClick={() => setShowQr(showQr === c.checkpoint_id ? null : c.checkpoint_id)} className="inline-flex items-center gap-1 font-semibold text-blue-600 hover:underline"><QrCode size={12} /> {showQr === c.checkpoint_id ? 'Hide QR' : 'Show QR'}</button>
+                          <a href={stationLink} target="_blank" rel="noreferrer" className="font-semibold text-blue-600 hover:underline">Open station ↗</a>
+                          <button type="button" onClick={() => { if (window.confirm('New link for this station? The old one stops working at once.')) run(() => rotateStationKey(c.checkpoint_id)) }} className="font-semibold text-slate-500 hover:underline">New link</button>
+                        </div>
+                        {showQr === c.checkpoint_id && (
+                          <div className="mt-3 flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                            <QrImage text={stationLink} size={140} />
+                            <p className="text-xs leading-5 text-slate-600">The volunteer scans this with their phone's camera and the station page opens. The link is the key: share it only with the people running this checkpoint.</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-3 text-xs">
+                        <button type="button" onClick={() => setEditing(c.checkpoint_id)} className="font-semibold text-blue-600 hover:underline">Edit</button>
+                        <button type="button" onClick={() => { if (window.confirm(`Delete “${c.name}”? Passings recorded there go with it.`)) run(() => deleteSuiteCheckpoint(c.checkpoint_id)) }} className="inline-flex items-center gap-1 font-semibold text-red-600 hover:underline"><Trash2 size={12} /> Delete</button>
+                      </div>
+                    </div>
+                  )}
+                </li>
+              )
+            })}
+          </ol>
+        )}
+      </div>
+      <Card>
+        <Eyebrow as="h2">ADD A CHECKPOINT</Eyebrow>
+        <div className="mt-3">
+          <CheckpointForm key={checkpoints?.length ?? 0} initial={EMPTY_CP} busy={busy} submitLabel="Add checkpoint" onSubmit={(values) => run(() => addSuiteCheckpoint(raceId, values))} />
+        </div>
+      </Card>
+    </div>
+  )
+}
+
+// ------------------------------------------------------------------------------------------- day
+
+function Tile({ label, value, tone = 'plain' }) {
+  const tones = { plain: 'text-[#0b1220]', ok: 'text-emerald-700', warn: 'text-amber-700', bad: 'text-red-700', muted: 'text-slate-500' }
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+      <p className="font-mono text-[10px] tracking-[.06em] text-slate-500">{label}</p>
+      <p className={`mt-1 text-2xl font-bold tracking-[-.03em] ${tones[tone]}`}>{value}</p>
+    </div>
+  )
+}
+
+function DayTab({ race, reloadRace }) {
+  const raceId = race.race_id
+  const [board, error, reload] = useAsync(() => getSuiteBoard(raceId), [raceId])
+  const [busy, setBusy] = useState(false)
+  const [actionError, setActionError] = useState(null)
+  const [filter, setFilter] = useState('all')
+  const [manual, setManual] = useState({ participant_id: '', checkpoint_id: '', time: '' })
+  const [people] = useAsync(() => listSuiteParticipants(raceId), [raceId])
+  const live = board?.status === 'live'
+
+  useEffect(() => {
+    if (!live) return undefined
+    const timer = setInterval(reload, 10_000)
+    return () => clearInterval(timer)
+  }, [live, reload])
+
+  async function run(action, confirmText) {
+    if (confirmText && !window.confirm(confirmText)) return
+    setBusy(true)
+    setActionError(null)
+    try {
+      await action()
+      reload()
+      reloadRace()
+    } catch (err) {
+      setActionError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const rows = useMemo(() => {
+    if (!board) return []
+    if (filter === 'course') return board.participants.filter((p) => p.status === 'started')
+    if (filter === 'overdue') return board.participants.filter((p) => p.overdue)
+    if (filter === 'finished') return board.participants.filter((p) => p.status === 'finished')
+    return board.participants
+  }, [board, filter])
+
+  function recordedAtFromInput(value) {
+    if (!value) return null
+    const [h, m, s = '0'] = value.split(':')
+    const at = new Date()
+    at.setHours(Number(h), Number(m), Number(s), 0)
+    return at.toISOString()
+  }
+
+  return (
+    <div className="grid gap-8">
+      {(error || actionError) && <Notice kind="error">{error || actionError}</Notice>}
+      <div className="flex flex-wrap items-center gap-3">
+        {board?.status === 'planning' && (
+          <Button onClick={() => run(() => startSuiteRace(raceId), `Start “${race.course_name}” now? Every registered runner is put on course; mark no-shows DNS first or later.`)} busy={busy}>
+            <Play size={15} /> Start the race now
+          </Button>
+        )}
+        {board?.status === 'live' && (
+          <Button variant="secondary" onClick={() => run(() => finishSuiteRace(raceId), 'Close the race? Runners still out are marked DNF. You can reopen if that was early.')} busy={busy}>
+            <Square size={15} /> Finish the race
+          </Button>
+        )}
+        {board?.status === 'finished' && (
+          <Button variant="secondary" onClick={() => run(() => reopenSuiteRace(raceId))} busy={busy}>
+            <RotateCcw size={15} /> Reopen
+          </Button>
+        )}
+        {board && board.status !== 'planning' && (
+          <Button variant="danger" onClick={() => run(() => resetSuiteRace(raceId), 'Back to planning? Every passing is deleted and the clock is cleared. For a rehearsal, not for race day.')} busy={busy}>
+            Reset for a rehearsal
+          </Button>
+        )}
+        {board && (
+          <span className="ml-auto flex items-center gap-2 text-xs text-slate-500">
+            <RaceStatusChip status={board.status} />
+            {board.started_at && `Gun ${clock(board.started_at)}`}
+            {live && <span className="inline-flex items-center gap-1"><i className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" /> refreshing every 10 s</span>}
+          </span>
+        )}
+      </div>
+
+      {board && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <Tile label="RUNNERS" value={board.counts.total} />
+          <Tile label="ON COURSE" value={board.counts.on_course} tone="ok" />
+          <Tile label="FINISHED" value={board.counts.finished} />
+          <Tile label="OVERDUE" value={board.counts.overdue} tone={board.counts.overdue ? 'bad' : 'muted'} />
+          <Tile label="DNF" value={board.counts.dnf} tone="warn" />
+          <Tile label="DNS" value={board.counts.dns} tone="muted" />
+        </div>
+      )}
+
+      {board?.checkpoints.length > 0 && (
+        <div>
+          <Eyebrow as="h2">THROUGH EACH STATION</Eyebrow>
+          <ol className="mt-3 grid gap-2">
+            {board.checkpoints.map((c) => {
+              const denominator = Math.max(1, board.counts.total - board.counts.dns)
+              const share = Math.min(100, Math.round((c.through / denominator) * 100))
+              return (
+                <li key={c.checkpoint_id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2.5">
+                  <div className="min-w-0">
+                    <p className="flex flex-wrap items-center gap-2 text-sm">
+                      <span className="font-mono text-[10px] text-slate-400">{c.position}</span>
+                      <span className="font-semibold text-[#0b1220]">{c.name}</span>
+                      <span className="font-mono text-[10px] text-slate-500">{c.distance_km != null ? `km ${c.distance_km}` : ''}{c.cutoff_minutes != null ? ` · cut-off ${minutesLabel(c.cutoff_minutes)}` : ''}</span>
+                    </p>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-blue-600" style={{ width: `${share}%` }} /></div>
+                  </div>
+                  <p className="font-mono text-sm font-bold text-[#0b1220]">{c.through} <span className="font-normal text-slate-400">/ {denominator}</span></p>
+                </li>
+              )
+            })}
+          </ol>
+        </div>
+      )}
+
+      {board?.panels?.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {board.panels.map((panel) => (
+            <Card key={panel.plugin}>
+              <Eyebrow as="h2" className="flex items-center gap-1.5"><Plug size={11} /> {panel.title.toUpperCase()}</Eyebrow>
+              {panel.error && <Notice kind="error">{panel.error}</Notice>}
+              {panel.lines?.length ? (
+                <ul className="mt-2 divide-y divide-slate-100 text-sm">{panel.lines.map((line, i) => <li key={i} className="py-1.5">{line}</li>)}</ul>
+              ) : (
+                <p className="mt-2 text-sm text-slate-500">{panel.empty ?? 'Nothing yet.'}</p>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <div>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <Eyebrow as="h2">WHO IS WHERE</Eyebrow>
+          <div className="flex gap-1 text-xs">
+            {[['all', 'All'], ['course', 'On course'], ['overdue', 'Overdue'], ['finished', 'Finished']].map(([k, v]) => (
+              <button key={k} type="button" onClick={() => setFilter(k)} className={`rounded-full px-3 py-1 font-semibold ${filter === k ? 'bg-[#0b1220] text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'}`}>{v}</button>
+            ))}
+          </div>
+        </div>
+        {rows.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-500">{board?.participants.length ? 'Nobody in this view.' : 'No runners on the list yet.'}</p>
+        ) : (
+          <div className="mt-3 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+            <table className="w-full text-sm">
+              <thead className="text-left font-mono text-[10px] tracking-[.06em] text-slate-500">
+                <tr><th className="px-4 py-3">#</th><th className="px-3 py-3">BIB</th><th className="px-3 py-3">RUNNER</th><th className="px-3 py-3">STATUS</th><th className="px-3 py-3">LAST SEEN</th><th className="px-3 py-3">ELAPSED</th><th className="px-3 py-3">HEADING TO</th></tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {rows.map((p) => (
+                  <tr key={p.participant_id} className={p.overdue ? 'bg-red-50/60' : ''}>
+                    <td className="px-4 py-2 font-mono text-xs text-slate-500">{p.rank ?? ''}</td>
+                    <td className="px-3 py-2 font-mono font-bold">{p.bib ?? '—'}</td>
+                    <td className="px-3 py-2">{p.first_name} <strong>{p.family_name}</strong>{p.club && <span className="ml-1 text-xs text-slate-500">{p.club}</span>}</td>
+                    <td className="px-3 py-2"><Chip className={P_STATUS_CLASS[p.status]}>{P_STATUS[p.status]}</Chip>{p.overdue && <Chip className="ml-1 bg-red-600 text-white"><AlertTriangle size={9} className="mr-0.5 inline" />overdue</Chip>}</td>
+                    <td className="px-3 py-2 text-xs">{p.last ? <>{p.last.name} <span className="font-mono text-slate-500">{clock(p.last.recorded_at)}</span></> : <span className="text-slate-400">—</span>}</td>
+                    <td className="px-3 py-2 font-mono text-xs">{p.status === 'finished' ? <strong>{hms(p.finish_seconds)}</strong> : p.last ? hms(p.last.elapsed_seconds) : ''}</td>
+                    <td className="px-3 py-2 text-xs text-slate-600">{p.next_checkpoint ? `${p.next_checkpoint.name}${p.next_checkpoint.cutoff_minutes != null ? ` (cut-off ${minutesLabel(p.next_checkpoint.cutoff_minutes)})` : ''}` : ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {board && board.checkpoints.length > 0 && people?.length > 0 && (
+        <Card>
+          <Eyebrow as="h2">RECORD A PASSING BY HAND</Eyebrow>
+          <p className="mt-1 text-xs text-slate-500">A radio call, a scanner that failed. Time is optional: now if empty.</p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              run(async () => {
+                await addSuitePassing(raceId, { checkpoint_id: manual.checkpoint_id, participant_id: manual.participant_id, recorded_at: recordedAtFromInput(manual.time) })
+                setManual((m) => ({ ...m, participant_id: '', time: '' }))
+              })
+            }}
+            className="mt-3 flex flex-wrap items-end gap-3"
+          >
+            <Field label="Runner" htmlFor="m-runner">
+              <select id="m-runner" required value={manual.participant_id} onChange={(e) => setManual((m) => ({ ...m, participant_id: e.target.value }))} className={`${inputClass} w-64`}>
+                <option value="">Choose…</option>
+                {people.map((p) => <option key={p.participant_id} value={p.participant_id}>#{p.bib ?? '—'} {p.first_name} {p.family_name}</option>)}
+              </select>
+            </Field>
+            <Field label="Checkpoint" htmlFor="m-cp">
+              <select id="m-cp" required value={manual.checkpoint_id} onChange={(e) => setManual((m) => ({ ...m, checkpoint_id: e.target.value }))} className={`${inputClass} w-56`}>
+                <option value="">Choose…</option>
+                {board.checkpoints.map((c) => <option key={c.checkpoint_id} value={c.checkpoint_id}>{c.position}. {c.name}</option>)}
+              </select>
+            </Field>
+            <Field label="Time of day" htmlFor="m-time"><input id="m-time" type="time" step="1" value={manual.time} onChange={(e) => setManual((m) => ({ ...m, time: e.target.value }))} className={inputClass} /></Field>
+            <Button type="submit" variant="secondary" busy={busy} disabled={!manual.participant_id || !manual.checkpoint_id}>Record</Button>
+          </form>
+        </Card>
+      )}
+    </div>
+  )
+}
+
+// --------------------------------------------------------------------------------------- plugins
+
+function PluginCard({ race, plugin, setting, onSaved }) {
+  const [enabled, setEnabled] = useState(setting.enabled)
+  const [config, setConfig] = useState(() => Object.fromEntries(plugin.fields.map((f) => [f.key, setting.config[f.key] ?? f.default ?? (f.type === 'bool' ? false : '')])))
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const [saved, setSaved] = useState(false)
+  const [log, setLog] = useState(null)
+
+  async function save(event) {
+    event.preventDefault()
+    setBusy(true)
+    setError(null)
+    try {
+      await setRacePlugin(race.race_id, plugin.key, { enabled, config })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 1500)
+      onSaved()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="flex items-center gap-2 text-base font-bold tracking-[-.02em] text-[#0b1220]"><Plug size={15} className="text-blue-600" /> {plugin.name} {setting.enabled && <Chip className="bg-emerald-50 text-emerald-700">on</Chip>}</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-600">{plugin.description}</p>
+          {plugin.data_note && <p className="mt-1 text-xs text-slate-500">{plugin.data_note}</p>}
+        </div>
+        <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} /> Enabled</label>
+      </div>
+      <form onSubmit={save} className="mt-4 grid gap-3 sm:grid-cols-2" noValidate>
+        {plugin.fields.map((f) => (
+          <div key={f.key} className={f.type === 'textarea' ? 'sm:col-span-2' : ''}>
+            {f.type === 'bool' ? (
+              <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={Boolean(config[f.key])} onChange={(e) => setConfig((c) => ({ ...c, [f.key]: e.target.checked }))} /> {f.label}</label>
+            ) : (
+              <Field label={f.label} hint={f.help || undefined} htmlFor={`${plugin.key}-${f.key}`}>
+                {f.type === 'select' ? (
+                  <select id={`${plugin.key}-${f.key}`} value={config[f.key] ?? ''} onChange={(e) => setConfig((c) => ({ ...c, [f.key]: e.target.value }))} className={inputClass}>
+                    {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                ) : f.type === 'textarea' ? (
+                  <textarea id={`${plugin.key}-${f.key}`} rows={3} value={config[f.key] ?? ''} onChange={(e) => setConfig((c) => ({ ...c, [f.key]: e.target.value }))} className={inputClass} />
+                ) : (
+                  <input id={`${plugin.key}-${f.key}`} type={f.secret ? 'password' : f.type === 'number' ? 'number' : f.type === 'url' ? 'url' : 'text'} value={config[f.key] ?? ''} onChange={(e) => setConfig((c) => ({ ...c, [f.key]: e.target.value }))} className={inputClass} autoComplete="off" required={f.required} />
+                )}
+              </Field>
+            )}
+          </div>
+        ))}
+        {error && <div className="sm:col-span-2"><Notice kind="error">{error}</Notice></div>}
+        <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+          <Button type="submit" busy={busy}>{saved ? <><Check size={15} /> Saved</> : 'Save'}</Button>
+          <button type="button" onClick={() => (log ? setLog(null) : getRacePluginLog(race.race_id, plugin.key).then(setLog).catch((err) => setError(err.message)))} className="text-xs font-semibold text-blue-600 hover:underline">{log ? 'Hide log' : 'Show log'}</button>
+        </div>
+      </form>
+      {log && (
+        <ul className="mt-3 max-h-60 overflow-auto divide-y divide-slate-100 rounded-xl border border-slate-200 font-mono text-[11px]">
+          {log.length === 0 && <li className="px-3 py-2 text-slate-500">Nothing logged yet.</li>}
+          {log.map((row) => (
+            <li key={row.id} className={`px-3 py-1.5 ${row.status === 'error' ? 'text-red-700' : 'text-slate-700'}`}>{clock(row.created_at)} · {row.status} · {row.detail}</li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  )
+}
+
+function PluginsTab({ race }) {
+  const [catalogue, error] = useAsync(listSuitePlugins, [])
+  const [settings, settingsError, reload] = useAsync(() => listRacePlugins(race.race_id), [race.race_id])
+  return (
+    <div className="grid gap-6">
+      <div>
+        <Eyebrow as="h2">PLUGINS</Eyebrow>
+        <p className="mt-1 max-w-[64ch] text-sm leading-6 text-slate-500">
+          Small extras, switched on per race. A plugin listens to what happens (the gun, each passing, each finish) and does something with it; it can never change a time. Anyone can write one: a Python file in <code className="font-mono text-xs">api/suite_plugins/</code> is the whole installation. The webhook covers most needs without any code: send events to a spreadsheet, a chat channel or an automation service and build the rest there.
+        </p>
+      </div>
+      {(error || settingsError) && <Notice kind="error">{error || settingsError}</Notice>}
+      {catalogue && settings && (
+        <div className="grid gap-4">
+          {catalogue.map((plugin) => (
+            <PluginCard key={plugin.key} race={race} plugin={plugin} setting={settings.find((s) => s.plugin_key === plugin.key) ?? { enabled: false, config: {} }} onSaved={reload} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --------------------------------------------------------------------------------------- results
+
+function ResultsTab({ race }) {
+  const raceId = race.race_id
+  const [preview, setPreview] = useState(null)
+  const [error, setError] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [sent, setSent] = useState(null)
+
+  useEffect(() => {
+    fetchSuiteResultsCsv(raceId).then(setPreview).catch((err) => setError(err.message))
+  }, [raceId, sent])
+
+  function download() {
+    const blob = new Blob([preview ?? ''], { type: 'text/csv;charset=utf-8' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `${race.event_name}-${race.course_name}-results.csv`.replace(/[^\w.-]+/g, '-')
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000)
+  }
+
+  async function send() {
+    if (!window.confirm('Send the finish list to OTRI scoring? It replaces any results uploaded for this race.')) return
+    setBusy(true)
+    setError(null)
+    try {
+      setSent(await submitSuiteResults(raceId))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const lines = preview ? preview.trim().split('\n') : []
+  const finishers = lines.slice(1).filter((l) => /^\d+,/.test(l)).length
+  return (
+    <div className="grid gap-6 lg:grid-cols-[1fr_.8fr]">
+      <div>
+        <Eyebrow as="h2">THE FINISH LIST</Eyebrow>
+        <p className="mt-1 text-sm text-slate-500">{lines.length > 1 ? `${lines.length - 1} row${lines.length === 2 ? '' : 's'}, ${finishers} finisher${finishers === 1 ? '' : 's'}` : 'No results yet: finishers appear as they cross the line.'}</p>
+        {error && <div className="mt-3"><Notice kind="error">{error}</Notice></div>}
+        {lines.length > 1 && (
+          <pre className="mt-3 max-h-96 overflow-auto rounded-2xl border border-slate-200 bg-white p-4 font-mono text-[11px] leading-5 text-slate-700">{preview}</pre>
+        )}
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Button variant="secondary" onClick={download} disabled={lines.length < 2}><Download size={15} /> Download CSV</Button>
+          <Button onClick={send} busy={busy} disabled={race.status !== 'finished' || finishers === 0}><Flag size={15} /> Send to OTRI scoring</Button>
+        </div>
+        {race.status !== 'finished' && <p className="mt-2 text-xs text-slate-500">Finish the race on the race-day page first, so the list is final.</p>}
+        {sent && (
+          <div className="mt-4">
+            <Notice kind="success" title={`${sent.finishers} finisher${sent.finishers === 1 ? '' : 's'} scored`}>
+              The race's results are these now. <Link to={`/races/${encodeURIComponent(raceId)}/review`} className="font-semibold text-emerald-900 underline">Review and publish the race page</Link>.
+              {sent.warnings?.length > 0 && <span className="block mt-1">{sent.warnings.length} warning{sent.warnings.length === 1 ? '' : 's'} from the results check; see the results step for details.</span>}
+            </Notice>
+          </div>
+        )}
+      </div>
+      <Card>
+        <Eyebrow as="h2">WHAT HAPPENS</Eyebrow>
+        <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
+          <li>The list is the standard OTRI results file (rank, time, names, gender, bib, year of birth, nationality, status): the same file a timing company would give you.</li>
+          <li>Times are {race.settings.timing === 'net' ? 'net, from each runner’s start-line scan' : 'gun times, from the start signal'}. Change that under Overview → Settings before sending.</li>
+          <li>Sending validates and scores the list exactly like an upload, and replaces the race's stored results. Nothing is public until you publish the race page.</li>
+          <li>Emergency contacts and notes never leave the suite.</li>
+        </ul>
+      </Card>
+    </div>
+  )
+}
+
+// ------------------------------------------------------------------------------------- bib sheet
+
+/** Two bibs per A4 page, each with the runner's QR code. Print from the browser (Ctrl/Cmd+P). */
+export function BibSheet({ raceId }) {
+  const [race] = useAsync(() => getSuiteRace(raceId), [raceId])
+  const [people, error] = useAsync(() => listSuiteParticipants(raceId), [raceId])
+  const numbered = (people ?? []).filter((p) => p.bib)
+
+  return (
+    <div className="bib-sheet">
+      <style>{`
+        @media print {
+          body > #root > div > header, body > #root > div > footer, .bib-controls, .skip-link { display: none !important; }
+          .bib-sheet { padding: 0 !important; }
+          .bib { page-break-inside: avoid; break-inside: avoid; }
+          .bib:nth-child(2n) { page-break-after: always; break-after: page; }
+          @page { size: A4 portrait; margin: 8mm; }
+        }
+        .bib { width: 190mm; height: 135mm; border: 1.2mm solid #0b1220; border-radius: 6mm; padding: 8mm 10mm; display: grid; grid-template-columns: 1fr 44mm; grid-template-rows: auto 1fr auto; gap: 2mm 6mm; box-sizing: border-box; background: #fff; color: #0b1220; margin: 0 auto 6mm; }
+        .bib-number { font-size: 62mm; line-height: .92; font-weight: 900; letter-spacing: -.04em; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; align-self: center; }
+      `}</style>
+      <div className="bib-controls mx-auto w-[min(1120px,calc(100%-28px))] py-8">
+        <Link to={`/suite/${encodeURIComponent(raceId)}?tab=field`} className="text-xs font-semibold text-blue-600">← Back to the runners</Link>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold tracking-[-.03em]">Bibs · {race?.course_name ?? '…'}</h1>
+            <p className="mt-1 text-sm text-slate-500">{numbered.length} bib{numbered.length === 1 ? '' : 's'}, two per A4 page. Runners without a number are left out: assign numbers first.</p>
+          </div>
+          <Button onClick={() => window.print()} disabled={numbered.length === 0}><Printer size={15} /> Print</Button>
+        </div>
+        {error && <div className="mt-3"><Notice kind="error">{error}</Notice></div>}
+      </div>
+      <div className="px-2 pb-8">
+        {race &&
+          numbered.map((p) => (
+            <div key={p.participant_id} className="bib">
+              <div className="flex items-baseline justify-between" style={{ gridColumn: '1 / -1' }}>
+                <span className="text-[6mm] font-bold tracking-[-.02em]">{race.event_name}</span>
+                <span className="font-mono text-[3.6mm] text-slate-600">{race.course_name} · {formatDate(race.event_date)}</span>
+              </div>
+              <div className="bib-number">{p.bib}</div>
+              <div className="flex flex-col items-center justify-center gap-1">
+                <QrImage text={appUrl(`/bib/${p.qr_token}`)} size={160} className="h-[42mm] w-[42mm]" />
+                <span className="font-mono text-[2.6mm] text-slate-500">scan for your splits</span>
+              </div>
+              <div className="flex items-end justify-between gap-4" style={{ gridColumn: '1 / -1' }}>
+                <span className="text-[7mm] font-bold leading-none">{race.settings.bib_show_name ? p.first_name : ''}</span>
+                <span className="text-right font-mono text-[3.2mm] leading-tight text-slate-600">
+                  {race.settings.organizer_phone && <span className="block">If found alone, call {race.settings.organizer_phone}</span>}
+                  {race.settings.bib_note && <span className="block">{race.settings.bib_note}</span>}
+                  <span className="block">Timed and scored with OTRI · otri.run</span>
+                </span>
+              </div>
+            </div>
+          ))}
+      </div>
+    </div>
+  )
+}

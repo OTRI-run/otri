@@ -3635,3 +3635,10 @@ def admin_delete_runner(runner_id: str, organizer: Organizer = Depends(require_a
     if removed == 0 and db.find_runner(runner_id) is None:
         raise HTTPException(status_code=404, detail="no runner with that id")
     return RunnerDeletedOut(results_removed=removed, unpublished_races=unpublished)
+
+
+# The race suite (api/suite.py): plan, bibs, checkpoints, live board, plugins. Mounted last: it
+# borrows the auth helpers above at call time.
+from . import suite as _suite  # noqa: E402
+
+app.include_router(_suite.router)

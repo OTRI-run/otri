@@ -439,8 +439,11 @@ def init_db() -> list[str]:
     Safe to call on every startup. Returns the names of the migrations applied this time."""
     from . import migrations
 
+    from . import suite_db
+
     with get_connection() as connection:
         connection.execute(_SCHEMA)
+        connection.execute(suite_db.SCHEMA)  # the race suite's tables (api/suite_db.py)
         applied = migrations.apply_pending(connection)
     assign_missing_runners()
     return applied
