@@ -13,6 +13,7 @@ import { CheckCircle2, Clock, Flag, MapPin, Search, Users } from 'lucide-react'
 import { getPublicLive, getPublicRace, registerForRace } from '../../apiClient'
 import Logo from '../../../src/components/Logo'
 import { Button, Field, Notice, inputClass } from '../ui'
+import { cleanBirthYear, cleanEmail, cleanName, cleanNationality } from '../../../src/lib/suiteFields'
 import { clock, hms } from './Station'
 
 const KIND_LABEL = { start: 'Start', checkpoint: 'Checkpoint', aid: 'Aid', finish: 'Finish' }
@@ -219,6 +220,13 @@ export function RegisterPage({ raceId }) {
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(null)
   const [qr, setQr] = useState(null)
+  const [notes, setNotes] = useState({})
+  const clean = (key, cleaner) => (event) => {
+    const { value, note } = cleaner(event.target.value)
+    setForm((f) => ({ ...f, [key]: value }))
+    setNotes((n) => ({ ...n, [key]: note }))
+  }
+  const noteOr = (key, fallback) => (notes[key] ? <span className="text-amber-700">{notes[key]}</span> : fallback)
 
   useEffect(() => {
     getPublicRace(raceId).then(setInfo).catch((err) => setError(err.message))
@@ -288,17 +296,17 @@ export function RegisterPage({ raceId }) {
           {info.registration.open && (
             <form onSubmit={submit} className="mt-8 grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2" noValidate>
               <h2 className="text-lg font-bold tracking-[-.02em] sm:col-span-2">Enter the race</h2>
-              <Field label="First name" htmlFor="r-first"><input id="r-first" required value={form.first_name} onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))} className={inputClass} autoComplete="given-name" /></Field>
-              <Field label="Last name" htmlFor="r-last"><input id="r-last" required value={form.family_name} onChange={(e) => setForm((f) => ({ ...f, family_name: e.target.value }))} className={inputClass} autoComplete="family-name" /></Field>
+              <Field label="First name" hint={noteOr('first_name', undefined)} htmlFor="r-first"><input id="r-first" required value={form.first_name} onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))} onBlur={clean('first_name', cleanName)} className={inputClass} autoComplete="given-name" /></Field>
+              <Field label="Last name" hint={noteOr('family_name', undefined)} htmlFor="r-last"><input id="r-last" required value={form.family_name} onChange={(e) => setForm((f) => ({ ...f, family_name: e.target.value }))} onBlur={clean('family_name', cleanName)} className={inputClass} autoComplete="family-name" /></Field>
               <Field label="Gender" hint="For the women's and men's rankings." htmlFor="r-gender">
                 <select id="r-gender" value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value }))} className={inputClass}>
                   <option value="F">Female</option><option value="M">Male</option><option value="X">Prefer not to say</option>
                 </select>
               </Field>
-              {fields.birth_year && <Field label="Year of birth" hint="Only the year; for age categories." htmlFor="r-yob"><input id="r-yob" inputMode="numeric" value={form.birth_year} onChange={(e) => setForm((f) => ({ ...f, birth_year: e.target.value }))} className={inputClass} placeholder="1990" /></Field>}
-              {fields.nationality && <Field label="Nationality" htmlFor="r-nat"><input id="r-nat" value={form.nationality} onChange={(e) => setForm((f) => ({ ...f, nationality: e.target.value }))} className={inputClass} placeholder="THA" maxLength={3} /></Field>}
+              {fields.birth_year && <Field label="Year of birth" hint={noteOr('birth_year', 'Only the year; for age categories.')} htmlFor="r-yob"><input id="r-yob" inputMode="numeric" value={form.birth_year} onChange={(e) => setForm((f) => ({ ...f, birth_year: e.target.value }))} onBlur={clean('birth_year', cleanBirthYear)} className={inputClass} placeholder="1990" /></Field>}
+              {fields.nationality && <Field label="Nationality" hint={noteOr('nationality', 'A code or a country name.')} htmlFor="r-nat"><input id="r-nat" value={form.nationality} onChange={(e) => setForm((f) => ({ ...f, nationality: e.target.value }))} onBlur={clean('nationality', cleanNationality)} className={inputClass} placeholder="THA or Thailand" /></Field>}
               {fields.club && <Field label="Club or team" hint="Optional." htmlFor="r-club"><input id="r-club" value={form.club} onChange={(e) => setForm((f) => ({ ...f, club: e.target.value }))} className={inputClass} /></Field>}
-              {fields.email && <Field label="Email" hint="So the organizer can reach you. Not shown anywhere." htmlFor="r-email"><input id="r-email" type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className={inputClass} autoComplete="email" /></Field>}
+              {fields.email && <Field label="Email" hint={noteOr('email', 'So the organizer can reach you. Not shown anywhere.')} htmlFor="r-email"><input id="r-email" type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} onBlur={clean('email', cleanEmail)} className={inputClass} autoComplete="email" /></Field>}
               <Field label={`Emergency contact${fields.emergency_required ? '' : ' (optional)'}`} hint="Name and phone. Seen only by the organizer." htmlFor="r-ice"><input id="r-ice" required={fields.emergency_required} value={form.emergency_contact} onChange={(e) => setForm((f) => ({ ...f, emergency_contact: e.target.value }))} className={inputClass} placeholder="Name, +66 …" /></Field>
               <label className="flex items-start gap-2 text-sm sm:col-span-2">
                 <input type="checkbox" checked={form.consent} onChange={(e) => setForm((f) => ({ ...f, consent: e.target.checked }))} className="mt-1" />

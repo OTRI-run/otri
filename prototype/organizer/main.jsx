@@ -18,7 +18,7 @@ import { countPages } from '../../src/lib/analytics'
 import { useDocumentTitle } from '../../src/lib/title'
 import SharedNotFound from '../../src/components/NotFound'
 import { AccountPage } from './pages/Account'
-import { BibSheet, SuiteHome, SuiteRace } from './pages/Suite'
+import { BibSheet, StationSheets, SuiteHome, SuiteRace } from './pages/Suite'
 import { BibPage, StationPage } from './pages/Station'
 import { LivePage, RegisterPage } from './pages/Public'
 import { AdminEvents } from './pages/Admin'
@@ -374,6 +374,7 @@ function App() {
   else if (session && route.path === '/admin') page = session.isAdmin ? <AdminEvents session={session} /> : <NotFound />
   else if (session && route.path === '/suite') page = session.isAdmin ? <SuiteHome session={session} /> : <NotFound />
   else if (session && (params = match('/suite/:id/bibs', route.path))) page = session.isAdmin ? <BibSheet raceId={params.id} /> : <NotFound />
+  else if (session && (params = match('/suite/:id/sheets', route.path))) page = session.isAdmin ? <StationSheets raceId={params.id} /> : <NotFound />
   else if (session && (params = match('/suite/:id', route.path))) page = session.isAdmin ? <SuiteRace session={session} raceId={params.id} /> : <NotFound />
   else if (session && route.path === '/account') page = <AccountPage session={session} onToken={signIn} onSignOut={signOut} />
   else if (session && route.path === '/events') page = <Dashboard session={session} />

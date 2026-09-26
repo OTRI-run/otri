@@ -7,6 +7,7 @@ Run with: pytest tests/unit/test_suite.py
 from __future__ import annotations
 
 import importlib
+import re
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
@@ -178,9 +179,9 @@ def test_participants_import_bibs_and_qr_tokens(monkeypatch):
 def test_parse_participant_sheet_reads_common_layouts():
     rows, skipped, columns, ignored = suite.parse_participant_sheet("Startnummer\tNachname\tVorname\tGeschlecht\tJahrgang\tVerein\tEmail\n1\tMüller\tAnna\tW\t1992\tTSV\tanna@example.com\n")
     assert rows[0]["bib"] == "1" and rows[0]["family_name"] == "Müller" and rows[0]["gender"] == "F" and rows[0]["birth_year"] == 1992 and rows[0]["club"] == "TSV"
-    assert columns["family_name"] == "Nachname" and ignored == ["Email"] and skipped == []
+    assert columns["family_name"] == "Nachname" and ignored == [] and skipped == []
     rows, *_ = suite.parse_participant_sheet("Name,DOB\nWALMSLEY Jim,1990-01-31\nDoe,\n")
-    assert (rows[0]["family_name"], rows[0]["first_name"], rows[0]["birth_year"]) == ("WALMSLEY", "Jim", 1990)
+    assert (rows[0]["family_name"], rows[0]["first_name"], rows[0]["birth_year"]) == ("Walmsley", "Jim", 1990)
     assert rows[1]["family_name"] == "Doe"
 
 
@@ -210,7 +211,8 @@ def test_a_race_day_from_gun_to_results(monkeypatch):
     assert client.patch(f"/suite/participants/{linh['participant_id']}", json={"status": "dns"}, headers=admin).status_code == 200
     gun = datetime(2026, 10, 3, 6, 0, tzinfo=timezone.utc)
     monkeypatch.setattr(suite, "_now", lambda: gun)
-    started = client.post(f"/suite/races/{race_id}/start", json={"started_at": gun.isoformat()}, headers=admin)
+    client.post(f"/suite/races/{race_id}/participants/assign-bibs", json={"start": 900}, headers=admin)  # the gun needs every bib
+    started = client.post(f"/suite/races/{race_id}/start", json={"started_at": gun.isoformat(), "force": True}, headers=admin)
     assert started.status_code == 200 and started.json()["status"] == "live"
     assert client.post(f"/suite/races/{race_id}/start", headers=admin).status_code == 409
     board = client.get(f"/suite/races/{race_id}/board", headers=admin).json()
@@ -302,7 +304,8 @@ def test_finishing_marks_runners_still_out_as_dnf_and_net_timing_uses_the_start_
 
     gun = datetime(2026, 10, 3, 6, 0, tzinfo=timezone.utc)
     monkeypatch.setattr(suite, "_now", lambda: gun)
-    client.post(f"/suite/races/{race_id}/start", json={"started_at": gun.isoformat()}, headers=admin)
+    client.post(f"/suite/races/{race_id}/participants/assign-bibs", json={"start": 900}, headers=admin)  # the gun needs every bib
+    client.post(f"/suite/races/{race_id}/start", json={"started_at": gun.isoformat(), "force": True}, headers=admin)
     monkeypatch.setattr(suite, "_now", lambda: gun + timedelta(hours=5))
     # Jane crosses the start mat 90 s after the gun and finishes 4 h after the gun: net 3:58:30.
     client.post(f"/suite/stations/{stations['start']}/passings", json={"passings": [{"client_id": "s1", "qr_token": people["Doe"]["qr_token"], "recorded_at": (gun + timedelta(seconds=90)).isoformat()}]})
@@ -356,7 +359,7 @@ def test_plugin_catalogue_settings_and_the_announcer_panel(monkeypatch):
     admin = _admin(monkeypatch)
     race_id = _race(admin)
     catalogue = client.get("/suite/plugins", headers=admin).json()
-    assert {p["key"] for p in catalogue} == {"announcer", "webhook"}
+    assert {"announcer", "webhook"} <= {p["key"] for p in catalogue}
     webhook = next(p for p in catalogue if p["key"] == "webhook")
     assert [f["key"] for f in webhook["fields"]] == ["url", "secret", "only", "format"] and webhook["data_note"]
 
@@ -375,7 +378,8 @@ def test_plugin_catalogue_settings_and_the_announcer_panel(monkeypatch):
     stations = {c["kind"]: c["station_key"] for c in client.get(f"/suite/races/{race_id}/checkpoints", headers=admin).json()}
     gun = datetime(2026, 10, 3, 6, 0, tzinfo=timezone.utc)
     monkeypatch.setattr(suite, "_now", lambda: gun)
-    client.post(f"/suite/races/{race_id}/start", json={"started_at": gun.isoformat()}, headers=admin)
+    client.post(f"/suite/races/{race_id}/participants/assign-bibs", json={"start": 900}, headers=admin)  # the gun needs every bib
+    client.post(f"/suite/races/{race_id}/start", json={"started_at": gun.isoformat(), "force": True}, headers=admin)
     monkeypatch.setattr(suite, "_now", lambda: gun + timedelta(hours=6))
     client.post(f"/suite/stations/{stations['aid']}/passings", json={"passings": [{"client_id": "a", "bib": "12", "recorded_at": (gun + timedelta(hours=2)).isoformat()}]})
     client.post(f"/suite/stations/{stations['finish']}/passings", json={"passings": [{"client_id": "f", "bib": "12", "recorded_at": (gun + timedelta(hours=5, minutes=12, seconds=40)).isoformat()}]})
@@ -408,7 +412,9 @@ def test_webhook_plugin_posts_signed_json_and_logs_failures(monkeypatch):
     assert suite_db.list_plugin_settings(race_id)["webhook"]["config"]["secret"] == "s3cret"
 
     _plan(admin, race_id)
-    client.post(f"/suite/races/{race_id}/start", headers=admin)
+    people = _field(admin, race_id)
+    client.post(f"/suite/races/{race_id}/participants/assign-bibs", json={"start": 900}, headers=admin)  # the gun needs every bib
+    client.post(f"/suite/races/{race_id}/start", json={"force": True}, headers=admin)
     assert len(sent) == 1
     url, body, headers = sent[0]
     assert headers["X-OTRI-Event"] == "race.started"
@@ -421,7 +427,6 @@ def test_webhook_plugin_posts_signed_json_and_logs_failures(monkeypatch):
 
     # A failing URL is logged, not raised, and the scan is stored all the same.
     client.put(f"/suite/races/{race_id}/plugins/webhook", json={"enabled": True, "config": {"url": "https://hooks.example.com/fail", "format": "slack"}}, headers=admin)
-    people = _field(admin, race_id)
     stations = {c["kind"]: c["station_key"] for c in client.get(f"/suite/races/{race_id}/checkpoints", headers=admin).json()}
     answer = client.post(f"/suite/stations/{stations['aid']}/passings", json={"passings": [{"client_id": "a", "qr_token": people[0]["qr_token"], "recorded_at": datetime.now(timezone.utc).isoformat()}]})
     assert answer.json()["results"][0]["outcome"] == "accepted"
@@ -477,7 +482,8 @@ def test_a_lap_course_finishes_on_the_last_lap_and_counts_laps(monkeypatch):
     stations = {c["kind"]: c["station_key"] for c in client.get(f"/suite/races/{race_id}/checkpoints", headers=admin).json()}
     gun = datetime(2026, 10, 3, 9, 0, tzinfo=timezone.utc)
     monkeypatch.setattr(suite, "_now", lambda: gun)
-    client.post(f"/suite/races/{race_id}/start", json={"started_at": gun.isoformat()}, headers=admin)
+    client.post(f"/suite/races/{race_id}/participants/assign-bibs", json={"start": 900}, headers=admin)  # the gun needs every bib
+    client.post(f"/suite/races/{race_id}/start", json={"started_at": gun.isoformat(), "force": True}, headers=admin)
     monkeypatch.setattr(suite, "_now", lambda: gun + timedelta(hours=2))
     jane = people["Doe"]["qr_token"]
     # Jane: water, lap line (lap 1), water, lap line (lap 2), water, lap line (lap 3 = finish).
@@ -595,7 +601,8 @@ def test_public_live_page_and_registration_with_pay_by_link(monkeypatch):
     stations = {c["kind"]: c["station_key"] for c in client.get(f"/suite/races/{race_id}/checkpoints", headers=admin).json()}
     gun = datetime(2026, 10, 3, 6, 0, tzinfo=timezone.utc)
     monkeypatch.setattr(suite, "_now", lambda: gun)
-    client.post(f"/suite/races/{race_id}/start", json={"started_at": gun.isoformat()}, headers=admin)
+    client.post(f"/suite/races/{race_id}/participants/assign-bibs", json={"start": 900}, headers=admin)  # the gun needs every bib
+    client.post(f"/suite/races/{race_id}/start", json={"started_at": gun.isoformat(), "force": True}, headers=admin)
     monkeypatch.setattr(suite, "_now", lambda: gun + timedelta(hours=3))
     client.post(f"/suite/stations/{stations['aid']}/passings", json={"passings": [{"client_id": "a", "qr_token": body["qr_token"], "recorded_at": (gun + timedelta(hours=2)).isoformat()}]})
     live = client.get(f"/suite/public/{race_id}/live")
@@ -608,3 +615,330 @@ def test_public_live_page_and_registration_with_pay_by_link(monkeypatch):
     client.patch(f"/suite/races/{race_id}/settings", json={"live_public": False, "registration_open": True}, headers=admin)
     assert client.get(f"/suite/public/{race_id}/live").status_code == 404
     assert client.get(f"/suite/public/{race_id}").json()["live_public"] is False
+
+
+# ---------------------------------------------------------------------------- integrity
+
+
+def test_field_cleaners_correct_and_say_so():
+    from api import suite_fields as f
+
+    assert f.clean_name("DOE-SMITH") == ("Doe-Smith", "re-cased from “DOE-SMITH”")
+    assert f.clean_name("van der berg") == ("Van der Berg", "re-cased from “van der berg”")
+    assert f.clean_name("o'brien")[0] == "O'Brien" and f.clean_name("mcdonald")[0] == "McDonald"
+    assert f.clean_name("MacLeod") == ("MacLeod", None), "mixed case is somebody's own spelling"
+    assert f.clean_name("  Jane   Q ") == ("Jane Q", None)
+    assert f.clean_gender("Female")[0] == "F" and f.clean_gender("männlich")[0] == "M" and f.clean_gender("W")[0] == "F" and f.clean_gender("homme")[0] == "M"
+    assert f.clean_gender("") == ("X", None) and f.clean_gender("banana")[0] == "X" and "not a gender" in f.clean_gender("banana")[1]
+    assert f.clean_birth_year("1990-05-01") == (1990, "“1990-05-01” read as 1990")
+    assert f.clean_birth_year("01/05/1990")[0] == 1990 and f.clean_birth_year("1990") == (1990, None)
+    assert f.clean_birth_year("90")[0] is None and f.clean_birth_year("2025")[0] is None and f.clean_birth_year("1890")[0] is None
+    assert f.clean_nationality("Thailand") == ("THA", "“Thailand” → THA") and f.clean_nationality("fr")[0] == "FRA" and f.clean_nationality("GER")[0] == "DEU"
+    assert f.clean_nationality("Narnia") == (None, "“Narnia” is not a country OTRI knows: left empty")
+    assert f.clean_bib("007") == ("7", "“007” stored as 7") and f.clean_bib(" a 12 ") == ("A12", None) and f.clean_bib("#12")[0] == "12" and f.clean_bib("") == (None, None)
+    assert f.clean_email(" Ada@Example.COM ") == ("ada@example.com", None) and f.clean_email("nope")[0] is None
+    assert f.parse_minutes("4h30") == (270, "“4h30” read as 270 minutes") and f.parse_minutes("4:00")[0] == 240 and f.parse_minutes("90 min")[0] == 90 and f.parse_minutes("240") == (240, None)
+    assert f.parse_minutes("soon")[0] is None
+    assert f.parse_km("18,5") == (18.5, "“18,5” read as 18.5 km") and f.parse_km("18500 m")[0] == 18.5 and f.parse_km("18.5 km")[0] == 18.5
+    assert f.clean_checkpoint_name("col de la croix") == ("Col de la croix", "re-cased from “col de la croix”")
+
+
+def test_import_is_previewed_cleaned_and_deduplicated(monkeypatch):
+    admin = _admin(monkeypatch)
+    race_id = _race(admin)
+    sheet = "Bib,Last name,First name,Sex,Date of birth,Country,E-mail\n007,DOE,jane,Female,1990-05-01,Thailand,Jane@Example.com\n7,SMITH,john,m,1985,fr,\n12,SMITH,john,M,1985,,\n13,Nguyen,Linh,,,Narnia,\n"
+    preview = client.post(f"/suite/races/{race_id}/participants/import", json={"text": sheet, "dry_run": True}, headers=admin).json()
+    assert preview["added"] == 0 and client.get(f"/suite/races/{race_id}/participants", headers=admin).json() == [], "a dry run stores nothing"
+    assert preview["total_rows"] == 3 and [r["bib"] for r in preview["rows"]] == ["7", "12", "13"]
+    assert preview["rows"][0]["family_name"] == "Doe" and preview["rows"][0]["first_name"] == "Jane" and preview["rows"][0]["gender"] == "F" and preview["rows"][0]["birth_year"] == 1990 and preview["rows"][0]["nationality"] == "THA" and preview["rows"][0]["email"] == "jane@example.com"
+    assert preview["skipped"] == ["row 3, John Smith: bib 7 is also on row 2"], "007 and 7 are one bib"
+    assert any("Narnia" in c for c in preview["corrections"]) and any("re-cased" in c for c in preview["corrections"]) and any("“007” stored as 7" in c for c in preview["corrections"])
+    assert preview["rows"][1]["_problems"] == []
+
+    stored = client.post(f"/suite/races/{race_id}/participants/import", json={"text": sheet}, headers=admin).json()
+    assert stored["added"] == 3 and len(stored["corrections"]) == len(preview["corrections"])
+    people = client.get(f"/suite/races/{race_id}/participants", headers=admin).json()
+    assert [(p["bib"], p["family_name"], p["nationality"]) for p in people] == [("7", "Doe", "THA"), ("12", "Smith", None), ("13", "Nguyen", None)]
+    # The same sheet again: everyone clashes, and the preview says with whom.
+    again = client.post(f"/suite/races/{race_id}/participants/import", json={"text": sheet, "dry_run": True}, headers=admin).json()
+    assert all("already" in " ".join(r["_problems"]) for r in again["rows"])
+    # One runner by hand goes through the same cleaners.
+    one = client.post(f"/suite/races/{race_id}/participants", json={"family_name": "LOVELACE", "first_name": "ada", "gender": "Female", "bib": "0042", "nationality": "United Kingdom", "email": "ADA@example.com"}, headers=admin).json()
+    assert (one["family_name"], one["first_name"], one["gender"], one["bib"], one["nationality"], one["email"]) == ("Lovelace", "Ada", "F", "42", "GBR", "ada@example.com")
+
+
+def test_plan_rules_one_start_one_finish_in_order(monkeypatch):
+    admin = _admin(monkeypatch)
+    race_id = _race(admin)  # 50 km on paper
+    start = client.post(f"/suite/races/{race_id}/checkpoints", json={"name": "start", "kind": "start", "distance_km": 3, "cutoff_minutes": 30}, headers=admin).json()
+    assert start["name"] == "Start" and start["distance_km"] == 0 and start["cutoff_minutes"] is None, "a start is at km 0 with no cut-off"
+    assert client.post(f"/suite/races/{race_id}/checkpoints", json={"name": "Second start", "kind": "start"}, headers=admin).status_code == 422
+    finish = client.post(f"/suite/races/{race_id}/checkpoints", json={"name": "Finish", "kind": "finish", "cutoff_minutes": 720}, headers=admin).json()
+    assert finish["distance_km"] == 50.0, "a finish without a distance sits at the end of the course"
+    assert client.post(f"/suite/races/{race_id}/checkpoints", json={"name": "Finish 2", "kind": "finish"}, headers=admin).status_code == 422
+    beyond = client.post(f"/suite/races/{race_id}/checkpoints", json={"name": "Nowhere", "kind": "aid", "distance_km": 80}, headers=admin)
+    assert beyond.status_code == 422 and "beyond the course" in beyond.json()["detail"]
+    # An aid station added without a position slots in by distance, before the finish.
+    aid = client.post(f"/suite/races/{race_id}/checkpoints", json={"name": "Aid 1", "kind": "aid", "distance_km": 20, "cutoff_minutes": 300}, headers=admin).json()
+    assert [c["name"] for c in client.get(f"/suite/races/{race_id}/checkpoints", headers=admin).json()] == ["Start", "Aid 1", "Finish"]
+    # Editing to a distance beyond the course is refused; the finish keeps its place.
+    assert client.patch(f"/suite/checkpoints/{aid['checkpoint_id']}", json={"distance_km": 70}, headers=admin).status_code == 422
+    assert client.patch(f"/suite/checkpoints/{aid['checkpoint_id']}", json={"kind": "finish"}, headers=admin).status_code == 422
+
+
+def test_readiness_blocks_the_gun_and_warnings_need_force(monkeypatch):
+    admin = _admin(monkeypatch)
+    race_id = _race(admin)
+    ready = client.get(f"/suite/races/{race_id}/readiness", headers=admin).json()
+    assert ready["ready"] is False and ready["blockers"] >= 2
+    refused = client.post(f"/suite/races/{race_id}/start", headers=admin)
+    assert refused.status_code == 409 and "Not ready" in refused.json()["detail"] and "Runners on the list" in refused.json()["detail"]
+    _plan(admin, race_id)
+    _field(admin, race_id)
+    # Bibs missing for one runner: still a blocker.
+    assert client.post(f"/suite/races/{race_id}/start", headers=admin).status_code == 409
+    client.post(f"/suite/races/{race_id}/participants/assign-bibs", json={"start": 1}, headers=admin)
+    ready = client.get(f"/suite/races/{race_id}/readiness", headers=admin).json()
+    assert ready["ready"] is True and ready["blockers"] == 0 and ready["warnings"] >= 1
+    warned = {c["key"]: c for c in ready["checks"] if not c["ok"]}
+    assert "stations" in warned and "phone" in warned and "emergency" in warned
+    # Warnings stop the gun until the organizer says "anyway".
+    refused = client.post(f"/suite/races/{race_id}/start", headers=admin)
+    assert refused.status_code == 409 and "Start anyway" in refused.json()["detail"]
+    # Opening a station link clears that warning.
+    for c in client.get(f"/suite/races/{race_id}/checkpoints", headers=admin).json():
+        assert client.get(f"/suite/stations/{c['station_key']}").status_code == 200
+    assert client.get(f"/suite/races/{race_id}/readiness", headers=admin).json()["checks"] and all(c["ok"] for c in client.get(f"/suite/races/{race_id}/readiness", headers=admin).json()["checks"] if c["key"] == "stations")
+    client.post(f"/suite/races/{race_id}/participants/assign-bibs", json={"start": 900}, headers=admin)  # the gun needs every bib
+    started = client.post(f"/suite/races/{race_id}/start", json={"force": True}, headers=admin)
+    assert started.status_code == 200 and started.json()["status"] == "live"
+    audit = client.get(f"/suite/races/{race_id}/audit", headers=admin).json()
+    assert audit[0]["action"] == "race.started" and "over warnings" in audit[0]["detail"] and audit[0]["actor"] == "boss@example.com"
+
+
+def test_audit_log_records_every_hand_made_change(monkeypatch):
+    admin = _admin(monkeypatch)
+    race_id = _race(admin)
+    ids = _plan(admin, race_id)
+    people = {p["family_name"]: p for p in _field(admin, race_id)}
+    client.post(f"/suite/races/{race_id}/participants/assign-bibs", json={"start": 1}, headers=admin)
+    client.post(f"/suite/races/{race_id}/participants/assign-bibs", json={"start": 900}, headers=admin)  # the gun needs every bib
+    client.post(f"/suite/races/{race_id}/start", json={"force": True}, headers=admin)
+    passing = client.post(f"/suite/races/{race_id}/passings", json={"checkpoint_id": ids["aid"], "participant_id": people["Doe"]["participant_id"]}, headers=admin).json()
+    client.patch(f"/suite/participants/{people['Smith']['participant_id']}", json={"status": "dnf"}, headers=admin)
+    client.delete(f"/suite/passings/{passing['passing_id']}", headers=admin)
+    client.delete(f"/suite/participants/{people['Nguyen']['participant_id']}", headers=admin)
+    client.post(f"/suite/races/{race_id}/finish", headers=admin)
+    client.post(f"/suite/races/{race_id}/reopen", headers=admin)
+    client.post(f"/suite/races/{race_id}/reset", headers=admin)
+    actions = [row["action"] for row in client.get(f"/suite/races/{race_id}/audit", headers=admin).json()]
+    assert actions == ["race.reset", "race.reopened", "race.finished", "participant.removed", "passing.removed", "participant.status", "passing.by_hand", "race.started", "participants.imported"]
+    csv_text = client.get(f"/suite/races/{race_id}/passings.csv", headers=admin).text
+    assert csv_text.startswith("Passing,Bib,Last name,First name,Checkpoint,Position,Recorded at,Received at,Source,Device,Client id")
+
+
+# ---------------------------------------------------------------------------- more plugins
+
+
+def _live_race(monkeypatch, admin):
+    """A race with a plan, a numbered field, and the gun two hours ago (mocked clock)."""
+    race_id = _race(admin)
+    ids = _plan(admin, race_id)
+    people = {p["family_name"]: p for p in _field(admin, race_id)}
+    client.post(f"/suite/races/{race_id}/participants/assign-bibs", json={"start": 1}, headers=admin)
+    stations = {c["kind"]: c["station_key"] for c in client.get(f"/suite/races/{race_id}/checkpoints", headers=admin).json()}
+    gun = datetime(2026, 10, 3, 6, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(suite, "_now", lambda: gun)
+    assert client.post(f"/suite/races/{race_id}/start", json={"started_at": gun.isoformat(), "force": True}, headers=admin).status_code == 200
+    return race_id, ids, people, stations, gun
+
+
+def test_every_plugin_is_in_the_catalogue_with_a_valid_form(monkeypatch):
+    admin = _admin(monkeypatch)
+    catalogue = {p["key"]: p for p in client.get("/suite/plugins", headers=admin).json()}
+    assert set(catalogue) == {"announcer", "categories", "finish_email", "pace_watch", "split_check", "telegram", "webhook"}
+    for plugin in catalogue.values():
+        assert plugin["name"] and plugin["description"] and plugin["data_note"], plugin["key"]
+        for spec in plugin["fields"]:
+            assert spec["type"] in ("text", "url", "number", "bool", "select", "textarea"), (plugin["key"], spec)
+            if spec["type"] == "select":
+                assert spec["options"], (plugin["key"], spec["key"])
+
+
+def test_pace_watch_lists_the_late_and_the_next_arrivals(monkeypatch):
+    admin = _admin(monkeypatch)
+    race_id, ids, people, stations, gun = _live_race(monkeypatch, admin)
+    assert client.put(f"/suite/races/{race_id}/plugins/pace_watch", json={"enabled": True, "config": {"tolerance": 30}}, headers=admin).status_code == 200
+    # Jane through Aid 1 (18.5 km) at 2:00: 6.5 min/km. The finish is 31.5 km on: expected 3:25 later.
+    monkeypatch.setattr(suite, "_now", lambda: gun + timedelta(hours=2, minutes=1))
+    client.post(f"/suite/stations/{stations['aid']}/passings", json={"passings": [{"client_id": "a", "qr_token": people["Doe"]["qr_token"], "recorded_at": (gun + timedelta(hours=2)).isoformat()}]})
+    panel = lambda: next(p for p in client.get(f"/suite/races/{race_id}/board", headers=admin).json()["panels"] if p["plugin"] == "pace_watch")  # noqa: E731
+    lines = panel()["lines"]
+    assert not any("late" in line or "not seen" in line for line in lines), lines
+    assert any(line.startswith("Next at Finish: #12 Jane Doe in 3h2") for line in lines), lines
+    # Six hours after the gun she is 35 minutes past her expected finish: listed.
+    monkeypatch.setattr(suite, "_now", lambda: gun + timedelta(hours=6))
+    lines = panel()["lines"]
+    assert any(re.search(r"#12 Jane Doe: expected at Finish 3\d min ago by their own pace, not seen", line) for line in lines), lines
+    # John has no split yet: the field's pace predicts him at Aid 1 at 2:00, so at 6:00 he is 4 h late.
+    assert any(line.startswith("#7 John Smith: expected at Aid 1 · Col 4h00 ago") for line in lines), lines
+
+
+def test_split_check_finds_short_cuts_impossible_legs_and_wrong_clocks(monkeypatch):
+    admin = _admin(monkeypatch)
+    race_id, ids, people, stations, gun = _live_race(monkeypatch, admin)
+    # A second aid station at km 30 so a checkpoint can be skipped.
+    aid2 = client.post(f"/suite/races/{race_id}/checkpoints", json={"name": "Aid 2", "kind": "aid", "distance_km": 30}, headers=admin).json()
+    client.put(f"/suite/races/{race_id}/plugins/split_check", json={"enabled": True, "config": {"fastest": 2.5}}, headers=admin)
+    monkeypatch.setattr(suite, "_now", lambda: gun + timedelta(hours=7))
+    # Jane: Aid 1 at 2:00, then straight to the finish at 2:30: skipped Aid 2, and 31.5 km in 30 min.
+    client.post(f"/suite/stations/{stations['aid']}/passings", json={"passings": [{"client_id": "a", "qr_token": people["Doe"]["qr_token"], "recorded_at": (gun + timedelta(hours=2)).isoformat()}]})
+    client.post(f"/suite/stations/{stations['finish']}/passings", json={"passings": [{"client_id": "f", "qr_token": people["Doe"]["qr_token"], "recorded_at": (gun + timedelta(hours=2, minutes=30)).isoformat()}]})
+    # John: seen at Aid 1 ten minutes before the gun.
+    client.post(f"/suite/stations/{stations['aid']}/passings", json={"passings": [{"client_id": "b", "qr_token": people["Smith"]["qr_token"], "recorded_at": (gun - timedelta(minutes=10)).isoformat()}]})
+    panel = next(p for p in client.get(f"/suite/races/{race_id}/board", headers=admin).json()["panels"] if p["plugin"] == "split_check")
+    text = "\n".join(panel["lines"])
+    assert "#12 Jane Doe: not seen at Aid 2 but seen further on" in text
+    assert "#12 Jane Doe: Aid 1 · Col → Finish in 0:30:00 for 31.5 km (1.0 min/km)" in text
+    assert "#7 John Smith: seen at Aid 1 · Col before the gun" in text
+    assert client.get(f"/suite/checkpoints/{aid2['checkpoint_id']}", headers=admin).status_code in (404, 405)  # no such read endpoint; the row exists
+
+
+def test_categories_podiums_by_gender_and_age(monkeypatch):
+    admin = _admin(monkeypatch)
+    race_id, ids, people, stations, gun = _live_race(monkeypatch, admin)
+    bad = client.put(f"/suite/races/{race_id}/plugins/categories", json={"enabled": True, "config": {"groups": "40-49, sixty"}}, headers=admin)
+    assert bad.status_code == 422 and "sixty" in bad.json()["detail"]
+    assert client.put(f"/suite/races/{race_id}/plugins/categories", json={"enabled": True, "config": {"groups": "18-39,40-49,50+", "top": 3}}, headers=admin).status_code == 200
+    monkeypatch.setattr(suite, "_now", lambda: gun + timedelta(hours=7))
+    # Jane (F, 1990: 36 in 2026) 5:00, John (M, 1985: 41) 5:30, Linh (F, no year) 6:00.
+    for name, hours in (("Doe", 5), ("Smith", 5.5), ("Nguyen", 6)):
+        client.post(f"/suite/stations/{stations['finish']}/passings", json={"passings": [{"client_id": name, "qr_token": people[name]["qr_token"], "recorded_at": (gun + timedelta(hours=hours)).isoformat()}]})
+    panel = next(p for p in client.get(f"/suite/races/{race_id}/board", headers=admin).json()["panels"] if p["plugin"] == "categories")
+    assert panel["lines"] == ["F 18-39: 1. #12 Jane Doe 5:00:00", "M 40-49: 1. #7 John Smith 5:30:00", "No year of birth, not placed in a group: #1 Linh Nguyen"]
+
+
+def test_telegram_posts_sentences_without_leaking_the_token(monkeypatch):
+    admin = _admin(monkeypatch)
+    race_id, ids, people, stations, gun = _live_race(monkeypatch, admin)
+    sent = []
+
+    class FakeResponse:
+        status_code = 200
+
+    from api.suite_plugins import telegram as telegram_module
+
+    monkeypatch.setattr(telegram_module.httpx, "post", lambda url, *, json, timeout: sent.append((url, json)) or FakeResponse())
+    bad = client.put(f"/suite/races/{race_id}/plugins/telegram", json={"enabled": True, "config": {"bot_token": "nope", "chat_id": "-100123"}}, headers=admin)
+    assert bad.status_code == 422 and "BotFather" in bad.json()["detail"]
+    assert client.put(f"/suite/races/{race_id}/plugins/telegram", json={"enabled": True, "config": {"bot_token": "123456:ABC-secret", "chat_id": "-100123", "only": "finish"}}, headers=admin).status_code == 200
+    monkeypatch.setattr(suite, "_now", lambda: gun + timedelta(hours=5, minutes=1))
+    client.post(f"/suite/stations/{stations['aid']}/passings", json={"passings": [{"client_id": "a", "qr_token": people["Doe"]["qr_token"], "recorded_at": (gun + timedelta(hours=2)).isoformat()}]})
+    assert sent == [], "checkpoint passings are not posted with 'finish' only"
+    client.post(f"/suite/stations/{stations['finish']}/passings", json={"passings": [{"client_id": "f", "qr_token": people["Doe"]["qr_token"], "recorded_at": (gun + timedelta(hours=5)).isoformat()}]})
+    assert len(sent) == 1 and sent[0][0] == "https://api.telegram.org/bot123456:ABC-secret/sendMessage" and sent[0][1]["chat_id"] == "-100123"
+    assert sent[0][1]["text"] == "#12 Jane Doe (Trail Club) finished Coastal Trail Weekend Coastal 50K in 5:00:00." and sent[0][1]["disable_notification"] is False
+    log = client.get(f"/suite/races/{race_id}/plugins/telegram/log", headers=admin).json()
+    assert log[0]["status"] == "ok" and "secret" not in log[0]["detail"]
+    shown = next(s for s in client.get(f"/suite/races/{race_id}/plugins", headers=admin).json() if s["plugin_key"] == "telegram")
+    assert shown["config"]["bot_token"] == "••••••••"
+
+
+def test_finish_email_goes_to_the_runner_only(monkeypatch):
+    admin = _admin(monkeypatch)
+    race_id, ids, people, stations, gun = _live_race(monkeypatch, admin)
+    sent = []
+    from api import email as email_module
+
+    monkeypatch.setattr(email_module, "_send", lambda to, subject, html, text, **kwargs: sent.append((to, subject, text)))
+    client.put(f"/suite/races/{race_id}/plugins/finish_email", json={"enabled": True, "config": {"message": "Prize giving at 14:00 by the bandstand.", "include_splits": True}}, headers=admin)
+    client.patch(f"/suite/participants/{people['Doe']['participant_id']}", json={"email": "Jane@Example.com"}, headers=admin)
+    monkeypatch.setattr(suite, "_now", lambda: gun + timedelta(hours=5, minutes=1))
+    client.post(f"/suite/stations/{stations['aid']}/passings", json={"passings": [{"client_id": "a", "qr_token": people["Doe"]["qr_token"], "recorded_at": (gun + timedelta(hours=2)).isoformat()}]})
+    client.post(f"/suite/stations/{stations['finish']}/passings", json={"passings": [{"client_id": "f", "qr_token": people["Doe"]["qr_token"], "recorded_at": (gun + timedelta(hours=5)).isoformat()}, {"client_id": "g", "qr_token": people["Smith"]["qr_token"], "recorded_at": (gun + timedelta(hours=5)).isoformat()}]})
+    assert len(sent) == 1, "John has no address and gets nothing"
+    to, subject, text = sent[0]
+    assert to == "jane@example.com" and subject == "Coastal Trail Weekend Coastal 50K: your time, 5:00:00"
+    assert "Aid 1 · Col 2:00:00" in text and "Prize giving at 14:00" in text and f"#/bib/{people['Doe']['qr_token']}" in text
+    log = client.get(f"/suite/races/{race_id}/plugins/finish_email/log", headers=admin).json()
+    assert {row["status"] for row in log} == {"ok", "skipped"}
+
+
+# ------------------------------------------------------------------------------- rehearsal
+
+
+def test_a_rehearsal_runs_the_race_with_a_synthetic_field_and_leaves_no_trace(monkeypatch):
+    admin = _admin(monkeypatch)
+    race_id = _race(admin)
+    assert client.post(f"/suite/races/{race_id}/rehearsal", json={"synthetic_runners": 20}, headers=admin).status_code == 409, "no plan yet"
+    _plan(admin, race_id)
+    people = _field(admin, race_id)  # three real runners, one without a bib
+    client.put(f"/suite/races/{race_id}/plugins/split_check", json={"enabled": True, "config": {"fastest": 2.5}}, headers=admin)
+    started = client.post(f"/suite/races/{race_id}/rehearsal", json={"synthetic_runners": 20, "seed": 7, "dnf_share": 0.2}, headers=admin)
+    assert started.status_code == 200, started.text
+    assert started.json()["status"] == "live" and started.json()["participants"] == 23 and started.json()["settings"]["rehearsal"]["seed"] == 7
+    roster = client.get(f"/suite/races/{race_id}/participants", headers=admin).json()
+    assert sum(1 for p in roster if p["registered_via"] == "synthetic") == 20 and all(p["bib"] for p in roster), "synthetic runners are marked, and everyone got a bib"
+    assert client.post(f"/suite/races/{race_id}/results/submit", headers=admin).status_code == 409, "made-up times never go to scoring"
+
+    # Just after the gun: everyone on course, nothing recorded yet (the start scans come seconds later).
+    board = client.get(f"/suite/races/{race_id}/board", headers=admin).json()
+    assert board["counts"]["on_course"] == 23 and board["counts"]["finished"] == 0
+    # Two hours on: the start scans are in, the fast ones are through the aid station, nobody has finished 50 km.
+    step = client.post(f"/suite/races/{race_id}/rehearsal/advance", json={"minutes": 120}, headers=admin).json()
+    assert step["advanced_minutes"] == 120 and step["recorded"] > 0
+    board = client.get(f"/suite/races/{race_id}/board", headers=admin).json()
+    start_cp = next(c for c in board["checkpoints"] if c["kind"] == "start")
+    assert start_cp["through"] == 23
+    aid = next(c for c in board["checkpoints"] if c["kind"] == "aid")
+    assert 0 < aid["through"] <= 23 and board["counts"]["finished"] == 0
+    assert all(s["source"] == "rehearsal" for r in board["participants"] for s in r["splits"])
+    # To the end: everyone finished or dropped out, the results file is complete, the finish is possible.
+    for _ in range(3):  # several small steps, then the rest: the clock moving must not bend the splits
+        client.post(f"/suite/races/{race_id}/rehearsal/advance", json={"minutes": 30}, headers=admin)
+    step = client.post(f"/suite/races/{race_id}/rehearsal/advance", json={"to_end": True}, headers=admin).json()
+    board = client.get(f"/suite/races/{race_id}/board", headers=admin).json()
+    assert board["counts"]["on_course"] == 0 and board["counts"]["finished"] + board["counts"]["dnf"] == 23 and board["counts"]["dnf"] >= 1
+    for row in board["participants"]:
+        positions = [s["position"] for s in row["splits"]]
+        assert positions == sorted(positions), (row["family_name"], positions)
+    check = next(p for p in board["panels"] if p["plugin"] == "split_check")
+    assert check["lines"] == [], check["lines"]
+    assert board["participants"][0]["rank"] == 1
+    assert "rehearsal" in client.get(f"/suite/races/{race_id}/passings.csv", headers=admin).text
+    live = client.get(f"/suite/races/{race_id}/readiness", headers=admin).json()
+    assert any(c["key"] == "rehearsal" for c in live["checks"])
+    assert client.post(f"/suite/races/{race_id}/finish", headers=admin).status_code == 200
+    assert client.post(f"/suite/races/{race_id}/results/submit", headers=admin).status_code == 409
+
+    # The end: synthetic runners gone, real runners registered again, no passings, back in planning.
+    ended = client.delete(f"/suite/races/{race_id}/rehearsal", headers=admin)
+    assert ended.status_code == 200 and ended.json()["status"] == "planning" and ended.json()["participants"] == 3 and ended.json()["passings"] == 0
+    roster = client.get(f"/suite/races/{race_id}/participants", headers=admin).json()
+    assert {p["family_name"] for p in roster} == {p["family_name"] for p in people} and all(p["status"] == "registered" for p in roster)
+    assert client.get(f"/suite/races/{race_id}", headers=admin).json()["settings"]["rehearsal"] is None
+    actions = [row["action"] for row in client.get(f"/suite/races/{race_id}/audit", headers=admin).json()]
+    assert actions[0] == "rehearsal.ended" and "rehearsal.started" in actions
+
+
+def test_a_rehearsal_with_the_real_list_is_repeatable_and_reset_cleans_it(monkeypatch):
+    admin = _admin(monkeypatch)
+    race_id = _race(admin)
+    _plan(admin, race_id)
+    _field(admin, race_id)
+    first = client.post(f"/suite/races/{race_id}/rehearsal", json={"seed": 42, "started_minutes_ago": 600, "dnf_share": 0}, headers=admin)
+    assert first.status_code == 200
+    board_a = client.get(f"/suite/races/{race_id}/board", headers=admin).json()
+    assert board_a["counts"]["finished"] == 3, "ten hours after the gun on a 50 km, everybody is in"
+    times_a = sorted(r["finish_seconds"] for r in board_a["participants"])
+    # Reset (the ordinary one) ends it too.
+    reset = client.post(f"/suite/races/{race_id}/reset", headers=admin).json()
+    assert reset["status"] == "planning" and reset["settings"]["rehearsal"] is None and reset["passings"] == 0
+    second = client.post(f"/suite/races/{race_id}/rehearsal", json={"seed": 42, "started_minutes_ago": 600, "dnf_share": 0}, headers=admin)
+    assert second.status_code == 200
+    times_b = sorted(r["finish_seconds"] for r in client.get(f"/suite/races/{race_id}/board", headers=admin).json()["participants"])
+    assert times_a == times_b, "the same seed gives the same race"
+    # Changing a setting during a rehearsal keeps the rehearsal.
+    assert client.patch(f"/suite/races/{race_id}/settings", json={"organizer_phone": "+1 555"}, headers=admin).json()["settings"]["rehearsal"]["seed"] == 42
+    assert client.delete(f"/suite/races/{race_id}/rehearsal", headers=admin).status_code == 200
+    assert client.delete(f"/suite/races/{race_id}/rehearsal", headers=admin).status_code == 409
