@@ -143,8 +143,8 @@ const USEFUL = [
   [PodiumArt, 'Images for your race channels', 'Prepare a podium image and suggested caption, then choose where to post them.'],
 ]
 
-// Who the tools are built for, and how. The fourth card is the promise of more: the scoring tool is
-// the first of a suite for small races, and the roadmap lives in the open on GitHub.
+// Who the tools are built for, and how. The box below the cards is the promise of more: the scoring
+// tool is the first of a suite for small races.
 const LOCAL_RACES = [
   [Wallet, 'Budget friendly', 'Free to use, no paid tier and no per-runner fee. A local race with fifty finishers gets the same tools as a big one.'],
   [Code, 'Open source', 'Every formula and every line of the site is public. Check it, fork it, or fix it.'],
@@ -461,18 +461,13 @@ export default function Home() {
                 </p>
                 <p className="mt-1 max-w-[64ch] text-[14px] leading-6 text-slate-700">
                   Scoring is the first tool. More are on the way for the same races, built the same way: free, open source and customisable.
-                  Follow the roadmap on GitHub, or tell us what your race is missing.
+                  Tell us what your race is missing.
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <a href={GITHUB_URL} className={secondaryButton}>
-                Roadmap on GitHub <ArrowUpRight size={14} aria-hidden="true" />
-              </a>
-              <a href="mailto:hello@otri.run" className={textLink}>
-                hello@otri.run
-              </a>
-            </div>
+            <a href="mailto:hello@otri.run" className={`${secondaryButton} shrink-0`}>
+              hello@otri.run
+            </a>
           </div>
         </div>
       </section>
