@@ -1,5 +1,5 @@
 import { scrollBehavior } from '../src/lib/comfort'
-import { ArrowRight, ArrowUpRight, Eye, GitBranch, Link2, UserX } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, Code, Eye, GitBranch, Link2, Map, SlidersHorizontal, UserX, Wallet } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import RaceCard from './RaceCard'
 import ScoreTicker from '../src/components/ScoreTicker'
@@ -141,6 +141,14 @@ const USEFUL = [
   [SheetArt, 'An accessible results page', 'Share a public link that runners can open without signing in.'],
   [CalculatorArt, 'Scores with an explanation', 'Show the course inputs, calculation and confidence notes behind the result.'],
   [PodiumArt, 'Images for your race channels', 'Prepare a podium image and suggested caption, then choose where to post them.'],
+]
+
+// Who the tools are built for, and how. The fourth card is the promise of more: the scoring tool is
+// the first of a suite for small races, and the roadmap lives in the open on GitHub.
+const LOCAL_RACES = [
+  [Wallet, 'Budget friendly', 'Free to use, no paid tier and no per-runner fee. A local race with fifty finishers gets the same tools as a big one.'],
+  [Code, 'Open source', 'Every formula and every line of the site is public. Check it, fork it, or fix it.'],
+  [SlidersHorizontal, 'Customisable', 'Take the parts you need: score a file, embed a results page, or call the API from your own site.'],
 ]
 
 const QUESTIONS = [
@@ -411,8 +419,66 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 7 / Questions */}
-      <section id="questions" className="border-b border-slate-200 bg-slate-50 py-14 sm:py-16">
+      {/* 7 / For local races, and what comes next */}
+      <section id="local-races" className="scroll-mt-20 border-b border-slate-200 bg-slate-50 py-14 sm:py-16">
+        <div className={CONTAINER}>
+          <div className="grid min-w-0 items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-16">
+            <div className="min-w-0">
+              <Eyebrow className="mb-3">FOR LOCAL RACES</Eyebrow>
+              <Heading>
+                Built for the races that <Gradient>do not have a budget.</Gradient>
+              </Heading>
+              <div className="mt-5 flex flex-col gap-3 text-[15px] leading-7 text-slate-700">
+                <p>
+                  Most trail races are small: a club, a village, a few volunteers and a spreadsheet. Big-event tooling is priced and built for someone else.
+                </p>
+                <p>OTRI is built for you: free to use, open source, and made of parts you can take one at a time.</p>
+              </div>
+            </div>
+            <ul className="grid min-w-0 gap-3 sm:grid-cols-3 lg:grid-cols-1">
+              {LOCAL_RACES.map(([Icon, title, text]) => (
+                <li key={title} className="flex gap-4 rounded-2xl border border-slate-200 bg-white p-4">
+                  <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-blue-700 ring-1 ring-slate-200">
+                    <Icon size={17} aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-bold tracking-[-.01em] text-[#0b1220]">{title}</p>
+                    <p className="mt-1 text-[14px] leading-6 text-slate-700">{text}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="mt-8 flex flex-col gap-4 rounded-2xl border border-dashed border-blue-200 bg-[linear-gradient(135deg,#f3f7fc_0%,#eef4ff_55%,#f7fbff_100%)] p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 gap-4">
+              <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-blue-700 ring-1 ring-blue-200">
+                <Map size={17} aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="flex flex-wrap items-center gap-2 text-[15px] font-bold tracking-[-.01em] text-[#0b1220]">
+                  A trail running suite
+                  <span className="rounded-full bg-blue-700 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[.08em] text-white">Coming soon</span>
+                </p>
+                <p className="mt-1 max-w-[64ch] text-[14px] leading-6 text-slate-700">
+                  Scoring is the first tool. More are on the way for the same races, built the same way: free, open source and customisable.
+                  Follow the roadmap on GitHub, or tell us what your race is missing.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <a href={GITHUB_URL} className={secondaryButton}>
+                Roadmap on GitHub <ArrowUpRight size={14} aria-hidden="true" />
+              </a>
+              <a href="mailto:hello@otri.run" className={textLink}>
+                hello@otri.run
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 8 / Questions */}
+      <section id="questions" className="border-b border-slate-200 bg-white py-14 sm:py-16">
         <div className={CONTAINER}>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div className="min-w-0">
@@ -439,7 +505,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 8 / The primary action, once more, and the open-source note */}
+      {/* 9 / The primary action, once more, and the open-source note */}
       <section className="bg-[#0b1220] py-14 text-white sm:py-16">
         <div className={CONTAINER}>
           <div className="grid min-w-0 items-center gap-8 lg:grid-cols-[minmax(0,1fr)_auto]">
