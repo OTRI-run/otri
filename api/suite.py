@@ -1926,6 +1926,11 @@ def advance_rehearsal(race_id: str, payload: AdvanceIn | None = None, organizer:
         minutes = max(1, int(-(-(needed - elapsed) // 60)))
     started_at = state["started_at"] - timedelta(minutes=minutes)
     state = suite_db.update_state(race_id, started_at=started_at)
+    # The gun moved: every rehearsal passing recorded so far moves with it, so each runner's
+    # splits keep their distance from the gun and from each other. Passings a person scanned
+    # during the rehearsal stay where the real clock put them.
+    with db.get_connection() as connection:
+        connection.execute("UPDATE suite_passings SET recorded_at = recorded_at - make_interval(mins => %s) WHERE race_id = %s AND source = 'rehearsal'", (minutes, race_id))
     result = _rehearsal_run(race, organizer.email)
     board = compute_board(race, suite_db.get_state(race_id), suite_db.list_checkpoints(race_id), suite_db.list_participants(race_id), suite_db.list_passings(race_id))
     return {"advanced_minutes": minutes, "recorded": result["recorded"], "started_at": started_at, "counts": board["counts"]}

@@ -873,6 +873,7 @@ def test_a_rehearsal_runs_the_race_with_a_synthetic_field_and_leaves_no_trace(mo
     assert client.post(f"/suite/races/{race_id}/rehearsal", json={"synthetic_runners": 20}, headers=admin).status_code == 409, "no plan yet"
     _plan(admin, race_id)
     people = _field(admin, race_id)  # three real runners, one without a bib
+    client.put(f"/suite/races/{race_id}/plugins/split_check", json={"enabled": True, "config": {"fastest": 2.5}}, headers=admin)
     started = client.post(f"/suite/races/{race_id}/rehearsal", json={"synthetic_runners": 20, "seed": 7, "dnf_share": 0.2}, headers=admin)
     assert started.status_code == 200, started.text
     assert started.json()["status"] == "live" and started.json()["participants"] == 23 and started.json()["settings"]["rehearsal"]["seed"] == 7
@@ -893,9 +894,16 @@ def test_a_rehearsal_runs_the_race_with_a_synthetic_field_and_leaves_no_trace(mo
     assert 0 < aid["through"] <= 23 and board["counts"]["finished"] == 0
     assert all(s["source"] == "rehearsal" for r in board["participants"] for s in r["splits"])
     # To the end: everyone finished or dropped out, the results file is complete, the finish is possible.
+    for _ in range(3):  # several small steps, then the rest: the clock moving must not bend the splits
+        client.post(f"/suite/races/{race_id}/rehearsal/advance", json={"minutes": 30}, headers=admin)
     step = client.post(f"/suite/races/{race_id}/rehearsal/advance", json={"to_end": True}, headers=admin).json()
     board = client.get(f"/suite/races/{race_id}/board", headers=admin).json()
     assert board["counts"]["on_course"] == 0 and board["counts"]["finished"] + board["counts"]["dnf"] == 23 and board["counts"]["dnf"] >= 1
+    for row in board["participants"]:
+        positions = [s["position"] for s in row["splits"]]
+        assert positions == sorted(positions), (row["family_name"], positions)
+    check = next(p for p in board["panels"] if p["plugin"] == "split_check")
+    assert check["lines"] == [], check["lines"]
     assert board["participants"][0]["rank"] == 1
     assert "rehearsal" in client.get(f"/suite/races/{race_id}/passings.csv", headers=admin).text
     live = client.get(f"/suite/races/{race_id}/readiness", headers=admin).json()
