@@ -95,6 +95,11 @@ Run a small race's day: plan, bibs, stations, board, plugins ([`docs/product/rac
 | GET | `/suite/stations/{station_key}` | anyone with the key | What a checkpoint's phone needs: the checkpoint, the race, the server clock, the roster (bib, name, QR token) and who is already through. |
 | POST | `/suite/stations/{station_key}/passings` | anyone with the key | A batch (`passings`: `client_id`, one of `qr_token` / `bib` / `participant_id`, `recorded_at`, `source`, `device`); each answers `accepted`, `replayed`, `duplicate` or `unknown`. Idempotent on `client_id`. |
 | GET | `/suite/bibs/{qr_token}` | anyone with the token | A runner's own page: first name, bib, status, splits. |
+| GET | `/suite/races/{race_id}/profile` | suite | The measured course thinned to a chart: `points` (km, m), `distance_km`, `min_m`, `max_m`, `gain_m`. 404 without a GPX. |
+| POST | `/suite/races/{race_id}/checkpoints/suggest` | suite | A plan from the course (`spacing_km`, `min_per_km`, `min_per_100m_climb`); `apply` creates it, `replace` when a plan exists. Preview otherwise. |
+| GET | `/suite/public/{race_id}` | anyone | The race, plan, profile, whether the live page is on, and registration (open, places left, fee, questions). 404 unless the live page or registration is on. |
+| GET | `/suite/public/{race_id}/live` | anyone | The spectator board: names, bibs, clubs, last seen, laps, finish times. No personal details beyond that. |
+| POST | `/suite/public/{race_id}/register` | anyone | Enter the race (`family_name`, `first_name`, `gender`, optional `birth_year`, `nationality`, `club`, `email`, `emergency_contact`, `consent`). Answers the runner's `qr_token` and how to pay (`url`, `reference`, `instructions`). Rate-limited; refuses duplicates and a full race. |
 | GET | `/suite/plugins` | suite | Every plugin on this server with its settings form. |
 | GET | `/suite/races/{race_id}/plugins` | suite | The race's plugin settings (secrets masked). |
 | PUT | `/suite/races/{race_id}/plugins/{plugin_key}` | suite | `enabled`, `config`; validated by the plugin, 422 with its sentence. |

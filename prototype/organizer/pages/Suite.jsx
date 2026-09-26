@@ -11,6 +11,7 @@ import {
   Copy,
   Download,
   Flag,
+  Globe,
   KeyRound,
   MapPin,
   Play,
@@ -18,6 +19,7 @@ import {
   Printer,
   QrCode,
   RotateCcw,
+  Sparkles,
   Square,
   Trash2,
   Users,
@@ -33,6 +35,7 @@ import {
   finishSuiteRace,
   getRacePluginLog,
   getSuiteBoard,
+  getSuiteProfile,
   getSuiteRace,
   importSuiteParticipants,
   listRacePlugins,
@@ -47,6 +50,7 @@ import {
   setRacePlugin,
   startSuiteRace,
   submitSuiteResults,
+  suggestSuiteCheckpoints,
   updateSuiteCheckpoint,
   updateSuiteParticipant,
   updateSuiteSettings,
@@ -54,6 +58,7 @@ import {
 import { Link, navigate, useRoute } from '../router'
 import { Button, Card, ChecklistRow, EmptyState, Eyebrow, Field, Gradient, Notice, Page, formatDate, inputClass } from '../ui'
 import { clock, hms } from './Station'
+import { ProfileChart, cutoffClock } from './Public'
 
 const TABS = [
   ['overview', 'Overview'],
@@ -303,6 +308,65 @@ function Overview({ race, reload }) {
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={form.bib_show_name} onChange={(e) => setForm((f) => ({ ...f, bib_show_name: e.target.checked }))} /> Print the runner's first name on the bib
           </label>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Laps" hint="1 for point to point or one loop." htmlFor="st-laps">
+              <input id="st-laps" inputMode="numeric" value={form.laps ?? 1} onChange={(e) => setForm((f) => ({ ...f, laps: Math.max(1, Math.min(50, Number(e.target.value) || 1)) }))} className={inputClass} />
+            </Field>
+            <Field label="Planned start" hint="Prints cut-offs as clock times." htmlFor="st-start">
+              <input id="st-start" type="time" value={form.planned_start ?? ''} onChange={(e) => setForm((f) => ({ ...f, planned_start: e.target.value || null }))} className={inputClass} />
+            </Field>
+            <Field label="Bib colour" hint="The band on the bib." htmlFor="st-accent">
+              <input id="st-accent" type="color" value={form.bib_accent ?? '#0b1220'} onChange={(e) => setForm((f) => ({ ...f, bib_accent: e.target.value }))} className={`${inputClass} h-11 p-1`} />
+            </Field>
+          </div>
+
+          <div className="mt-2 border-t border-slate-200 pt-4">
+            <Eyebrow as="h3" className="flex items-center gap-1.5"><Globe size={11} /> PUBLIC PAGES</Eyebrow>
+            <label className="mt-3 flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.live_public} onChange={(e) => setForm((f) => ({ ...f, live_public: e.target.checked }))} /> Live page for spectators
+            </label>
+            {race.settings.live_public && (
+              <p className="mt-1 flex flex-wrap items-center gap-3 pl-6 text-xs text-slate-500">
+                <a href={appUrl(`/live/${race.race_id}`)} target="_blank" rel="noreferrer" className="font-semibold text-blue-600">Open live page ↗</a>
+                <CopyButton text={appUrl(`/live/${race.race_id}`)} />
+              </p>
+            )}
+            <label className="mt-3 flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.registration_open} onChange={(e) => setForm((f) => ({ ...f, registration_open: e.target.checked }))} /> Registration open
+            </label>
+            {race.settings.registration_open && (
+              <p className="mt-1 flex flex-wrap items-center gap-3 pl-6 text-xs text-slate-500">
+                <a href={appUrl(`/register/${race.race_id}`)} target="_blank" rel="noreferrer" className="font-semibold text-blue-600">Open registration page ↗</a>
+                <CopyButton text={appUrl(`/register/${race.race_id}`)} />
+              </p>
+            )}
+            {form.registration_open && (
+              <div className="mt-3 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Places" hint="Empty for no limit." htmlFor="st-limit">
+                    <input id="st-limit" inputMode="numeric" value={form.registration_limit ?? ''} onChange={(e) => setForm((f) => ({ ...f, registration_limit: e.target.value ? Number(e.target.value) : null }))} className={inputClass} placeholder="200" />
+                  </Field>
+                  <Field label="Fee" hint="As text; empty for a free race." htmlFor="st-fee">
+                    <input id="st-fee" value={form.fee_text ?? ''} onChange={(e) => setForm((f) => ({ ...f, fee_text: e.target.value || null }))} className={inputClass} placeholder="500 THB" />
+                  </Field>
+                </div>
+                <Field label="Payment link" hint="Your own Stripe payment link, PayPal.me or PromptPay page. A Stripe link gets the runner's reference attached, so your dashboard shows who paid." htmlFor="st-pay">
+                  <input id="st-pay" type="url" value={form.payment_url ?? ''} onChange={(e) => setForm((f) => ({ ...f, payment_url: e.target.value || null }))} className={inputClass} placeholder="https://buy.stripe.com/…" />
+                </Field>
+                <Field label="Payment instructions" hint="Bank transfer details, or when to pay in cash. Shown after registering, with the runner's reference." htmlFor="st-payi">
+                  <textarea id="st-payi" rows={2} value={form.payment_instructions ?? ''} onChange={(e) => setForm((f) => ({ ...f, payment_instructions: e.target.value || null }))} className={inputClass} />
+                </Field>
+                <Field label="Note on the form" hint="Rules, what is included, mandatory kit." htmlFor="st-note2">
+                  <textarea id="st-note2" rows={2} value={form.registration_note ?? ''} onChange={(e) => setForm((f) => ({ ...f, registration_note: e.target.value || null }))} className={inputClass} />
+                </Field>
+                <div className="flex flex-wrap gap-4 text-xs">
+                  {[['ask_club', 'Ask for club'], ['ask_birth_year', 'Ask for year of birth'], ['ask_nationality', 'Ask for nationality'], ['ask_email', 'Ask for email'], ['require_emergency', 'Emergency contact required']].map(([k, v]) => (
+                    <label key={k} className="flex items-center gap-1.5"><input type="checkbox" checked={Boolean(form[k])} onChange={(e) => setForm((f) => ({ ...f, [k]: e.target.checked }))} /> {v}</label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           {error && <Notice kind="error">{error}</Notice>}
           <Button type="submit">{saved ? <><Check size={15} /> Saved</> : 'Save settings'}</Button>
         </form>
@@ -496,13 +560,17 @@ function FieldTab({ race, reloadRace }) {
           <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
             <table className="w-full text-sm">
               <thead className="text-left font-mono text-[10px] tracking-[.06em] text-slate-500">
-                <tr><th className="px-4 py-3">BIB</th><th className="px-3 py-3">NAME</th><th className="px-3 py-3">G</th><th className="px-3 py-3">BORN</th><th className="px-3 py-3">CLUB</th><th className="px-3 py-3">STATUS</th><th className="px-3 py-3" /></tr>
+                <tr><th className="px-4 py-3">BIB</th><th className="px-3 py-3">NAME</th><th className="px-3 py-3">G</th><th className="px-3 py-3">BORN</th><th className="px-3 py-3">CLUB</th><th className="px-3 py-3">STATUS</th><th className="px-3 py-3">FEE</th><th className="px-3 py-3" /></tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {shown.map((p) => (
                   <tr key={p.participant_id}>
                     <td className="px-4 py-2 font-mono font-bold">{p.bib ?? <span className="font-normal text-amber-600">—</span>}</td>
-                    <td className="px-3 py-2">{p.first_name} <strong>{p.family_name}</strong>{p.emergency_contact && <span className="ml-1 text-slate-400" title={`Emergency: ${p.emergency_contact}`}>☎</span>}</td>
+                    <td className="px-3 py-2">
+                      {p.first_name} <strong>{p.family_name}</strong>
+                      {p.registered_via === 'public' && <span className="ml-1 rounded bg-blue-50 px-1 font-mono text-[9px] tracking-[.06em] text-blue-700" title="Registered on the public form">WEB</span>}
+                      {(p.emergency_contact || p.email) && <span className="block font-mono text-[10px] text-slate-400">{[p.email, p.emergency_contact && `ICE ${p.emergency_contact}`].filter(Boolean).join(' · ')}</span>}
+                    </td>
                     <td className="px-3 py-2 font-mono text-xs">{p.gender}</td>
                     <td className="px-3 py-2 font-mono text-xs">{p.birth_year ?? ''}</td>
                     <td className="px-3 py-2 text-xs text-slate-600">{p.club ?? ''}</td>
@@ -510,6 +578,12 @@ function FieldTab({ race, reloadRace }) {
                       <select value={p.status} onChange={(e) => setStatus(p, e.target.value)} aria-label={`Status of ${p.first_name} ${p.family_name}`} className={`rounded-full border-0 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[.06em] ${P_STATUS_CLASS[p.status]}`}>
                         {Object.entries(P_STATUS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                       </select>
+                    </td>
+                    <td className="px-3 py-2">
+                      <select value={p.payment_status} onChange={(e) => updateSuiteParticipant(p.participant_id, { payment_status: e.target.value }).then(refresh).catch((err) => setFormError(err.message))} aria-label={`Fee of ${p.first_name} ${p.family_name}`} className={`rounded-full border-0 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[.06em] ${p.payment_status === 'paid' ? 'bg-emerald-50 text-emerald-700' : p.payment_status === 'pending' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500'}`}>
+                        <option value="not_required">no fee</option><option value="pending">pending</option><option value="paid">paid</option><option value="waived">waived</option><option value="refunded">refunded</option>
+                      </select>
+                      {p.payment_reference && <span className="ml-1 font-mono text-[10px] text-slate-400">{p.payment_reference}</span>}
                     </td>
                     <td className="px-3 py-2 text-right whitespace-nowrap">
                       <button type="button" onClick={() => edit(p)} className="text-xs font-semibold text-blue-600 hover:underline">Edit</button>
@@ -574,9 +648,68 @@ function CheckpointForm({ initial, onSubmit, onCancel, busy, submitLabel }) {
   )
 }
 
+function SuggestCard({ race, hasPlan, onApplied }) {
+  const [spacing, setSpacing] = useState('')
+  const [pace, setPace] = useState(12)
+  const [preview, setPreview] = useState(null)
+  const [error, setError] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const payload = () => ({ spacing_km: spacing ? Number(spacing) : null, min_per_km: Number(pace) || 12 })
+
+  async function run(apply, replace = false) {
+    setBusy(true)
+    setError(null)
+    try {
+      const result = await suggestSuiteCheckpoints(race.race_id, { ...payload(), apply, replace })
+      if (apply) {
+        setPreview(null)
+        onApplied()
+      } else setPreview(result)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card className="border-dashed border-blue-200 bg-blue-50/30">
+      <Eyebrow as="h2" className="flex items-center gap-1.5"><Sparkles size={11} /> SUGGEST A PLAN FROM THE COURSE</Eyebrow>
+      <p className="mt-1 max-w-[64ch] text-sm leading-6 text-slate-600">
+        {race.has_gpx
+          ? 'From the race’s measured GPX: aid stations where the ground makes access likely (a valley, a pass), spaced as races of this length usually are, with cut-offs from a slow pace. A starting point to move and rename.'
+          : 'Attach the race’s GPX under Race page setup first; the plan is drawn from the measured course.'}
+      </p>
+      {race.has_gpx && (
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          <Field label="Aid every (km)" hint="Empty: 6, 9 or 12 by distance." htmlFor="sg-spacing"><input id="sg-spacing" inputMode="decimal" value={spacing} onChange={(e) => setSpacing(e.target.value)} className={`${inputClass} w-28`} placeholder="auto" /></Field>
+          <Field label="Cut-off pace (min/km, flat)" hint="Plus 10 min per 100 m of climb." htmlFor="sg-pace"><input id="sg-pace" inputMode="numeric" value={pace} onChange={(e) => setPace(e.target.value)} className={`${inputClass} w-28`} /></Field>
+          <Button variant="secondary" busy={busy} onClick={() => run(false)}>Preview</Button>
+          {preview && !hasPlan && <Button busy={busy} onClick={() => run(true)}>Use this plan</Button>}
+          {preview && hasPlan && <Button variant="danger" busy={busy} onClick={() => { if (window.confirm('Replace the current plan with the suggestion? Passings recorded so far go with the old checkpoints.')) run(true, true) }}>Replace the current plan</Button>}
+        </div>
+      )}
+      {error && <div className="mt-3"><Notice kind="error">{error}</Notice></div>}
+      {preview && (
+        <ol className="mt-4 divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white text-sm">
+          {preview.suggestions.map((sg, i) => (
+            <li key={i} className="flex flex-wrap items-center gap-3 px-4 py-2">
+              <Chip className={sg.kind === 'start' ? 'bg-emerald-50 text-emerald-700' : sg.kind === 'finish' ? 'bg-[#0b1220] text-white' : 'bg-blue-50 text-blue-700'}>{KIND_LABEL[sg.kind]}</Chip>
+              <span className="font-semibold">{sg.name}</span>
+              <span className="font-mono text-xs text-slate-500">km {sg.distance_km} · {sg.elevation_m} m{sg.cutoff_minutes != null ? ` · cut-off ${minutesLabel(sg.cutoff_minutes)}` : ''}</span>
+              <span className="min-w-0 flex-1 text-xs text-slate-500">{sg.reason}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </Card>
+  )
+}
+
 function PlanTab({ race, reloadRace }) {
   const raceId = race.race_id
   const [checkpoints, error, reload] = useAsync(() => listSuiteCheckpoints(raceId), [raceId])
+  const [profile] = useAsync(() => (race.has_gpx ? getSuiteProfile(raceId).catch(() => null) : Promise.resolve(null)), [raceId, race.has_gpx])
   const [editing, setEditing] = useState(null)
   const [showQr, setShowQr] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -616,7 +749,12 @@ function PlanTab({ race, reloadRace }) {
         <p className="mt-1 max-w-[64ch] text-sm leading-6 text-slate-500">
           Start, checkpoints, aid stations, finish, in course order. Each gets a station link: open it on the volunteer's phone and that phone records passings there, with or without signal. Cut-offs make the board flag who is overdue.
         </p>
-        {checkpoints?.length === 0 && <div className="mt-4"><EmptyState title="No checkpoints yet">Add the start, the aid stations and the finish below. Distances are from the start; cut-offs are minutes after the gun.</EmptyState></div>}
+        {profile && checkpoints && (
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3">
+            <ProfileChart profile={profile} checkpoints={checkpoints} height={150} accent={race.settings.bib_accent === '#0b1220' ? '#2563eb' : race.settings.bib_accent} className="h-40 w-full" />
+          </div>
+        )}
+        {checkpoints?.length === 0 && <div className="mt-4"><EmptyState title="No checkpoints yet">Add the start, the aid stations and the finish below, or let the course suggest them. Distances are from the start; cut-offs are minutes after the gun.</EmptyState></div>}
         {checkpoints?.length > 0 && (
           <ol className="mt-4 grid gap-3">
             {checkpoints.map((c, index) => {
@@ -644,7 +782,7 @@ function PlanTab({ race, reloadRace }) {
                           <span className="text-base font-bold tracking-[-.02em] text-[#0b1220]">{c.name}</span>
                         </p>
                         <p className="mt-1 font-mono text-[11px] text-slate-500">
-                          {c.distance_km != null ? `km ${c.distance_km}` : 'distance —'} · cut-off {c.cutoff_minutes != null ? minutesLabel(c.cutoff_minutes) : '—'}
+                          {c.distance_km != null ? `km ${c.distance_km}` : 'distance —'} · cut-off {c.cutoff_minutes != null ? `${minutesLabel(c.cutoff_minutes)}${cutoffClock(race.settings.planned_start, c.cutoff_minutes) ? ` (${cutoffClock(race.settings.planned_start, c.cutoff_minutes)})` : ''}` : '—'}
                           {[c.water && 'water', c.food && 'food', c.medical && 'medical', c.drop_bag && 'drop bags', c.crew_access && 'crew'].filter(Boolean).length > 0 && ` · ${[c.water && 'water', c.food && 'food', c.medical && 'medical', c.drop_bag && 'drop bags', c.crew_access && 'crew'].filter(Boolean).join(', ')}`}
                         </p>
                         {c.supplies && <p className="mt-1 text-xs text-slate-600"><span className="font-semibold">Supplies:</span> {c.supplies}</p>}
@@ -675,6 +813,7 @@ function PlanTab({ race, reloadRace }) {
           </ol>
         )}
       </div>
+      <SuggestCard race={race} hasPlan={Boolean(checkpoints?.length)} onApplied={refresh} />
       <Card>
         <Eyebrow as="h2">ADD A CHECKPOINT</Eyebrow>
         <div className="mt-3">
@@ -844,7 +983,7 @@ function DayTab({ race, reloadRace }) {
           <div className="mt-3 overflow-x-auto rounded-2xl border border-slate-200 bg-white">
             <table className="w-full text-sm">
               <thead className="text-left font-mono text-[10px] tracking-[.06em] text-slate-500">
-                <tr><th className="px-4 py-3">#</th><th className="px-3 py-3">BIB</th><th className="px-3 py-3">RUNNER</th><th className="px-3 py-3">STATUS</th><th className="px-3 py-3">LAST SEEN</th><th className="px-3 py-3">ELAPSED</th><th className="px-3 py-3">HEADING TO</th></tr>
+                <tr><th className="px-4 py-3">#</th><th className="px-3 py-3">BIB</th><th className="px-3 py-3">RUNNER</th><th className="px-3 py-3">STATUS</th>{board.laps > 1 && <th className="px-3 py-3">LAP</th>}<th className="px-3 py-3">LAST SEEN</th><th className="px-3 py-3">ELAPSED</th><th className="px-3 py-3">HEADING TO</th></tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {rows.map((p) => (
@@ -853,9 +992,10 @@ function DayTab({ race, reloadRace }) {
                     <td className="px-3 py-2 font-mono font-bold">{p.bib ?? '—'}</td>
                     <td className="px-3 py-2">{p.first_name} <strong>{p.family_name}</strong>{p.club && <span className="ml-1 text-xs text-slate-500">{p.club}</span>}</td>
                     <td className="px-3 py-2"><Chip className={P_STATUS_CLASS[p.status]}>{P_STATUS[p.status]}</Chip>{p.overdue && <Chip className="ml-1 bg-red-600 text-white"><AlertTriangle size={9} className="mr-0.5 inline" />overdue</Chip>}</td>
+                    {board.laps > 1 && <td className="px-3 py-2 font-mono text-xs">{p.lap}/{board.laps}</td>}
                     <td className="px-3 py-2 text-xs">{p.last ? <>{p.last.name} <span className="font-mono text-slate-500">{clock(p.last.recorded_at)}</span></> : <span className="text-slate-400">—</span>}</td>
                     <td className="px-3 py-2 font-mono text-xs">{p.status === 'finished' ? <strong>{hms(p.finish_seconds)}</strong> : p.last ? hms(p.last.elapsed_seconds) : ''}</td>
-                    <td className="px-3 py-2 text-xs text-slate-600">{p.next_checkpoint ? `${p.next_checkpoint.name}${p.next_checkpoint.cutoff_minutes != null ? ` (cut-off ${minutesLabel(p.next_checkpoint.cutoff_minutes)})` : ''}` : ''}</td>
+                    <td className="px-3 py-2 text-xs text-slate-600">{p.next_checkpoint ? `${p.next_checkpoint.name}${board.laps > 1 ? ` · lap ${p.next_checkpoint.lap}` : ''}${p.next_checkpoint.cutoff_minutes != null ? ` (cut-off ${minutesLabel(p.next_checkpoint.cutoff_minutes)})` : ''}` : ''}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1071,59 +1211,129 @@ function ResultsTab({ race }) {
 
 // ------------------------------------------------------------------------------------- bib sheet
 
-/** Two bibs per A4 page, each with the runner's QR code. Print from the browser (Ctrl/Cmd+P). */
+/** One bib: what the industry prints, on a home printer.
+ *
+ *  Top band in the race's colour with the event and the distance; the number as large as the
+ *  paper allows, in a monospace so 1 and 7 cannot be confused at a station; the runner's first
+ *  name large enough to cheer by; the course profile with every station marked and the cut-offs
+ *  as clock times, so the runner carries the plan; the QR code that opens their own splits; whom
+ *  to call if they are found alone. Four reinforced corners for the pins. 190 × 135 mm: two per
+ *  A4 sheet, the size a chest carries. */
+function Bib({ race, participant, profile, checkpoints }) {
+  const accent = race.settings.bib_accent || '#0b1220'
+  const stations = checkpoints.filter((c) => c.distance_km != null && c.kind !== 'start')
+  const compact = stations.length > 6
+  return (
+    <div className="bib" style={{ '--accent': accent }}>
+      <span className="bib-hole tl" /><span className="bib-hole tr" /><span className="bib-hole bl" /><span className="bib-hole br" />
+      <div className="bib-band">
+        <span className="bib-event">{race.event_name}</span>
+        <span className="bib-course">{race.course_name} · {race.distance_km.toFixed(race.distance_km % 1 ? 1 : 0)} km{race.settings.laps > 1 ? ` × ${race.settings.laps}` : ''} · +{Math.round(race.elevation_gain_m)} m</span>
+      </div>
+      <div className="bib-main">
+        <div className="bib-number-wrap">
+          <div className="bib-number" style={{ fontSize: `${String(participant.bib).length > 3 ? 46 : 58}mm` }}>{participant.bib}</div>
+          {race.settings.bib_show_name && <div className="bib-name">{participant.first_name}{participant.club ? <span className="bib-club"> · {participant.club}</span> : null}</div>}
+        </div>
+        <div className="bib-qr">
+          <QrImage text={appUrl(`/bib/${participant.qr_token}`)} size={200} className="bib-qr-img" />
+          <span className="bib-qr-label">your splits</span>
+        </div>
+      </div>
+      {profile && (
+        <div className="bib-profile">
+          <ProfileChart profile={profile} checkpoints={checkpoints} height={70} accent={accent} labels={false} className="bib-profile-svg" />
+          <table className={`bib-stations ${compact ? 'compact' : ''}`}>
+            <tbody>
+              <tr>
+                {stations.map((c) => (
+                  <td key={c.checkpoint_id}>
+                    <span className="bib-st-name">{c.kind === 'finish' ? 'Finish' : c.name.replace(/\s*·.*$/, '')}</span>
+                    <span className="bib-st-km">{c.distance_km} km</span>
+                    {c.cutoff_minutes != null && <span className="bib-st-cut">{cutoffClock(race.settings.planned_start, c.cutoff_minutes) ?? minutesLabel(c.cutoff_minutes)}</span>}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div className="bib-foot">
+        {race.settings.bib_note && <span className="bib-foot-note">{race.settings.bib_note}</span>}
+        <span className="bib-foot-row">
+          <span>{race.settings.organizer_phone ? `Found alone? Call ${race.settings.organizer_phone}` : 'Follow the markers · leave no trace'}</span>
+          <span>{formatDate(race.event_date)}{race.settings.planned_start ? ` · start ${race.settings.planned_start}` : ''} · otri.run</span>
+        </span>
+      </div>
+    </div>
+  )
+}
+
+const BIB_CSS = `
+  @media print {
+    body > #root > div > header, body > #root > div > footer, .bib-controls, .skip-link, [data-build-banner] { display: none !important; }
+    .bib-sheet { padding: 0 !important; background: #fff !important; }
+    .bib { page-break-inside: avoid; break-inside: avoid; margin: 0 auto 6mm !important; box-shadow: none !important; }
+    .bib:nth-child(2n) { page-break-after: always; break-after: page; }
+    @page { size: A4 portrait; margin: 8mm; }
+  }
+  .bib { position: relative; width: 190mm; height: 135mm; box-sizing: border-box; margin: 0 auto 8mm; background: #fff; color: #0b1220; border: 0.5mm solid #0b1220; border-radius: 5mm; overflow: hidden; display: grid; grid-template-rows: 12mm 1fr auto auto; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; box-shadow: 0 10px 28px rgba(15,23,42,.08); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .bib-hole { position: absolute; width: 5mm; height: 5mm; border-radius: 50%; border: 0.4mm solid #94a3b8; background: #fff; z-index: 2; }
+  .bib-hole.tl { top: 3mm; left: 3mm } .bib-hole.tr { top: 3mm; right: 3mm } .bib-hole.bl { bottom: 3mm; left: 3mm } .bib-hole.br { bottom: 3mm; right: 3mm }
+  .bib-band { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6mm; padding: 0 12mm; background: var(--accent); color: #fff; }
+  .bib-event { font-size: 5.2mm; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bib-course { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 2.9mm; opacity: .92; white-space: nowrap; }
+  .bib-main { display: grid; grid-template-columns: 1fr 40mm; align-items: center; gap: 4mm; padding: 2mm 10mm 0 10mm; min-height: 0; }
+  .bib-number-wrap { min-width: 0; }
+  .bib-number { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 900; line-height: .9; letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
+  .bib-name { margin-top: 1.5mm; font-size: 9mm; font-weight: 800; letter-spacing: -.02em; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bib-club { font-size: 4mm; font-weight: 600; color: #475569; }
+  .bib-qr { display: flex; flex-direction: column; align-items: center; gap: 1mm; }
+  .bib-qr-img { width: 36mm !important; height: 36mm !important; }
+  .bib-qr-label { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 2.4mm; letter-spacing: .08em; text-transform: uppercase; color: #64748b; }
+  .bib-profile { padding: 0 10mm; }
+  .bib-profile-svg { display: block; width: 100%; height: 20mm; }
+  .bib-stations { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 0.5mm; }
+  .bib-stations td { padding: 0 1mm; text-align: center; vertical-align: top; border-left: 0.2mm solid #cbd5e1; }
+  .bib-stations td:first-child { border-left: 0; }
+  .bib-st-name { display: block; font-size: 2.8mm; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bib-st-km { display: block; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 2.5mm; color: #475569; }
+  .bib-st-cut { display: block; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 2.7mm; font-weight: 700; color: #0b1220; }
+  .bib-stations.compact .bib-st-name { font-size: 2.3mm } .bib-stations.compact .bib-st-km, .bib-stations.compact .bib-st-cut { font-size: 2.2mm }
+  .bib-foot { padding: 1.2mm 10mm 1.6mm; border-top: 0.25mm solid #cbd5e1; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 2.5mm; line-height: 1.5; color: #475569; }
+  .bib-foot-note { display: block; font-weight: 700; color: #0b1220; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bib-foot-row { display: flex; justify-content: space-between; gap: 4mm; white-space: nowrap; }
+  .bib-foot-row span { overflow: hidden; text-overflow: ellipsis; }
+`
+
+/** Two bibs per A4 page. Print from the browser (Ctrl/Cmd+P) or save as PDF for the copy shop. */
 export function BibSheet({ raceId }) {
   const [race] = useAsync(() => getSuiteRace(raceId), [raceId])
   const [people, error] = useAsync(() => listSuiteParticipants(raceId), [raceId])
+  const [checkpoints] = useAsync(() => listSuiteCheckpoints(raceId), [raceId])
+  const [profile] = useAsync(() => getSuiteProfile(raceId).catch(() => null), [raceId])
   const numbered = (people ?? []).filter((p) => p.bib)
 
   return (
     <div className="bib-sheet">
-      <style>{`
-        @media print {
-          body > #root > div > header, body > #root > div > footer, .bib-controls, .skip-link { display: none !important; }
-          .bib-sheet { padding: 0 !important; }
-          .bib { page-break-inside: avoid; break-inside: avoid; }
-          .bib:nth-child(2n) { page-break-after: always; break-after: page; }
-          @page { size: A4 portrait; margin: 8mm; }
-        }
-        .bib { width: 190mm; height: 135mm; border: 1.2mm solid #0b1220; border-radius: 6mm; padding: 8mm 10mm; display: grid; grid-template-columns: 1fr 44mm; grid-template-rows: auto 1fr auto; gap: 2mm 6mm; box-sizing: border-box; background: #fff; color: #0b1220; margin: 0 auto 6mm; }
-        .bib-number { font-size: 62mm; line-height: .92; font-weight: 900; letter-spacing: -.04em; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; align-self: center; }
-      `}</style>
+      <style>{BIB_CSS}</style>
       <div className="bib-controls mx-auto w-[min(1120px,calc(100%-28px))] py-8">
         <Link to={`/suite/${encodeURIComponent(raceId)}?tab=field`} className="text-xs font-semibold text-blue-600">← Back to the runners</Link>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-[-.03em]">Bibs · {race?.course_name ?? '…'}</h1>
-            <p className="mt-1 text-sm text-slate-500">{numbered.length} bib{numbered.length === 1 ? '' : 's'}, two per A4 page. Runners without a number are left out: assign numbers first.</p>
+            <p className="mt-1 max-w-[70ch] text-sm leading-6 text-slate-500">
+              {numbered.length} bib{numbered.length === 1 ? '' : 's'}, two per A4 page, 190 × 135 mm each. Print on paper or on Tyvek sheets (they take rain), or save as PDF for the copy shop; cut along the border and pin at the four corners.
+              {profile ? ' Each bib carries the course profile with the stations and their cut-offs.' : ' Attach the race’s GPX to print the course profile on the bibs.'}
+              {numbered.length < (people?.length ?? 0) && ` ${(people?.length ?? 0) - numbered.length} runner${(people?.length ?? 0) - numbered.length === 1 ? ' has' : 's have'} no number yet and are left out.`}
+            </p>
           </div>
           <Button onClick={() => window.print()} disabled={numbered.length === 0}><Printer size={15} /> Print</Button>
         </div>
         {error && <div className="mt-3"><Notice kind="error">{error}</Notice></div>}
       </div>
       <div className="px-2 pb-8">
-        {race &&
-          numbered.map((p) => (
-            <div key={p.participant_id} className="bib">
-              <div className="flex items-baseline justify-between" style={{ gridColumn: '1 / -1' }}>
-                <span className="text-[6mm] font-bold tracking-[-.02em]">{race.event_name}</span>
-                <span className="font-mono text-[3.6mm] text-slate-600">{race.course_name} · {formatDate(race.event_date)}</span>
-              </div>
-              <div className="bib-number">{p.bib}</div>
-              <div className="flex flex-col items-center justify-center gap-1">
-                <QrImage text={appUrl(`/bib/${p.qr_token}`)} size={160} className="h-[42mm] w-[42mm]" />
-                <span className="font-mono text-[2.6mm] text-slate-500">scan for your splits</span>
-              </div>
-              <div className="flex items-end justify-between gap-4" style={{ gridColumn: '1 / -1' }}>
-                <span className="text-[7mm] font-bold leading-none">{race.settings.bib_show_name ? p.first_name : ''}</span>
-                <span className="text-right font-mono text-[3.2mm] leading-tight text-slate-600">
-                  {race.settings.organizer_phone && <span className="block">If found alone, call {race.settings.organizer_phone}</span>}
-                  {race.settings.bib_note && <span className="block">{race.settings.bib_note}</span>}
-                  <span className="block">Timed and scored with OTRI · otri.run</span>
-                </span>
-              </div>
-            </div>
-          ))}
+        {race && checkpoints && numbered.map((p) => <Bib key={p.participant_id} race={race} participant={p} profile={profile} checkpoints={checkpoints} />)}
       </div>
     </div>
   )

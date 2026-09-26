@@ -736,3 +736,20 @@ export function postStationPassings(stationKey, passings) {
 export function getBib(qrToken) {
   return request(`/suite/bibs/${enc(qrToken)}`)
 }
+
+// The course profile for the bibs, a plan suggested from the GPX, and the public pages.
+export function getSuiteProfile(raceId) {
+  return request(`/suite/races/${enc(raceId)}/profile`, suiteAuth())
+}
+export function suggestSuiteCheckpoints(raceId, payload = {}) {
+  return suitePost(`/suite/races/${enc(raceId)}/checkpoints/suggest`, payload)
+}
+export function getPublicRace(raceId) {
+  return request(`/suite/public/${enc(raceId)}`)
+}
+export function getPublicLive(raceId) {
+  return request(`/suite/public/${enc(raceId)}/live`)
+}
+export function registerForRace(raceId, payload) {
+  return request(`/suite/public/${enc(raceId)}/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+}

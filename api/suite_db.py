@@ -80,6 +80,11 @@ CREATE TABLE IF NOT EXISTS suite_participants (
     UNIQUE (race_id, bib)
 );
 CREATE INDEX IF NOT EXISTS suite_participants_race ON suite_participants (race_id);
+-- Public registration: how the runner came in, how to reach them, and whether the fee is settled.
+ALTER TABLE suite_participants ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE suite_participants ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'not_required';
+ALTER TABLE suite_participants ADD COLUMN IF NOT EXISTS payment_reference TEXT;
+ALTER TABLE suite_participants ADD COLUMN IF NOT EXISTS registered_via TEXT NOT NULL DEFAULT 'organizer';
 
 CREATE TABLE IF NOT EXISTS suite_passings (
     passing_id BIGSERIAL PRIMARY KEY,
@@ -125,7 +130,8 @@ DOUBLE_SCAN_SECONDS = 120
 
 # Kept in a Python module so the table's columns are named once for reads and writes.
 CHECKPOINT_FIELDS = ("name", "kind", "distance_km", "cutoff_minutes", "water", "food", "medical", "drop_bag", "crew_access", "supplies", "notes")
-PARTICIPANT_FIELDS = ("bib", "family_name", "first_name", "gender", "birth_year", "nationality", "club", "emergency_contact", "status", "notes")
+PARTICIPANT_FIELDS = ("bib", "family_name", "first_name", "gender", "birth_year", "nationality", "club", "emergency_contact", "status", "notes", "email", "payment_status", "payment_reference", "registered_via")
+PAYMENT_STATUSES = ("not_required", "pending", "paid", "waived", "refunded")
 
 
 def _now() -> datetime:
@@ -313,7 +319,7 @@ def _clean_participant(values: dict) -> dict:
         fields["gender"] = ((fields["gender"] or "X").strip().upper()[:1] or "X") if fields["gender"] is not None else "X"
         if fields["gender"] not in ("M", "F", "X"):
             fields["gender"] = "X"
-    for key in ("family_name", "first_name", "club", "nationality", "emergency_contact", "notes"):
+    for key in ("family_name", "first_name", "club", "nationality", "emergency_contact", "notes", "email", "payment_reference"):
         if key in fields and isinstance(fields[key], str):
             fields[key] = fields[key].strip()
     if "nationality" in fields and fields["nationality"]:
@@ -327,6 +333,8 @@ def create_participant(race_id: str, values: dict) -> dict:
     fields.setdefault("first_name", "")
     fields.setdefault("gender", "X")
     fields.setdefault("status", "registered")
+    fields.setdefault("payment_status", "not_required")
+    fields.setdefault("registered_via", "organizer")
     with db.get_connection() as connection:
         with connection.transaction():
             if fields.get("bib") and connection.execute("SELECT 1 FROM suite_participants WHERE race_id = %s AND bib = %s", (race_id, fields["bib"])).fetchone():
@@ -358,6 +366,16 @@ def update_participant(participant_id: str, values: dict) -> dict | None:
                 sets = ", ".join(f"{key} = %s" for key in fields)
                 connection.execute(f"UPDATE suite_participants SET {sets}, updated_at = now() WHERE participant_id = %s", (*fields.values(), participant_id))
             return connection.execute("SELECT * FROM suite_participants WHERE participant_id = %s", (participant_id,)).fetchone()
+
+
+def find_participant_by_name(race_id: str, family_name: str, first_name: str, birth_year: int | None) -> dict | None:
+    """The same person registering twice: same names (case-insensitive) and, when given, the same year."""
+    with db.get_connection() as connection:
+        return connection.execute(
+            "SELECT * FROM suite_participants WHERE race_id = %s AND lower(family_name) = lower(%s) AND lower(first_name) = lower(%s) "
+            "AND (birth_year IS NULL OR %s IS NULL OR birth_year = %s) ORDER BY created_at LIMIT 1",
+            (race_id, family_name.strip(), first_name.strip(), birth_year, birth_year),
+        ).fetchone()
 
 
 def set_participant_status(participant_id: str, status: str) -> None:
