@@ -240,7 +240,7 @@ ${lead}
 <article class="doc">${body}</article>
 ${cta}
 </main>
-<footer><div class="foot"><span>OTRI · Open Trail Running Index · <a href="https://github.com/OTRI-run/otri">Open source</a></span><span>${legal} · <a href="mailto:hello@otri.run">hello@otri.run</a></span></div></footer>
+<footer><div class="foot"><span>OTRI · Open Trail Running Index · <a href="https://github.com/OTRI-run/otri">Open source</a></span><span>${legal} · <a href="mailto:hello@otri.run">hello@otri.run</a> · <a href="https://www.facebook.com/otri.run/">Facebook</a> · <a href="https://www.instagram.com/otri.run/">Instagram</a></span></div></footer>
 </body>
 </html>
 `

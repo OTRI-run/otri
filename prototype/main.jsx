@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowUpRight, Mail, Download, Upload, Play, ArrowRight, Shar
 import { countryName } from '../src/components/CountrySelect'
 import Logo from '../src/components/Logo'
 import GitHubMark from '../src/components/GitHubMark'
+import { FACEBOOK_URL, FacebookMark, INSTAGRAM_URL, InstagramMark } from '../src/components/SocialMarks'
 import UnitsMenu from '../src/components/UnitsMenu'
 import { formatDistance, formatElevation, useUnits } from '../src/lib/units'
 import Home from './Home'
@@ -284,6 +285,8 @@ const FOOTER_COLUMNS = [
       ['Privacy', '/privacy/'],
       ['Terms', '/terms/'],
       ['hello@otri.run', 'mailto:hello@otri.run'],
+      ['Facebook', FACEBOOK_URL],
+      ['Instagram', INSTAGRAM_URL],
     ],
   },
 ]
@@ -312,6 +315,14 @@ function Footer({ tab }) {
               <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-slate-700 no-underline hover:text-blue-700">
                 <Mail size={14} />
                 hello@otri.run
+              </a>
+              <a href={FACEBOOK_URL} className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-slate-700 no-underline hover:text-blue-700">
+                <FacebookMark size={14} />
+                Facebook
+              </a>
+              <a href={INSTAGRAM_URL} className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-slate-700 no-underline hover:text-blue-700">
+                <InstagramMark size={14} />
+                Instagram
               </a>
             </div>
             <p className="mt-2 text-[12px] text-slate-500">Open source. Every line of the model and the site is public.</p>
