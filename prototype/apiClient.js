@@ -641,8 +641,8 @@ export function getSuiteRace(raceId) {
 export function updateSuiteSettings(raceId, settings) {
   return request(`/suite/races/${enc(raceId)}/settings`, { method: 'PATCH', ...json(sessionToken(), settings) })
 }
-export function startSuiteRace(raceId, startedAt = null) {
-  return suitePost(`/suite/races/${enc(raceId)}/start`, startedAt ? { started_at: startedAt } : {})
+export function startSuiteRace(raceId, { startedAt = null, force = false } = {}) {
+  return suitePost(`/suite/races/${enc(raceId)}/start`, { ...(startedAt ? { started_at: startedAt } : {}), force })
 }
 export function finishSuiteRace(raceId) {
   return suitePost(`/suite/races/${enc(raceId)}/finish`)
@@ -685,8 +685,8 @@ export function updateSuiteParticipant(participantId, payload) {
 export function deleteSuiteParticipant(participantId) {
   return request(`/suite/participants/${enc(participantId)}`, { method: 'DELETE', ...suiteAuth() })
 }
-export function importSuiteParticipants(raceId, text, replace = false) {
-  return suitePost(`/suite/races/${enc(raceId)}/participants/import`, { text, replace })
+export function importSuiteParticipants(raceId, text, { replace = false, dryRun = false } = {}) {
+  return suitePost(`/suite/races/${enc(raceId)}/participants/import`, { text, replace, dry_run: dryRun })
 }
 export function assignSuiteBibs(raceId, payload) {
   return suitePost(`/suite/races/${enc(raceId)}/participants/assign-bibs`, payload)
@@ -752,4 +752,17 @@ export function getPublicLive(raceId) {
 }
 export function registerForRace(raceId, payload) {
   return request(`/suite/public/${enc(raceId)}/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+}
+
+// Integrity: readiness before the gun, the audit log, every passing as recorded.
+export function getSuiteReadiness(raceId) {
+  return request(`/suite/races/${enc(raceId)}/readiness`, suiteAuth())
+}
+export function getSuiteAudit(raceId) {
+  return request(`/suite/races/${enc(raceId)}/audit`, suiteAuth())
+}
+export async function fetchSuitePassingsCsv(raceId) {
+  const response = await fetch(`${API_BASE_URL}/suite/races/${enc(raceId)}/passings.csv`, withCredentials(suiteAuth()))
+  if (!response.ok) throw await errorFrom(response)
+  return response.text()
 }

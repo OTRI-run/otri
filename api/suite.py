@@ -34,7 +34,7 @@ from pydantic import BaseModel, Field, field_validator
 from ingestion import result_records, validate_result_file
 from ingestion.normalize import split_name
 
-from . import db, suite_db
+from . import db, suite_db, suite_fields
 from . import suite_plugins as plugins
 from .auth import Organizer
 from .rate_limit import enforce_rate_limit
@@ -213,7 +213,7 @@ class ParticipantIn(BaseModel):
     first_name: str = Field(default="", max_length=120)
     gender: str = Field(default="X", max_length=10)
     birth_year: int | None = Field(default=None, ge=1900, le=_THIS_YEAR)
-    nationality: str | None = Field(default=None, max_length=3)
+    nationality: str | None = Field(default=None, max_length=60)  # a code or a country name; cleaned to ISO alpha-3
     club: str | None = Field(default=None, max_length=120)
     emergency_contact: str | None = Field(default=None, max_length=200)
     status: str = Field(default="registered", pattern="^(registered|dns|started|finished|dnf|dsq)$")
@@ -228,7 +228,7 @@ class ParticipantUpdate(BaseModel):
     first_name: str | None = Field(default=None, max_length=120)
     gender: str | None = Field(default=None, max_length=10)
     birth_year: int | None = Field(default=None, ge=1900, le=_THIS_YEAR)
-    nationality: str | None = Field(default=None, max_length=3)
+    nationality: str | None = Field(default=None, max_length=60)  # a code or a country name; cleaned to ISO alpha-3
     club: str | None = Field(default=None, max_length=120)
     emergency_contact: str | None = Field(default=None, max_length=200)
     status: str | None = Field(default=None, pattern="^(registered|dns|started|finished|dnf|dsq)$")
@@ -266,6 +266,8 @@ class ImportIn(BaseModel):
 
     text: str = Field(min_length=1, max_length=2_000_000)
     replace: bool = False
+    # Read and clean the sheet, report what would happen, store nothing.
+    dry_run: bool = False
 
 
 class ImportOut(BaseModel):
@@ -273,6 +275,11 @@ class ImportOut(BaseModel):
     skipped: list[str]
     columns: dict[str, str]
     ignored_columns: list[str]
+    # What the cleaners changed, per row ("row 3, Doe Jane: last name: re-cased from “DOE”").
+    corrections: list[str] = []
+    # The rows as they would be stored (dry run only), for a preview before anything is added.
+    rows: list[dict] = []
+    total_rows: int = 0
 
 
 class AssignBibsIn(BaseModel):
@@ -617,6 +624,8 @@ def update_suite_settings(race_id: str, payload: SuiteSettings, organizer: Organ
 
 class StartIn(BaseModel):
     started_at: datetime | None = None
+    # Fire the gun over readiness warnings (never over blockers). Recorded in the audit log.
+    force: bool = False
 
 
 @router.post("/races/{race_id}/start", response_model=SuiteRaceOut)
@@ -629,9 +638,17 @@ def start_suite_race(race_id: str, payload: StartIn | None = None, organizer: Or
     started_at = (payload.started_at if payload and payload.started_at else None) or _now()
     if started_at > _now() + timedelta(minutes=5):
         raise HTTPException(status_code=422, detail="the start time cannot be in the future")
+    checks = readiness(race, state)
+    blockers = [c for c in checks if c["level"] == "blocker" and not c["ok"]]
+    warnings = [c for c in checks if c["level"] == "warning" and not c["ok"]]
+    if blockers:
+        raise HTTPException(status_code=409, detail="Not ready to start: " + "; ".join(c["label"] for c in blockers))
+    if warnings and not (payload and payload.force):
+        raise HTTPException(status_code=409, detail="Warnings to look at first: " + "; ".join(c["label"] for c in warnings) + ". Start anyway to go ahead.")
     with db.get_connection() as connection:
         connection.execute("UPDATE suite_participants SET status = 'started', updated_at = now() WHERE race_id = %s AND status = 'registered'", (race_id,))
     state = suite_db.update_state(race_id, status="live", started_at=started_at)
+    suite_db.audit(race_id, organizer.email, "race.started", f"gun {started_at.isoformat()}" + (f"; over warnings: {'; '.join(c['label'] for c in warnings)}" if warnings else ""))
     _emit("race.started", race, state)
     return _race_out(race, state, suite_db.race_overview([race_id]).get(race_id))
 
@@ -650,6 +667,7 @@ def finish_suite_race(race_id: str, organizer: Organizer = Depends(require_suite
             if row["status"] in ("finished", "started"):
                 connection.execute("UPDATE suite_participants SET status = %s, updated_at = now() WHERE participant_id = %s", ("finished" if row["status"] == "finished" else "dnf", row["participant_id"]))
     state = suite_db.update_state(race_id, status="finished", finished_at=_now())
+    suite_db.audit(race_id, organizer.email, "race.finished", f"{board['counts'].get('finished', 0)} finished, {board['counts'].get('started', 0)} still out marked DNF")
     _emit("race.finished", race, state, finishers=board["counts"].get("finished", 0))
     return _race_out(race, state, suite_db.race_overview([race_id]).get(race_id))
 
@@ -664,6 +682,7 @@ def reopen_suite_race(race_id: str, organizer: Organizer = Depends(require_suite
     with db.get_connection() as connection:
         connection.execute("UPDATE suite_participants SET status = 'started', updated_at = now() WHERE race_id = %s AND status = 'dnf'", (race_id,))
         connection.execute("UPDATE suite_races SET status = 'live', finished_at = NULL, updated_at = now() WHERE race_id = %s", (race_id,))
+    suite_db.audit(race_id, organizer.email, "race.reopened")
     state = suite_db.get_state(race_id)
     return _race_out(race, state, suite_db.race_overview([race_id]).get(race_id))
 
@@ -674,7 +693,8 @@ def reset_suite_race(race_id: str, organizer: Organizer = Depends(require_suite)
     the rehearsal the day before, not for race day; the plan and the field stay."""
     race = _race_for(race_id, organizer)
     suite_db.ensure_state(race_id)
-    suite_db.delete_all_passings(race_id)
+    removed = suite_db.delete_all_passings(race_id)
+    suite_db.audit(race_id, organizer.email, "race.reset", f"{removed} passings deleted")
     with db.get_connection() as connection:
         connection.execute("UPDATE suite_participants SET status = 'registered', updated_at = now() WHERE race_id = %s AND status <> 'dns'", (race_id,))
     state = suite_db.update_state(race_id, status="planning", clear_times=True)
@@ -690,12 +710,43 @@ def list_checkpoints(race_id: str, organizer: Organizer = Depends(require_suite)
     return [_checkpoint_out(row, with_key=True) for row in suite_db.list_checkpoints(race_id)]
 
 
+def _check_plan_rules(race: db.Race, existing: list[dict], values: dict, *, editing: str | None = None) -> dict:
+    """The rules a plan must keep: one start, one finish, the start at km 0, nothing beyond the
+    course, cut-offs that grow along the course. Returns the values with the automatic fixes."""
+    others = [c for c in existing if c["checkpoint_id"] != editing]
+    kind = values.get("kind")
+    if kind == "start" and any(c["kind"] == "start" for c in others):
+        raise HTTPException(status_code=422, detail="the plan already has a start; edit that one or change its kind")
+    if kind == "finish" and any(c["kind"] == "finish" for c in others):
+        raise HTTPException(status_code=422, detail="the plan already has a finish; edit that one or change its kind")
+    if kind == "start":
+        values["distance_km"] = 0.0
+        values["cutoff_minutes"] = None
+    if kind == "finish" and values.get("distance_km") is None and race.distance_km:
+        values["distance_km"] = round(race.distance_km, 2)
+    distance = values.get("distance_km")
+    if distance is not None and race.distance_km and distance > race.distance_km * 1.05 + 0.5:
+        raise HTTPException(status_code=422, detail=f"km {distance:g} is beyond the course, which measures {race.distance_km:.1f} km")
+    return values
+
+
 @router.post("/races/{race_id}/checkpoints", response_model=CheckpointOut, status_code=201)
 def add_checkpoint(race_id: str, payload: CheckpointIn, organizer: Organizer = Depends(require_suite)) -> CheckpointOut:
-    _race_for(race_id, organizer)
-    if len(suite_db.list_checkpoints(race_id)) >= MAX_CHECKPOINTS_PER_RACE:
+    race = _race_for(race_id, organizer)
+    existing = suite_db.list_checkpoints(race_id)
+    if len(existing) >= MAX_CHECKPOINTS_PER_RACE:
         raise HTTPException(status_code=409, detail=f"a race can have at most {MAX_CHECKPOINTS_PER_RACE} checkpoints")
-    return _checkpoint_out(suite_db.create_checkpoint(race_id, payload.model_dump()), with_key=True)
+    values = payload.model_dump()
+    values["name"], _ = suite_fields.clean_checkpoint_name(values["name"])
+    values = _check_plan_rules(race, existing, values)
+    # Placed by distance when no position is asked for, so the plan reads in course order.
+    if values.get("position") is None and values.get("distance_km") is not None:
+        later = [c["position"] for c in existing if c["distance_km"] is not None and c["distance_km"] > values["distance_km"]]
+        if later:
+            values["position"] = min(later)
+    if values.get("position") is None and values.get("kind") == "start" and existing:
+        values["position"] = 1
+    return _checkpoint_out(suite_db.create_checkpoint(race_id, values), with_key=True)
 
 
 @router.post("/races/{race_id}/checkpoints/reorder", response_model=list[CheckpointOut])
@@ -706,12 +757,16 @@ def reorder_checkpoints(race_id: str, payload: ReorderIn, organizer: Organizer =
 
 @router.patch("/checkpoints/{checkpoint_id}", response_model=CheckpointOut)
 def edit_checkpoint(checkpoint_id: str, payload: CheckpointUpdate, organizer: Organizer = Depends(require_suite)) -> CheckpointOut:
-    _checkpoint_for(checkpoint_id, organizer)
+    checkpoint, race = _checkpoint_for(checkpoint_id, organizer)
     values = payload.model_dump(exclude_none=True, exclude={"clear_distance", "clear_cutoff"})
     if payload.clear_distance:
         values["distance_km"] = None
     if payload.clear_cutoff:
         values["cutoff_minutes"] = None
+    if "name" in values:
+        values["name"], _ = suite_fields.clean_checkpoint_name(values["name"])
+    merged = {**checkpoint, **values}
+    values = {**values, **{k: v for k, v in _check_plan_rules(race, suite_db.list_checkpoints(race.race_id), merged, editing=checkpoint_id).items() if k in ("distance_km", "cutoff_minutes")}}
     row = suite_db.update_checkpoint(checkpoint_id, values)
     return _checkpoint_out(row, with_key=True)
 
@@ -725,8 +780,9 @@ def rotate_checkpoint_key(checkpoint_id: str, organizer: Organizer = Depends(req
 
 @router.delete("/checkpoints/{checkpoint_id}", status_code=204)
 def remove_checkpoint(checkpoint_id: str, organizer: Organizer = Depends(require_suite)) -> Response:
-    _checkpoint_for(checkpoint_id, organizer)
+    checkpoint, race = _checkpoint_for(checkpoint_id, organizer)
     suite_db.delete_checkpoint(checkpoint_id)
+    suite_db.audit(race.race_id, organizer.email, "checkpoint.removed", checkpoint["name"])
     return Response(status_code=204)
 
 
@@ -764,7 +820,8 @@ _IMPORT_COLUMNS: dict[str, tuple[str, ...]] = {
     "birth_year": ("birthyear", "yearofbirth", "yob", "born", "jahrgang", "birthdate", "dateofbirth", "dob", "birthday", "geburtsdatum", "datedenaissance"),
     "nationality": ("nationality", "nation", "nat", "country", "pays", "land", "nationalité"),
     "club": ("club", "team", "verein", "equipe", "équipe", "association"),
-    "emergency_contact": ("emergencycontact", "emergency", "ice", "icephone", "emergencyphone", "contacturgence", "notfallkontakt"),
+    "emergency_contact": ("emergencycontact", "emergency", "ice", "icephone", "emergencyphone", "contacturgence", "notfallkontakt", "contactoemergencia"),
+    "email": ("email", "e-mail", "mail", "emailaddress", "courriel"),
     "notes": ("notes", "note", "remarks", "comment", "comments"),
 }
 
@@ -812,6 +869,8 @@ def parse_participant_sheet(text: str) -> tuple[list[dict], list[str], dict[str,
 
     rows: list[dict] = []
     skipped: list[str] = []
+    seen_bibs: dict[str, int] = {}
+    seen_names: dict[tuple[str, str], int] = {}
     for line_no, row in enumerate(table[1:], start=2):
         family, first = cell(row, "family_name"), cell(row, "first_name")
         if not family and "name" in index_of:
@@ -821,30 +880,35 @@ def parse_participant_sheet(text: str) -> tuple[list[dict], list[str], dict[str,
         if not family:
             skipped.append(f"row {line_no}: no name")
             continue
-        gender = cell(row, "gender").upper()[:1]
-        if gender in ("H", "W"):  # homme, Weiblich/women
-            gender = "M" if gender == "H" else "F"
-        birth_year: int | None = None
-        raw_year = cell(row, "birth_year")
-        if raw_year:
-            match = re.search(r"(18|19|20)\d{2}", raw_year)
-            if match:
-                birth_year = int(match.group(0))
-                if not 1900 <= birth_year <= _THIS_YEAR:
-                    birth_year = None
-        rows.append(
+        cleaned, notes = suite_fields.clean_participant(
             {
                 "bib": cell(row, "bib") or None,
                 "family_name": family[:120],
                 "first_name": first[:120],
-                "gender": gender if gender in ("M", "F", "X") else "X",
-                "birth_year": birth_year,
-                "nationality": (cell(row, "nationality")[:3].upper() or None),
-                "club": cell(row, "club")[:120] or None,
-                "emergency_contact": cell(row, "emergency_contact")[:200] or None,
-                "notes": cell(row, "notes")[:500] or None,
+                "gender": cell(row, "gender"),
+                "birth_year": cell(row, "birth_year") or None,
+                "nationality": cell(row, "nationality") or None,
+                "club": cell(row, "club") or None,
+                "emergency_contact": cell(row, "emergency_contact") or None,
+                "email": cell(row, "email") or None,
+                "notes": cell(row, "notes") or None,
             }
         )
+        who = f"{cleaned['first_name']} {cleaned['family_name']}".strip()
+        # The same bib or the same person twice in one sheet is a mistake in the sheet, not two runners.
+        if cleaned["bib"] and cleaned["bib"] in seen_bibs:
+            skipped.append(f"row {line_no}, {who}: bib {cleaned['bib']} is also on row {seen_bibs[cleaned['bib']]}")
+            continue
+        name_key = (cleaned["family_name"].lower(), cleaned["first_name"].lower())
+        if name_key in seen_names:
+            skipped.append(f"row {line_no}, {who}: also on row {seen_names[name_key]}")
+            continue
+        if cleaned["bib"]:
+            seen_bibs[cleaned["bib"]] = line_no
+        seen_names[name_key] = line_no
+        cleaned["_row"] = line_no
+        cleaned["_notes"] = [f"row {line_no}, {who}: {note}" for note in notes]
+        rows.append(cleaned)
     return rows, skipped, columns, ignored
 
 
@@ -853,17 +917,35 @@ def import_participants(race_id: str, payload: ImportIn, organizer: Organizer = 
     """Paste the entry list. With ``replace``, the current list goes first (and its passings with it)."""
     _race_for(race_id, organizer)
     rows, skipped, columns, ignored = parse_participant_sheet(payload.text)
+    corrections = [note for row in rows for note in row.pop("_notes", [])]
+    if payload.dry_run:
+        # What the sheet would become, bib clashes with the current list included.
+        current = suite_db.list_participants(race_id) if not payload.replace else []
+        taken = {p["bib"] for p in current if p["bib"]}
+        names = {(p["family_name"].lower(), p["first_name"].lower()) for p in current}
+        for row in rows:
+            problems = []
+            if row["bib"] and row["bib"] in taken:
+                problems.append(f"bib {row['bib']} is already taken")
+            if (row["family_name"].lower(), row["first_name"].lower()) in names:
+                problems.append("already on the list")
+            row["_problems"] = problems
+        return ImportOut(added=0, skipped=skipped[:200], columns=columns, ignored_columns=ignored, corrections=corrections[:500], rows=[{k: v for k, v in row.items() if k != "_row"} | {"row": row["_row"]} for row in rows], total_rows=len(rows))
     if payload.replace:
         suite_db.delete_all_participants(race_id)
+        suite_db.audit(race_id, organizer.email, "participants.replaced", f"{len(rows)} rows imported in place of the list")
     _room_for(race_id, len(rows))
     added = 0
     for row in rows:
+        row.pop("_row", None)
         try:
             suite_db.create_participant(race_id, row)
             added += 1
         except suite_db.BibTaken:
             skipped.append(f"{row['first_name']} {row['family_name']}: bib {row['bib']} is already taken")
-    return ImportOut(added=added, skipped=skipped[:200], columns=columns, ignored_columns=ignored)
+    if added and not payload.replace:
+        suite_db.audit(race_id, organizer.email, "participants.imported", f"{added} added, {len(skipped)} skipped")
+    return ImportOut(added=added, skipped=skipped[:200], columns=columns, ignored_columns=ignored, corrections=corrections[:500], total_rows=len(rows))
 
 
 @router.post("/races/{race_id}/participants/assign-bibs", response_model=list[ParticipantOut])
@@ -885,6 +967,10 @@ def edit_participant(participant_id: str, payload: ParticipantUpdate, organizer:
         row = suite_db.update_participant(participant_id, values)
     except suite_db.BibTaken as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
+    if payload.status and payload.status != participant["status"]:
+        suite_db.audit(race.race_id, organizer.email, "participant.status", f"#{row['bib'] or '?'} {row['first_name']} {row['family_name']}: {participant['status']} → {payload.status}")
+    if payload.payment_status and payload.payment_status != participant.get("payment_status"):
+        suite_db.audit(race.race_id, organizer.email, "participant.payment", f"#{row['bib'] or '?'} {row['first_name']} {row['family_name']}: {participant.get('payment_status')} → {payload.payment_status}")
     if payload.status == "dnf" and participant["status"] != "dnf":
         _emit("participant.dnf", race, suite_db.get_state(race.race_id), participant=row)
     return _participant_out(row)
@@ -892,8 +978,9 @@ def edit_participant(participant_id: str, payload: ParticipantUpdate, organizer:
 
 @router.delete("/participants/{participant_id}", status_code=204)
 def remove_participant(participant_id: str, organizer: Organizer = Depends(require_suite)) -> Response:
-    _participant_for(participant_id, organizer)
+    participant, race = _participant_for(participant_id, organizer)
     suite_db.delete_participant(participant_id)
+    suite_db.audit(race.race_id, organizer.email, "participant.removed", f"#{participant['bib'] or '?'} {participant['first_name']} {participant['family_name']}")
     return Response(status_code=204)
 
 
@@ -960,6 +1047,7 @@ def add_passing(race_id: str, payload: PassingIn, organizer: Organizer = Depends
     row, outcome = _record(race, state, checkpoint, participant, recorded_at=payload.recorded_at or _now(), source="organizer", device=None, client_id=None)
     if outcome == "duplicate":
         raise HTTPException(status_code=409, detail="that runner was recorded at this checkpoint less than two minutes ago")
+    suite_db.audit(race_id, organizer.email, "passing.by_hand", f"#{participant['bib'] or '?'} {participant['first_name']} {participant['family_name']} at {checkpoint['name']} {row['recorded_at'].isoformat()}")
     return {"passing_id": row["passing_id"], "outcome": outcome}
 
 
@@ -970,7 +1058,11 @@ def remove_passing(passing_id: int, organizer: Organizer = Depends(require_suite
     if row is None:
         raise HTTPException(status_code=404, detail="no passing with that id")
     _race_for(row["race_id"], organizer)
-    suite_db.delete_passing(passing_id)
+    gone = suite_db.delete_passing(passing_id)
+    if gone:
+        participant = suite_db.find_participant(gone["participant_id"]) or {}
+        checkpoint = suite_db.find_checkpoint(gone["checkpoint_id"]) or {}
+        suite_db.audit(row["race_id"], organizer.email, "passing.removed", f"#{participant.get('bib') or '?'} {participant.get('first_name', '')} {participant.get('family_name', '')} at {checkpoint.get('name', '?')} {gone['recorded_at'].isoformat()} ({gone['source']})")
     return Response(status_code=204)
 
 
@@ -995,6 +1087,7 @@ def get_station(station_key: str, request: Request) -> dict:
     (bib, name, QR token), so scans resolve on the phone and keep working without signal."""
     enforce_rate_limit(request, max_requests=60, scope="suite-station-get")
     checkpoint, race, state = _station(station_key)
+    suite_db.touch_station(checkpoint["checkpoint_id"])
     roster = [
         {"participant_id": p["participant_id"], "bib": p["bib"], "first_name": p["first_name"], "family_name": p["family_name"], "qr_token": p["qr_token"], "status": p["status"]}
         for p in suite_db.list_participants(race.race_id)
@@ -1197,6 +1290,7 @@ def submit_results_to_scoring(race_id: str, organizer: Organizer = Depends(requi
             raise _app._published_conflict("results") from error
     finally:
         _app._discard_temp(path)
+    suite_db.audit(race_id, organizer.email, "results.submitted", f"{sum(1 for r in results if r.is_finisher)} finishers, {len(results)} rows")
     return {"finishers": sum(1 for r in results if r.is_finisher), "rows": len(results), "scored": len(scores), "warnings": [issue.to_dict() for issue in report.warnings[:20]]}
 
 
@@ -1456,7 +1550,7 @@ class RegistrationIn(BaseModel):
     first_name: str = Field(min_length=1, max_length=120)
     gender: str = Field(pattern="^(M|F|X)$")
     birth_year: int | None = Field(default=None, ge=1900, le=_THIS_YEAR)
-    nationality: str | None = Field(default=None, max_length=3)
+    nationality: str | None = Field(default=None, max_length=60)  # a code or a country name; cleaned to ISO alpha-3
     club: str | None = Field(default=None, max_length=120)
     email: str | None = Field(default=None, max_length=200)
     emergency_contact: str | None = Field(default=None, max_length=200)
@@ -1525,3 +1619,101 @@ def public_register(race_id: str, payload: RegistrationIn, request: Request) -> 
             "reference": reference,
         },
     }
+
+
+# --- Readiness: what stands between this race and its gun ------------------------------------------
+
+
+def _check(key: str, ok: bool, level: str, label: str, detail: str | None = None, tab: str | None = None) -> dict:
+    return {"key": key, "ok": bool(ok), "level": level, "label": label, "detail": detail, "tab": tab}
+
+
+def readiness(race: db.Race, state: dict | None) -> list[dict]:
+    """Every check the organizer should see before the gun, in the order they fix things.
+
+    ``blocker``: the race cannot start (no runners, no bibs, no start or finish, two of either).
+    ``warning``: the gun goes with ``force`` and the override is written to the audit log.
+    ``info``: worth knowing, never in the way."""
+    settings = _settings(state)
+    people = suite_db.list_participants(race.race_id)
+    checkpoints = suite_db.list_checkpoints(race.race_id)
+    checks: list[dict] = []
+
+    # The field.
+    checks.append(_check("runners", len(people) > 0, "blocker", "Runners on the list", f"{len(people)} registered" if people else "Nobody is registered yet", "field"))
+    missing_bib = [p for p in people if not p["bib"]]
+    checks.append(_check("bibs", bool(people) and not missing_bib, "blocker", "Every runner has a bib", "Numbers assigned" if people and not missing_bib else f"{len(missing_bib)} without a number", "field"))
+    no_ice = [p for p in people if not p["emergency_contact"]]
+    checks.append(_check("emergency", not no_ice, "warning", "Every runner has an emergency contact", "All given" if not no_ice else f"{len(no_ice)} runner{'s' if len(no_ice) != 1 else ''} without one", "field"))
+    no_gender = [p for p in people if p["gender"] == "X"]
+    if no_gender:
+        checks.append(_check("gender", False, "info", "Runners without a gender are left out of the women's and men's rankings", f"{len(no_gender)} runner{'s' if len(no_gender) != 1 else ''}", "field"))
+    unpaid = [p for p in people if p.get("payment_status") == "pending"]
+    if unpaid:
+        checks.append(_check("fees", False, "warning", "Fees still pending", f"{len(unpaid)} runner{'s' if len(unpaid) != 1 else ''} have not been marked paid", "field"))
+
+    # The plan.
+    starts = [c for c in checkpoints if c["kind"] == "start"]
+    finishes = [c for c in checkpoints if c["kind"] == "finish"]
+    checks.append(_check("start_finish", len(starts) == 1 and len(finishes) == 1, "blocker", "One start and one finish on the plan", f"{len(checkpoints)} checkpoint{'s' if len(checkpoints) != 1 else ''}: {len(starts)} start, {len(finishes)} finish", "plan"))
+    with_km = [c for c in checkpoints if c["distance_km"] is not None]
+    in_order = all(a["distance_km"] <= b["distance_km"] for a, b in zip(with_km, with_km[1:]))
+    checks.append(_check("distances", in_order, "warning", "Distances grow along the plan", "In course order" if in_order else "A checkpoint is listed before one that comes earlier on the course", "plan"))
+    with_cut = [c for c in checkpoints if c["cutoff_minutes"] is not None]
+    cut_order = all(a["cutoff_minutes"] < b["cutoff_minutes"] for a, b in zip(with_cut, with_cut[1:]))
+    checks.append(_check("cutoffs", cut_order, "warning", "Cut-offs grow along the plan", "Each later than the one before" if cut_order else "A cut-off is earlier than the one before it", "plan"))
+    if finishes and finishes[0]["distance_km"] is not None and race.distance_km:
+        close = abs(finishes[0]["distance_km"] - race.distance_km) <= max(0.5, race.distance_km * 0.03)
+        checks.append(_check("finish_km", close, "warning", "The finish is where the course ends", f"Finish at km {finishes[0]['distance_km']:g}, course {race.distance_km:.1f} km", "plan"))
+    if finishes and finishes[0]["cutoff_minutes"] is None:
+        checks.append(_check("finish_cutoff", False, "warning", "The finish has a cut-off", "Without one, nobody is ever overdue on the last stretch", "plan"))
+    unseen = [c for c in checkpoints if c.get("station_seen_at") is None]
+    checks.append(_check("stations", bool(checkpoints) and not unseen, "warning", "Every station link has been opened on a phone", "All opened" if checkpoints and not unseen else f"{len(unseen)} not opened yet: {', '.join(c['name'] for c in unseen[:4])}{'…' if len(unseen) > 4 else ''}", "plan"))
+
+    # The race.
+    checks.append(_check("phone", bool(settings.organizer_phone), "warning", "An organizer phone on the bibs", settings.organizer_phone or "Nobody to call if a runner is found alone", "overview"))
+    checks.append(_check("planned_start", bool(settings.planned_start), "info", "A planned start time", f"Start {settings.planned_start}" if settings.planned_start else "Cut-offs print as durations, not clock times", "overview"))
+    if settings.registration_open:
+        checks.append(_check("registration", False, "warning", "Registration is still open", "Close it before the gun, so the list is final", "overview"))
+    if race.event_date and race.event_date != date.today() and (state or {}).get("status") == "planning":
+        checks.append(_check("date", False, "info", "The race is dated " + race.event_date.isoformat(), "Today is " + date.today().isoformat() + "; a rehearsal is fine, reset it afterwards", "overview"))
+    if not race.has_gpx:
+        checks.append(_check("gpx", False, "info", "No course file yet", "Attach the GPX for the profile on the bibs and for scoring", None))
+    return checks
+
+
+@router.get("/races/{race_id}/readiness")
+def get_readiness(race_id: str, organizer: Organizer = Depends(require_suite)) -> dict:
+    race = _race_for(race_id, organizer)
+    state = suite_db.ensure_state(race_id)
+    checks = readiness(race, state)
+    return {
+        "checks": checks,
+        "blockers": sum(1 for c in checks if c["level"] == "blocker" and not c["ok"]),
+        "warnings": sum(1 for c in checks if c["level"] == "warning" and not c["ok"]),
+        "ready": not any(c["level"] == "blocker" and not c["ok"] for c in checks),
+    }
+
+
+@router.get("/races/{race_id}/audit")
+def get_audit(race_id: str, organizer: Organizer = Depends(require_suite)) -> list[dict]:
+    """Every hand-made change to the record, newest first: who, when, what."""
+    _race_for(race_id, organizer)
+    return suite_db.audit_log(race_id)
+
+
+@router.get("/races/{race_id}/passings.csv")
+def download_passings(race_id: str, organizer: Organizer = Depends(require_suite)) -> Response:
+    """Every passing as recorded, for the record: bib, runner, checkpoint, time, source, device."""
+    race = _race_for(race_id, organizer)
+    people = {p["participant_id"]: p for p in suite_db.list_participants(race_id)}
+    checkpoints = {c["checkpoint_id"]: c for c in suite_db.list_checkpoints(race_id)}
+    out = io.StringIO()
+    writer = csv.writer(out, lineterminator="\n")
+    writer.writerow(["Passing", "Bib", "Last name", "First name", "Checkpoint", "Position", "Recorded at", "Received at", "Source", "Device", "Client id"])
+    for row in suite_db.list_passings(race_id):
+        p = people.get(row["participant_id"], {})
+        c = checkpoints.get(row["checkpoint_id"], {})
+        writer.writerow([row["passing_id"], p.get("bib") or "", p.get("family_name", ""), p.get("first_name", ""), c.get("name", ""), c.get("position", ""), row["recorded_at"].isoformat(), row["received_at"].isoformat(), row["source"], row["device"] or "", row["client_id"] or ""])
+    name = re.sub(r"[^A-Za-z0-9._-]+", "-", f"{race.event_name or 'race'}-{race.course_name}-passings").strip("-")
+    return Response(content=out.getvalue(), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": f'attachment; filename="{name}.csv"'})

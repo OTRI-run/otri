@@ -109,6 +109,20 @@ CREATE TABLE IF NOT EXISTS suite_plugins (
     PRIMARY KEY (race_id, plugin_key)
 );
 
+-- Every hand-made change to the record of the race, with who made it: a passing removed, a
+-- status set, a race reset or finished, the gun fired over a warning, results sent to scoring.
+CREATE TABLE IF NOT EXISTS suite_audit (
+    id BIGSERIAL PRIMARY KEY,
+    race_id TEXT NOT NULL REFERENCES races(race_id) ON DELETE CASCADE,
+    at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    actor TEXT NOT NULL,
+    action TEXT NOT NULL,
+    detail TEXT
+);
+CREATE INDEX IF NOT EXISTS suite_audit_race ON suite_audit (race_id, id DESC);
+-- When a station page last loaded its roster: the readiness check knows which links were opened.
+ALTER TABLE suite_checkpoints ADD COLUMN IF NOT EXISTS station_seen_at TIMESTAMPTZ;
+
 CREATE TABLE IF NOT EXISTS suite_plugin_log (
     id BIGSERIAL PRIMARY KEY,
     race_id TEXT NOT NULL REFERENCES races(race_id) ON DELETE CASCADE,
@@ -197,6 +211,24 @@ def find_checkpoint(checkpoint_id: str) -> dict | None:
 def find_checkpoint_by_key(station_key: str) -> dict | None:
     with db.get_connection() as connection:
         return connection.execute("SELECT * FROM suite_checkpoints WHERE station_key = %s", (station_key,)).fetchone()
+
+
+def touch_station(checkpoint_id: str) -> None:
+    with db.get_connection() as connection:
+        connection.execute("UPDATE suite_checkpoints SET station_seen_at = now() WHERE checkpoint_id = %s", (checkpoint_id,))
+
+
+# --- Audit ---------------------------------------------------------------------------------------
+
+
+def audit(race_id: str, actor: str, action: str, detail: str | None = None) -> None:
+    with db.get_connection() as connection:
+        connection.execute("INSERT INTO suite_audit (race_id, actor, action, detail) VALUES (%s, %s, %s, %s)", (race_id, actor, action, (detail or "")[:1000] or None))
+
+
+def audit_log(race_id: str, limit: int = 200) -> list[dict]:
+    with db.get_connection() as connection:
+        return connection.execute("SELECT * FROM suite_audit WHERE race_id = %s ORDER BY id DESC LIMIT %s", (race_id, limit)).fetchall()
 
 
 def create_checkpoint(race_id: str, values: dict) -> dict:
@@ -312,18 +344,10 @@ class BibTaken(Exception):
 
 
 def _clean_participant(values: dict) -> dict:
-    fields = {key: values.get(key) for key in PARTICIPANT_FIELDS if key in values}
-    if "bib" in fields:
-        fields["bib"] = (str(fields["bib"]).strip() or None) if fields["bib"] is not None else None
-    if "gender" in fields:
-        fields["gender"] = ((fields["gender"] or "X").strip().upper()[:1] or "X") if fields["gender"] is not None else "X"
-        if fields["gender"] not in ("M", "F", "X"):
-            fields["gender"] = "X"
-    for key in ("family_name", "first_name", "club", "nationality", "emergency_contact", "notes", "email", "payment_reference"):
-        if key in fields and isinstance(fields[key], str):
-            fields[key] = fields[key].strip()
-    if "nationality" in fields and fields["nationality"]:
-        fields["nationality"] = fields["nationality"].upper()[:3]
+    """Every field through api/suite_fields.py; the notes are the caller's to show."""
+    from .suite_fields import clean_participant
+
+    fields, _notes = clean_participant({key: values.get(key) for key in PARTICIPANT_FIELDS if key in values})
     return fields
 
 

@@ -80,13 +80,13 @@ Run a small race's day: plan, bibs, stations, board, plugins ([`docs/product/rac
 | GET | `/suite/races` | suite | The caller's races (every race for an admin) with the suite's status and counts. |
 | GET | `/suite/races/{race_id}` | suite | One race's suite state, settings and counts. |
 | PATCH | `/suite/races/{race_id}/settings` | suite | `timing` (`gun` or `net`), `organizer_phone`, `bib_note`, `bib_show_name`. |
-| POST | `/suite/races/{race_id}/start` · `/finish` · `/reopen` · `/reset` | suite | The gun (registered runners go on course); close the race (runners still out are DNF); back to live; back to planning with every passing deleted. |
+| POST | `/suite/races/{race_id}/start` · `/finish` · `/reopen` · `/reset` | suite | The gun (registered runners go on course; 409 with the readiness blockers, or the warnings until `force`); close the race (runners still out are DNF); back to live; back to planning with every passing deleted. |
 | GET · POST | `/suite/races/{race_id}/checkpoints` | suite | The plan in course order; add one (`name`, `kind`: start, checkpoint, aid, finish; `distance_km`, `cutoff_minutes`, services, `supplies`, `notes`, optional `position`). Each carries its `station_key`. |
 | POST | `/suite/races/{race_id}/checkpoints/reorder` | suite | `checkpoint_ids` in the new order. |
 | PATCH · DELETE | `/suite/checkpoints/{checkpoint_id}` | suite | Edit (`clear_distance`, `clear_cutoff` to empty a number); delete with its passings. |
 | POST | `/suite/checkpoints/{checkpoint_id}/rotate-key` | suite | A new station link; the old one stops working. |
 | GET · POST | `/suite/races/{race_id}/participants` | suite | The entry list; add one runner. Each carries its `qr_token`. |
-| POST | `/suite/races/{race_id}/participants/import` | suite | `text`: pasted CSV/TSV with a header row (columns matched by name in several languages); `replace` empties the list first. Answers what was read, skipped and ignored. |
+| POST | `/suite/races/{race_id}/participants/import` | suite | `text`: pasted CSV/TSV with a header row (columns matched by name in several languages); `replace` empties the list first; `dry_run` reads and cleans without storing and answers the `rows` as they would be stored. Answers what was read, corrected, skipped and ignored. |
 | POST | `/suite/races/{race_id}/participants/assign-bibs` | suite | Number the runners (`start`, `prefix`, `only_missing`). |
 | PATCH · DELETE | `/suite/participants/{participant_id}` | suite | Edit a runner or set their `status` (registered, dns, started, finished, dnf, dsq); remove them. |
 | GET | `/suite/races/{race_id}/board` | suite | The live picture: counts, each checkpoint's throughput, each runner's status, last passing, next checkpoint, overdue flag, splits and finish rank; plugin panels. |
@@ -100,6 +100,9 @@ Run a small race's day: plan, bibs, stations, board, plugins ([`docs/product/rac
 | GET | `/suite/public/{race_id}` | anyone | The race, plan, profile, whether the live page is on, and registration (open, places left, fee, questions). 404 unless the live page or registration is on. |
 | GET | `/suite/public/{race_id}/live` | anyone | The spectator board: names, bibs, clubs, last seen, laps, finish times. No personal details beyond that. |
 | POST | `/suite/public/{race_id}/register` | anyone | Enter the race (`family_name`, `first_name`, `gender`, optional `birth_year`, `nationality`, `club`, `email`, `emergency_contact`, `consent`). Answers the runner's `qr_token` and how to pay (`url`, `reference`, `instructions`). Rate-limited; refuses duplicates and a full race. |
+| GET | `/suite/races/{race_id}/readiness` | suite | The checks before the gun: `checks` (key, ok, level blocker/warning/info, label, detail, tab), `blockers`, `warnings`, `ready`. |
+| GET | `/suite/races/{race_id}/audit` | suite | Every change made by hand, newest first: at, actor, action, detail. |
+| GET | `/suite/races/{race_id}/passings.csv` | suite | Every passing as recorded, for the record. |
 | GET | `/suite/plugins` | suite | Every plugin on this server with its settings form. |
 | GET | `/suite/races/{race_id}/plugins` | suite | The race's plugin settings (secrets masked). |
 | PUT | `/suite/races/{race_id}/plugins/{plugin_key}` | suite | `enabled`, `config`; validated by the plugin, 422 with its sentence. |
