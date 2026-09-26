@@ -6,6 +6,7 @@ import { ArrowUpRight, ChevronDown, Mail } from 'lucide-react'
 import '../../src/styles.css'
 import Logo from '../../src/components/Logo'
 import GitHubMark from '../../src/components/GitHubMark'
+import { FACEBOOK_URL, FacebookMark, INSTAGRAM_URL, InstagramMark } from '../../src/components/SocialMarks'
 import UnitsMenu from '../../src/components/UnitsMenu'
 import { logoutOrganizer, getMe, resendVerification, whenSessionEnds } from '../apiClient'
 import BuildBanner from '../../src/components/BuildBanner'
@@ -197,6 +198,14 @@ function Footer() {
           <a href="mailto:hello@otri.run" className="inline-flex items-center gap-1.5 no-underline hover:text-blue-600">
             <Mail size={14} />
             hello@otri.run
+          </a>
+          <a href={FACEBOOK_URL} className="inline-flex items-center gap-1.5 no-underline hover:text-blue-600">
+            <FacebookMark size={14} />
+            Facebook
+          </a>
+          <a href={INSTAGRAM_URL} className="inline-flex items-center gap-1.5 no-underline hover:text-blue-600">
+            <InstagramMark size={14} />
+            Instagram
           </a>
         </nav>
         <span className="font-mono text-[8px] tracking-[.08em] text-slate-500">OPEN · TRANSPARENT · REPRODUCIBLE · INDEPENDENT</span>
