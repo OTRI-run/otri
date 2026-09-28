@@ -2,7 +2,7 @@ import ScoreScale from '../src/components/ScoreScale'
 import { exponentOf } from '../src/lib/scoreLevels'
 import { fitFontSize } from '../src/lib/fitText'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUpRight, Check, Copy, GitBranch, Link2, Mountain, RefreshCw, Search, Share2, Upload, Image as ImageIcon, Download } from 'lucide-react'
+import { ArrowUpRight, Check, Copy, GitBranch, Link2, Mountain, RefreshCw, Route, Search, Share2, Upload, Image as ImageIcon, Download } from 'lucide-react'
 import CourseMap from '../src/components/CourseMap'
 import { analyzeGpx, fetchRaceGpxFile, fetchSharedGpxFile, getRace, listRaces, proposeCalculatorCourse, shareGpx, raceGpxDownloadUrl } from './apiClient'
 import CountrySelect from '../src/components/CountrySelect'
@@ -1066,9 +1066,41 @@ function CoursePicker({ races, allRaces, racesLoading, racesError, query, onQuer
 
 // ----------------------------------------------------------------------------- loaded course
 
-function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCourse, shareId, courseFile, embedded }) {
+// One short line under the distance, climb and descent: the course as flat kilometres. The same
+// figures the "Why this score" step spells out, compressed so the cost of the course is read
+// next to its size. Nothing until the estimate is in, so the row never shows a placeholder.
+function EffortLine({ breakdown: b, du, units }) {
+  if (!b) return null
+  const terrainPct = Math.round((b.terrain_factor - 1) * 1000) / 10
+  const steepPct = Math.round(b.steep_distance_fraction * 100)
+  const hasTerrain = terrainPct > 0
+  const cause = steepPct > 0 ? `${steepPct}% steeper than 20%` : 'high altitude'
+  const altitude = steepPct > 0 && b.altitude_excess_m > 0 ? ' and above 1,500 m' : ''
+  return (
+    <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm leading-6 text-slate-600">
+      <Route size={15} className="shrink-0 text-blue-600" aria-hidden="true" />
+      <span className="text-[11px] font-semibold uppercase tracking-[.08em] text-blue-600">Effort</span>
+      <span>
+        as much as <strong className="font-semibold text-[#0b1220]">{fmtDist(b.course_demand_km, units)} flat {du}</strong>
+        {hasTerrain ? (
+          <>
+            {' · '}
+            {cause}
+            {altitude} adds {terrainPct}%:{' '}
+            <strong className="font-semibold text-[#0b1220]">{fmtDist(b.adjusted_demand_km, units)} flat {du}</strong> in total
+          </>
+        ) : (
+          ' · no sustained steep ground or altitude'
+        )}
+      </span>
+    </p>
+  )
+}
+
+function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCourse, shareId, courseFile, embedded, estimate }) {
   const ownUpload = !courseLabel.verified && courseLabel.meta !== 'Shared course'
   const units = useUnits()
+  const du = distanceUnit(units)
   const tooSparse = measurement?.quality_flags?.includes('sparse_geometry_median_over_30m')
   const stats = [
     ['DISTANCE', formatDistance(features.distance_km, units)],
@@ -1129,6 +1161,7 @@ function CourseDetails({ gpxText, measurement, features, courseLabel, onChangeCo
             </div>
           ))}
         </div>
+        <EffortLine breakdown={estimate?.breakdown} du={du} units={units} />
 
         {gpxText && (
           <div id="calculator-map" className="mt-6 scroll-mt-[80px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,.04)]">
@@ -1542,7 +1575,7 @@ export default function ScoreCalculator({ embedded = false }) {
   const course = (
     <div id="calculator-course" className="scroll-mt-[68px]">
       {hasCourse ? (
-        <CourseDetails gpxText={gpxText} measurement={measurement} features={features} courseLabel={courseLabel} onChangeCourse={startOver} shareId={shareId} courseFile={courseFile} embedded={embedded} />
+        <CourseDetails gpxText={gpxText} measurement={measurement} features={features} courseLabel={courseLabel} onChangeCourse={startOver} shareId={shareId} courseFile={courseFile} embedded={embedded} estimate={estimate} />
       ) : loadingCourse ? (
         <CourseLoading name={loadingName} />
       ) : (
