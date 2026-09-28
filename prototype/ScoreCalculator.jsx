@@ -324,6 +324,16 @@ function Spinner({ className = '' }) {
 // The dark "index engine" panel from the landing page, now showing a live number. It is rendered
 // in every state — empty, calculating, live — so the hero never jumps when a course arrives.
 
+// "18.8 flat km · 13% steep +8%", or just "17.4 flat km" when nothing sits on top of the gradient.
+function effortShort(b, units) {
+  const du = distanceUnit(units)
+  const terrainPct = Math.round((b.terrain_factor - 1) * 1000) / 10
+  const steepPct = Math.round(b.steep_distance_fraction * 100)
+  if (terrainPct <= 0) return `${fmtDist(b.course_demand_km, units)} flat ${du}`
+  const cause = steepPct > 0 ? `${steepPct}% steep` : 'altitude'
+  return `${fmtDist(b.adjusted_demand_km, units)} flat ${du} · ${cause} +${terrainPct}%`
+}
+
 function ScorePanel({ estimate, scoring, targetSeconds, features, onChangeCourse }) {
   const units = useUnits()
   const b = estimate?.breakdown
@@ -337,13 +347,18 @@ function ScorePanel({ estimate, scoring, targetSeconds, features, onChangeCourse
   // panel, so repeating them here said the same thing twice a few centimetres apart. And the
   // model row read "Model model 0.1.0 · reproducible", which is the word twice and a claim the
   // methodology link makes properly.
+  //
+  // Effort: the course as flat kilometres, the figure the score is really made from. With steep
+  // ground or altitude the total comes first, then what added to it: "18.8 flat km · 13% steep +8%".
   const rows = estimate
     ? [
         [Mountain, 'Course', `${formatDistance(b?.physical_distance_km ?? features?.distance_km ?? 0, units)} · ${formatElevation(features?.elevation_gain_m ?? 0, units, { sign: '+' })}`],
+        b && [Route, 'Effort', effortShort(b, units)],
         [GitBranch, 'Model', modelShort(estimate.scoring_version)],
-      ]
+      ].filter(Boolean)
     : [
         [Mountain, 'Course', 'distance, climb, steepness'],
+        [Route, 'Effort', 'flat km · steepness'],
         [GitBranch, 'Model', 'versioned · reproducible'],
       ]
 
